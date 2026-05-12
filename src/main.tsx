@@ -1,20 +1,25 @@
-// src/main.tsx
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import { RouterProvider } from '@tanstack/react-router'
-import { routeTree } from './routeTree.gen' 
-import { createRouter } from '@tanstack/react-router'
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { Theme } from "@radix-ui/themes";
+import { routeTree } from "./routeTree.gen";
+import { createRouter } from "@tanstack/react-router";
+import { RouterProvider } from "@tanstack/react-router";
 
-const router = createRouter({ routeTree })
+import "@radix-ui/themes/styles.css";
+import "./index.css";
 
-declare module '@tanstack/react-router' {
+const router = createRouter({ routeTree });
+
+declare module "@tanstack/react-router" {
   interface Register {
-    router: typeof router
+    router: typeof router;
   }
 }
 
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <RouterProvider router={router} />
+    <Theme>
+      <RouterProvider router={router} />
+    </Theme>
   </React.StrictMode>,
-)
+);
