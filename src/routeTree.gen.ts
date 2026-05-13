@@ -9,8 +9,20 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as IndexRouteImport } from './routes/index'
+import { Route as authSigninRouteImport } from './routes/(auth)/signin'
 import { Route as authLoginRouteImport } from './routes/(auth)/login'
 
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const authSigninRoute = authSigninRouteImport.update({
+  id: '/(auth)/signin',
+  path: '/signin',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const authLoginRoute = authLoginRouteImport.update({
   id: '/(auth)/login',
   path: '/login',
@@ -18,29 +30,51 @@ const authLoginRoute = authLoginRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
   '/login': typeof authLoginRoute
+  '/signin': typeof authSigninRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof IndexRoute
   '/login': typeof authLoginRoute
+  '/signin': typeof authSigninRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
   '/(auth)/login': typeof authLoginRoute
+  '/(auth)/signin': typeof authSigninRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/login'
+  fullPaths: '/' | '/login' | '/signin'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login'
-  id: '__root__' | '/(auth)/login'
+  to: '/' | '/login' | '/signin'
+  id: '__root__' | '/' | '/(auth)/login' | '/(auth)/signin'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
   authLoginRoute: typeof authLoginRoute
+  authSigninRoute: typeof authSigninRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(auth)/signin': {
+      id: '/(auth)/signin'
+      path: '/signin'
+      fullPath: '/signin'
+      preLoaderRoute: typeof authSigninRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/(auth)/login': {
       id: '/(auth)/login'
       path: '/login'
@@ -52,7 +86,9 @@ declare module '@tanstack/react-router' {
 }
 
 const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
   authLoginRoute: authLoginRoute,
+  authSigninRoute: authSigninRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
