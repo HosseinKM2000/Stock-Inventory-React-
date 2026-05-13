@@ -6,8 +6,8 @@ type Props = JSX.IntrinsicAttributes &
   TextField.RootProps &
   RefAttributes<HTMLInputElement>;
 
-const FsInput = (props: Props) => {
+const FsTextField = (props: Props) => {
   return <TextField.Root {...props}></TextField.Root>;
 };
 
-export default FsInput;
+export default FsTextField;
