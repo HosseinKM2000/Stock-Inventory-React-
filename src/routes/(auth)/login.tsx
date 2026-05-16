@@ -18,7 +18,7 @@ export const Route = createFileRoute("/(auth)/login")({
       <div className="w-[90%] sm:w-90 h-fit">
         <FsButton text="ورود" style={{ width: "100%" }} />
       </div>
-      <Link href="/signin" size={"2"} color="indigo">
+      <Link href="/signup" size={"2"} color="indigo">
         هنوز حسابی ندارید!
       </Link>
     </div>

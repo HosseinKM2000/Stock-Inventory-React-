@@ -1,7 +1,7 @@
 import path from "path";
 import { defineConfig } from "vite";
 import babel from "@rolldown/plugin-babel";
-import tailwindcss from '@tailwindcss/vite'
+import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-vite-plugin";
 import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 
@@ -22,8 +22,10 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      "src": path.resolve(__dirname, "./src"),
+      src: path.resolve(__dirname, "./src"),
+      "@fs/utils": path.resolve(__dirname, "./packages/utils"),
       "@fs/form": path.resolve(__dirname, "./packages/shared/ui/form"),
+      "@fs/validation": path.resolve(__dirname, "./packages/shared/validation"),
     },
   },
   server: {
