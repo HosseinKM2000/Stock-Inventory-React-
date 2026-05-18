@@ -1,6 +1,6 @@
-import { Link } from "@radix-ui/themes";
-import { preventEventHandler } from "@fs/utils";
 import { FsButton, FsTextField } from "@fs/form";
+import { preventEventHandler } from "@fs/utils";
+import { Link } from "@radix-ui/themes";
 import { useState } from "react";
 import { signupSchema } from "../validators/signup.schema";
 

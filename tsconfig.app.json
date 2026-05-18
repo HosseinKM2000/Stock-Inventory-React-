@@ -6,6 +6,7 @@
     "paths": {
       "src/*": ["src/*"],
       "@fs/form": ["./packages/shared/ui/form"],
+      "@fs/organ": ["./packages/shared/ui/organ"],
       "@fs/validation": ["./packages/shared/validation"],
       "@fs/utils": ["./packages/utils"]
     },
