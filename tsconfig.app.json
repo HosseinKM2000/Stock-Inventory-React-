@@ -1,10 +1,13 @@
 {
   "compilerOptions": {
+    "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
+
     "strict": true,
     "strictNullChecks": true,
-    "baseUrl": ".",
+
     "paths": {
-      "src/*": ["src/*"],
+      "@/*": ["./src/*"],
       "@fs/form": ["./packages/shared/ui/form"],
       "@fs/organ": ["./packages/shared/ui/organ"],
       "@fs/validation": ["./packages/shared/validation"],
@@ -18,7 +21,6 @@
     "types": ["vite/client"],
     "skipLibCheck": true,
 
-    /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "verbatimModuleSyntax": true,
@@ -26,7 +28,6 @@
     "noEmit": true,
     "jsx": "react-jsx",
 
-    /* Linting */
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "erasableSyntaxOnly": true,
