@@ -1,10 +1,6 @@
 import { FsButton, FsTextField } from "@fs/form";
 import { Link } from "@radix-ui/themes";
 import { createFileRoute } from "@tanstack/react-router";
-import { keycloak } from "src/core/auth/keycloak";
-
-const user = keycloak.tokenParsed;
-console.log(user);
 
 export const Route = createFileRoute("/(auth)/login")({
   component: () => (
