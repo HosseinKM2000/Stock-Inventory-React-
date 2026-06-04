@@ -5,7 +5,7 @@ import { routeTree } from "./routeTree.gen";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 
 import "@radix-ui/themes/styles.css";
-import "./index.css";
+import "@/style/index.css";
 import { ToastProvider } from "@fs/organ";
 
 const router = createRouter({ routeTree });

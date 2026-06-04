@@ -1,0 +1,69 @@
+@theme {
+  --color-background: #000;
+  --color-foreground: #ffff;
+  /* Primary Scale - Pollet Blue Digital */
+  --color-primary-1: #001a42;
+  --color-primary-2: #002e6a;
+  --color-primary-3: #004395;
+  --color-primary-4: #005ac2;
+  --color-primary-5: #2573e6;
+  --color-primary-6: #4d8eff;
+  --color-primary-7: #81aaff;
+  --color-primary-8: #adc6ff;
+  --color-primary-9: #d8e2ff;
+  --color-primary-10: #edf0ff;
+
+  /* Secondary Scale - Cyan Digital */
+  --color-secondary-1: #083344;
+  --color-secondary-2: #164e63;
+  --color-secondary-3: #155e75;
+  --color-secondary-4: #0e7490;
+  --color-secondary-5: #06b6d4;
+  --color-secondary-6: #22d3ee;
+  --color-secondary-7: #67e8f9;
+  --color-secondary-8: #a5f3fc;
+  --color-secondary-9: #cffafe;
+  --color-secondary-10: #ecfeff;
+
+  /* Tertiary Scale - Lime Digital */
+  --color-tertiary-1: #1a2e05;
+  --color-tertiary-2: #365314;
+  --color-tertiary-3: #3f6212;
+  --color-tertiary-4: #4d7c0f;
+  --color-tertiary-5: #a3e635;
+  --color-tertiary-6: #bef264;
+  --color-tertiary-7: #d9f99d;
+  --color-tertiary-8: #ecfccb;
+  --color-tertiary-9: #f7fee7;
+  --color-tertiary-10: #f9fff0;
+
+  /* Neutral Scale - Blue-Gray Dark */
+  --color-neutral-1: #0f172a;
+  --color-neutral-2: #1e293b;
+  --color-neutral-3: #334155;
+  --color-neutral-4: #475569;
+  --color-neutral-5: #64748b;
+  --color-neutral-6: #94a3b8;
+  --color-neutral-7: #cbd5e1;
+  --color-neutral-8: #e2e8f0;
+  --color-neutral-9: #f1f5f9;
+  --color-neutral-10: #f8fafc;
+  /* Violet */
+  --color-violet-1: #1e1345;
+  --color-violet-2: #38268a;
+  --color-violet-3: #5239cf;
+  --color-violet-4: #6c4cff;
+  --color-violet-5: #8b5cf6;
+  --color-violet-6: #a585fc;
+  --color-violet-7: #bfaeff;
+  --color-violet-8: #d9d0ff;
+  --color-violet-9: #ece9ff;
+  --color-violet-10: #f7f6ff;
+}
+
+@media (prefers-color-scheme: light) {
+  root {
+    --background: #ffff;
+    --foreground: #000;
+  }
+}

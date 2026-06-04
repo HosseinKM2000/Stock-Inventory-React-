@@ -12,6 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as authSignupRouteImport } from './routes/(auth)/signup'
 import { Route as authLoginRouteImport } from './routes/(auth)/login'
+import { Route as publicSettingRouteRouteImport } from './routes/(public)/setting/route'
+import { Route as publicSettingProfileRouteImport } from './routes/(public)/setting/profile'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,33 +30,56 @@ const authLoginRoute = authLoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const publicSettingRouteRoute = publicSettingRouteRouteImport.update({
+  id: '/(public)/setting',
+  path: '/setting',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const publicSettingProfileRoute = publicSettingProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => publicSettingRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/setting': typeof publicSettingRouteRouteWithChildren
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
+  '/setting/profile': typeof publicSettingProfileRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/setting': typeof publicSettingRouteRouteWithChildren
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
+  '/setting/profile': typeof publicSettingProfileRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/(public)/setting': typeof publicSettingRouteRouteWithChildren
   '/(auth)/login': typeof authLoginRoute
   '/(auth)/signup': typeof authSignupRoute
+  '/(public)/setting/profile': typeof publicSettingProfileRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/signup'
+  fullPaths: '/' | '/setting' | '/login' | '/signup' | '/setting/profile'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/login' | '/signup'
-  id: '__root__' | '/' | '/(auth)/login' | '/(auth)/signup'
+  to: '/' | '/setting' | '/login' | '/signup' | '/setting/profile'
+  id:
+    | '__root__'
+    | '/'
+    | '/(public)/setting'
+    | '/(auth)/login'
+    | '/(auth)/signup'
+    | '/(public)/setting/profile'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  publicSettingRouteRoute: typeof publicSettingRouteRouteWithChildren
   authLoginRoute: typeof authLoginRoute
   authSignupRoute: typeof authSignupRoute
 }
@@ -82,11 +107,37 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof authLoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/(public)/setting': {
+      id: '/(public)/setting'
+      path: '/setting'
+      fullPath: '/setting'
+      preLoaderRoute: typeof publicSettingRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(public)/setting/profile': {
+      id: '/(public)/setting/profile'
+      path: '/profile'
+      fullPath: '/setting/profile'
+      preLoaderRoute: typeof publicSettingProfileRouteImport
+      parentRoute: typeof publicSettingRouteRoute
+    }
   }
 }
 
+interface publicSettingRouteRouteChildren {
+  publicSettingProfileRoute: typeof publicSettingProfileRoute
+}
+
+const publicSettingRouteRouteChildren: publicSettingRouteRouteChildren = {
+  publicSettingProfileRoute: publicSettingProfileRoute,
+}
+
+const publicSettingRouteRouteWithChildren =
+  publicSettingRouteRoute._addFileChildren(publicSettingRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  publicSettingRouteRoute: publicSettingRouteRouteWithChildren,
   authLoginRoute: authLoginRoute,
   authSignupRoute: authSignupRoute,
 }
