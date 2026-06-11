@@ -9,6 +9,7 @@ const PasswordFields = () => {
     <Form>
       <Box
         mt={"6"}
+        mb={{ xs: "9", md: "0" }}
         className="bg-foreground/5 p-5 rounded-2xl mt-5 border-foreground/20 border"
       >
         <Text className="text-xl font-medium">امنیت</Text>

@@ -11,7 +11,7 @@ function SettingLayout() {
       <aside className="border-r">
         <SettingNavigation/>
       </aside>
-      <main className="flex-1 p-10">
+      <main className="flex-1 p-10 h-dvh overflow-y-scroll">
         <Outlet />
       </main>
     </div>
