@@ -10,7 +10,9 @@ export const Route = createFileRoute("/(public)/setting/profile")({
 function ProfilePage() {
   return (
     <Box>
-      <Text className="text-2xl font-bold">تنظیمات پروفایل</Text>
+      <Text className="text-2xl font-bold underline underline-offset-10">
+        تنظیمات پروفایل
+      </Text>
       <PersonalInformationFields />
       <PasswordFields />
     </Box>

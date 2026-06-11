@@ -1,9 +1,18 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { Box, Text } from "@radix-ui/themes";
+import { createFileRoute } from "@tanstack/react-router";
+import AppearanceOptions from "@/features/setting/components/appearance";
 
-export const Route = createFileRoute('/(public)/setting/appearance')({
-  component: RouteComponent,
-})
+export const Route = createFileRoute("/(public)/setting/appearance")({
+  component: AppearanceComponent,
+});
 
-function RouteComponent() {
-  return <div>Hello "/(public)/setting/appearance"!</div>
+function AppearanceComponent() {
+  return (
+    <Box>
+      <Text className="text-2xl font-bold underline underline-offset-8">
+        تنظیمات ظاهری
+      </Text>
+      <AppearanceOptions />
+    </Box>
+  );
 }
