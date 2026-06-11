@@ -14,6 +14,9 @@ import { Route as authSignupRouteImport } from './routes/(auth)/signup'
 import { Route as authLoginRouteImport } from './routes/(auth)/login'
 import { Route as publicSettingRouteRouteImport } from './routes/(public)/setting/route'
 import { Route as publicSettingProfileRouteImport } from './routes/(public)/setting/profile'
+import { Route as publicSettingExportRouteImport } from './routes/(public)/setting/export'
+import { Route as publicSettingCategoriesRouteImport } from './routes/(public)/setting/categories'
+import { Route as publicSettingAppearanceRouteImport } from './routes/(public)/setting/appearance'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -40,12 +43,30 @@ const publicSettingProfileRoute = publicSettingProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => publicSettingRouteRoute,
 } as any)
+const publicSettingExportRoute = publicSettingExportRouteImport.update({
+  id: '/export',
+  path: '/export',
+  getParentRoute: () => publicSettingRouteRoute,
+} as any)
+const publicSettingCategoriesRoute = publicSettingCategoriesRouteImport.update({
+  id: '/categories',
+  path: '/categories',
+  getParentRoute: () => publicSettingRouteRoute,
+} as any)
+const publicSettingAppearanceRoute = publicSettingAppearanceRouteImport.update({
+  id: '/appearance',
+  path: '/appearance',
+  getParentRoute: () => publicSettingRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/setting': typeof publicSettingRouteRouteWithChildren
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
+  '/setting/appearance': typeof publicSettingAppearanceRoute
+  '/setting/categories': typeof publicSettingCategoriesRoute
+  '/setting/export': typeof publicSettingExportRoute
   '/setting/profile': typeof publicSettingProfileRoute
 }
 export interface FileRoutesByTo {
@@ -53,6 +74,9 @@ export interface FileRoutesByTo {
   '/setting': typeof publicSettingRouteRouteWithChildren
   '/login': typeof authLoginRoute
   '/signup': typeof authSignupRoute
+  '/setting/appearance': typeof publicSettingAppearanceRoute
+  '/setting/categories': typeof publicSettingCategoriesRoute
+  '/setting/export': typeof publicSettingExportRoute
   '/setting/profile': typeof publicSettingProfileRoute
 }
 export interface FileRoutesById {
@@ -61,19 +85,41 @@ export interface FileRoutesById {
   '/(public)/setting': typeof publicSettingRouteRouteWithChildren
   '/(auth)/login': typeof authLoginRoute
   '/(auth)/signup': typeof authSignupRoute
+  '/(public)/setting/appearance': typeof publicSettingAppearanceRoute
+  '/(public)/setting/categories': typeof publicSettingCategoriesRoute
+  '/(public)/setting/export': typeof publicSettingExportRoute
   '/(public)/setting/profile': typeof publicSettingProfileRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/setting' | '/login' | '/signup' | '/setting/profile'
+  fullPaths:
+    | '/'
+    | '/setting'
+    | '/login'
+    | '/signup'
+    | '/setting/appearance'
+    | '/setting/categories'
+    | '/setting/export'
+    | '/setting/profile'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/setting' | '/login' | '/signup' | '/setting/profile'
+  to:
+    | '/'
+    | '/setting'
+    | '/login'
+    | '/signup'
+    | '/setting/appearance'
+    | '/setting/categories'
+    | '/setting/export'
+    | '/setting/profile'
   id:
     | '__root__'
     | '/'
     | '/(public)/setting'
     | '/(auth)/login'
     | '/(auth)/signup'
+    | '/(public)/setting/appearance'
+    | '/(public)/setting/categories'
+    | '/(public)/setting/export'
     | '/(public)/setting/profile'
   fileRoutesById: FileRoutesById
 }
@@ -121,14 +167,41 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof publicSettingProfileRouteImport
       parentRoute: typeof publicSettingRouteRoute
     }
+    '/(public)/setting/export': {
+      id: '/(public)/setting/export'
+      path: '/export'
+      fullPath: '/setting/export'
+      preLoaderRoute: typeof publicSettingExportRouteImport
+      parentRoute: typeof publicSettingRouteRoute
+    }
+    '/(public)/setting/categories': {
+      id: '/(public)/setting/categories'
+      path: '/categories'
+      fullPath: '/setting/categories'
+      preLoaderRoute: typeof publicSettingCategoriesRouteImport
+      parentRoute: typeof publicSettingRouteRoute
+    }
+    '/(public)/setting/appearance': {
+      id: '/(public)/setting/appearance'
+      path: '/appearance'
+      fullPath: '/setting/appearance'
+      preLoaderRoute: typeof publicSettingAppearanceRouteImport
+      parentRoute: typeof publicSettingRouteRoute
+    }
   }
 }
 
 interface publicSettingRouteRouteChildren {
+  publicSettingAppearanceRoute: typeof publicSettingAppearanceRoute
+  publicSettingCategoriesRoute: typeof publicSettingCategoriesRoute
+  publicSettingExportRoute: typeof publicSettingExportRoute
   publicSettingProfileRoute: typeof publicSettingProfileRoute
 }
 
 const publicSettingRouteRouteChildren: publicSettingRouteRouteChildren = {
+  publicSettingAppearanceRoute: publicSettingAppearanceRoute,
+  publicSettingCategoriesRoute: publicSettingCategoriesRoute,
+  publicSettingExportRoute: publicSettingExportRoute,
   publicSettingProfileRoute: publicSettingProfileRoute,
 }
 

@@ -1,3 +1,6 @@
+import PasswordFields from "@/features/setting/components/profile/password-fields";
+import PersonalInformationFields from "@/features/setting/components/profile/personal-information-fields";
+import { Box, Text } from "@radix-ui/themes";
 import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/(public)/setting/profile")({
@@ -6,8 +9,10 @@ export const Route = createFileRoute("/(public)/setting/profile")({
 
 function ProfilePage() {
   return (
-    <div>
-      <h1>Profile Settings</h1>
-    </div>
+    <Box>
+      <Text className="text-2xl font-bold">تنظیمات پروفایل</Text>
+      <PersonalInformationFields />
+      <PasswordFields />
+    </Box>
   );
 }

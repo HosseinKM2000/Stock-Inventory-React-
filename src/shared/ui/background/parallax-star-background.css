@@ -1,0 +1,68 @@
+.stars-1,
+.stars-2,
+.stars-3 {
+  top: 0;
+  left: 0;
+  z-index: -1;
+  position: fixed;
+  border-radius: 50%;
+  pointer-events: none;
+}
+.stars-1 {
+  width: 4px;
+  height: 4px;
+  animation: starsMove 20s linear infinite;
+}
+.stars-2 {
+  width: 3px;
+  height: 3px;
+  animation: starsMove2 20s linear infinite;
+}
+.stars-3 {
+  width: 1px;
+  height: 1px;
+  animation: starsMove3 8s alternate infinite;
+}
+
+@keyframes starsMove {
+  0% {
+    opacity: 0;
+    transform: translateY(100vh);
+  }
+  5% {
+    opacity: 1;
+  }
+  95% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-100);
+  }
+}
+
+@keyframes starsMove2 {
+  0% {
+    opacity: 0;
+    transform: translateY(20vh);
+  }
+  5% {
+    opacity: 1;
+  }
+  95% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-100);
+  }
+}
+
+@keyframes starsMove3 {
+  0% {
+    transform: translateY(0);
+  }
+  100% {
+    transform: translateY(-30);
+  }
+}

@@ -8,10 +8,10 @@ export const Route = createFileRoute("/(public)/setting")({
 function SettingLayout() {
   return (
     <div className="flex min-h-screen">
-      <aside className="w-64 border-r">
+      <aside className="border-r">
         <SettingNavigation/>
       </aside>
-      <main className="flex-1 p-6">
+      <main className="flex-1 p-10">
         <Outlet />
       </main>
     </div>

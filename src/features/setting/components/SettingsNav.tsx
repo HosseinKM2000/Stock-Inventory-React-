@@ -1,7 +1,11 @@
 import { useState } from "react";
-import { sidebarItems } from "../data/settingItems";
+import { settingsNavItems } from "../data/settings-items";
 import { Link, useRouterState } from "@tanstack/react-router";
-import { ChevronLeftIcon, ChevronRightIcon, ExitIcon } from "@radix-ui/react-icons";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ExitIcon,
+} from "@radix-ui/react-icons";
 
 export function SettingNav() {
   const [collapsed, setCollapsed] = useState(false);
@@ -55,7 +59,7 @@ export function SettingNav() {
       {/* MENU */}
       <nav className="flex-1 px-3">
         <div className="space-y-1">
-          {sidebarItems.map((item) => {
+          {settingsNavItems.map((item) => {
             const Icon = item.icon;
             const active = pathname.startsWith(item.to);
 
@@ -102,7 +106,11 @@ export function SettingNav() {
           `}
         >
           <ExitIcon />
-          {!collapsed && <span className="mr-3 text-sm font-medium">{"خروج از حساب کاربری"}</span>}
+          {!collapsed && (
+            <span className="mr-3 text-sm font-medium">
+              {"خروج از حساب کاربری"}
+            </span>
+          )}
         </Link>
       </div>
     </aside>
