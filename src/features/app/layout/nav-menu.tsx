@@ -7,25 +7,29 @@ import {
 import { Box, Flex, Text } from "@radix-ui/themes";
 import { Link, useRouterState } from "@tanstack/react-router";
 
-export const settingsNavItems = [
+export const menuNavItems = [
   {
     label: "بیشتر",
     to: "/more",
+    match: "/more",
     icon: DotsHorizontalIcon,
   },
   {
     label: "تنظیمات",
     to: "/setting/profile",
+    match: "/setting",
     icon: GearIcon,
   },
   {
     label: "محصولات",
-    to: "/products",
+    to: "/product/list",
+    match: "/product",
     icon: MixIcon,
   },
   {
     label: "خانه",
     to: "/",
+    match: "/",
     icon: HomeIcon,
   },
 ] as const;
@@ -67,11 +71,14 @@ const NavMenu = () => {
           backdrop-blur-2xl
         "
       >
-        {settingsNavItems.map((item) => {
+        {menuNavItems.map((item) => {
           const Icon = item.icon;
 
-          const active = pathname.startsWith(item.to);
-
+          const active =
+            item.match === "/"
+              ? pathname === "/"
+              : pathname.startsWith(item.match);
+              
           return (
             <Link
               key={item.to}
