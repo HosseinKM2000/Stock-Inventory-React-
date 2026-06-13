@@ -1,6 +1,6 @@
 import { Box } from "@radix-ui/themes";
-import { SettingsMobileNav } from "./SettingsMobileNav";
-import { SettingNav } from "./SettingsNav";
+import { SettingsMobileNav } from "./setting-mobile-nav";
+import { SettingNav } from "./setting-nav";
 
 export function SettingNavigation() {
   return (

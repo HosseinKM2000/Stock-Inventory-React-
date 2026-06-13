@@ -2,7 +2,7 @@ import { FsButton, FsTextField } from "@fs/form";
 import { Link } from "@radix-ui/themes";
 import { createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/(auth)/login")({
+export const Route = createFileRoute("/auth/login")({
   component: () => (
     <div className="flex flex-col gap-y-5 justify-center items-center h-dvh w-full">
       <div className="w-[90%] sm:w-90 h-fit">

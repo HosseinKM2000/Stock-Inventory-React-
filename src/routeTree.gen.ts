@@ -9,210 +9,237 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as authSignupRouteImport } from './routes/(auth)/signup'
-import { Route as authLoginRouteImport } from './routes/(auth)/login'
-import { Route as publicSettingRouteRouteImport } from './routes/(public)/setting/route'
-import { Route as publicSettingProfileRouteImport } from './routes/(public)/setting/profile'
-import { Route as publicSettingExportRouteImport } from './routes/(public)/setting/export'
-import { Route as publicSettingCategoriesRouteImport } from './routes/(public)/setting/categories'
-import { Route as publicSettingAppearanceRouteImport } from './routes/(public)/setting/appearance'
+import { Route as SettingRouteRouteImport } from './routes/setting/route'
+import { Route as appRouteRouteImport } from './routes/(app)/route'
+import { Route as appIndexRouteImport } from './routes/(app)/index'
+import { Route as SettingProfileRouteImport } from './routes/setting/profile'
+import { Route as SettingExportRouteImport } from './routes/setting/export'
+import { Route as SettingCategoriesRouteImport } from './routes/setting/categories'
+import { Route as SettingAppearanceRouteImport } from './routes/setting/appearance'
+import { Route as AuthSignupRouteImport } from './routes/auth/signup'
+import { Route as AuthLoginRouteImport } from './routes/auth/login'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const authSignupRoute = authSignupRouteImport.update({
-  id: '/(auth)/signup',
-  path: '/signup',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const authLoginRoute = authLoginRouteImport.update({
-  id: '/(auth)/login',
-  path: '/login',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const publicSettingRouteRoute = publicSettingRouteRouteImport.update({
-  id: '/(public)/setting',
+const SettingRouteRoute = SettingRouteRouteImport.update({
+  id: '/setting',
   path: '/setting',
   getParentRoute: () => rootRouteImport,
 } as any)
-const publicSettingProfileRoute = publicSettingProfileRouteImport.update({
+const appRouteRoute = appRouteRouteImport.update({
+  id: '/(app)',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const appIndexRoute = appIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => appRouteRoute,
+} as any)
+const SettingProfileRoute = SettingProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
-  getParentRoute: () => publicSettingRouteRoute,
+  getParentRoute: () => SettingRouteRoute,
 } as any)
-const publicSettingExportRoute = publicSettingExportRouteImport.update({
+const SettingExportRoute = SettingExportRouteImport.update({
   id: '/export',
   path: '/export',
-  getParentRoute: () => publicSettingRouteRoute,
+  getParentRoute: () => SettingRouteRoute,
 } as any)
-const publicSettingCategoriesRoute = publicSettingCategoriesRouteImport.update({
+const SettingCategoriesRoute = SettingCategoriesRouteImport.update({
   id: '/categories',
   path: '/categories',
-  getParentRoute: () => publicSettingRouteRoute,
+  getParentRoute: () => SettingRouteRoute,
 } as any)
-const publicSettingAppearanceRoute = publicSettingAppearanceRouteImport.update({
+const SettingAppearanceRoute = SettingAppearanceRouteImport.update({
   id: '/appearance',
   path: '/appearance',
-  getParentRoute: () => publicSettingRouteRoute,
+  getParentRoute: () => SettingRouteRoute,
+} as any)
+const AuthSignupRoute = AuthSignupRouteImport.update({
+  id: '/auth/signup',
+  path: '/auth/signup',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthLoginRoute = AuthLoginRouteImport.update({
+  id: '/auth/login',
+  path: '/auth/login',
+  getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
-  '/setting': typeof publicSettingRouteRouteWithChildren
-  '/login': typeof authLoginRoute
-  '/signup': typeof authSignupRoute
-  '/setting/appearance': typeof publicSettingAppearanceRoute
-  '/setting/categories': typeof publicSettingCategoriesRoute
-  '/setting/export': typeof publicSettingExportRoute
-  '/setting/profile': typeof publicSettingProfileRoute
+  '/setting': typeof SettingRouteRouteWithChildren
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/signup': typeof AuthSignupRoute
+  '/setting/appearance': typeof SettingAppearanceRoute
+  '/setting/categories': typeof SettingCategoriesRoute
+  '/setting/export': typeof SettingExportRoute
+  '/setting/profile': typeof SettingProfileRoute
+  '/': typeof appIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
-  '/setting': typeof publicSettingRouteRouteWithChildren
-  '/login': typeof authLoginRoute
-  '/signup': typeof authSignupRoute
-  '/setting/appearance': typeof publicSettingAppearanceRoute
-  '/setting/categories': typeof publicSettingCategoriesRoute
-  '/setting/export': typeof publicSettingExportRoute
-  '/setting/profile': typeof publicSettingProfileRoute
+  '/setting': typeof SettingRouteRouteWithChildren
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/signup': typeof AuthSignupRoute
+  '/setting/appearance': typeof SettingAppearanceRoute
+  '/setting/categories': typeof SettingCategoriesRoute
+  '/setting/export': typeof SettingExportRoute
+  '/setting/profile': typeof SettingProfileRoute
+  '/': typeof appIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
-  '/(public)/setting': typeof publicSettingRouteRouteWithChildren
-  '/(auth)/login': typeof authLoginRoute
-  '/(auth)/signup': typeof authSignupRoute
-  '/(public)/setting/appearance': typeof publicSettingAppearanceRoute
-  '/(public)/setting/categories': typeof publicSettingCategoriesRoute
-  '/(public)/setting/export': typeof publicSettingExportRoute
-  '/(public)/setting/profile': typeof publicSettingProfileRoute
+  '/(app)': typeof appRouteRouteWithChildren
+  '/setting': typeof SettingRouteRouteWithChildren
+  '/auth/login': typeof AuthLoginRoute
+  '/auth/signup': typeof AuthSignupRoute
+  '/setting/appearance': typeof SettingAppearanceRoute
+  '/setting/categories': typeof SettingCategoriesRoute
+  '/setting/export': typeof SettingExportRoute
+  '/setting/profile': typeof SettingProfileRoute
+  '/(app)/': typeof appIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    | '/'
     | '/setting'
-    | '/login'
-    | '/signup'
+    | '/auth/login'
+    | '/auth/signup'
     | '/setting/appearance'
     | '/setting/categories'
     | '/setting/export'
     | '/setting/profile'
+    | '/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/'
     | '/setting'
-    | '/login'
-    | '/signup'
+    | '/auth/login'
+    | '/auth/signup'
     | '/setting/appearance'
     | '/setting/categories'
     | '/setting/export'
     | '/setting/profile'
+    | '/'
   id:
     | '__root__'
-    | '/'
-    | '/(public)/setting'
-    | '/(auth)/login'
-    | '/(auth)/signup'
-    | '/(public)/setting/appearance'
-    | '/(public)/setting/categories'
-    | '/(public)/setting/export'
-    | '/(public)/setting/profile'
+    | '/(app)'
+    | '/setting'
+    | '/auth/login'
+    | '/auth/signup'
+    | '/setting/appearance'
+    | '/setting/categories'
+    | '/setting/export'
+    | '/setting/profile'
+    | '/(app)/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
-  publicSettingRouteRoute: typeof publicSettingRouteRouteWithChildren
-  authLoginRoute: typeof authLoginRoute
-  authSignupRoute: typeof authSignupRoute
+  appRouteRoute: typeof appRouteRouteWithChildren
+  SettingRouteRoute: typeof SettingRouteRouteWithChildren
+  AuthLoginRoute: typeof AuthLoginRoute
+  AuthSignupRoute: typeof AuthSignupRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(auth)/signup': {
-      id: '/(auth)/signup'
-      path: '/signup'
-      fullPath: '/signup'
-      preLoaderRoute: typeof authSignupRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(auth)/login': {
-      id: '/(auth)/login'
-      path: '/login'
-      fullPath: '/login'
-      preLoaderRoute: typeof authLoginRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/(public)/setting': {
-      id: '/(public)/setting'
+    '/setting': {
+      id: '/setting'
       path: '/setting'
       fullPath: '/setting'
-      preLoaderRoute: typeof publicSettingRouteRouteImport
+      preLoaderRoute: typeof SettingRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/(public)/setting/profile': {
-      id: '/(public)/setting/profile'
+    '/(app)': {
+      id: '/(app)'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof appRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/(app)/': {
+      id: '/(app)/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof appIndexRouteImport
+      parentRoute: typeof appRouteRoute
+    }
+    '/setting/profile': {
+      id: '/setting/profile'
       path: '/profile'
       fullPath: '/setting/profile'
-      preLoaderRoute: typeof publicSettingProfileRouteImport
-      parentRoute: typeof publicSettingRouteRoute
+      preLoaderRoute: typeof SettingProfileRouteImport
+      parentRoute: typeof SettingRouteRoute
     }
-    '/(public)/setting/export': {
-      id: '/(public)/setting/export'
+    '/setting/export': {
+      id: '/setting/export'
       path: '/export'
       fullPath: '/setting/export'
-      preLoaderRoute: typeof publicSettingExportRouteImport
-      parentRoute: typeof publicSettingRouteRoute
+      preLoaderRoute: typeof SettingExportRouteImport
+      parentRoute: typeof SettingRouteRoute
     }
-    '/(public)/setting/categories': {
-      id: '/(public)/setting/categories'
+    '/setting/categories': {
+      id: '/setting/categories'
       path: '/categories'
       fullPath: '/setting/categories'
-      preLoaderRoute: typeof publicSettingCategoriesRouteImport
-      parentRoute: typeof publicSettingRouteRoute
+      preLoaderRoute: typeof SettingCategoriesRouteImport
+      parentRoute: typeof SettingRouteRoute
     }
-    '/(public)/setting/appearance': {
-      id: '/(public)/setting/appearance'
+    '/setting/appearance': {
+      id: '/setting/appearance'
       path: '/appearance'
       fullPath: '/setting/appearance'
-      preLoaderRoute: typeof publicSettingAppearanceRouteImport
-      parentRoute: typeof publicSettingRouteRoute
+      preLoaderRoute: typeof SettingAppearanceRouteImport
+      parentRoute: typeof SettingRouteRoute
+    }
+    '/auth/signup': {
+      id: '/auth/signup'
+      path: '/auth/signup'
+      fullPath: '/auth/signup'
+      preLoaderRoute: typeof AuthSignupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth/login': {
+      id: '/auth/login'
+      path: '/auth/login'
+      fullPath: '/auth/login'
+      preLoaderRoute: typeof AuthLoginRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
 
-interface publicSettingRouteRouteChildren {
-  publicSettingAppearanceRoute: typeof publicSettingAppearanceRoute
-  publicSettingCategoriesRoute: typeof publicSettingCategoriesRoute
-  publicSettingExportRoute: typeof publicSettingExportRoute
-  publicSettingProfileRoute: typeof publicSettingProfileRoute
+interface appRouteRouteChildren {
+  appIndexRoute: typeof appIndexRoute
 }
 
-const publicSettingRouteRouteChildren: publicSettingRouteRouteChildren = {
-  publicSettingAppearanceRoute: publicSettingAppearanceRoute,
-  publicSettingCategoriesRoute: publicSettingCategoriesRoute,
-  publicSettingExportRoute: publicSettingExportRoute,
-  publicSettingProfileRoute: publicSettingProfileRoute,
+const appRouteRouteChildren: appRouteRouteChildren = {
+  appIndexRoute: appIndexRoute,
 }
 
-const publicSettingRouteRouteWithChildren =
-  publicSettingRouteRoute._addFileChildren(publicSettingRouteRouteChildren)
+const appRouteRouteWithChildren = appRouteRoute._addFileChildren(
+  appRouteRouteChildren,
+)
+
+interface SettingRouteRouteChildren {
+  SettingAppearanceRoute: typeof SettingAppearanceRoute
+  SettingCategoriesRoute: typeof SettingCategoriesRoute
+  SettingExportRoute: typeof SettingExportRoute
+  SettingProfileRoute: typeof SettingProfileRoute
+}
+
+const SettingRouteRouteChildren: SettingRouteRouteChildren = {
+  SettingAppearanceRoute: SettingAppearanceRoute,
+  SettingCategoriesRoute: SettingCategoriesRoute,
+  SettingExportRoute: SettingExportRoute,
+  SettingProfileRoute: SettingProfileRoute,
+}
+
+const SettingRouteRouteWithChildren = SettingRouteRoute._addFileChildren(
+  SettingRouteRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  publicSettingRouteRoute: publicSettingRouteRouteWithChildren,
-  authLoginRoute: authLoginRoute,
-  authSignupRoute: authSignupRoute,
+  appRouteRoute: appRouteRouteWithChildren,
+  SettingRouteRoute: SettingRouteRouteWithChildren,
+  AuthLoginRoute: AuthLoginRoute,
+  AuthSignupRoute: AuthSignupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

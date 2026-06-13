@@ -2,7 +2,7 @@ import ExportTools from "@/features/setting/components/export";
 import { Box, Text } from "@radix-ui/themes";
 import { createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/(public)/setting/export")({
+export const Route = createFileRoute("/setting/export")({
   component: RouteComponent,
 });
 

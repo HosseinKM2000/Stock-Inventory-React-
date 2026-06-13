@@ -2,7 +2,7 @@ import { Box, Text } from "@radix-ui/themes";
 import { createFileRoute } from "@tanstack/react-router";
 import AppearanceOptions from "@/features/setting/components/appearance";
 
-export const Route = createFileRoute("/(public)/setting/appearance")({
+export const Route = createFileRoute("/setting/appearance")({
   component: AppearanceComponent,
 });
 

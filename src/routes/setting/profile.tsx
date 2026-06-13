@@ -3,7 +3,7 @@ import PersonalInformationFields from "@/features/setting/components/profile/per
 import { Box, Text } from "@radix-ui/themes";
 import { createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/(public)/setting/profile")({
+export const Route = createFileRoute("/setting/profile")({
   component: ProfilePage,
 });
 

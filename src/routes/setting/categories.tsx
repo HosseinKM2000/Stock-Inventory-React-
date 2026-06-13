@@ -2,7 +2,7 @@ import { Box, Text } from "@radix-ui/themes";
 import { createFileRoute } from "@tanstack/react-router";
 import CategoriesCards from "@/features/setting/components/categories";
 
-export const Route = createFileRoute("/(public)/setting/categories")({
+export const Route = createFileRoute("/setting/categories")({
   component: RouteComponent,
 });
 

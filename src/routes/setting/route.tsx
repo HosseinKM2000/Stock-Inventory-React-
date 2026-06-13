@@ -1,7 +1,7 @@
 import { SettingNavigation } from "@/features/setting/components/layout";
 import { Outlet, createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/(public)/setting")({
+export const Route = createFileRoute("/setting")({
   component: SettingLayout,
 });
 
