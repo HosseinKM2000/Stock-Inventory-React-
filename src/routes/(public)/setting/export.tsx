@@ -9,7 +9,7 @@ export const Route = createFileRoute("/(public)/setting/export")({
 function RouteComponent() {
   return (
     <Box>
-      <Text className="text-2xl font-bold underline underline-offset-10">
+      <Text className="text-2xl font-bold">
         فایل خروجی
       </Text>
       <ExportTools />

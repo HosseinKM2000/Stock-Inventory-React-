@@ -9,7 +9,7 @@ export const Route = createFileRoute("/(public)/setting/appearance")({
 function AppearanceComponent() {
   return (
     <Box>
-      <Text className="text-2xl font-bold underline underline-offset-8">
+      <Text className="text-2xl font-bold">
         تنظیمات ظاهری
       </Text>
       <AppearanceOptions />

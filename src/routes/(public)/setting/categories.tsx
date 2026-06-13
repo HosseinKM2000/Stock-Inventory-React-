@@ -9,7 +9,7 @@ export const Route = createFileRoute("/(public)/setting/categories")({
 function RouteComponent() {
   return (
     <Box>
-      <Text className="text-2xl font-bold underline underline-offset-8">
+      <Text className="text-2xl font-bold">
         دسته بندی ها
       </Text>
       <CategoriesCards />
