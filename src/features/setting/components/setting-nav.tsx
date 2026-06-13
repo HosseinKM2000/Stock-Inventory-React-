@@ -20,9 +20,10 @@ export function SettingNav() {
       className={`
         top-0
         sticky
+        flex-1
+        h-full
         flex-col
         border-l
-        h-screen
         ease-in-out
         duration-300
         bg-background

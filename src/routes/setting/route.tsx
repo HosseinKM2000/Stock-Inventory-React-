@@ -1,4 +1,6 @@
+import Header from "@/features/app/layout/header";
 import { SettingNavigation } from "@/features/setting/components/layout";
+import { Box, Flex } from "@radix-ui/themes";
 import { Outlet, createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/setting")({
@@ -7,13 +9,38 @@ export const Route = createFileRoute("/setting")({
 
 function SettingLayout() {
   return (
-    <div className="flex min-h-screen">
-      <aside className="border-r">
-        <SettingNavigation/>
-      </aside>
-      <main className="flex-1 p-10 h-dvh overflow-y-scroll">
-        <Outlet />
-      </main>
-    </div>
+    <Flex
+      direction="column"
+      className="h-dvh overflow-hidden"
+    >
+      <Header />
+
+      {/* Remaining viewport height */}
+      <Flex className="flex-1 overflow-hidden">
+        {/* Sidebar */}
+        <Box
+          className="
+            hidden lg:flex
+            w-72
+            flex-col
+            overflow-y-auto
+            overflow-x-hidden
+          "
+        >
+          <SettingNavigation />
+        </Box>
+
+        {/* Content */}
+        <main
+          className="
+            flex-1
+            overflow-y-auto
+            p-10
+          "
+        >
+          <Outlet />
+        </main>
+      </Flex>
+    </Flex>
   );
 }

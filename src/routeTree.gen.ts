@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingRouteRouteImport } from './routes/setting/route'
+import { Route as AuthRouteRouteImport } from './routes/auth/route'
 import { Route as appRouteRouteImport } from './routes/(app)/route'
 import { Route as appIndexRouteImport } from './routes/(app)/index'
 import { Route as SettingProfileRouteImport } from './routes/setting/profile'
@@ -18,10 +19,17 @@ import { Route as SettingCategoriesRouteImport } from './routes/setting/categori
 import { Route as SettingAppearanceRouteImport } from './routes/setting/appearance'
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as appProductsRouteRouteImport } from './routes/(app)/products/route'
+import { Route as appProductsIndexRouteImport } from './routes/(app)/products/index'
 
 const SettingRouteRoute = SettingRouteRouteImport.update({
   id: '/setting',
   path: '/setting',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRouteRoute = AuthRouteRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const appRouteRoute = appRouteRouteImport.update({
@@ -54,18 +62,30 @@ const SettingAppearanceRoute = SettingAppearanceRouteImport.update({
   getParentRoute: () => SettingRouteRoute,
 } as any)
 const AuthSignupRoute = AuthSignupRouteImport.update({
-  id: '/auth/signup',
-  path: '/auth/signup',
-  getParentRoute: () => rootRouteImport,
+  id: '/signup',
+  path: '/signup',
+  getParentRoute: () => AuthRouteRoute,
 } as any)
 const AuthLoginRoute = AuthLoginRouteImport.update({
-  id: '/auth/login',
-  path: '/auth/login',
-  getParentRoute: () => rootRouteImport,
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AuthRouteRoute,
+} as any)
+const appProductsRouteRoute = appProductsRouteRouteImport.update({
+  id: '/products',
+  path: '/products',
+  getParentRoute: () => appRouteRoute,
+} as any)
+const appProductsIndexRoute = appProductsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => appProductsRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
+  '/auth': typeof AuthRouteRouteWithChildren
   '/setting': typeof SettingRouteRouteWithChildren
+  '/products': typeof appProductsRouteRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/setting/appearance': typeof SettingAppearanceRoute
@@ -73,8 +93,10 @@ export interface FileRoutesByFullPath {
   '/setting/export': typeof SettingExportRoute
   '/setting/profile': typeof SettingProfileRoute
   '/': typeof appIndexRoute
+  '/products/': typeof appProductsIndexRoute
 }
 export interface FileRoutesByTo {
+  '/auth': typeof AuthRouteRouteWithChildren
   '/setting': typeof SettingRouteRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
@@ -83,11 +105,14 @@ export interface FileRoutesByTo {
   '/setting/export': typeof SettingExportRoute
   '/setting/profile': typeof SettingProfileRoute
   '/': typeof appIndexRoute
+  '/products': typeof appProductsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/(app)': typeof appRouteRouteWithChildren
+  '/auth': typeof AuthRouteRouteWithChildren
   '/setting': typeof SettingRouteRouteWithChildren
+  '/(app)/products': typeof appProductsRouteRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
   '/auth/signup': typeof AuthSignupRoute
   '/setting/appearance': typeof SettingAppearanceRoute
@@ -95,11 +120,14 @@ export interface FileRoutesById {
   '/setting/export': typeof SettingExportRoute
   '/setting/profile': typeof SettingProfileRoute
   '/(app)/': typeof appIndexRoute
+  '/(app)/products/': typeof appProductsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/auth'
     | '/setting'
+    | '/products'
     | '/auth/login'
     | '/auth/signup'
     | '/setting/appearance'
@@ -107,8 +135,10 @@ export interface FileRouteTypes {
     | '/setting/export'
     | '/setting/profile'
     | '/'
+    | '/products/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/auth'
     | '/setting'
     | '/auth/login'
     | '/auth/signup'
@@ -117,10 +147,13 @@ export interface FileRouteTypes {
     | '/setting/export'
     | '/setting/profile'
     | '/'
+    | '/products'
   id:
     | '__root__'
     | '/(app)'
+    | '/auth'
     | '/setting'
+    | '/(app)/products'
     | '/auth/login'
     | '/auth/signup'
     | '/setting/appearance'
@@ -128,13 +161,13 @@ export interface FileRouteTypes {
     | '/setting/export'
     | '/setting/profile'
     | '/(app)/'
+    | '/(app)/products/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   appRouteRoute: typeof appRouteRouteWithChildren
+  AuthRouteRoute: typeof AuthRouteRouteWithChildren
   SettingRouteRoute: typeof SettingRouteRouteWithChildren
-  AuthLoginRoute: typeof AuthLoginRoute
-  AuthSignupRoute: typeof AuthSignupRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -144,6 +177,13 @@ declare module '@tanstack/react-router' {
       path: '/setting'
       fullPath: '/setting'
       preLoaderRoute: typeof SettingRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/(app)': {
@@ -190,31 +230,72 @@ declare module '@tanstack/react-router' {
     }
     '/auth/signup': {
       id: '/auth/signup'
-      path: '/auth/signup'
+      path: '/signup'
       fullPath: '/auth/signup'
       preLoaderRoute: typeof AuthSignupRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthRouteRoute
     }
     '/auth/login': {
       id: '/auth/login'
-      path: '/auth/login'
+      path: '/login'
       fullPath: '/auth/login'
       preLoaderRoute: typeof AuthLoginRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AuthRouteRoute
+    }
+    '/(app)/products': {
+      id: '/(app)/products'
+      path: '/products'
+      fullPath: '/products'
+      preLoaderRoute: typeof appProductsRouteRouteImport
+      parentRoute: typeof appRouteRoute
+    }
+    '/(app)/products/': {
+      id: '/(app)/products/'
+      path: '/'
+      fullPath: '/products/'
+      preLoaderRoute: typeof appProductsIndexRouteImport
+      parentRoute: typeof appProductsRouteRoute
     }
   }
 }
 
+interface appProductsRouteRouteChildren {
+  appProductsIndexRoute: typeof appProductsIndexRoute
+}
+
+const appProductsRouteRouteChildren: appProductsRouteRouteChildren = {
+  appProductsIndexRoute: appProductsIndexRoute,
+}
+
+const appProductsRouteRouteWithChildren =
+  appProductsRouteRoute._addFileChildren(appProductsRouteRouteChildren)
+
 interface appRouteRouteChildren {
+  appProductsRouteRoute: typeof appProductsRouteRouteWithChildren
   appIndexRoute: typeof appIndexRoute
 }
 
 const appRouteRouteChildren: appRouteRouteChildren = {
+  appProductsRouteRoute: appProductsRouteRouteWithChildren,
   appIndexRoute: appIndexRoute,
 }
 
 const appRouteRouteWithChildren = appRouteRoute._addFileChildren(
   appRouteRouteChildren,
+)
+
+interface AuthRouteRouteChildren {
+  AuthLoginRoute: typeof AuthLoginRoute
+  AuthSignupRoute: typeof AuthSignupRoute
+}
+
+const AuthRouteRouteChildren: AuthRouteRouteChildren = {
+  AuthLoginRoute: AuthLoginRoute,
+  AuthSignupRoute: AuthSignupRoute,
+}
+
+const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
+  AuthRouteRouteChildren,
 )
 
 interface SettingRouteRouteChildren {
@@ -237,9 +318,8 @@ const SettingRouteRouteWithChildren = SettingRouteRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   appRouteRoute: appRouteRouteWithChildren,
+  AuthRouteRoute: AuthRouteRouteWithChildren,
   SettingRouteRoute: SettingRouteRouteWithChildren,
-  AuthLoginRoute: AuthLoginRoute,
-  AuthSignupRoute: AuthSignupRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
