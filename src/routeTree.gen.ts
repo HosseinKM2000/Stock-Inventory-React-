@@ -20,6 +20,7 @@ import { Route as SettingAppearanceRouteImport } from './routes/setting/appearan
 import { Route as AuthSignupRouteImport } from './routes/auth/signup'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as appProductListRouteImport } from './routes/(app)/product/list'
+import { Route as appProductEditRouteImport } from './routes/(app)/product/edit'
 import { Route as appProductAddRouteImport } from './routes/(app)/product/add'
 
 const SettingRouteRoute = SettingRouteRouteImport.update({
@@ -76,6 +77,11 @@ const appProductListRoute = appProductListRouteImport.update({
   path: '/product/list',
   getParentRoute: () => appRouteRoute,
 } as any)
+const appProductEditRoute = appProductEditRouteImport.update({
+  id: '/product/edit',
+  path: '/product/edit',
+  getParentRoute: () => appRouteRoute,
+} as any)
 const appProductAddRoute = appProductAddRouteImport.update({
   id: '/product/add',
   path: '/product/add',
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/setting/profile': typeof SettingProfileRoute
   '/': typeof appIndexRoute
   '/product/add': typeof appProductAddRoute
+  '/product/edit': typeof appProductEditRoute
   '/product/list': typeof appProductListRoute
 }
 export interface FileRoutesByTo {
@@ -106,6 +113,7 @@ export interface FileRoutesByTo {
   '/setting/profile': typeof SettingProfileRoute
   '/': typeof appIndexRoute
   '/product/add': typeof appProductAddRoute
+  '/product/edit': typeof appProductEditRoute
   '/product/list': typeof appProductListRoute
 }
 export interface FileRoutesById {
@@ -121,6 +129,7 @@ export interface FileRoutesById {
   '/setting/profile': typeof SettingProfileRoute
   '/(app)/': typeof appIndexRoute
   '/(app)/product/add': typeof appProductAddRoute
+  '/(app)/product/edit': typeof appProductEditRoute
   '/(app)/product/list': typeof appProductListRoute
 }
 export interface FileRouteTypes {
@@ -136,6 +145,7 @@ export interface FileRouteTypes {
     | '/setting/profile'
     | '/'
     | '/product/add'
+    | '/product/edit'
     | '/product/list'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -149,6 +159,7 @@ export interface FileRouteTypes {
     | '/setting/profile'
     | '/'
     | '/product/add'
+    | '/product/edit'
     | '/product/list'
   id:
     | '__root__'
@@ -163,6 +174,7 @@ export interface FileRouteTypes {
     | '/setting/profile'
     | '/(app)/'
     | '/(app)/product/add'
+    | '/(app)/product/edit'
     | '/(app)/product/list'
   fileRoutesById: FileRoutesById
 }
@@ -251,6 +263,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appProductListRouteImport
       parentRoute: typeof appRouteRoute
     }
+    '/(app)/product/edit': {
+      id: '/(app)/product/edit'
+      path: '/product/edit'
+      fullPath: '/product/edit'
+      preLoaderRoute: typeof appProductEditRouteImport
+      parentRoute: typeof appRouteRoute
+    }
     '/(app)/product/add': {
       id: '/(app)/product/add'
       path: '/product/add'
@@ -264,12 +283,14 @@ declare module '@tanstack/react-router' {
 interface appRouteRouteChildren {
   appIndexRoute: typeof appIndexRoute
   appProductAddRoute: typeof appProductAddRoute
+  appProductEditRoute: typeof appProductEditRoute
   appProductListRoute: typeof appProductListRoute
 }
 
 const appRouteRouteChildren: appRouteRouteChildren = {
   appIndexRoute: appIndexRoute,
   appProductAddRoute: appProductAddRoute,
+  appProductEditRoute: appProductEditRoute,
   appProductListRoute: appProductListRoute,
 }
 
