@@ -70,13 +70,13 @@ function RouteComponent() {
           <Card
             size="3"
             className="
-        w-full
-        rounded-3xl
-        border
-        md:col-span-3
-        border-violet-1
-        bg-violet-1/40
-      "
+            w-full
+            rounded-3xl
+            border
+            md:col-span-3
+            border-violet-1
+            bg-violet-1/40
+            "
           >
             <Flex
               gap="3"
