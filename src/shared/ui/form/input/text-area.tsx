@@ -1,8 +1,8 @@
 import { TextArea } from "@radix-ui/themes";
 import type { ComponentPropsWithoutRef } from "react";
 
-type TextInputProps = ComponentPropsWithoutRef<typeof TextArea>;
+type TextAreaProps = ComponentPropsWithoutRef<typeof TextArea>;
 
-export function TextAreaInput({ ...props }: TextInputProps) {
+export function TextAreaInput({ ...props }: TextAreaProps) {
   return <TextArea {...props} />;
 }

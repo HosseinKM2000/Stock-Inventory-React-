@@ -17,14 +17,15 @@ const ProductList = () => {
   return (
     <>
       <Flex
-        gap={"3"}
+        gapX={"3"}
+        gapY={"4"}
         wrap={"wrap"}
         width={"100%"}
         align={"center"}
-        justify={{ xs: "start", md: "end" }}
+        justify={"start"}
       >
         <TextInput
-          className="w-90"
+          className="w-88"
           rightSlot={
             <Button variant="ghost" ml={"1"}>
               <MagnifyingGlassIcon width={"20"} height={"20"} />
@@ -67,7 +68,7 @@ const ProductList = () => {
           </Popover.Content>
         </Popover.Root>
       </Flex>
-      <Grid columns={{ xs: "1", md: "4" }} gap={"5"} mt={"3"}>
+      <Grid columns={{ xs: "1", md: "4" }} gap={"5"} mt={"5"}>
         <Grid>
           <Card size="1">
             <Flex
