@@ -6,7 +6,6 @@ import { createRouter, RouterProvider } from "@tanstack/react-router";
 
 import "@radix-ui/themes/styles.css";
 import "@/style/index.css";
-import { ToastProvider } from "@fs/organ";
 
 const router = createRouter({ routeTree });
 
@@ -19,9 +18,7 @@ declare module "@tanstack/react-router" {
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <Theme appearance="dark" accentColor="violet">
-      <ToastProvider>
-        <RouterProvider router={router} />
-      </ToastProvider>
+      <RouterProvider router={router} />
     </Theme>
   </React.StrictMode>,
 );

@@ -23,10 +23,6 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
-      "@fs/utils": path.resolve(__dirname, "./packages/utils"),
-      "@fs/form": path.resolve(__dirname, "./packages/shared/ui/form"),
-      "@fs/organ": path.resolve(__dirname, "./packages/shared/ui/organ"),
-      "@fs/validation": path.resolve(__dirname, "./packages/shared/validation"),
     },
   },
   server: {
