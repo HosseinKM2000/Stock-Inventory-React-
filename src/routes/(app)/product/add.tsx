@@ -7,6 +7,7 @@ import { TextInput } from "@/shared/ui/form/input/text-input";
 import { TextAreaInput } from "@/shared/ui/form/input/text-area";
 import { SelectInput } from "@/shared/ui/form/input/select-input";
 import { Box, Card, Flex, Grid, Switch, Text } from "@radix-ui/themes";
+import { ProductImageUpload } from "@/features/app/products/components/upload-file";
 
 export const Route = createFileRoute("/(app)/product/add")({
   component: RouteComponent,
@@ -22,6 +23,9 @@ function RouteComponent() {
       >
         <Text className="text-xl font-medium">افزودن محصول جدید</Text>
         <Grid columns={{ xs: "1", md: "3" }} gap={"5"} width="auto" mt={"5"}>
+          <Box className="md:col-span-3">
+            <ProductImageUpload />
+          </Box>
           <FormField label="نام محصول" id="">
             <TextInput size={"3"} />
           </FormField>
