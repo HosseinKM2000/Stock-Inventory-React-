@@ -5,6 +5,7 @@ import {
   MixIcon,
 } from "@radix-ui/react-icons";
 import { Avatar, Badge, Box, Card, Flex, Grid, Text } from "@radix-ui/themes";
+import Chart from "./chart";
 
 const DashboardComponents = () => {
   return (
@@ -102,6 +103,9 @@ const DashboardComponents = () => {
           </Card>
         </Grid>
       </Grid>
+      <Box width={"100%"} mt={"5"}>
+        <Chart />
+      </Box>
     </main>
   );
 };
