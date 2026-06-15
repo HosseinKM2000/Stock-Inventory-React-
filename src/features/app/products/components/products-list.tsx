@@ -18,7 +18,7 @@ import {
 } from "@radix-ui/themes";
 import AddButton from "./add-button";
 
-const ProductList = () => {
+const ProductsList = () => {
   return (
     <>
       <Flex
@@ -138,4 +138,4 @@ const ProductList = () => {
   );
 };
 
-export default ProductList;
+export default ProductsList;
