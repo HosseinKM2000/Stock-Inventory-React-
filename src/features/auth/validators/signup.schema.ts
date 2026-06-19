@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { passwordSchema } from "@fs/validation";
+import { passwordSchema } from "@/shared/validation/password.schema";
 
 export const signupSchema = z
   .object({

@@ -1,24 +1,39 @@
 import { Button } from "@/shared/ui/button/button";
 import { TextInput } from "@/shared/ui/form/input/text-input";
+import { MagnifyingGlassIcon, TextAlignTopIcon } from "@radix-ui/react-icons";
 import {
-  MagnifyingGlassIcon,
-  TextAlignTopIcon,
-  TrashIcon,
-} from "@radix-ui/react-icons";
-import {
-  Badge,
-  Card,
-  Checkbox,
+  Callout,
   Flex,
   Grid,
-  Inset,
   Popover,
   RadioGroup,
+  Spinner,
   Text,
 } from "@radix-ui/themes";
+import { useState } from "react";
+import { useDeleteProduct, useProducts } from "../hooks/use-products";
+import type { ProductSort } from "../types";
 import AddButton from "./add-button";
+import { ProductCard } from "./product-card";
+
+const SORT_LABELS: Record<ProductSort, string> = {
+  newest: "جدیدترین",
+  price_desc: "بیشترین قیمت",
+  price_asc: "کمترین قیمت",
+  name: "نام",
+};
 
 const ProductsList = () => {
+  const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<ProductSort>("newest");
+
+  const {
+    data: products = [],
+    isLoading,
+    isError,
+  } = useProducts({ search: search || undefined, sort });
+  const deleteProduct = useDeleteProduct();
+
   return (
     <>
       <Flex
@@ -38,6 +53,8 @@ const ProductsList = () => {
           }
           size={"3"}
           placeholder="جستجو..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
         />
         <Flex align={"center"} gapX={"5"}>
           <Popover.Root>
@@ -45,94 +62,73 @@ const ProductsList = () => {
               <Button variant="soft">
                 <Flex align={"center"} gapX={"1"}>
                   <TextAlignTopIcon width="20" height="18" />
-                  <Text size={"1"}> مرتب سازی براساس</Text>
+                  <Text size={"1"}>مرتب سازی: {SORT_LABELS[sort]}</Text>
                 </Flex>
               </Button>
             </Popover.Trigger>
             <Popover.Content width="300px">
-              <RadioGroup.Root size="2" defaultValue="1">
+              <RadioGroup.Root
+                size="2"
+                value={sort}
+                onValueChange={(value) => setSort(value as ProductSort)}
+              >
                 <Flex
                   direction={"column"}
                   align={"end"}
                   justify="center"
                   gap="4"
                 >
-                  <Flex align={"center"} justify={"end"} gap={"2"}>
-                    <Text size={"2"} weight={"bold"}>
-                      بیشترین قیمت
-                    </Text>
-                    <RadioGroup.Item value="1" />
-                  </Flex>
-                  <Flex align={"center"} justify={"end"} gap={"2"}>
-                    <Text size={"2"} weight={"bold"}>
-                      کمترین قیمت
-                    </Text>
-                    <RadioGroup.Item value="2" />
-                  </Flex>
+                  {(Object.keys(SORT_LABELS) as ProductSort[]).map((key) => (
+                    <Flex
+                      key={key}
+                      align={"center"}
+                      justify={"end"}
+                      gap={"2"}
+                    >
+                      <Text size={"2"} weight={"bold"}>
+                        {SORT_LABELS[key]}
+                      </Text>
+                      <RadioGroup.Item value={key} />
+                    </Flex>
+                  ))}
                 </Flex>
               </RadioGroup.Root>
             </Popover.Content>
           </Popover.Root>
-          <Button
-            type="button"
-            variant="outline"
-            className="text-rose-400! hover:text-rose-50! border-red-900! border!"
-          >
-            <TrashIcon width={"30"} height={"30"} />
-          </Button>
         </Flex>
       </Flex>
+
+      {isLoading && (
+        <Flex justify="center" align="center" py="9">
+          <Spinner size="3" />
+        </Flex>
+      )}
+
+      {isError && (
+        <Callout.Root color="red" dir="rtl" mt="5">
+          <Callout.Text>خطا در دریافت محصولات</Callout.Text>
+        </Callout.Root>
+      )}
+
+      {!isLoading && !isError && products.length === 0 && (
+        <Flex justify="center" align="center" py="9">
+          <Text color="gray">محصولی یافت نشد</Text>
+        </Flex>
+      )}
+
       <Grid columns={{ xs: "1", md: "4" }} gap={"5"} mt={"5"}>
-        <Grid>
-          <Card size="1">
-            <Inset clip="padding-box" side="top" pb="current">
-              <img
-                src="https://images.unsplash.com/photo-1617050318658-a9a3175e34cb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80"
-                alt="Bold typography"
-                style={{
-                  height: 140,
-                  width: "100%",
-                  display: "block",
-                  objectFit: "cover",
-                  backgroundColor: "var(--gray-5)",
-                }}
-              />
-            </Inset>
-            <Flex
-              align={"center"}
-              justify={"between"}
-              className="w-full text-left flex-wrap"
-            >
-              <Checkbox size="3" />
-              <Badge color="green">موجود</Badge>
-            </Flex>
-            <Flex direction={"column"} gap="1" mt={"3"} align="start">
-              <Text as="div" size="2" weight="bold">
-                محصول شماره یک
-              </Text>
-              <Text as="div" size="2" color="gray" className="line-clamp-1">
-                Lorem ipsum dolor sit amet consectetur adipisicing elit. Sint
-                repellendus dolorem veniam voluptate accusantium consequuntur
-                perferendis praesentium eius dolor, beatae quo odio corrupti
-                voluptates? Modi deserunt dolore deleniti nisi natus.
-              </Text>
-            </Flex>
-            <Flex mt={"5"} justify={"between"}>
-              <Badge variant="solid" radius="full" color="indigo">
-                100,000,000 تومان
-              </Badge>
-              <Flex gapX={"2"}>
-                <Badge color="gray" variant="surface">
-                  New
-                </Badge>
-                <Badge color="gray" variant="solid">
-                  100000
-                </Badge>
-              </Flex>
-            </Flex>
-          </Card>
-        </Grid>
+        {products.map((product) => (
+          <ProductCard
+            key={product.id}
+            product={product}
+            onDelete={(id) => deleteProduct.mutate(id)}
+            deleting={
+              deleteProduct.isPending && deleteProduct.variables === product.id
+            }
+          />
+        ))}
       </Grid>
+
       <AddButton />
     </>
   );
