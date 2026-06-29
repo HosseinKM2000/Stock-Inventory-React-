@@ -3,13 +3,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .config import settings
+from sqlalchemy import text
 from .database import Base, engine
-from .routers import auth, categories, dashboard, products
+from .exceptions import global_exception_handler
+from .routers import auth, categories, dashboard, products, inventory, export, transactions
 
 # Create tables on startup (simple approach; swap for Alembic if needed).
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="Stock Inventory API", version="1.0.0")
+app.add_exception_handler(Exception, global_exception_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -26,8 +29,17 @@ app.include_router(auth.router, prefix=api)
 app.include_router(categories.router, prefix=api)
 app.include_router(products.router, prefix=api)
 app.include_router(dashboard.router, prefix=api)
+app.include_router(inventory.router, prefix=api)
+app.include_router(export.router, prefix=api)
+app.include_router(transactions.router, prefix=api)
 
 
-@app.get("/api/health", tags=["health"])
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+@app.get("/api/health")
+def health():
+    with engine.connect() as conn:
+        conn.execute(text("SELECT 1"))
+
+    return {
+        "status": "ok",
+        "database": "connected"
+    }

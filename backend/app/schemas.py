@@ -1,5 +1,5 @@
 from datetime import datetime
-
+from typing import Literal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
@@ -91,6 +91,12 @@ class ProductOut(BaseModel):
     created_at: datetime
     updated_at: datetime
 
+class PaginatedProducts(BaseModel):
+    items: list[ProductOut]
+    total: int
+    page: int
+    limit: int
+
 
 # ---------- Dashboard ----------
 class CategoryBreakdown(BaseModel):
@@ -104,3 +110,56 @@ class DashboardStats(BaseModel):
     out_of_stock_count: int
     inventory_value: int
     category_breakdown: list[CategoryBreakdown]
+
+
+# ---------- Inventory ----------
+class InventoryMovementBase(BaseModel):
+    type: str
+    quantity: int = Field(gt=0)
+    reason: str | None = None
+
+
+class InventoryMovementCreate(InventoryMovementBase):
+    product_id: int
+
+
+class InventoryMovementOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    type: str
+    quantity: int
+    reason: str | None
+    product_id: int
+    user_id: int
+    created_at: datetime
+
+
+class ProductStats(BaseModel):
+    total_products: int
+    total_quantity: int
+    inventory_value: int
+    low_stock_count: int
+    out_of_stock_count: int
+    cheapest: ProductOut | None = None
+    most_expensive: ProductOut | None = None
+
+class CategoryWithStats(CategoryOut):
+    product_count: int
+    total_quantity: int
+
+class TransactionCreate(BaseModel):
+    type: Literal["stock_in", "stock_out"]
+    quantity: int = Field(gt=0)
+    note: str | None = None
+
+
+class TransactionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    product_id: int
+    type: str
+    quantity: int
+    note: str | None
+    created_at: datetime

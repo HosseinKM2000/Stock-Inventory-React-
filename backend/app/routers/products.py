@@ -8,7 +8,7 @@ from sqlalchemy import select
 from ..config import settings
 from ..deps import CurrentUser, DbSession
 from ..models import Category, Product
-from ..schemas import ProductOut
+from ..schemas import ProductOut, PaginatedProducts, ProductStats
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -19,6 +19,7 @@ _ALLOWED_IMAGE_TYPES = {
     "image/webp": ".webp",
     "image/gif": ".gif",
 }
+MAX_FILE_SIZE = 5 * 1024 * 1024
 
 SortOption = Literal["newest", "price_desc", "price_asc", "name"]
 
@@ -52,6 +53,11 @@ async def _save_image(image: UploadFile) -> str:
     filename = f"{uuid.uuid4().hex}{ext}"
     dest = settings.UPLOAD_DIR / filename
     content = await image.read()
+    if len(content) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail="حجم فایل بیش از حد مجاز است"
+        )
     dest.write_bytes(content)
     return f"/uploads/{filename}"
 
@@ -63,38 +69,53 @@ def _delete_image(image_url: str | None) -> None:
     path.unlink(missing_ok=True)
 
 
-@router.get("", response_model=list[ProductOut])
+@router.get("", response_model=PaginatedProducts)
 def list_products(
     current_user: CurrentUser,
     db: DbSession,
     search: str | None = None,
     sort: SortOption = "newest",
     category_id: int | None = None,
-) -> list[Product]:
+    status_filter: Literal["in_stock","low_stock","out_of_stock"] | None = None,
+    page: int = 1,
+    limit: int = 10,
+) -> PaginatedProducts:
     stmt = select(Product).where(Product.user_id == current_user.id)
 
     if search:
-        like = f"%{search}%"
-        stmt = stmt.where(Product.name.ilike(like))
+        stmt = stmt.where(Product.name.ilike(f"%{search}%"))
+
     if category_id is not None:
         stmt = stmt.where(Product.category_id == category_id)
 
-    order = {
-        "newest": Product.created_at.desc(),
-        "price_desc": Product.price.desc(),
-        "price_asc": Product.price.asc(),
-        "name": Product.name.asc(),
-    }[sort]
-    stmt = stmt.order_by(order)
+    products = list(db.scalars(stmt))
 
-    return list(db.scalars(stmt))
+    if status_filter:
+        products = [p for p in products if p.status == status_filter]
 
+    products.sort(
+        key=lambda p: {
+            "newest": p.created_at.timestamp(),
+            "price_desc": p.price,
+            "price_asc": p.price,
+            "name": p.name.lower(),
+        }[sort],
+        reverse=sort in ["newest", "price_desc"],
+    )
 
-@router.get("/{product_id}", response_model=ProductOut)
-def get_product(
-    product_id: int, current_user: CurrentUser, db: DbSession
-) -> Product:
-    return _get_owned_product(db, product_id, current_user.id)
+    total = len(products)
+
+    start = (page - 1) * limit
+    end = start + limit
+
+    paginated = products[start:end]
+
+    return PaginatedProducts(
+        items=paginated,
+        total=total,
+        page=page,
+        limit=limit,
+    )
 
 
 @router.post("", response_model=ProductOut, status_code=status.HTTP_201_CREATED)
@@ -188,3 +209,86 @@ def delete_product(
     _delete_image(product.image_url)
     db.delete(product)
     db.commit()
+
+
+@router.get("/stats", response_model=ProductStats)
+def product_stats(
+    current_user: CurrentUser,
+    db: DbSession,
+) -> ProductStats:
+    products = list(
+        db.scalars(
+            select(Product).where(Product.user_id == current_user.id)
+        )
+    )
+
+    total_products = len(products)
+    total_quantity = sum(p.quantity for p in products)
+    inventory_value = sum(p.price * p.quantity for p in products)
+    low_stock_count = sum(1 for p in products if p.status == "low_stock")
+    out_of_stock_count = sum(1 for p in products if p.status == "out_of_stock")
+
+    most_expensive = max(products, key=lambda p: p.price, default=None)
+    cheapest = min(products, key=lambda p: p.price, default=None)
+
+    return ProductStats(
+        total_products=total_products,
+        total_quantity=total_quantity,
+        inventory_value=inventory_value,
+        low_stock_count=low_stock_count,
+        out_of_stock_count=out_of_stock_count,
+        most_expensive=most_expensive,
+        cheapest=cheapest,
+    )
+
+
+@router.get("/alerts/low-stock", response_model=list[ProductOut])
+def low_stock_alerts(
+    current_user: CurrentUser,
+    db: DbSession,
+) -> list[Product]:
+    products = list(
+        db.scalars(
+            select(Product).where(Product.user_id == current_user.id)
+        )
+    )
+
+    alerts = [
+        p
+        for p in products
+        if p.low_stock_alert
+        and p.low_stock_threshold > 0
+        and p.quantity <= p.low_stock_threshold
+    ]
+
+    return alerts
+
+
+@router.get("/alerts/count")
+def alerts_count(
+    current_user: CurrentUser,
+    db: DbSession,
+):
+    products = list(
+        db.scalars(
+            select(Product).where(Product.user_id == current_user.id)
+        )
+    )
+
+    count = sum(
+        1
+        for p in products
+        if p.low_stock_alert
+        and p.low_stock_threshold > 0
+        and p.quantity <= p.low_stock_threshold
+    )
+
+    return {"count": count}
+
+
+@router.get("/{product_id}", response_model=ProductOut)
+def get_product(
+    product_id: int, current_user: CurrentUser, db: DbSession
+) -> Product:
+    return _get_owned_product(db, product_id, current_user.id)
+
