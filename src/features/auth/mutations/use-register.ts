@@ -4,11 +4,12 @@ import { clearToken, setToken } from "@/shared/api/token-store";
 import {
   getMe,
   login,
-  signup,
+  register,
   updatePassword,
   updateProfile,
-} from "../services/auth.api";
+} from "../api/auth.api";
 import type { AuthResponse } from "../types";
+import { toast } from "sonner";
 
 export const authKeys = {
   me: ["auth", "me"] as const,
@@ -32,20 +33,22 @@ export function useLogin() {
       setToken(data.access_token);
       queryClient.setQueryData(authKeys.me, data.user);
       navigate({ to: "/" });
+      toast.success(`با موفقیت وارد شدید`);
     },
   });
 }
 
-export function useSignup() {
+export function useRegister() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: signup,
+    mutationFn: register,
     onSuccess: (data: AuthResponse) => {
       setToken(data.access_token);
       queryClient.setQueryData(authKeys.me, data.user);
       navigate({ to: "/" });
+      toast.success(`ثبت با موفقیت انجام شد`);
     },
   });
 }

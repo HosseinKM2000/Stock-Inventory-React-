@@ -1,4 +1,4 @@
-import { useLogout, useMe } from "@/features/auth/hooks/use-auth";
+import { useLogout, useMe } from "@/features/auth/mutations/use-register";
 import {
   ArrowLeftIcon,
   BellIcon,

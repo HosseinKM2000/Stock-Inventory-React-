@@ -1,4 +1,4 @@
-import { useMe, useUpdateProfile } from "@/features/auth/hooks/use-auth";
+
 import { ApiError } from "@/shared/api/client";
 import { Button } from "@/shared/ui/button/button";
 import { FormField } from "@/shared/ui/form/field/form-field";
@@ -7,6 +7,7 @@ import { TextInput } from "@/shared/ui/form/input/text-input";
 import { preventEventHandler } from "@/shared/lib/prevent-event";
 import { Box, Callout, Grid, Text } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
+import { useMe, useUpdateProfile } from "@/features/auth/mutations/use-register";
 
 const PersonalInformationFields = () => {
   const { data: me } = useMe();

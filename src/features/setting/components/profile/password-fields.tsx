@@ -1,4 +1,4 @@
-import { useUpdatePassword } from "@/features/auth/hooks/use-auth";
+
 import { ApiError } from "@/shared/api/client";
 import { passwordSchema } from "@/shared/validation/password.schema";
 import { Button } from "@/shared/ui/button/button";
@@ -8,6 +8,7 @@ import { PasswordInput } from "@/shared/ui/form/input/password-input";
 import { preventEventHandler } from "@/shared/lib/prevent-event";
 import { Box, Callout, Grid, Text } from "@radix-ui/themes";
 import { useState } from "react";
+import { useUpdatePassword } from "@/features/auth/mutations/use-register";
 
 const PasswordFields = () => {
   const [password, setPassword] = useState("");

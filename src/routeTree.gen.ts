@@ -17,7 +17,7 @@ import { Route as SettingProfileRouteImport } from './routes/setting/profile'
 import { Route as SettingExportRouteImport } from './routes/setting/export'
 import { Route as SettingCategoriesRouteImport } from './routes/setting/categories'
 import { Route as SettingAppearanceRouteImport } from './routes/setting/appearance'
-import { Route as AuthSignupRouteImport } from './routes/auth/signup'
+import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as appProductListRouteImport } from './routes/(app)/product/list'
 import { Route as appProductEditRouteImport } from './routes/(app)/product/edit'
@@ -62,9 +62,9 @@ const SettingAppearanceRoute = SettingAppearanceRouteImport.update({
   path: '/appearance',
   getParentRoute: () => SettingRouteRoute,
 } as any)
-const AuthSignupRoute = AuthSignupRouteImport.update({
-  id: '/signup',
-  path: '/signup',
+const AuthRegisterRoute = AuthRegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
   getParentRoute: () => AuthRouteRoute,
 } as any)
 const AuthLoginRoute = AuthLoginRouteImport.update({
@@ -92,7 +92,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRouteRouteWithChildren
   '/setting': typeof SettingRouteRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
-  '/auth/signup': typeof AuthSignupRoute
+  '/auth/register': typeof AuthRegisterRoute
   '/setting/appearance': typeof SettingAppearanceRoute
   '/setting/categories': typeof SettingCategoriesRoute
   '/setting/export': typeof SettingExportRoute
@@ -106,7 +106,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRouteRouteWithChildren
   '/setting': typeof SettingRouteRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
-  '/auth/signup': typeof AuthSignupRoute
+  '/auth/register': typeof AuthRegisterRoute
   '/setting/appearance': typeof SettingAppearanceRoute
   '/setting/categories': typeof SettingCategoriesRoute
   '/setting/export': typeof SettingExportRoute
@@ -122,7 +122,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRouteRouteWithChildren
   '/setting': typeof SettingRouteRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
-  '/auth/signup': typeof AuthSignupRoute
+  '/auth/register': typeof AuthRegisterRoute
   '/setting/appearance': typeof SettingAppearanceRoute
   '/setting/categories': typeof SettingCategoriesRoute
   '/setting/export': typeof SettingExportRoute
@@ -138,7 +138,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/setting'
     | '/auth/login'
-    | '/auth/signup'
+    | '/auth/register'
     | '/setting/appearance'
     | '/setting/categories'
     | '/setting/export'
@@ -152,7 +152,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/setting'
     | '/auth/login'
-    | '/auth/signup'
+    | '/auth/register'
     | '/setting/appearance'
     | '/setting/categories'
     | '/setting/export'
@@ -167,7 +167,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/setting'
     | '/auth/login'
-    | '/auth/signup'
+    | '/auth/register'
     | '/setting/appearance'
     | '/setting/categories'
     | '/setting/export'
@@ -242,11 +242,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingAppearanceRouteImport
       parentRoute: typeof SettingRouteRoute
     }
-    '/auth/signup': {
-      id: '/auth/signup'
-      path: '/signup'
-      fullPath: '/auth/signup'
-      preLoaderRoute: typeof AuthSignupRouteImport
+    '/auth/register': {
+      id: '/auth/register'
+      path: '/register'
+      fullPath: '/auth/register'
+      preLoaderRoute: typeof AuthRegisterRouteImport
       parentRoute: typeof AuthRouteRoute
     }
     '/auth/login': {
@@ -300,12 +300,12 @@ const appRouteRouteWithChildren = appRouteRoute._addFileChildren(
 
 interface AuthRouteRouteChildren {
   AuthLoginRoute: typeof AuthLoginRoute
-  AuthSignupRoute: typeof AuthSignupRoute
+  AuthRegisterRoute: typeof AuthRegisterRoute
 }
 
 const AuthRouteRouteChildren: AuthRouteRouteChildren = {
   AuthLoginRoute: AuthLoginRoute,
-  AuthSignupRoute: AuthSignupRoute,
+  AuthRegisterRoute: AuthRegisterRoute,
 }
 
 const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(

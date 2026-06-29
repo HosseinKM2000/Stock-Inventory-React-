@@ -1,17 +1,17 @@
 import { apiFetch } from "@/shared/api/client";
 import type {
+  User,
   AuthResponse,
   LoginPayload,
-  SignupPayload,
+  RegisterPayload,
   UpdateProfilePayload,
-  User,
 } from "../types";
 
 export function login(payload: LoginPayload): Promise<AuthResponse> {
   return apiFetch<AuthResponse>("/auth/login", { method: "POST", json: payload });
 }
 
-export function signup(payload: SignupPayload): Promise<AuthResponse> {
+export function register(payload: RegisterPayload): Promise<AuthResponse> {
   return apiFetch<AuthResponse>("/auth/signup", { method: "POST", json: payload });
 }
 

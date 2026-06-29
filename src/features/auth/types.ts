@@ -19,7 +19,7 @@ export type LoginPayload = {
   password: string;
 };
 
-export type SignupPayload = {
+export type RegisterPayload = {
   first_name: string;
   last_name: string;
   username: string;
