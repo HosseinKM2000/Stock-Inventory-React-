@@ -6,7 +6,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 
 from ..deps import CurrentUser, DbSession
-from ..models import InventoryMovement, Product
+from ..models import InventoryTransaction, InventoryItem
 
 router = APIRouter(prefix="/export", tags=["export"])
 
@@ -18,7 +18,7 @@ def export_products_json(
 ):
     products = list(
         db.scalars(
-            select(Product).where(Product.user_id == current_user.id)
+            select(InventoryItem).where(InventoryItem.user_id == current_user.id)
         )
     )
 
@@ -32,7 +32,7 @@ def export_products_csv(
 ):
     products = list(
         db.scalars(
-            select(Product).where(Product.user_id == current_user.id)
+            select(InventoryItem).where(InventoryItem.user_id == current_user.id)
         )
     )
 
@@ -71,8 +71,8 @@ def export_inventory_csv(
 ):
     movements = list(
         db.scalars(
-            select(InventoryMovement).where(
-                InventoryMovement.user_id == current_user.id
+            select(InventoryTransaction).where(
+                InventoryTransaction.user_id == current_user.id
             )
         )
     )

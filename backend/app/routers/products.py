@@ -7,8 +7,8 @@ from sqlalchemy import select
 
 from ..config import settings
 from ..deps import CurrentUser, DbSession
-from ..models import Category, Product
-from ..schemas import ProductOut, PaginatedProducts, ProductStats
+from ..models import Category, InventoryItem
+from ..schemas import InventoryOut, PaginatedProducts, InventoryStats
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -24,8 +24,8 @@ MAX_FILE_SIZE = 5 * 1024 * 1024
 SortOption = Literal["newest", "price_desc", "price_asc", "name"]
 
 
-def _get_owned_product(db: DbSession, product_id: int, user_id: int) -> Product:
-    product = db.get(Product, product_id)
+def _get_owned_product(db: DbSession, product_id: int, user_id: int) -> InventoryItem:
+    product = db.get(InventoryItem, product_id)
     if product is None or product.user_id != user_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="محصول یافت نشد"
@@ -80,13 +80,13 @@ def list_products(
     page: int = 1,
     limit: int = 10,
 ) -> PaginatedProducts:
-    stmt = select(Product).where(Product.user_id == current_user.id)
+    stmt = select(InventoryItem).where(InventoryItem.user_id == current_user.id)
 
     if search:
-        stmt = stmt.where(Product.name.ilike(f"%{search}%"))
+        stmt = stmt.where(InventoryItem.name.ilike(f"%{search}%"))
 
     if category_id is not None:
-        stmt = stmt.where(Product.category_id == category_id)
+        stmt = stmt.where(InventoryItem.category_id == category_id)
 
     products = list(db.scalars(stmt))
 
@@ -118,7 +118,7 @@ def list_products(
     )
 
 
-@router.post("", response_model=ProductOut, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=InventoryOut, status_code=status.HTTP_201_CREATED)
 async def create_product(
     current_user: CurrentUser,
     db: DbSession,
@@ -131,12 +131,12 @@ async def create_product(
     low_stock_threshold: Annotated[int, Form(ge=0)] = 0,
     low_stock_alert: Annotated[bool, Form()] = False,
     image: Annotated[UploadFile | None, File()] = None,
-) -> Product:
+) -> InventoryItem:
     _validate_category(db, category_id, current_user.id)
 
     image_url = await _save_image(image) if image is not None else None
 
-    product = Product(
+    product = InventoryItem(
         name=name,
         description=description,
         unit=unit,
@@ -154,7 +154,7 @@ async def create_product(
     return product
 
 
-@router.patch("/{product_id}", response_model=ProductOut)
+@router.patch("/{product_id}", response_model=InventoryOut)
 async def update_product(
     product_id: int,
     current_user: CurrentUser,
@@ -169,7 +169,7 @@ async def update_product(
     low_stock_alert: Annotated[bool | None, Form()] = None,
     image: Annotated[UploadFile | None, File()] = None,
     remove_image: Annotated[bool, Form()] = False,
-) -> Product:
+) -> InventoryItem:
     product = _get_owned_product(db, product_id, current_user.id)
 
     if category_id is not None:
@@ -211,14 +211,14 @@ def delete_product(
     db.commit()
 
 
-@router.get("/stats", response_model=ProductStats)
+@router.get("/stats", response_model=InventoryStats)
 def product_stats(
     current_user: CurrentUser,
     db: DbSession,
-) -> ProductStats:
+) -> InventoryStats:
     products = list(
         db.scalars(
-            select(Product).where(Product.user_id == current_user.id)
+            select(InventoryItem).where(InventoryItem.user_id == current_user.id)
         )
     )
 
@@ -231,7 +231,7 @@ def product_stats(
     most_expensive = max(products, key=lambda p: p.price, default=None)
     cheapest = min(products, key=lambda p: p.price, default=None)
 
-    return ProductStats(
+    return InventoryStats(
         total_products=total_products,
         total_quantity=total_quantity,
         inventory_value=inventory_value,
@@ -242,14 +242,14 @@ def product_stats(
     )
 
 
-@router.get("/alerts/low-stock", response_model=list[ProductOut])
+@router.get("/alerts/low-stock", response_model=list[InventoryOut])
 def low_stock_alerts(
     current_user: CurrentUser,
     db: DbSession,
-) -> list[Product]:
+) -> list[InventoryItem]:
     products = list(
         db.scalars(
-            select(Product).where(Product.user_id == current_user.id)
+            select(InventoryItem).where(InventoryItem.user_id == current_user.id)
         )
     )
 
@@ -271,7 +271,7 @@ def alerts_count(
 ):
     products = list(
         db.scalars(
-            select(Product).where(Product.user_id == current_user.id)
+            select(InventoryItem).where(InventoryItem.user_id == current_user.id)
         )
     )
 
@@ -286,9 +286,9 @@ def alerts_count(
     return {"count": count}
 
 
-@router.get("/{product_id}", response_model=ProductOut)
+@router.get("/{product_id}", response_model=InventoryOut)
 def get_product(
     product_id: int, current_user: CurrentUser, db: DbSession
-) -> Product:
+) -> InventoryItem:
     return _get_owned_product(db, product_id, current_user.id)
 

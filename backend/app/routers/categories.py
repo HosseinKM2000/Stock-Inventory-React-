@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select, func
 
 from ..deps import CurrentUser, DbSession
-from ..models import Category, Product
+from ..models import Category, InventoryItem
 from ..schemas import (
     CategoryCreate,
     CategoryOut,
@@ -149,13 +149,13 @@ def category_stats(
     rows = db.execute(
         select(
             Category,
-            func.count(Product.id).label("product_count"),
+            func.count(InventoryItem.id).label("product_count"),
             func.coalesce(
-                func.sum(Product.quantity),
+                func.sum(InventoryItem.quantity),
                 0,
             ).label("total_quantity"),
         )
-        .outerjoin(Product, Product.category_id == Category.id)
+        .outerjoin(InventoryItem, InventoryItem.category_id == Category.id)
         .where(Category.user_id == current_user.id)
         .group_by(Category.id)
         .order_by(Category.created_at.desc())

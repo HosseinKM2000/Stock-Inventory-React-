@@ -2,7 +2,7 @@ from fastapi import APIRouter
 from sqlalchemy import func, select
 
 from ..deps import CurrentUser, DbSession
-from ..models import Category, Product
+from ..models import Category, InventoryItem
 from ..schemas import CategoryBreakdown, DashboardStats
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
@@ -11,7 +11,7 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 @router.get("/stats", response_model=DashboardStats)
 def stats(current_user: CurrentUser, db: DbSession) -> DashboardStats:
     products = list(
-        db.scalars(select(Product).where(Product.user_id == current_user.id))
+        db.scalars(select(InventoryItem).where(InventoryItem.user_id == current_user.id))
     )
 
     total_products = len(products)
@@ -23,13 +23,13 @@ def stats(current_user: CurrentUser, db: DbSession) -> DashboardStats:
     breakdown_rows = db.execute(
         select(
             func.coalesce(Category.name, "بدون دسته بندی"),
-            func.coalesce(func.sum(Product.quantity), 0),
+            func.coalesce(func.sum(InventoryItem.quantity), 0),
         )
-        .select_from(Product)
-        .outerjoin(Category, Product.category_id == Category.id)
-        .where(Product.user_id == current_user.id)
+        .select_from(InventoryItem)
+        .outerjoin(Category, InventoryItem.category_id == Category.id)
+        .where(InventoryItem.user_id == current_user.id)
         .group_by(Category.name)
-        .order_by(func.sum(Product.quantity).desc())
+        .order_by(func.sum(InventoryItem.quantity).desc())
     ).all()
 
     category_breakdown = [

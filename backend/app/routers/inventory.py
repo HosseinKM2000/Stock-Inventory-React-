@@ -1,101 +1,157 @@
-from typing import Literal
-
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
 from ..deps import CurrentUser, DbSession
-from ..models import InventoryMovement, Product
-from ..schemas import InventoryMovementCreate, InventoryMovementOut
+from ..models import InventoryItem, InventoryTransaction
+from ..schemas import (
+    InventoryOut,
+    InventoryUpdate,
+    TransactionCreate,
+    TransactionOut,
+)
 
 router = APIRouter(prefix="/inventory", tags=["inventory"])
 
-MovementType = Literal["in", "out", "adjust"]
 
+def _get_inventory_item(
+    db: DbSession,
+    item_id: int,
+    user_id: int,
+) -> InventoryItem:
+    item = db.get(InventoryItem, item_id)
 
-def _get_owned_product(db: DbSession, product_id: int, user_id: int) -> Product:
-    product = db.get(Product, product_id)
-
-    if product is None or product.user_id != user_id:
+    if item is None or item.user_id != user_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="محصول یافت نشد",
+            detail="آیتم یافت نشد",
         )
 
-    return product
+    return item
 
 
-@router.post("", response_model=InventoryMovementOut)
-def create_inventory_movement(
-    payload: InventoryMovementCreate,
+@router.get("", response_model=list[InventoryOut])
+def list_inventory(
     current_user: CurrentUser,
     db: DbSession,
-) -> InventoryMovement:
-    product = _get_owned_product(db, payload.product_id, current_user.id)
-
-    if payload.type == "in":
-        product.quantity += payload.quantity
-
-    elif payload.type == "out":
-        if product.quantity < payload.quantity:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="موجودی کافی نیست",
-            )
-        product.quantity -= payload.quantity
-
-    elif payload.type == "adjust":
-        product.quantity = payload.quantity
-
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="نوع عملیات نامعتبر است",
-        )
-
-    movement = InventoryMovement(
-        type=payload.type,
-        quantity=payload.quantity,
-        reason=payload.reason,
-        product_id=payload.product_id,
-        user_id=current_user.id,
-    )
-
-    db.add(movement)
-    db.commit()
-    db.refresh(movement)
-
-    return movement
-
-
-@router.get("", response_model=list[InventoryMovementOut])
-def list_inventory_movements(
-    current_user: CurrentUser,
-    db: DbSession,
-) -> list[InventoryMovement]:
+) -> list[InventoryItem]:
     stmt = (
-        select(InventoryMovement)
-        .where(InventoryMovement.user_id == current_user.id)
-        .order_by(InventoryMovement.created_at.desc())
+        select(InventoryItem)
+        .where(InventoryItem.user_id == current_user.id)
+        .order_by(InventoryItem.created_at.desc())
     )
 
     return list(db.scalars(stmt))
 
 
-@router.get("/{product_id}", response_model=list[InventoryMovementOut])
-def get_product_inventory_history(
-    product_id: int,
+@router.get("/{item_id}", response_model=InventoryOut)
+def get_inventory_item(
+    item_id: int,
     current_user: CurrentUser,
     db: DbSession,
-) -> list[InventoryMovement]:
-    _get_owned_product(db, product_id, current_user.id)
+) -> InventoryItem:
+    return _get_inventory_item(
+        db,
+        item_id,
+        current_user.id,
+    )
+
+
+@router.patch("/{item_id}", response_model=InventoryOut)
+def update_inventory_item(
+    item_id: int,
+    payload: InventoryUpdate,
+    current_user: CurrentUser,
+    db: DbSession,
+) -> InventoryItem:
+    item = _get_inventory_item(
+        db,
+        item_id,
+        current_user.id,
+    )
+
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(item, field, value)
+
+    db.commit()
+    db.refresh(item)
+
+    return item
+
+
+@router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_inventory_item(
+    item_id: int,
+    current_user: CurrentUser,
+    db: DbSession,
+):
+    item = _get_inventory_item(
+        db,
+        item_id,
+        current_user.id,
+    )
+
+    db.delete(item)
+    db.commit()
+
+
+@router.post("/{item_id}/transaction", response_model=TransactionOut)
+def create_transaction(
+    item_id: int,
+    payload: TransactionCreate,
+    current_user: CurrentUser,
+    db: DbSession,
+) -> InventoryTransaction:
+    item = _get_inventory_item(
+        db,
+        item_id,
+        current_user.id,
+    )
+
+    if payload.type == "stock_in":
+        item.quantity += payload.quantity
+
+    elif payload.type == "stock_out":
+        if item.quantity < payload.quantity:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="موجودی کافی نیست",
+            )
+
+        item.quantity -= payload.quantity
+
+    transaction = InventoryTransaction(
+        user_id=current_user.id,
+        inventory_item_id=item.id,
+        type=payload.type,
+        quantity=payload.quantity,
+        note=payload.note,
+    )
+
+    db.add(transaction)
+    db.commit()
+    db.refresh(transaction)
+
+    return transaction
+
+
+@router.get("/{item_id}/transactions", response_model=list[TransactionOut])
+def list_transactions(
+    item_id: int,
+    current_user: CurrentUser,
+    db: DbSession,
+) -> list[InventoryTransaction]:
+    _get_inventory_item(
+        db,
+        item_id,
+        current_user.id,
+    )
 
     stmt = (
-        select(InventoryMovement)
+        select(InventoryTransaction)
         .where(
-            InventoryMovement.product_id == product_id,
-            InventoryMovement.user_id == current_user.id,
+            InventoryTransaction.inventory_item_id == item_id
         )
-        .order_by(InventoryMovement.created_at.desc())
+        .order_by(InventoryTransaction.created_at.desc())
     )
 
     return list(db.scalars(stmt))

@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
 from ..deps import CurrentUser, DbSession
-from ..models import Product, InventoryTransaction, TransactionType
+from ..models import InventoryItem, InventoryTransaction
 from ..schemas import TransactionCreate, TransactionOut
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
@@ -12,8 +12,8 @@ def _get_owned_product(
     db: DbSession,
     product_id: int,
     user_id: int,
-) -> Product:
-    product = db.get(Product, product_id)
+) -> InventoryItem:
+    product = db.get(InventoryItem, product_id)
 
     if product is None or product.user_id != user_id:
         raise HTTPException(
@@ -53,9 +53,9 @@ def create_transaction(
         product.quantity -= payload.quantity
 
     transaction = InventoryTransaction(
-        product_id=product.id,
+        inventory_item_id=product.id,
         user_id=current_user.id,
-        type=TransactionType(payload.type),
+        type=payload.type,
         quantity=payload.quantity,
         note=payload.note,
     )
