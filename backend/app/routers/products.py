@@ -8,7 +8,7 @@ from sqlalchemy import select
 from ..config import settings
 from ..deps import CurrentUser, DbSession
 from ..models import Category, InventoryItem
-from ..schemas import InventoryOut, PaginatedProducts, InventoryStats
+from ..schemas import InventoryOut, PaginatedInventory, InventoryStats
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -69,7 +69,7 @@ def _delete_image(image_url: str | None) -> None:
     path.unlink(missing_ok=True)
 
 
-@router.get("", response_model=PaginatedProducts)
+@router.get("", response_model=PaginatedInventory)
 def list_products(
     current_user: CurrentUser,
     db: DbSession,
@@ -79,7 +79,7 @@ def list_products(
     status_filter: Literal["in_stock","low_stock","out_of_stock"] | None = None,
     page: int = 1,
     limit: int = 10,
-) -> PaginatedProducts:
+) -> PaginatedInventory:
     stmt = select(InventoryItem).where(InventoryItem.user_id == current_user.id)
 
     if search:
@@ -110,7 +110,7 @@ def list_products(
 
     paginated = products[start:end]
 
-    return PaginatedProducts(
+    return PaginatedInventory(
         items=paginated,
         total=total,
         page=page,

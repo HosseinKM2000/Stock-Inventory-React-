@@ -1,11 +1,15 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
 from ..deps import CurrentUser, DbSession
 from ..models import InventoryItem, InventoryTransaction
 from ..schemas import (
+    InventoryBulkSync,
     InventoryOut,
     InventoryUpdate,
+    MessageResponse,
     TransactionCreate,
     TransactionOut,
 )
@@ -36,7 +40,11 @@ def list_inventory(
 ) -> list[InventoryItem]:
     stmt = (
         select(InventoryItem)
-        .where(InventoryItem.user_id == current_user.id)
+        .where(
+            InventoryItem.user_id == current_user.id,
+            InventoryItem.deleted_at.is_(None),
+            InventoryItem.is_hidden.is_(False),
+        )
         .order_by(InventoryItem.created_at.desc())
     )
 
@@ -90,7 +98,8 @@ def delete_inventory_item(
         current_user.id,
     )
 
-    db.delete(item)
+    item.deleted_at = datetime.now(timezone.utc)
+
     db.commit()
 
 
@@ -107,6 +116,8 @@ def create_transaction(
         current_user.id,
     )
 
+    before_quantity = item.quantity
+
     if payload.type == "stock_in":
         item.quantity += payload.quantity
 
@@ -119,11 +130,15 @@ def create_transaction(
 
         item.quantity -= payload.quantity
 
+    after_quantity = item.quantity
+
     transaction = InventoryTransaction(
         user_id=current_user.id,
         inventory_item_id=item.id,
         type=payload.type,
         quantity=payload.quantity,
+        before_quantity=before_quantity,
+        after_quantity=after_quantity,
         note=payload.note,
     )
 
@@ -155,3 +170,111 @@ def list_transactions(
     )
 
     return list(db.scalars(stmt))
+
+
+@router.patch("/{item_id}/hide", response_model=InventoryOut)
+def hide_inventory_item(
+    item_id: int,
+    current_user: CurrentUser,
+    db: DbSession,
+) -> InventoryItem:
+    item = _get_inventory_item(
+        db,
+        item_id,
+        current_user.id,
+    )
+
+    item.is_hidden = True
+
+    db.commit()
+    db.refresh(item)
+
+    return item
+
+
+@router.patch("/{item_id}/restore", response_model=InventoryOut)
+def restore_inventory_item(
+    item_id: int,
+    current_user: CurrentUser,
+    db: DbSession,
+) -> InventoryItem:
+    item = _get_inventory_item(
+        db,
+        item_id,
+        current_user.id,
+    )
+
+    item.is_hidden = False
+    item.deleted_at = None
+
+    db.commit()
+    db.refresh(item)
+
+    return item
+
+
+@router.delete("/{item_id}/force", response_model=MessageResponse)
+def force_delete_inventory_item(
+    item_id: int,
+    current_user: CurrentUser,
+    db: DbSession,
+):
+    item = _get_inventory_item(
+        db,
+        item_id,
+        current_user.id,
+    )
+
+    db.delete(item)
+    db.commit()
+
+    return MessageResponse(
+        message="آیتم برای همیشه حذف شد"
+    )
+
+
+@router.get("/trash", response_model=list[InventoryOut])
+def trash_inventory(
+    current_user: CurrentUser,
+    db: DbSession,
+) -> list[InventoryItem]:
+    stmt = (
+        select(InventoryItem)
+        .where(
+            InventoryItem.user_id == current_user.id,
+            InventoryItem.deleted_at.is_not(None),
+        )
+        .order_by(InventoryItem.created_at.desc())
+    )
+
+    return list(db.scalars(stmt))
+
+
+@router.post("/sync", response_model=MessageResponse)
+def bulk_sync_inventory(
+    payload: InventoryBulkSync,
+    current_user: CurrentUser,
+    db: DbSession,
+):
+    for sync_item in payload.items:
+        item = db.get(InventoryItem, sync_item.id)
+
+        if item is None:
+            continue
+
+        if item.user_id != current_user.id:
+            continue
+
+        if item.deleted_at is not None:
+            continue
+
+        item.quantity = sync_item.quantity
+        item.price = sync_item.price
+        item.custom_label = sync_item.custom_label
+        item.note = sync_item.note
+
+    db.commit()
+
+    return MessageResponse(
+        message="همگام‌سازی با موفقیت انجام شد"
+    )

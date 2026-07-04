@@ -20,14 +20,45 @@ class User(Base):
 
     first_name: Mapped[str] = mapped_column(String(120))
     last_name: Mapped[str] = mapped_column(String(120))
-    username: Mapped[str] = mapped_column(String(120), unique=True, index=True)
 
-    email: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    phone: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    username: Mapped[str] = mapped_column(
+        String(120),
+        unique=True,
+        index=True
+    )
+
+    email: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True
+    )
+
+    phone: Mapped[str | None] = mapped_column(
+        String(40),
+        nullable=True
+    )
 
     hashed_password: Mapped[str] = mapped_column(String(255))
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    plan: Mapped[str] = mapped_column(
+        String(30),
+        default="free"
+    )
+
+    industry: Mapped[str | None] = mapped_column(
+        String(120),
+        nullable=True
+    )
+
+    device_id: Mapped[str | None] = mapped_column(
+        String(255),
+        nullable=True,
+        unique=True
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=_now
+    )
 
     categories: Mapped[list["Category"]] = relationship(
         back_populates="owner",
@@ -48,7 +79,6 @@ class User(Base):
         back_populates="owner",
         cascade="all, delete-orphan"
     )
-
 
 # ---------- Category ----------
 class Category(Base):
@@ -74,6 +104,11 @@ class CatalogProduct(Base):
     __tablename__ = "catalog_products"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+
+    industry: Mapped[str] = mapped_column(
+    String(120),
+    index=True
+    )
 
     name: Mapped[str] = mapped_column(String(200), index=True)
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -121,6 +156,16 @@ class InventoryItem(Base):
     low_stock_alert: Mapped[bool] = mapped_column(
         Boolean,
         default=False
+    )
+
+    is_hidden: Mapped[bool] = mapped_column(
+    Boolean,
+    default=False
+    )
+
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime,
+        nullable=True
     )
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
@@ -210,6 +255,9 @@ class InventoryTransaction(Base):
     type: Mapped[str] = mapped_column(String(20))
     quantity: Mapped[int] = mapped_column(Integer)
 
+    before_quantity: Mapped[int] = mapped_column(Integer)
+    after_quantity: Mapped[int] = mapped_column(Integer)
+
     note: Mapped[str | None] = mapped_column(
         Text,
         nullable=True
@@ -224,7 +272,3 @@ class InventoryTransaction(Base):
     inventory_item: Mapped["InventoryItem"] = relationship(
         back_populates="transactions"
     )
-
-class TransactionType(str, enum.Enum):
-    stock_in = "stock_in"
-    stock_out = "stock_out"
