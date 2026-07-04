@@ -289,3 +289,10 @@ class MessageResponse(BaseModel):
 class ErrorResponse(BaseModel):
     success: bool = False
     detail: str
+
+# =========================================================
+# PLAN
+# =========================================================
+class PlanUpdate(BaseModel):
+    plan: Literal["free", "starter", "pro", "vip"]
+    

@@ -8,6 +8,7 @@ from ..schemas import (
     PasswordUpdate,
     SignupRequest,
     TokenResponse,
+    IndustrySelect,
     UserOut,
     UserUpdate,
 )
@@ -139,13 +140,6 @@ def update_password(
 
     current_user.hashed_password = hash_password(payload.password)
     db.commit()
-
-
-# =========================================================
-# INDUSTRY (SIMPLE VERSION - FIXED)
-# =========================================================
-class IndustrySelect:
-    industry: str
 
 
 @router.patch("/industry", response_model=UserOut)

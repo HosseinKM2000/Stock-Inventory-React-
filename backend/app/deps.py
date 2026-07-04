@@ -63,6 +63,21 @@ def require_multi_device(user: User):
             status_code=status.HTTP_403_FORBIDDEN,
             detail="چند دستگاه فقط در پلن pro فعال است"
         )
+    
+def require_paid_plan(user: User):
+    if user.plan == "free":
+        raise HTTPException(
+            status_code=403,
+            detail="این قابلیت نیاز به اشتراک دارد"
+        )
+
+
+def require_backup_access(user: User):
+    if user.plan == "free":
+        raise HTTPException(
+            status_code=403,
+            detail="بکاپ فقط برای کاربران اشتراکی فعال است"
+        )
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
