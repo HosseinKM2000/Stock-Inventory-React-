@@ -35,28 +35,34 @@ def create_transaction(
     current_user: CurrentUser,
     db: DbSession,
 ) -> InventoryTransaction:
-    product = _get_owned_product(
-        db,
-        product_id,
-        current_user.id,
-    )
 
+    product = _get_owned_product(db, product_id, current_user.id)
+
+    # validation
     if payload.type == "stock_out" and payload.quantity > product.quantity:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="موجودی کافی نیست",
         )
 
+    before_quantity = product.quantity
+
+    # update stock
     if payload.type == "stock_in":
         product.quantity += payload.quantity
     else:
         product.quantity -= payload.quantity
 
+    after_quantity = product.quantity
+
+    # create transaction
     transaction = InventoryTransaction(
         inventory_item_id=product.id,
         user_id=current_user.id,
         type=payload.type,
         quantity=payload.quantity,
+        before_quantity=before_quantity,
+        after_quantity=after_quantity,
         note=payload.note,
     )
 
@@ -76,16 +82,13 @@ def product_transactions(
     current_user: CurrentUser,
     db: DbSession,
 ) -> list[InventoryTransaction]:
-    _get_owned_product(
-        db,
-        product_id,
-        current_user.id,
-    )
+
+    _get_owned_product(db, product_id, current_user.id)
 
     stmt = (
         select(InventoryTransaction)
         .where(
-            InventoryTransaction.product_id == product_id,
+            InventoryTransaction.inventory_item_id == product_id,
             InventoryTransaction.user_id == current_user.id,
         )
         .order_by(InventoryTransaction.created_at.desc())
@@ -99,11 +102,10 @@ def all_transactions(
     current_user: CurrentUser,
     db: DbSession,
 ) -> list[InventoryTransaction]:
+
     stmt = (
         select(InventoryTransaction)
-        .where(
-            InventoryTransaction.user_id == current_user.id
-        )
+        .where(InventoryTransaction.user_id == current_user.id)
         .order_by(InventoryTransaction.created_at.desc())
     )
 

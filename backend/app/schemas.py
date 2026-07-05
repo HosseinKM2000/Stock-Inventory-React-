@@ -216,17 +216,18 @@ class CustomProductOut(BaseModel):
 # =========================================================
 # DASHBOARD
 # =========================================================
-class CategoryBreakdown(BaseModel):
-    name: str
-    value: int
-
-
 class DashboardStats(BaseModel):
     total_products: int
-    low_stock_count: int
-    out_of_stock_count: int
+
+    hidden_products: int
+
+    deleted_products: int
+
     inventory_value: int
-    category_breakdown: list[CategoryBreakdown]
+
+    low_stock: int
+
+    out_of_stock: int
 
 
 class InventoryStats(BaseModel):

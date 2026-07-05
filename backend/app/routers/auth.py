@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
 from ..deps import CurrentUser, DbSession, check_device
+from ..schemas import MessageResponse
 from ..models import User
 from ..schemas import (
     LoginRequest,
@@ -52,12 +53,13 @@ def signup(payload: SignupRequest, db: DbSession) -> TokenResponse:
         device_id=payload.device_id,
     )
 
+    # device lock check (important)
+    check_device(user, payload.device_id)
+
     db.add(user)
     db.commit()
     db.refresh(user)
 
-    # device lock check (important)
-    check_device(user, payload.device_id)
 
     token = create_access_token(user.id)
 
@@ -82,6 +84,8 @@ def login(payload: LoginRequest, db: DbSession) -> TokenResponse:
             status_code=401,
             detail="Invalid credentials",
         )
+    
+    check_device(user, payload.device_id)
 
     token = create_access_token(user.id)
 
@@ -131,15 +135,23 @@ def update_me(
 # =========================================================
 # PASSWORD UPDATE
 # =========================================================
-@router.patch("/me/password", status_code=204)
+@router.patch(
+    "/me/password",
+    response_model=MessageResponse,
+)
 def update_password(
     payload: PasswordUpdate,
     current_user: CurrentUser,
-    db: DbSession
+    db: DbSession,
 ):
 
     current_user.hashed_password = hash_password(payload.password)
+
     db.commit()
+
+    return MessageResponse(
+        message="Password updated successfully."
+    )
 
 
 @router.patch("/industry", response_model=UserOut)

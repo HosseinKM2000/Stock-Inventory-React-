@@ -73,7 +73,7 @@ def add_catalog_to_inventory(
     existing = db.scalar(
         select(InventoryItem).where(
             InventoryItem.user_id == current_user.id,
-            InventoryItem.product_catalog_id == catalog_id,
+            InventoryItem.catalog_product_id == catalog_id,
         )
     )
 
@@ -86,7 +86,7 @@ def add_catalog_to_inventory(
     # 3. create user-owned inventory item (COPY NOT ORIGINAL)
     item = InventoryItem(
         user_id=current_user.id,
-        product_catalog_id=catalog_id,
+        catalog_product_id=catalog_id,
         quantity=payload.quantity,
         price=payload.price,
         custom_label=payload.custom_label,

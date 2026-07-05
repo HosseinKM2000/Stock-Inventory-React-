@@ -67,7 +67,7 @@ def export_inventory_csv(
             item.price,
             item.status,
             item.custom_label,
-            item.product_catalog_id,
+            item.catalog_product_id,
         ])
 
     output.seek(0)

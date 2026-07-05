@@ -2,6 +2,10 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
+from ..services.inventory_service import (
+    get_inventory_item_or_404,
+    update_inventory_item
+)
 
 from ..deps import CurrentUser, DbSession
 from ..models import InventoryItem, InventoryTransaction
@@ -17,20 +21,6 @@ from ..schemas import (
 router = APIRouter(prefix="/inventory", tags=["inventory"])
 
 
-def _get_inventory_item(
-    db: DbSession,
-    item_id: int,
-    user_id: int,
-) -> InventoryItem:
-    item = db.get(InventoryItem, item_id)
-
-    if item is None or item.user_id != user_id:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="آیتم یافت نشد",
-        )
-
-    return item
 
 
 @router.get("", response_model=list[InventoryOut])
@@ -57,7 +47,7 @@ def get_inventory_item(
     current_user: CurrentUser,
     db: DbSession,
 ) -> InventoryItem:
-    return _get_inventory_item(
+    return get_inventory_item_or_404(
         db,
         item_id,
         current_user.id,
@@ -71,14 +61,16 @@ def update_inventory_item(
     current_user: CurrentUser,
     db: DbSession,
 ) -> InventoryItem:
-    item = _get_inventory_item(
+    item = get_inventory_item_or_404(
         db,
         item_id,
         current_user.id,
     )
 
-    for field, value in payload.model_dump(exclude_unset=True).items():
-        setattr(item, field, value)
+    update_inventory_item(
+        item,
+        payload.model_dump(exclude_unset=True),
+    )
 
     db.commit()
     db.refresh(item)
@@ -92,7 +84,7 @@ def delete_inventory_item(
     current_user: CurrentUser,
     db: DbSession,
 ):
-    item = _get_inventory_item(
+    item = get_inventory_item_or_404(
         db,
         item_id,
         current_user.id,
@@ -110,7 +102,7 @@ def create_transaction(
     current_user: CurrentUser,
     db: DbSession,
 ) -> InventoryTransaction:
-    item = _get_inventory_item(
+    item = get_inventory_item_or_404(
         db,
         item_id,
         current_user.id,
@@ -155,7 +147,7 @@ def list_transactions(
     current_user: CurrentUser,
     db: DbSession,
 ) -> list[InventoryTransaction]:
-    _get_inventory_item(
+    get_inventory_item_or_404(
         db,
         item_id,
         current_user.id,
@@ -178,7 +170,7 @@ def hide_inventory_item(
     current_user: CurrentUser,
     db: DbSession,
 ) -> InventoryItem:
-    item = _get_inventory_item(
+    item = get_inventory_item_or_404(
         db,
         item_id,
         current_user.id,
@@ -198,7 +190,7 @@ def restore_inventory_item(
     current_user: CurrentUser,
     db: DbSession,
 ) -> InventoryItem:
-    item = _get_inventory_item(
+    item = get_inventory_item_or_404(
         db,
         item_id,
         current_user.id,
@@ -219,7 +211,7 @@ def force_delete_inventory_item(
     current_user: CurrentUser,
     db: DbSession,
 ):
-    item = _get_inventory_item(
+    item = get_inventory_item_or_404(
         db,
         item_id,
         current_user.id,

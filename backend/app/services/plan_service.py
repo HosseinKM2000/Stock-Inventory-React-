@@ -1,4 +1,4 @@
-from .limits import PLAN_LIMITS
+from ..limits import PLAN_LIMITS
 
 
 def get_user_limits(user):

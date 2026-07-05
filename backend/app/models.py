@@ -133,7 +133,7 @@ class InventoryItem(Base):
         index=True
     )
 
-    product_catalog_id: Mapped[int] = mapped_column(
+    catalog_product_id: Mapped[int] = mapped_column(
         ForeignKey("catalog_products.id"),
         index=True
     )
