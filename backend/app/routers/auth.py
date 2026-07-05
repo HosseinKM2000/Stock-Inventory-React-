@@ -1,27 +1,42 @@
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
-from ..deps import CurrentUser, DbSession, check_device
-from ..schemas import MessageResponse
+from ..deps import CurrentUser, DbSession
 from ..models import User
 from ..schemas import (
+    IndustrySelect,
     LoginRequest,
+    MessageResponse,
     PasswordUpdate,
     SignupRequest,
     TokenResponse,
-    IndustrySelect,
     UserOut,
     UserUpdate,
 )
-from ..security import create_access_token, hash_password, verify_password
 
-router = APIRouter(prefix="/auth", tags=["auth"])
+from ..services.auth_service import (
+    signup as signup_service,
+    login as login_service,
+    update_user,
+    update_password as update_password_service,
+)
+
+router = APIRouter(
+    prefix="/auth",
+    tags=["auth"],
+)
 
 
 # =========================================================
 # CHECK USERNAME
 # =========================================================
-def _username_taken(db: DbSession, username: str, exclude_id: int | None = None) -> bool:
+
+def _username_taken(
+    db: DbSession,
+    username: str,
+    exclude_id: int | None = None,
+) -> bool:
+
     stmt = select(User).where(User.username == username)
 
     if exclude_id:
@@ -33,8 +48,16 @@ def _username_taken(db: DbSession, username: str, exclude_id: int | None = None)
 # =========================================================
 # SIGNUP
 # =========================================================
-@router.post("/signup", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-def signup(payload: SignupRequest, db: DbSession) -> TokenResponse:
+
+@router.post(
+    "/signup",
+    response_model=TokenResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def signup(
+    payload: SignupRequest,
+    db: DbSession,
+):
 
     if _username_taken(db, payload.username):
         raise HTTPException(
@@ -42,99 +65,84 @@ def signup(payload: SignupRequest, db: DbSession) -> TokenResponse:
             detail="Username already exists",
         )
 
-    # create user
-    user = User(
-        first_name=payload.first_name,
-        last_name=payload.last_name,
-        username=payload.username,
-        phone=payload.phone,
-        hashed_password=hash_password(payload.password),
-        plan="free",
-        device_id=payload.device_id,
-    )
-
-    # device lock check (important)
-    check_device(user, payload.device_id)
-
-    db.add(user)
-    db.commit()
-    db.refresh(user)
-
-
-    token = create_access_token(user.id)
-
-    return TokenResponse(
-        access_token=token,
-        user=UserOut.model_validate(user)
+    return signup_service(
+        db=db,
+        payload=payload,
     )
 
 
 # =========================================================
 # LOGIN
 # =========================================================
-@router.post("/login", response_model=TokenResponse)
-def login(payload: LoginRequest, db: DbSession) -> TokenResponse:
 
-    user = db.scalar(
-        select(User).where(User.username == payload.username)
-    )
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+)
+def login(
+    payload: LoginRequest,
+    db: DbSession,
+):
 
-    if not user or not verify_password(payload.password, user.hashed_password):
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid credentials",
-        )
-    
-    check_device(user, payload.device_id)
-
-    token = create_access_token(user.id)
-
-    return TokenResponse(
-        access_token=token,
-        user=UserOut.model_validate(user)
+    return login_service(
+        db=db,
+        payload=payload,
     )
 
 
 # =========================================================
-# ME
+# CURRENT USER
 # =========================================================
-@router.get("/me", response_model=UserOut)
-def me(current_user: CurrentUser):
+
+@router.get(
+    "/me",
+    response_model=UserOut,
+)
+def me(
+    current_user: CurrentUser,
+):
     return current_user
 
 
 # =========================================================
-# UPDATE USER
+# UPDATE PROFILE
 # =========================================================
-@router.patch("/me", response_model=UserOut)
+
+@router.patch(
+    "/me",
+    response_model=UserOut,
+)
 def update_me(
     payload: UserUpdate,
     current_user: CurrentUser,
-    db: DbSession
+    db: DbSession,
 ):
 
     data = payload.model_dump(exclude_unset=True)
 
-    new_username = data.get("username")
+    username = data.get("username")
 
-    if new_username and _username_taken(db, new_username, current_user.id):
+    if username and _username_taken(
+        db,
+        username,
+        current_user.id,
+    ):
         raise HTTPException(
             status_code=409,
             detail="Username already exists",
         )
 
-    for k, v in data.items():
-        setattr(current_user, k, v)
-
-    db.commit()
-    db.refresh(current_user)
-
-    return current_user
+    return update_user(
+        db=db,
+        user=current_user,
+        data=data,
+    )
 
 
 # =========================================================
-# PASSWORD UPDATE
+# CHANGE PASSWORD
 # =========================================================
+
 @router.patch(
     "/me/password",
     response_model=MessageResponse,
@@ -145,23 +153,33 @@ def update_password(
     db: DbSession,
 ):
 
-    current_user.hashed_password = hash_password(payload.password)
-
-    db.commit()
+    update_password_service(
+        db=db,
+        user=current_user,
+        new_password=payload.password,
+    )
 
     return MessageResponse(
-        message="Password updated successfully."
+        message="Password updated successfully.",
     )
 
 
-@router.patch("/industry", response_model=UserOut)
+# =========================================================
+# SET INDUSTRY
+# =========================================================
+
+@router.patch(
+    "/industry",
+    response_model=UserOut,
+)
 def set_industry(
     payload: IndustrySelect,
     current_user: CurrentUser,
-    db: DbSession
+    db: DbSession,
 ):
 
     current_user.industry = payload.industry
+
     db.commit()
     db.refresh(current_user)
 

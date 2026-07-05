@@ -4,7 +4,7 @@ from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
 
 from .database import get_db
-from .models import User
+from .models import User, UserSession
 from .security import decode_access_token
 
 
@@ -78,6 +78,18 @@ def require_backup_access(user: User):
             status_code=403,
             detail="بکاپ فقط برای کاربران اشتراکی فعال است"
         )
+    
+def validate_session(db, user_id: int, fingerprint: str):
+    session = db.scalar(
+        select(UserSession).where(
+            UserSession.user_id == user_id,
+            UserSession.device_fingerprint == fingerprint,
+            UserSession.is_active == True
+        )
+    )
+
+    if not session:
+        raise HTTPException(status_code=403, detail="Session invalid")
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]

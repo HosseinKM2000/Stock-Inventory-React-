@@ -15,13 +15,14 @@ class UserBase(BaseModel):
 
 class SignupRequest(UserBase):
     phone: str | None = None
-    device_id: str
+    device_fingerprint: str
     password: str = Field(min_length=8, max_length=128)
 
 
 class LoginRequest(BaseModel):
     username: str
     password: str
+    device_fingerprint: str
 
 
 class UserUpdate(BaseModel):
@@ -297,3 +298,6 @@ class ErrorResponse(BaseModel):
 class PlanUpdate(BaseModel):
     plan: Literal["free", "starter", "pro", "vip"]
     
+
+class DeviceInfo(BaseModel):
+    device_fingerprint: str

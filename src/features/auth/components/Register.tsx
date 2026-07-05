@@ -89,7 +89,7 @@ function RegisterComponent() {
         direction={"column"}
       >
         <Text size="6" weight="bold">
-          ثبت نام
+          ثبت اطلاعات
         </Text>
 
         {serverError && (
