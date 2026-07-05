@@ -6,13 +6,30 @@ import type {
   RegisterPayload,
   UpdateProfilePayload,
 } from "../types";
+import { getDeviceFingerprint } from "@/shared/lib/device/fingerprint";
 
-export function login(payload: LoginPayload): Promise<AuthResponse> {
-  return apiFetch<AuthResponse>("/auth/login", { method: "POST", json: payload });
+export async function login(
+  payload: Omit<LoginPayload, "device_id">,
+): Promise<AuthResponse> {
+  return apiFetch<AuthResponse>("/auth/login", {
+    method: "POST",
+    json: {
+      ...payload,
+      device_id: getDeviceFingerprint(),
+    },
+  });
 }
 
-export function register(payload: RegisterPayload): Promise<AuthResponse> {
-  return apiFetch<AuthResponse>("/auth/signup", { method: "POST", json: payload });
+export async function register(
+  payload: Omit<RegisterPayload, "device_id">,
+): Promise<AuthResponse> {
+  return apiFetch<AuthResponse>("/auth/signup", {
+    method: "POST",
+    json: {
+      ...payload,
+      device_id: getDeviceFingerprint(),
+    },
+  });
 }
 
 export function getMe(): Promise<User> {

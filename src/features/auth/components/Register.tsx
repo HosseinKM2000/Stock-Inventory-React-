@@ -9,6 +9,7 @@ import { FormField } from "@/shared/ui/form/field/form-field";
 import { registerSchema } from "../validators/register.schema";
 import { preventEventHandler } from "@/shared/lib/prevent-event";
 import { useRegister } from "../mutations/use-register";
+import { PasswordInput } from "@/shared/ui/form/input/password-input";
 
 type RegisterForm = {
   firstName: string;
@@ -54,17 +55,20 @@ function RegisterComponent() {
           fieldErrors[field] = issue.message;
         }
       }
+      console.log(form)
       setErrors(fieldErrors);
       return;
     }
 
     setErrors({});
-    const { firstName, lastName, username, password } = validationResult.data;
+    const { firstName, lastName, username, password, phone } =
+      validationResult.data;
     RegisterMutation.mutate({
       first_name: firstName,
       last_name: lastName,
       username,
       password,
+      phone,
     });
   };
 
@@ -155,7 +159,7 @@ function RegisterComponent() {
         </Box>
         <Box className="w-[90%] sm:w-90 h-fit">
           <FormField id="password" error={errors.password}>
-            <TextInput
+            <PasswordInput
               size={"3"}
               type="password"
               name="password"
@@ -167,7 +171,7 @@ function RegisterComponent() {
         </Box>
         <Box className="w-[90%] sm:w-90 h-fit">
           <FormField id="repeatPassword" error={errors.repeatPassword}>
-            <TextInput
+            <PasswordInput
               size={"3"}
               type="password"
               name="repeatPassword"
