@@ -1,15 +1,19 @@
+import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
+
 import { isAuthenticated } from "@/shared/api/token-store";
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/auth")({
   beforeLoad: () => {
     if (isAuthenticated()) {
-      throw redirect({ to: "/" });
+      throw redirect({
+        to: "/",
+      });
     }
   },
-  component: RouteComponent,
+
+  component: ProtectedLayout,
 });
 
-function RouteComponent() {
+function ProtectedLayout() {
   return <Outlet />;
 }

@@ -1,25 +1,74 @@
-import { Form } from "@/shared/ui/form/form";
-import { ApiError } from "@/shared/api/client";
-import { useState, type FormEvent } from "react";
-import { Button } from "@/shared/ui/button/button";
-import { Link as RouterLink } from "@tanstack/react-router";
-import { TextInput } from "@/shared/ui/form/input/text-input";
-import { preventEventHandler } from "@/shared/lib/prevent-event";
-import { useLogin } from "@/features/auth/mutations/use-register";
+import { useState } from "react";
+
 import { Box, Callout, Flex, Link, Text } from "@radix-ui/themes";
+import { Link as RouterLink } from "@tanstack/react-router";
+
+import { ApiError } from "@/services/api/api-error";
+import { preventEventHandler } from "@/shared/lib/prevent-event";
+import { Button } from "@/shared/ui/button/button";
+import { FormField } from "@/shared/ui/form/field/form-field";
+import { Form } from "@/shared/ui/form/form";
+import { TextInput } from "@/shared/ui/form/input/text-input";
+
+import { PasswordInput } from "@/shared/ui/form/input/password-input";
+import { useLogin } from "../mutations/use-register";
+import { loginSchema } from "../validators/login.schema";
+
+type LoginForm = {
+  username: string;
+  password: string;
+};
+
+type FieldErrors = Partial<Record<keyof LoginForm, string>>;
 
 function LoginComponent() {
   const loginMutation = useLogin();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
-    preventEventHandler(() => {
-      loginMutation.mutate({ username, password });
-    })(event);
-  };
+  const [form, setForm] = useState<LoginForm>({
+    username: "",
+    password: "",
+  });
 
-  const errorMessage =
+  const [errors, setErrors] = useState<FieldErrors>({});
+
+  function handleInputChange(e: {
+    target: {
+      name: string;
+      value: string;
+    };
+  }) {
+    const { name, value } = e.target;
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  }
+
+  function loginHandler() {
+    const validation = loginSchema.safeParse(form);
+
+    if (!validation.success) {
+      const fieldErrors: FieldErrors = {};
+
+      for (const issue of validation.error.issues) {
+        const field = issue.path[0] as keyof LoginForm;
+
+        if (!fieldErrors[field]) {
+          fieldErrors[field] = issue.message;
+        }
+      }
+
+      setErrors(fieldErrors);
+      return;
+    }
+
+    setErrors({});
+
+    loginMutation.mutate(validation.data);
+  }
+
+  const serverError =
     loginMutation.error instanceof ApiError
       ? loginMutation.error.message
       : loginMutation.isError
@@ -28,45 +77,53 @@ function LoginComponent() {
 
   return (
     <Form
-      onSubmit={handleSubmit}
-      isSubmitting={loginMutation.isPending}
       className="h-dvh w-full"
+      isSubmitting={loginMutation.isPending}
+      onSubmit={preventEventHandler(loginHandler)}
     >
       <Flex
-        gapY={"4"}
-        height={"100%"}
-        align={"center"}
-        justify={"center"}
-        direction={"column"}
+        height="100%"
+        direction="column"
+        align="center"
+        justify="center"
+        gapY="4"
       >
         <Text size="6" weight="bold">
           ورود
         </Text>
 
-        {errorMessage && (
+        {serverError && (
           <Callout.Root color="red" dir="rtl" className="w-[90%] sm:w-90">
-            <Callout.Text>{errorMessage}</Callout.Text>
+            <Callout.Text>{serverError}</Callout.Text>
           </Callout.Root>
         )}
 
-        <Box className="w-[90%] sm:w-90 h-fit">
-          <TextInput
-            placeholder="نام کاربری"
-            size={"3"}
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
+        <Box className="w-[90%] sm:w-90">
+          <FormField id="username" error={errors.username}>
+            <TextInput
+              name="username"
+              size="3"
+              placeholder="نام کاربری"
+              value={form.username}
+              onChange={handleInputChange}
+            />
+          </FormField>
         </Box>
-        <Box className="w-[90%] sm:w-90 h-fit">
-          <TextInput
-            placeholder="رمز عبور"
-            type="password"
-            size={"3"}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
+
+        <Box className="w-[90%] sm:w-90">
+          <FormField id="password" error={errors.password}>
+            <PasswordInput
+              name="password"
+              type="password"
+              size="3"
+              placeholder="رمز عبور"
+              value={form.password}
+              onChange={handleInputChange}
+            />
+          </FormField>
         </Box>
-        <Box className="w-[90%] sm:w-90 h-fit">
+
+        <Box className="w-[90%] sm:w-90">
           <Button
             type="submit"
             style={{ width: "100%" }}
@@ -75,8 +132,9 @@ function LoginComponent() {
             ورود
           </Button>
         </Box>
-        <Link asChild size={"2"} color="indigo">
-          <RouterLink to="/auth/register">هنوز حسابی ندارید!</RouterLink>
+
+        <Link asChild size="2" color="indigo">
+          <RouterLink to="/auth/register">هنوز حسابی ندارید؟</RouterLink>
         </Link>
       </Flex>
     </Form>

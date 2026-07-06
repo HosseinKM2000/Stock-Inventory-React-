@@ -42,8 +42,6 @@ class IndustrySelect(BaseModel):
 
 
 class UserOut(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
     id: int
     first_name: str
     last_name: str
@@ -52,9 +50,9 @@ class UserOut(BaseModel):
     phone: str | None = None
     plan: str
     industry: str | None = None
-    device_id: str | None = None
     created_at: datetime
 
+    model_config = ConfigDict(from_attributes=True)
 
 class TokenResponse(BaseModel):
     access_token: str

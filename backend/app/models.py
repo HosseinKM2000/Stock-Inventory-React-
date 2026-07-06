@@ -48,12 +48,6 @@ class User(Base):
         String(120),
         nullable=True
     )
-    # TODO: remove after DSCS migration
-    device_id: Mapped[str | None] = mapped_column(
-        String(255),
-        nullable=True,
-        unique=True
-    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,

@@ -1,6 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
+import { toast } from "sonner";
+
 import { clearToken, setToken } from "@/shared/api/token-store";
+
 import {
   getMe,
   login,
@@ -8,8 +11,8 @@ import {
   updatePassword,
   updateProfile,
 } from "../api/auth.api";
+
 import type { AuthResponse } from "../types";
-import { toast } from "sonner";
 
 export const authKeys = {
   me: ["auth", "me"] as const,
@@ -29,11 +32,21 @@ export function useLogin() {
 
   return useMutation({
     mutationFn: login,
-    onSuccess: (data: AuthResponse) => {
+
+    onSuccess: async (data: AuthResponse) => {
       setToken(data.access_token);
+
       queryClient.setQueryData(authKeys.me, data.user);
-      navigate({ to: "/" });
-      toast.success(`با موفقیت وارد شدید`);
+
+      await queryClient.invalidateQueries({
+        queryKey: authKeys.me,
+      });
+
+      toast.success("با موفقیت وارد شدید");
+
+      navigate({
+        to: "/",
+      });
     },
   });
 }
@@ -44,11 +57,21 @@ export function useRegister() {
 
   return useMutation({
     mutationFn: register,
-    onSuccess: (data: AuthResponse) => {
+
+    onSuccess: async (data: AuthResponse) => {
       setToken(data.access_token);
+
       queryClient.setQueryData(authKeys.me, data.user);
-      navigate({ to: "/" });
-      toast.success(`ثبت با موفقیت انجام شد`);
+
+      await queryClient.invalidateQueries({
+        queryKey: authKeys.me,
+      });
+
+      toast.success("ثبت نام با موفقیت انجام شد");
+
+      navigate({
+        to: "/",
+      });
     },
   });
 }
@@ -58,8 +81,11 @@ export function useUpdateProfile() {
 
   return useMutation({
     mutationFn: updateProfile,
+
     onSuccess: (user) => {
       queryClient.setQueryData(authKeys.me, user);
+
+      toast.success("اطلاعات بروزرسانی شد");
     },
   });
 }
@@ -67,6 +93,10 @@ export function useUpdateProfile() {
 export function useUpdatePassword() {
   return useMutation({
     mutationFn: updatePassword,
+
+    onSuccess: () => {
+      toast.success("رمز عبور تغییر کرد");
+    },
   });
 }
 
@@ -76,7 +106,18 @@ export function useLogout() {
 
   return () => {
     clearToken();
+
+    queryClient.removeQueries({
+      queryKey: authKeys.me,
+    });
+
     queryClient.clear();
-    navigate({ to: "/auth/login" });
+
+    navigate({
+      to: "/auth/login",
+      replace: true,
+    });
+
+    toast.success("از حساب خارج شدید");
   };
 }

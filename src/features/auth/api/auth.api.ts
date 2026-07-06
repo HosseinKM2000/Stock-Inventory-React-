@@ -1,33 +1,34 @@
 import { apiFetch } from "@/shared/api/client";
+import { getDeviceFingerprint } from "@/shared/lib/device/fingerprint";
+
 import type {
-  User,
   AuthResponse,
   LoginPayload,
   RegisterPayload,
   UpdateProfilePayload,
+  User,
 } from "../types";
-import { getDeviceFingerprint } from "@/shared/lib/device/fingerprint";
 
-export async function login(
-  payload: Omit<LoginPayload, "device_id">,
+export function login(
+  payload: LoginPayload,
 ): Promise<AuthResponse> {
   return apiFetch<AuthResponse>("/auth/login", {
     method: "POST",
     json: {
       ...payload,
-      device_id: getDeviceFingerprint(),
+      device_fingerprint: getDeviceFingerprint(),
     },
   });
 }
 
-export async function register(
-  payload: Omit<RegisterPayload, "device_id">,
+export function register(
+  payload: RegisterPayload,
 ): Promise<AuthResponse> {
   return apiFetch<AuthResponse>("/auth/signup", {
     method: "POST",
     json: {
       ...payload,
-      device_id: getDeviceFingerprint(),
+      device_fingerprint: getDeviceFingerprint(),
     },
   });
 }
@@ -36,13 +37,22 @@ export function getMe(): Promise<User> {
   return apiFetch<User>("/auth/me");
 }
 
-export function updateProfile(payload: UpdateProfilePayload): Promise<User> {
-  return apiFetch<User>("/auth/me", { method: "PATCH", json: payload });
+export function updateProfile(
+  payload: UpdateProfilePayload,
+): Promise<User> {
+  return apiFetch<User>("/auth/me", {
+    method: "PATCH",
+    json: payload,
+  });
 }
 
-export function updatePassword(password: string): Promise<void> {
+export function updatePassword(
+  password: string,
+): Promise<void> {
   return apiFetch<void>("/auth/me/password", {
     method: "PATCH",
-    json: { password },
+    json: {
+      password,
+    },
   });
 }

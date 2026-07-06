@@ -1,5 +1,6 @@
-from ..models import UserSession
+from fastapi import HTTPException, status
 
+from ..models import User, UserSession
 
 PLAN_LIMITS = {
     "free": 1,
@@ -9,6 +10,11 @@ PLAN_LIMITS = {
 }
 
 
-def can_add_device(user, active_sessions_count: int) -> bool:
+def can_add_device(
+    user: User,
+    active_sessions_count: int,
+) -> bool:
+
     limit = PLAN_LIMITS.get(user.plan, 1)
+
     return active_sessions_count < limit

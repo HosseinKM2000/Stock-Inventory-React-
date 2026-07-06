@@ -6,15 +6,6 @@ from sqlalchemy.orm import Session
 
 from ..models import User, UserSession
 
-
-PLAN_LIMITS = {
-    "free": 1,
-    "starter": 2,
-    "pro": 3,
-    "vip": 999,
-}
-
-
 def get_active_sessions(
     db: Session,
     user_id: int,
@@ -27,7 +18,7 @@ def get_active_sessions(
     return list(db.scalars(stmt))
 
 
-def get_session(
+def get_session_by_fingerprint(
     db: Session,
     user_id: int,
     fingerprint: str,
@@ -42,28 +33,14 @@ def get_session(
     return db.scalar(stmt)
 
 
-def can_login_new_device(
-    user: User,
-    active_sessions: list[UserSession],
-):
-    limit = PLAN_LIMITS.get(user.plan, 1)
-
-    if len(active_sessions) >= limit:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Device limit reached.",
-        )
-
-
 def create_session(
     db: Session,
     user: User,
     fingerprint: str,
     token: str,
 ):
-
     session = UserSession(
-        user_id=user.id,
+        user_id=user.id,     
         device_fingerprint=fingerprint,
         access_token=token,
     )
@@ -79,30 +56,31 @@ def update_last_seen(
     session.last_seen = datetime.now(timezone.utc)
 
 
-def logout_session(
+def deactivate_session(
     session: UserSession,
 ):
     session.is_active = False
 
+def deactivate_all_sessions(
+    db: Session,
+    user_id: int,
+):
+    sessions = get_active_sessions(db, user_id)
 
-def validate_session(
+    for session in sessions:
+        session.is_active = False
+
+
+def session_exists(
     db: Session,
     user_id: int,
     fingerprint: str,
-) -> UserSession:
-
-    session = get_session(
-        db,
-        user_id,
-        fingerprint,
-    )
-
-    if session is None:
-        raise HTTPException(
-            status_code=403,
-            detail="Session not found.",
+) -> bool:
+    return (
+        get_session_by_fingerprint(
+            db,
+            user_id,
+            fingerprint,
         )
-
-    update_last_seen(session)
-
-    return session
+        is not None
+    )

@@ -1,3 +1,4 @@
+import { ApiError } from "@/services/api/api-error";
 import { clearToken, getToken } from "./token-store";
 
 const API_BASE_URL =
@@ -5,16 +6,6 @@ const API_BASE_URL =
 
 /** Origin of the API, used to resolve relative asset URLs like `/uploads/x.png`. */
 export const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
-
-export class ApiError extends Error {
-  status: number;
-
-  constructor(status: number, message: string) {
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-  }
-}
 
 type RequestOptions = {
   method?: "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
@@ -68,10 +59,18 @@ export async function apiFetch<T>(
   const data = text ? JSON.parse(text) : null;
 
   if (!response.ok) {
-    if (response.status === 401) clearToken();
+    if (response.status === 401) {
+      clearToken();
+
+      if (!location.pathname.startsWith("/auth")) {
+        window.location.href = "/auth/login";
+      }
+    }
+
     throw new ApiError(
       response.status,
       extractMessage(data) ?? response.statusText,
+      data,
     );
   }
 
@@ -79,7 +78,9 @@ export async function apiFetch<T>(
 }
 
 /** Turn a backend image path into an absolute URL the browser can load. */
-export function resolveAssetUrl(path: string | null | undefined): string | undefined {
+export function resolveAssetUrl(
+  path: string | null | undefined,
+): string | undefined {
   if (!path) return undefined;
   if (path.startsWith("http")) return path;
   return `${API_ORIGIN}${path}`;

@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Form } from "@/shared/ui/form/form";
-import { ApiError } from "@/shared/api/client";
 import { Button } from "@/shared/ui/button/button";
 import { Box, Callout, Flex, Link, Text } from "@radix-ui/themes";
 import { Link as RouterLink } from "@tanstack/react-router";
@@ -10,6 +9,7 @@ import { registerSchema } from "../validators/register.schema";
 import { preventEventHandler } from "@/shared/lib/prevent-event";
 import { useRegister } from "../mutations/use-register";
 import { PasswordInput } from "@/shared/ui/form/input/password-input";
+import { ApiError } from "@/services/api/api-error";
 
 type RegisterForm = {
   firstName: string;

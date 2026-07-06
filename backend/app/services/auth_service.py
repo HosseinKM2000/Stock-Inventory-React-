@@ -1,14 +1,12 @@
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from ..security import hash_password
 
 from ..models import User
-from ..schemas import (
-    SignupRequest,
-    LoginRequest,
-    UserUpdate,
-)
+from ..schemas import LoginRequest, TokenResponse, UserOut, SignupRequest, UserUpdate
+from ..security import create_access_token, verify_password
+from .plan_policy import can_add_device
+
 from ..security import (
     hash_password,
     verify_password,
@@ -17,8 +15,7 @@ from ..security import (
 
 from .session_service import (
     get_active_sessions,
-    get_session,
-    can_login_new_device,
+    get_session_by_fingerprint,
     create_session,
     update_last_seen,
 )
@@ -72,14 +69,21 @@ def signup(
     db.commit()
     db.refresh(user)
 
-    return token, user
+    return TokenResponse(
+    access_token=token,
+    token_type="bearer",
+    user=UserOut.model_validate(user),
+)
 
 
 def login(
     db: Session,
     payload: LoginRequest,
-):
+) -> TokenResponse:
 
+    # ----------------------------------------------------
+    # Authenticate User
+    # ----------------------------------------------------
     user = db.scalar(
         select(User).where(
             User.username == payload.username
@@ -95,49 +99,61 @@ def login(
         )
     ):
         raise HTTPException(
-            status_code=401,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
         )
 
-    session = get_session(
-        db,
-        user.id,
-        payload.device_fingerprint,
+    # ----------------------------------------------------
+    # Device Session
+    # ----------------------------------------------------
+    session = get_session_by_fingerprint(
+        db=db,
+        user_id=user.id,
+        fingerprint=payload.device_fingerprint,
     )
+
+    # ----------------------------------------------------
+    # Create JWT
+    # ----------------------------------------------------
+    token = create_access_token(user.id)
 
     if session:
 
         update_last_seen(session)
 
-        token = create_access_token(user.id)
-
         session.access_token = token
 
     else:
 
-        active = get_active_sessions(
-            db,
-            user.id,
+        active_sessions = get_active_sessions(
+            db=db,
+            user_id=user.id,
         )
 
-        can_login_new_device(
-            user,
-            active,
-        )
+        if not can_add_device(
+            user=user,
+            active_sessions_count=len(active_sessions),
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Device limit reached.",
+            )
 
-        token = create_access_token(user.id)
-
-        create_session(
-            db,
-            user,
-            payload.device_fingerprint,
-            token,
+        session = create_session(
+            db=db,
+            user_id=user.id,
+            fingerprint=payload.device_fingerprint,
+            token=token,
         )
 
     db.commit()
+    db.refresh(user)
 
-    return token, user
-
+    return TokenResponse(
+        access_token=token,
+        token_type="bearer",
+        user=UserOut.model_validate(user),
+    )
 
 def update_user(
     db: Session,

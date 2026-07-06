@@ -35,8 +35,8 @@ async function request<T>(
 
   if (!response.ok) {
     throw new ApiError(
-      data?.message ?? "Request failed",
       response.status,
+      data?.message ?? "Request failed",
       data,
     );
   }
