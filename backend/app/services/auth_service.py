@@ -197,3 +197,25 @@ def update_password(
 
     db.commit()
     db.refresh(user)
+
+from ..services.session_service import (
+    get_session_by_fingerprint,
+    deactivate_session,
+)
+
+
+def logout(
+    db: Session,
+    current_user: User,
+    fingerprint: str,
+):
+    session = get_session_by_fingerprint(
+        db=db,
+        user_id=current_user.id,
+        fingerprint=fingerprint,
+    )
+
+    if session:
+        deactivate_session(session)
+
+    db.commit()

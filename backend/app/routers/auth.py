@@ -1,5 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
+from fastapi import Header
+from ..services.auth_service import logout
 
 from ..deps import CurrentUser, DbSession
 from ..models import User
@@ -184,3 +186,21 @@ def set_industry(
     db.refresh(current_user)
 
     return current_user
+
+@router.post("/logout")
+def logout_endpoint(
+    current_user: CurrentUser,
+    db: DbSession,
+    device_fingerprint: str = Header(
+        alias="X-Device-Fingerprint"
+    ),
+):
+    logout(
+        db=db,
+        current_user=current_user,
+        fingerprint=device_fingerprint,
+    )
+
+    return {
+        "message": "Logged out successfully"
+    }

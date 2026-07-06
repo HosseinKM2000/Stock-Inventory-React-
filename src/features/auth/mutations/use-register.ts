@@ -7,6 +7,7 @@ import { clearToken, setToken } from "@/shared/api/token-store";
 import {
   getMe,
   login,
+  logout,
   register,
   updatePassword,
   updateProfile,
@@ -104,20 +105,16 @@ export function useLogout() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
 
-  return () => {
-    clearToken();
+  return async () => {
+    try {
+      await logout();
+    } finally {
+      clearToken();
+      queryClient.clear();
 
-    queryClient.removeQueries({
-      queryKey: authKeys.me,
-    });
-
-    queryClient.clear();
-
-    navigate({
-      to: "/auth/login",
-      replace: true,
-    });
-
-    toast.success("از حساب خارج شدید");
+      navigate({
+        to: "/auth/login",
+      });
+    }
   };
 }

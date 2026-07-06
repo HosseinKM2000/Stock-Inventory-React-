@@ -1,5 +1,6 @@
 import { ApiError } from "@/services/api/api-error";
 import { clearToken, getToken } from "./token-store";
+import { getDeviceFingerprint } from "@/shared/lib/device/fingerprint";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_URL ?? "http://localhost:8000/api";
@@ -33,8 +34,14 @@ export async function apiFetch<T>(
   const { method = "GET", json, formData, signal } = options;
 
   const headers: Record<string, string> = {};
+
   const token = getToken();
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  headers["X-Device-Fingerprint"] = getDeviceFingerprint();
 
   let body: BodyInit | undefined;
   if (formData) {

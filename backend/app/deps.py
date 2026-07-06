@@ -4,24 +4,36 @@ from fastapi import Depends, Header, HTTPException, status
 from sqlalchemy.orm import Session
 
 from .database import get_db
-from .models import User, UserSession
+from .models import User
 from .security import decode_access_token
 
+from .services.session_service import validate_session
+
+DeviceFingerprint = Annotated[
+    str,
+    Header(alias="X-Device-Fingerprint"),
+]
 
 def get_current_user(
     db: Annotated[Session, Depends(get_db)],
     authorization: Annotated[str | None, Header()] = None,
+    device_fingerprint: DeviceFingerprint = "",
 ) -> User:
+
     credentials_error = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    if not authorization or not authorization.lower().startswith("bearer "):
+    if (
+        authorization is None
+        or
+        not authorization.startswith("Bearer ")
+    ):
         raise credentials_error
 
-    token = authorization.split(" ", 1)[1].strip()
+    token = authorization.split(" ", 1)[1]
 
     subject = decode_access_token(token)
 
@@ -33,8 +45,13 @@ def get_current_user(
     if user is None:
         raise credentials_error
 
-    return user
+    validate_session(
+        db=db,
+        user_id=user.id,
+        fingerprint=device_fingerprint,
+    )
 
+    return user
 
 def check_device(user: User, incoming_device_id: str | None):
     if user.plan == "free":
@@ -78,19 +95,6 @@ def require_backup_access(user: User):
             status_code=403,
             detail="بکاپ فقط برای کاربران اشتراکی فعال است"
         )
-    
-def validate_session(db, user_id: int, fingerprint: str):
-    session = db.scalar(
-        select(UserSession).where(
-            UserSession.user_id == user_id,
-            UserSession.device_fingerprint == fingerprint,
-            UserSession.is_active == True
-        )
-    )
-
-    if not session:
-        raise HTTPException(status_code=403, detail="Session invalid")
-
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
 DbSession = Annotated[Session, Depends(get_db)]

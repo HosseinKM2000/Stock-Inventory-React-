@@ -3,13 +3,13 @@ import {
   useUpdateCategory,
 } from "@/features/categories/use-categories";
 import type { Category } from "@/features/categories/types";
-import { ApiError } from "@/shared/api/client";
 import { Button } from "@/shared/ui/button/button";
 import { FormField } from "@/shared/ui/form/field/form-field";
 import { TextAreaInput } from "@/shared/ui/form/input/text-area";
 import { TextInput } from "@/shared/ui/form/input/text-input";
 import { Callout, Dialog, Flex } from "@radix-ui/themes";
 import { useState, type ReactNode } from "react";
+import { ApiError } from "@/services/api/api-error";
 
 type CategoryFormDialogProps = {
   mode: "create" | "edit";

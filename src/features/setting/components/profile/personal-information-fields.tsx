@@ -1,5 +1,5 @@
 
-import { ApiError } from "@/shared/api/client";
+
 import { Button } from "@/shared/ui/button/button";
 import { FormField } from "@/shared/ui/form/field/form-field";
 import { Form } from "@/shared/ui/form/form";
@@ -8,6 +8,7 @@ import { preventEventHandler } from "@/shared/lib/prevent-event";
 import { Box, Callout, Grid, Text } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import { useMe, useUpdateProfile } from "@/features/auth/mutations/use-register";
+import { ApiError } from "@/services/api/api-error";
 
 const PersonalInformationFields = () => {
   const { data: me } = useMe();

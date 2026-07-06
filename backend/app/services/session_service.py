@@ -84,3 +84,26 @@ def session_exists(
         )
         is not None
     )
+
+def validate_session(
+    db: Session,
+    user_id: int,
+    fingerprint: str,
+):
+    session = get_session_by_fingerprint(
+        db=db,
+        user_id=user_id,
+        fingerprint=fingerprint,
+    )
+
+    if session is None:
+        raise HTTPException(
+            status_code=403,
+            detail="Session invalid",
+        )
+
+    update_last_seen(session)
+
+    db.commit()
+
+    return session

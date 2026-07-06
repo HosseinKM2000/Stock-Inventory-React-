@@ -1,5 +1,4 @@
 
-import { ApiError } from "@/shared/api/client";
 import { passwordSchema } from "@/shared/validation/password.schema";
 import { Button } from "@/shared/ui/button/button";
 import { FormField } from "@/shared/ui/form/field/form-field";
@@ -9,6 +8,7 @@ import { preventEventHandler } from "@/shared/lib/prevent-event";
 import { Box, Callout, Grid, Text } from "@radix-ui/themes";
 import { useState } from "react";
 import { useUpdatePassword } from "@/features/auth/mutations/use-register";
+import { ApiError } from "@/services/api/api-error";
 
 const PasswordFields = () => {
   const [password, setPassword] = useState("");
