@@ -9,9 +9,7 @@ import type {
   User,
 } from "../types";
 
-export function login(
-  payload: LoginPayload,
-): Promise<AuthResponse> {
+export function login(payload: LoginPayload): Promise<AuthResponse> {
   return apiFetch<AuthResponse>("/auth/login", {
     method: "POST",
     json: {
@@ -21,9 +19,7 @@ export function login(
   });
 }
 
-export function register(
-  payload: RegisterPayload,
-): Promise<AuthResponse> {
+export function register(payload: RegisterPayload): Promise<AuthResponse> {
   return apiFetch<AuthResponse>("/auth/signup", {
     method: "POST",
     json: {
@@ -37,18 +33,14 @@ export function getMe(): Promise<User> {
   return apiFetch<User>("/auth/me");
 }
 
-export function updateProfile(
-  payload: UpdateProfilePayload,
-): Promise<User> {
+export function updateProfile(payload: UpdateProfilePayload): Promise<User> {
   return apiFetch<User>("/auth/me", {
     method: "PATCH",
     json: payload,
   });
 }
 
-export function updatePassword(
-  password: string,
-): Promise<void> {
+export function updatePassword(password: string): Promise<void> {
   return apiFetch<void>("/auth/me/password", {
     method: "PATCH",
     json: {
@@ -60,5 +52,8 @@ export function updatePassword(
 export function logout(): Promise<void> {
   return apiFetch<void>("/auth/logout", {
     method: "POST",
+    headers: {
+      "X-Device-Fingerprint": getDeviceFingerprint(),
+    },
   });
 }

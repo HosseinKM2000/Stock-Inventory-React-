@@ -126,22 +126,22 @@ def login(
     else:
 
         active_sessions = get_active_sessions(
-            db=db,
-            user_id=user.id,
+            db,
+            user.id,
         )
 
         if not can_add_device(
-            user=user,
-            active_sessions_count=len(active_sessions),
+            user,
+            len(active_sessions),
         ):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Device limit reached.",
+                status_code=403,
+                detail="Device limit reached for your plan.",
             )
 
-        session = create_session(
+        create_session(
             db=db,
-            user_id=user.id,
+            user=user,
             fingerprint=payload.device_fingerprint,
             token=token,
         )

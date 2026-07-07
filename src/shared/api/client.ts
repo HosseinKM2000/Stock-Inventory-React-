@@ -13,6 +13,7 @@ type RequestOptions = {
   json?: unknown;
   formData?: FormData;
   signal?: AbortSignal;
+  headers?: Record<string, string>;
 };
 
 function extractMessage(data: unknown): string | null {
@@ -31,9 +32,17 @@ export async function apiFetch<T>(
   path: string,
   options: RequestOptions = {},
 ): Promise<T> {
-  const { method = "GET", json, formData, signal } = options;
+  const {
+    method = "GET",
+    json,
+    formData,
+    signal,
+    headers: customHeaders,
+  } = options;
 
-  const headers: Record<string, string> = {};
+  const headers: Record<string, string> = {
+    ...customHeaders,
+  };
 
   const token = getToken();
 
@@ -66,7 +75,15 @@ export async function apiFetch<T>(
   const data = text ? JSON.parse(text) : null;
 
   if (!response.ok) {
-    if (response.status === 401) {
+    const message = extractMessage(data) ?? response.statusText;
+
+    const shouldLogout =
+      response.status === 401 ||
+      (response.status === 403 &&
+        (message === "Session expired" ||
+          message === "Invalid device session"));
+
+    if (shouldLogout) {
       clearToken();
 
       if (!location.pathname.startsWith("/auth")) {
@@ -74,11 +91,7 @@ export async function apiFetch<T>(
       }
     }
 
-    throw new ApiError(
-      response.status,
-      extractMessage(data) ?? response.statusText,
-      data,
-    );
+    throw new ApiError(response.status, message);
   }
 
   return data as T;

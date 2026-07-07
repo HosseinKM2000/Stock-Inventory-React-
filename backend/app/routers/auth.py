@@ -1,7 +1,6 @@
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 from fastapi import Header
-from ..services.auth_service import logout
 
 from ..deps import CurrentUser, DbSession
 from ..models import User
@@ -19,6 +18,7 @@ from ..schemas import (
 from ..services.auth_service import (
     signup as signup_service,
     login as login_service,
+    logout,
     update_user,
     update_password as update_password_service,
 )
