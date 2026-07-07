@@ -302,17 +302,18 @@ class DeviceInfo(BaseModel):
 
 class IndustryBase(BaseModel):
     name: str
-    slug: str
+    description: str | None = None
 
 
 class IndustryCreate(IndustryBase):
+    is_active: bool = True
     pass
 
 
 class IndustryUpdate(BaseModel):
     name: str | None = None
-    slug: str | None = None
     is_active: bool | None = None
+    description: str | None = None
 
 
 class IndustryOut(IndustryBase):

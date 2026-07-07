@@ -14,6 +14,7 @@ import { Route as AuthRouteRouteImport } from './routes/auth/route'
 import { Route as appRouteRouteImport } from './routes/(app)/route'
 import { Route as appIndexRouteImport } from './routes/(app)/index'
 import { Route as SettingProfileRouteImport } from './routes/setting/profile'
+import { Route as SettingIndustryRouteImport } from './routes/setting/industry'
 import { Route as SettingExportRouteImport } from './routes/setting/export'
 import { Route as SettingCategoriesRouteImport } from './routes/setting/categories'
 import { Route as SettingAppearanceRouteImport } from './routes/setting/appearance'
@@ -46,6 +47,11 @@ const appIndexRoute = appIndexRouteImport.update({
 const SettingProfileRoute = SettingProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => SettingRouteRoute,
+} as any)
+const SettingIndustryRoute = SettingIndustryRouteImport.update({
+  id: '/industry',
+  path: '/industry',
   getParentRoute: () => SettingRouteRoute,
 } as any)
 const SettingExportRoute = SettingExportRouteImport.update({
@@ -102,6 +108,7 @@ export interface FileRoutesByFullPath {
   '/setting/appearance': typeof SettingAppearanceRoute
   '/setting/categories': typeof SettingCategoriesRoute
   '/setting/export': typeof SettingExportRoute
+  '/setting/industry': typeof SettingIndustryRoute
   '/setting/profile': typeof SettingProfileRoute
   '/': typeof appIndexRoute
   '/product/add': typeof appProductAddRoute
@@ -117,6 +124,7 @@ export interface FileRoutesByTo {
   '/setting/appearance': typeof SettingAppearanceRoute
   '/setting/categories': typeof SettingCategoriesRoute
   '/setting/export': typeof SettingExportRoute
+  '/setting/industry': typeof SettingIndustryRoute
   '/setting/profile': typeof SettingProfileRoute
   '/': typeof appIndexRoute
   '/product/add': typeof appProductAddRoute
@@ -134,6 +142,7 @@ export interface FileRoutesById {
   '/setting/appearance': typeof SettingAppearanceRoute
   '/setting/categories': typeof SettingCategoriesRoute
   '/setting/export': typeof SettingExportRoute
+  '/setting/industry': typeof SettingIndustryRoute
   '/setting/profile': typeof SettingProfileRoute
   '/(app)/': typeof appIndexRoute
   '/(app)/product/add': typeof appProductAddRoute
@@ -151,6 +160,7 @@ export interface FileRouteTypes {
     | '/setting/appearance'
     | '/setting/categories'
     | '/setting/export'
+    | '/setting/industry'
     | '/setting/profile'
     | '/'
     | '/product/add'
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/setting/appearance'
     | '/setting/categories'
     | '/setting/export'
+    | '/setting/industry'
     | '/setting/profile'
     | '/'
     | '/product/add'
@@ -182,6 +193,7 @@ export interface FileRouteTypes {
     | '/setting/appearance'
     | '/setting/categories'
     | '/setting/export'
+    | '/setting/industry'
     | '/setting/profile'
     | '/(app)/'
     | '/(app)/product/add'
@@ -231,6 +243,13 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/setting/profile'
       preLoaderRoute: typeof SettingProfileRouteImport
+      parentRoute: typeof SettingRouteRoute
+    }
+    '/setting/industry': {
+      id: '/setting/industry'
+      path: '/industry'
+      fullPath: '/setting/industry'
+      preLoaderRoute: typeof SettingIndustryRouteImport
       parentRoute: typeof SettingRouteRoute
     }
     '/setting/export': {
@@ -337,6 +356,7 @@ interface SettingRouteRouteChildren {
   SettingAppearanceRoute: typeof SettingAppearanceRoute
   SettingCategoriesRoute: typeof SettingCategoriesRoute
   SettingExportRoute: typeof SettingExportRoute
+  SettingIndustryRoute: typeof SettingIndustryRoute
   SettingProfileRoute: typeof SettingProfileRoute
 }
 
@@ -344,6 +364,7 @@ const SettingRouteRouteChildren: SettingRouteRouteChildren = {
   SettingAppearanceRoute: SettingAppearanceRoute,
   SettingCategoriesRoute: SettingCategoriesRoute,
   SettingExportRoute: SettingExportRoute,
+  SettingIndustryRoute: SettingIndustryRoute,
   SettingProfileRoute: SettingProfileRoute,
 }
 

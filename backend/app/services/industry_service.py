@@ -15,7 +15,8 @@ def create_industry(
 ):
     industry = Industry(
         name=payload.name,
-        slug=payload.slug,
+        is_active=payload.is_active,
+        description=payload.description,
     )
 
     db.add(industry)
