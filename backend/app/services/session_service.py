@@ -112,6 +112,11 @@ def validate_session(
             status_code=403,
             detail="Session expired",
         )
+    if not session.is_active:
+        raise HTTPException(
+            status_code=403,
+            detail="Session inactive",
+        )
 
     update_last_seen(session)
 
