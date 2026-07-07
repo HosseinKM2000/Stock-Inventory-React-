@@ -71,7 +71,7 @@ export function useRegister() {
       toast.success("ثبت نام با موفقیت انجام شد");
 
       navigate({
-        to: "/",
+        to: "/industry",
       });
     },
   });

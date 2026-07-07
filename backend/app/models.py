@@ -44,10 +44,13 @@ class User(Base):
         default="free"
     )
 
-    industry: Mapped[str | None] = mapped_column(
-        String(120),
-        nullable=True
+    industry_id: Mapped[int | None] = mapped_column(
+        ForeignKey("industries.id"),
+        nullable=True,
+        index=True,
     )
+
+    industry: Mapped["Industry | None"] = relationship()
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
@@ -312,4 +315,26 @@ class InventoryTransaction(Base):
 
     inventory_item: Mapped["InventoryItem"] = relationship(
         back_populates="transactions"
+    )
+
+class Industry(Base):
+    __tablename__ = "industries"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    name: Mapped[str] = mapped_column(
+        String(100),
+        unique=True,
+        index=True,
+    )
+
+    slug: Mapped[str] = mapped_column(
+        String(100),
+        unique=True,
+        index=True,
+    )
+
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
     )

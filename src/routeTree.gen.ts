@@ -19,6 +19,7 @@ import { Route as SettingCategoriesRouteImport } from './routes/setting/categori
 import { Route as SettingAppearanceRouteImport } from './routes/setting/appearance'
 import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as appIndustryIndexRouteImport } from './routes/(app)/industry/index'
 import { Route as appProductListRouteImport } from './routes/(app)/product/list'
 import { Route as appProductEditRouteImport } from './routes/(app)/product/edit'
 import { Route as appProductAddRouteImport } from './routes/(app)/product/add'
@@ -72,6 +73,11 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
   path: '/login',
   getParentRoute: () => AuthRouteRoute,
 } as any)
+const appIndustryIndexRoute = appIndustryIndexRouteImport.update({
+  id: '/industry/',
+  path: '/industry/',
+  getParentRoute: () => appRouteRoute,
+} as any)
 const appProductListRoute = appProductListRouteImport.update({
   id: '/product/list',
   path: '/product/list',
@@ -101,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/product/add': typeof appProductAddRoute
   '/product/edit': typeof appProductEditRoute
   '/product/list': typeof appProductListRoute
+  '/industry/': typeof appIndustryIndexRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRouteRouteWithChildren
@@ -115,6 +122,7 @@ export interface FileRoutesByTo {
   '/product/add': typeof appProductAddRoute
   '/product/edit': typeof appProductEditRoute
   '/product/list': typeof appProductListRoute
+  '/industry': typeof appIndustryIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -131,6 +139,7 @@ export interface FileRoutesById {
   '/(app)/product/add': typeof appProductAddRoute
   '/(app)/product/edit': typeof appProductEditRoute
   '/(app)/product/list': typeof appProductListRoute
+  '/(app)/industry/': typeof appIndustryIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -147,6 +156,7 @@ export interface FileRouteTypes {
     | '/product/add'
     | '/product/edit'
     | '/product/list'
+    | '/industry/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -161,6 +171,7 @@ export interface FileRouteTypes {
     | '/product/add'
     | '/product/edit'
     | '/product/list'
+    | '/industry'
   id:
     | '__root__'
     | '/(app)'
@@ -176,6 +187,7 @@ export interface FileRouteTypes {
     | '/(app)/product/add'
     | '/(app)/product/edit'
     | '/(app)/product/list'
+    | '/(app)/industry/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -256,6 +268,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthLoginRouteImport
       parentRoute: typeof AuthRouteRoute
     }
+    '/(app)/industry/': {
+      id: '/(app)/industry/'
+      path: '/industry'
+      fullPath: '/industry/'
+      preLoaderRoute: typeof appIndustryIndexRouteImport
+      parentRoute: typeof appRouteRoute
+    }
     '/(app)/product/list': {
       id: '/(app)/product/list'
       path: '/product/list'
@@ -285,6 +304,7 @@ interface appRouteRouteChildren {
   appProductAddRoute: typeof appProductAddRoute
   appProductEditRoute: typeof appProductEditRoute
   appProductListRoute: typeof appProductListRoute
+  appIndustryIndexRoute: typeof appIndustryIndexRoute
 }
 
 const appRouteRouteChildren: appRouteRouteChildren = {
@@ -292,6 +312,7 @@ const appRouteRouteChildren: appRouteRouteChildren = {
   appProductAddRoute: appProductAddRoute,
   appProductEditRoute: appProductEditRoute,
   appProductListRoute: appProductListRoute,
+  appIndustryIndexRoute: appIndustryIndexRoute,
 }
 
 const appRouteRouteWithChildren = appRouteRoute._addFileChildren(

@@ -299,3 +299,24 @@ class PlanUpdate(BaseModel):
 
 class DeviceInfo(BaseModel):
     device_fingerprint: str
+
+class IndustryBase(BaseModel):
+    name: str
+    slug: str
+
+
+class IndustryCreate(IndustryBase):
+    pass
+
+
+class IndustryUpdate(BaseModel):
+    name: str | None = None
+    slug: str | None = None
+    is_active: bool | None = None
+
+
+class IndustryOut(IndustryBase):
+    id: int
+    is_active: bool
+
+    model_config = ConfigDict(from_attributes=True)
