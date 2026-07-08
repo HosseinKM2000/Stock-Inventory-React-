@@ -1,4 +1,4 @@
-import { ApiError } from "@/services/api/api-error";
+import { ApiError } from "./api-error";
 import { clearToken, getToken } from "./token-store";
 import { getDeviceFingerprint } from "@/shared/lib/device/fingerprint";
 

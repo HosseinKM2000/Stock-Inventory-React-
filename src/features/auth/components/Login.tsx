@@ -1,7 +1,7 @@
 import { Box, Callout, Flex, Link, Text } from "@radix-ui/themes";
 import { Link as RouterLink } from "@tanstack/react-router";
 
-import { ApiError } from "@/services/api/api-error";
+
 import { preventEventHandler } from "@/shared/lib/prevent-event";
 import { Button } from "@/shared/ui/button/button";
 import { FormField } from "@/shared/ui/form/field/form-field";
@@ -12,6 +12,7 @@ import { useAppForm } from "@/shared/lib/form/use-app-form";
 import { PasswordInput } from "@/shared/ui/form/input/password-input";
 import { useLogin } from "../mutations/use-register";
 import { loginSchema } from "../validators/login.schema";
+import { ApiError } from "@/shared/api/api-error";
 
 function LoginComponent() {
   const loginMutation = useLogin();

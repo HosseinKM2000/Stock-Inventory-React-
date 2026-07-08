@@ -14,10 +14,9 @@ import {
 } from "../api/auth.api";
 
 import type { AuthResponse } from "../types";
+import { authKeys } from "../query/query-keys";
 
-export const authKeys = {
-  me: ["auth", "me"] as const,
-};
+
 
 export function useMe(enabled = true) {
   return useQuery({

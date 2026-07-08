@@ -1,4 +1,4 @@
-import { ApiError } from "@/services/api/api-error";
+
 import { preventEventHandler } from "@/shared/lib/prevent-event";
 import { FormField } from "@/shared/ui/form/field/form-field";
 import { Form } from "@/shared/ui/form/form";
@@ -6,6 +6,7 @@ import { SelectInput } from "@/shared/ui/form/input/select-input";
 import { Box, Button, Callout, Flex, Link, Text } from "@radix-ui/themes";
 import { useState } from "react";
 import { useIndustries, useSetIndustry } from "../../mutations/use-industry";
+import { ApiError } from "@/shared/api/api-error";
 
 function IndustryForm() {
   const setIndustryMutation = useSetIndustry();

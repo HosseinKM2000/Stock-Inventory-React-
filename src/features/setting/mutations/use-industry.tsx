@@ -8,6 +8,9 @@ import {
   updateIndustry,
 } from "../api/industry.api";
 import { toast } from "sonner";
+import { authKeys } from "@/features/auth/query/query-keys";
+import type { User } from "@/features/auth/types";
+import { useNavigate } from "@tanstack/react-router";
 
 export function useIndustries() {
   return useQuery({
@@ -64,10 +67,23 @@ export function useDeleteIndustry() {
 }
 
 export function useSetIndustry() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: setIndustry,
-    onSuccess(data) {
-      console.log(data);
+    onSuccess: async (data: User) => {
+      await queryClient.setQueryData(authKeys.me, (old: User) => {
+        if (!old) return old;
+
+        return {
+          ...old,
+          industry_id: data?.industry_id,
+        };
+      });
+      toast.success("حوزه کاری ثبت شد.");
+      navigate({
+        to: "/",
+      });
     },
   });
 }
