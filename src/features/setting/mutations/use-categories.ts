@@ -1,11 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  createCategory,
-  deleteCategory,
-  listCategories,
-  updateCategory,
-} from "./categories.api";
-import type { CategoryInput } from "./types";
+import { createCategory, deleteCategory, getCategories, updateCategory } from "../api/categories.api";
+import type { CategoryInput } from "../types";
 
 export const categoryKeys = {
   all: ["categories"] as const,
@@ -14,7 +9,7 @@ export const categoryKeys = {
 export function useCategories() {
   return useQuery({
     queryKey: categoryKeys.all,
-    queryFn: listCategories,
+    queryFn: getCategories,
   });
 }
 

@@ -1,18 +1,10 @@
-import { Box, Text } from "@radix-ui/themes";
-import { createFileRoute } from "@tanstack/react-router";
 import CategoriesCards from "@/features/setting/components/categories";
+import { createFileRoute } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/setting/categories")({
   component: RouteComponent,
 });
 
 function RouteComponent() {
-  return (
-    <Box>
-      <Text className="text-2xl font-bold">
-        دسته بندی ها
-      </Text>
-      <CategoriesCards />
-    </Box>
-  );
+  return <CategoriesCards />;
 }

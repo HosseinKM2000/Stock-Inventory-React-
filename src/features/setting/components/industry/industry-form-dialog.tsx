@@ -1,7 +1,5 @@
 import { useState, type ReactNode } from "react";
 
-import { ApiError } from "@/services/api/api-error";
-
 import { Button } from "@/shared/ui/button/button";
 import { FormField } from "@/shared/ui/form/field/form-field";
 import { TextAreaInput } from "@/shared/ui/form/input/text-area";
@@ -15,7 +13,8 @@ import {
 } from "../../mutations/use-industry";
 
 import { SwitchInput } from "@/shared/ui/button/toggle-button";
-import type { CreateIndustry, Industry, UpdateIndustry } from "../../types";
+import type { IndustryInput, Industry } from "../../types";
+import { ApiError } from "@/shared/api/api-error";
 
 type Props = {
   mode: "create" | "edit";
@@ -23,7 +22,7 @@ type Props = {
   trigger: ReactNode;
 };
 
-const emptyForm: CreateIndustry = {
+const emptyForm: IndustryInput = {
   name: "",
   description: "",
   is_active: true,
@@ -32,7 +31,7 @@ const emptyForm: CreateIndustry = {
 export default function IndustryFormDialog({ mode, industry, trigger }: Props) {
   const [open, setOpen] = useState(false);
 
-  const [form, setForm] = useState<CreateIndustry>(emptyForm);
+  const [form, setForm] = useState<IndustryInput>(emptyForm);
 
   const createMutation = useCreateIndustry();
   const updateMutation = useUpdateIndustry();
@@ -61,7 +60,7 @@ export default function IndustryFormDialog({ mode, industry, trigger }: Props) {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) {
     const { name, value } = e.target;
-
+    console.log(value);
     setForm((prev) => ({
       ...prev,
       [name]: value,
@@ -83,7 +82,7 @@ export default function IndustryFormDialog({ mode, industry, trigger }: Props) {
 
     if (!industry) return;
 
-    const data: UpdateIndustry = form;
+    const data: IndustryInput = form;
 
     updateMutation.mutate(
       {

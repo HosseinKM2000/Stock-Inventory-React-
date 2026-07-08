@@ -1,57 +1,94 @@
-import {
-  useCreateCategory,
-  useUpdateCategory,
-} from "@/features/categories/use-categories";
-import type { Category } from "@/features/categories/types";
 import { Button } from "@/shared/ui/button/button";
 import { FormField } from "@/shared/ui/form/field/form-field";
 import { TextAreaInput } from "@/shared/ui/form/input/text-area";
 import { TextInput } from "@/shared/ui/form/input/text-input";
 import { Callout, Dialog, Flex } from "@radix-ui/themes";
 import { useState, type ReactNode } from "react";
-import { ApiError } from "@/services/api/api-error";
+import { ApiError } from "@/shared/api/api-error";
+import type { Category, CategoryInput } from "../../types";
+import {
+  useCreateCategory,
+  useUpdateCategory,
+} from "../../mutations/use-categories";
 
-type CategoryFormDialogProps = {
+type Props = {
   mode: "create" | "edit";
   category?: Category;
   trigger: ReactNode;
 };
 
-const CategoryFormDialog = ({
-  mode,
-  category,
-  trigger,
-}: CategoryFormDialogProps) => {
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState(category?.name ?? "");
-  const [description, setDescription] = useState(category?.description ?? "");
+const emptyForm: CategoryInput = {
+  name: "",
+  description: "",
+};
 
-  const createCategory = useCreateCategory();
-  const updateCategory = useUpdateCategory();
-  const mutation = mode === "create" ? createCategory : updateCategory;
+const CategoryFormDialog = ({ mode, category, trigger }: Props) => {
+  const [open, setOpen] = useState(false);
+
+  const [form, setForm] = useState<CategoryInput>(emptyForm);
+
+  const createMutation = useCreateCategory();
+  const updateMutation = useUpdateCategory();
+
+  const mutation = mode === "create" ? createMutation : updateMutation;
 
   const handleOpenChange = (next: boolean) => {
     setOpen(next);
-    if (next) {
-      setName(category?.name ?? "");
-      setDescription(category?.description ?? "");
-      mutation.reset();
+
+    if (!next) return;
+
+    mutation.reset();
+
+    if (mode === "edit" && category) {
+      setForm({
+        name: category.name,
+        description: category.description ?? "",
+      });
+    } else {
+      setForm(emptyForm);
     }
   };
 
-  const handleSubmit = () => {
-    if (!name.trim()) return;
-    const data = { name: name.trim(), description: description.trim() || null };
+  function handleChange(
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) {
+    const { name, value } = e.target;
+    console.log(value);
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  }
+
+  function handleSubmit() {
+    if (!form.name.trim()) return;
 
     if (mode === "create") {
-      createCategory.mutate(data, { onSuccess: () => setOpen(false) });
-    } else if (category) {
-      updateCategory.mutate(
-        { id: category.id, data },
-        { onSuccess: () => setOpen(false) },
-      );
+      createMutation.mutate(form, {
+        onSuccess() {
+          setOpen(false);
+        },
+      });
+
+      return;
     }
-  };
+
+    if (!category) return;
+
+    const data: CategoryInput = form;
+
+    updateMutation.mutate(
+      {
+        id: category.id,
+        data,
+      },
+      {
+        onSuccess() {
+          setOpen(false);
+        },
+      },
+    );
+  }
 
   const errorMessage =
     mutation.error instanceof ApiError ? mutation.error.message : null;
@@ -76,16 +113,18 @@ const CategoryFormDialog = ({
         <Flex direction="column" gap="3">
           <FormField label="عنوان" id="category-name">
             <TextInput
+              name="name"
               size={"3"}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              value={form.name}
+              onChange={handleChange}
             />
           </FormField>
           <FormField label="توضیحات" id="category-description">
             <TextAreaInput
+              name="description"
               size={"3"}
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
+              value={form.description}
+              onChange={handleChange}
             />
           </FormField>
         </Flex>

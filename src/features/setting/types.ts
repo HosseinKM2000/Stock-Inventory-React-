@@ -5,14 +5,21 @@ export type Industry = {
   description: string;
 };
 
-export type CreateIndustry = {
+export type IndustryInput = {
   name: string;
+  description: string;
   is_active: boolean;
+};
+
+export type Category = {
+  id: number;
+  name: string;
+  description: string;
+  created_at: string;
+};
+
+export type CategoryInput = {
+  name: string;
   description?: string;
 };
 
-export type UpdateIndustry = {
-  name?: string;
-  is_active?: boolean;
-  description?: string;
-};
