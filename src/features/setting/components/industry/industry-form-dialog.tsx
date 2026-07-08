@@ -1,20 +1,28 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { Button } from "@/shared/ui/button/button";
+import { SwitchInput } from "@/shared/ui/button/toggle-button";
+
 import { FormField } from "@/shared/ui/form/field/form-field";
 import { TextAreaInput } from "@/shared/ui/form/input/text-area";
 import { TextInput } from "@/shared/ui/form/input/text-input";
 
-import { Callout, Dialog, Flex } from "@radix-ui/themes";
+import { useAppForm } from "@/shared/lib/form/use-app-form";
+
+import { ApiError } from "@/shared/api/api-error";
 
 import {
   useCreateIndustry,
   useUpdateIndustry,
 } from "../../mutations/use-industry";
 
-import { SwitchInput } from "@/shared/ui/button/toggle-button";
-import type { IndustryInput, Industry } from "../../types";
-import { ApiError } from "@/shared/api/api-error";
+import type { Industry } from "../../types";
+
+import { Callout, Dialog, Flex } from "@radix-ui/themes";
+import {
+  industrySchema,
+  type IndustryFormValues,
+} from "../../validators/industry.schema";
 
 type Props = {
   mode: "create" | "edit";
@@ -22,7 +30,7 @@ type Props = {
   trigger: ReactNode;
 };
 
-const emptyForm: IndustryInput = {
+const emptyValues: IndustryFormValues = {
   name: "",
   description: "",
   is_active: true,
@@ -31,71 +39,58 @@ const emptyForm: IndustryInput = {
 export default function IndustryFormDialog({ mode, industry, trigger }: Props) {
   const [open, setOpen] = useState(false);
 
-  const [form, setForm] = useState<IndustryInput>(emptyForm);
-
   const createMutation = useCreateIndustry();
   const updateMutation = useUpdateIndustry();
 
   const mutation = mode === "create" ? createMutation : updateMutation;
 
-  const handleOpenChange = (next: boolean) => {
-    setOpen(next);
+  const form = useAppForm({
+    schema: industrySchema,
+    initialValues: emptyValues,
 
-    if (!next) return;
+    onSubmit(values) {
+      if (mode === "create") {
+        createMutation.mutate(values, {
+          onSuccess() {
+            setOpen(false);
+            form.reset();
+          },
+        });
+
+        return;
+      }
+
+      if (!industry) return;
+
+      updateMutation.mutate(
+        {
+          id: industry.id,
+          data: values,
+        },
+        {
+          onSuccess() {
+            setOpen(false);
+          },
+        },
+      );
+    },
+  });
+
+  useEffect(() => {
+    if (!open) return;
 
     mutation.reset();
 
     if (mode === "edit" && industry) {
-      setForm({
+      form.load({
         name: industry.name,
         description: industry.description ?? "",
         is_active: industry.is_active,
       });
     } else {
-      setForm(emptyForm);
+      form.reset();
     }
-  };
-
-  function handleChange(
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
-  ) {
-    const { name, value } = e.target;
-    console.log(value);
-    setForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  }
-
-  function handleSubmit() {
-    if (!form.name.trim()) return;
-
-    if (mode === "create") {
-      createMutation.mutate(form, {
-        onSuccess() {
-          setOpen(false);
-        },
-      });
-
-      return;
-    }
-
-    if (!industry) return;
-
-    const data: IndustryInput = form;
-
-    updateMutation.mutate(
-      {
-        id: industry.id,
-        data,
-      },
-      {
-        onSuccess() {
-          setOpen(false);
-        },
-      },
-    );
-  }
+  }, [open, mode, industry]);
 
   const errorMessage =
     mutation.error instanceof ApiError
@@ -105,7 +100,7 @@ export default function IndustryFormDialog({ mode, industry, trigger }: Props) {
         : null;
 
   return (
-    <Dialog.Root open={open} onOpenChange={handleOpenChange}>
+    <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger>{trigger}</Dialog.Trigger>
 
       <Dialog.Content maxWidth="500px">
@@ -120,34 +115,34 @@ export default function IndustryFormDialog({ mode, industry, trigger }: Props) {
         )}
 
         <Flex direction="column" gap="4">
-          <FormField label="عنوان" id="industry-name">
+          <FormField label="عنوان" id="industry-name" error={form.errors.name}>
             <TextInput
               name="name"
-              value={form.name}
-              id="industry-name"
-              onChange={handleChange}
+              value={form.values.name}
+              onChange={form.handleChange}
             />
           </FormField>
-          <FormField label="توضیحات" id="industry-description">
+
+          <FormField
+            label="توضیحات"
+            id="industry-description"
+            error={form.errors.description}
+          >
             <TextAreaInput
               name="description"
-              onChange={handleChange}
-              value={form.description}
-              id="industry-description"
+              value={form.values.description}
+              onChange={form.handleChange}
             />
           </FormField>
-          <FormField label="فعال/غیر فعال" id="industry-description">
+
+          <FormField label="فعال / غیرفعال" id="industry-active">
             <SwitchInput
-              checked={form.is_active}
-              onCheckedChange={(checked) =>
-                setForm((prev) => ({
-                  ...prev,
-                  is_active: checked,
-                }))
-              }
+              checked={form.values.is_active}
+              onCheckedChange={(checked) => form.setValue("is_active", checked)}
             />
           </FormField>
         </Flex>
+
         <Flex justify="end" gap="3" mt="6">
           <Dialog.Close>
             <Button color="gray" variant="soft">
@@ -155,7 +150,7 @@ export default function IndustryFormDialog({ mode, industry, trigger }: Props) {
             </Button>
           </Dialog.Close>
 
-          <Button loading={mutation.isPending} onClick={handleSubmit}>
+          <Button loading={mutation.isPending} onClick={form.submit}>
             {mode === "create" ? "ایجاد" : "ذخیره"}
           </Button>
         </Flex>

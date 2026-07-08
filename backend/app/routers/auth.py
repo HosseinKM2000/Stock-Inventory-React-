@@ -119,15 +119,13 @@ def update_me(
     current_user: CurrentUser,
     db: DbSession,
 ):
-
-    data = payload.model_dump(exclude_unset=True)
-
-    username = data.get("username")
-
-    if username and _username_taken(
-        db,
-        username,
-        current_user.id,
+    if (
+        payload.username
+        and _username_taken(
+            db,
+            payload.username,
+            current_user.id,
+        )
     ):
         raise HTTPException(
             status_code=409,
@@ -137,9 +135,8 @@ def update_me(
     return update_user(
         db=db,
         user=current_user,
-        data=data,
+        payload=payload,
     )
-
 
 # =========================================================
 # CHANGE PASSWORD

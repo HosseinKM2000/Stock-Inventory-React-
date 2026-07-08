@@ -175,6 +175,7 @@ def update_user(
             user.id,
         ):
             raise HTTPException(
+                
                 status_code=409,
                 detail="Username already exists",
             )
