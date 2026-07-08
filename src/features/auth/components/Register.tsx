@@ -1,76 +1,41 @@
-import { useState } from "react";
-import { Form } from "@/shared/ui/form/form";
+import { ApiError } from "@/services/api/api-error";
+import { useAppForm } from "@/shared/lib/form/use-app-form";
+import { preventEventHandler } from "@/shared/lib/prevent-event";
 import { Button } from "@/shared/ui/button/button";
+import { FormField } from "@/shared/ui/form/field/form-field";
+import { Form } from "@/shared/ui/form/form";
+import { PasswordInput } from "@/shared/ui/form/input/password-input";
+import { TextInput } from "@/shared/ui/form/input/text-input";
 import { Box, Callout, Flex, Link, Text } from "@radix-ui/themes";
 import { Link as RouterLink } from "@tanstack/react-router";
-import { TextInput } from "@/shared/ui/form/input/text-input";
-import { FormField } from "@/shared/ui/form/field/form-field";
-import { registerSchema } from "../validators/register.schema";
-import { preventEventHandler } from "@/shared/lib/prevent-event";
 import { useRegister } from "../mutations/use-register";
-import { PasswordInput } from "@/shared/ui/form/input/password-input";
-import { ApiError } from "@/services/api/api-error";
+import { registerSchema } from "../validators/register.schema";
 
-type RegisterForm = {
-  firstName: string;
-  lastName: string;
-  phone: string;
-  email: string;
-  username: string;
-  password: string;
-  repeatPassword: string;
-};
-
-type FieldErrors = Partial<Record<keyof RegisterForm, string>>;
-
-// eslint-disable-next-line react-refresh/only-export-components
 function RegisterComponent() {
-  const [form, setForm] = useState<RegisterForm>({
-    firstName: "",
-    lastName: "",
-    username: "",
-    email: "",
-    phone: "",
-    password: "",
-    repeatPassword: "",
-  });
-  const [errors, setErrors] = useState<FieldErrors>({});
   const RegisterMutation = useRegister();
+  const form = useAppForm({
+    schema: registerSchema,
 
-  const handleInputsChange = (e: {
-    target: { name: string; value: string };
-  }) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
+    initialValues: {
+      firstName: "",
+      lastName: "",
+      username: "",
+      email: "",
+      phone: "",
+      password: "",
+      repeatPassword: "",
+    },
 
-  const RegisterHandler = () => {
-    const validationResult = registerSchema.safeParse(form);
-
-    if (!validationResult.success) {
-      const fieldErrors: FieldErrors = {};
-      for (const issue of validationResult.error.issues) {
-        const field = issue.path[0] as keyof RegisterForm | undefined;
-        if (field && !fieldErrors[field]) {
-          fieldErrors[field] = issue.message;
-        }
-      }
-      console.log(form)
-      setErrors(fieldErrors);
-      return;
-    }
-
-    setErrors({});
-    const { firstName, lastName, username, password, phone } =
-      validationResult.data;
-    RegisterMutation.mutate({
-      first_name: firstName,
-      last_name: lastName,
-      username,
-      password,
-      phone,
-    });
-  };
+    onSubmit(values) {
+      RegisterMutation.mutate({
+        first_name: values.firstName,
+        last_name: values.lastName,
+        username: values.username,
+        password: values.password,
+        phone: values.phone,
+      });
+    },
+  });
 
   const serverError =
     RegisterMutation.error instanceof ApiError
@@ -83,7 +48,7 @@ function RegisterComponent() {
     <Form
       className="h-dvh w-full"
       isSubmitting={RegisterMutation.isPending}
-      onSubmit={preventEventHandler(RegisterHandler)}
+      onSubmit={preventEventHandler(form.submit)}
     >
       <Flex
         gapY={"4"}
@@ -103,81 +68,81 @@ function RegisterComponent() {
         )}
 
         <Box className="w-[90%] sm:w-90 h-fit">
-          <FormField id="firstName" error={errors.firstName}>
+          <FormField id="firstName" error={form.errors.firstName}>
             <TextInput
               size={"3"}
               name="firstName"
               placeholder="نام"
-              value={form.firstName}
-              onChange={handleInputsChange}
+              value={form.values.firstName}
+              onChange={form.handleChange}
             />
           </FormField>
         </Box>
         <Box className="w-[90%] sm:w-90 h-fit">
-          <FormField id="lastName" error={errors.lastName}>
+          <FormField id="lastName" error={form.errors.lastName}>
             <TextInput
               size={"3"}
               name="lastName"
-              value={form.lastName}
+              value={form.values.lastName}
               placeholder="نام خانوادگی"
-              onChange={handleInputsChange}
+              onChange={form.handleChange}
             />
           </FormField>
         </Box>
         <Box className="w-[90%] sm:w-90 h-fit">
-          <FormField id="username" error={errors.username}>
+          <FormField id="username" error={form.errors.username}>
             <TextInput
               size={"3"}
               name="username"
-              value={form.username}
+              value={form.values.username}
               placeholder="نام کاربری"
-              onChange={handleInputsChange}
+              onChange={form.handleChange}
             />
           </FormField>
         </Box>
         <Box className="w-[90%] sm:w-90 h-fit">
-          <FormField id="phone" error={errors.phone}>
+          <FormField id="phone" error={form.errors.phone}>
             <TextInput
               size={"3"}
               name="phone"
-              value={form.phone}
+              value={form.values.phone}
               placeholder="موبایل"
-              onChange={handleInputsChange}
+              onChange={form.handleChange}
             />
           </FormField>
         </Box>
         <Box className="w-[90%] sm:w-90 h-fit">
-          <FormField id="email" error={errors.email}>
+          <FormField id="email" error={form.errors.email}>
             <TextInput
               size={"3"}
               name="email"
-              value={form.email}
+              value={form.values.email}
               placeholder="ایمیل"
-              onChange={handleInputsChange}
+              onChange={form.handleChange}
             />
           </FormField>
         </Box>
         <Box className="w-[90%] sm:w-90 h-fit">
-          <FormField id="password" error={errors.password}>
+          <FormField id="password" error={form.errors.password}>
             <PasswordInput
               size={"3"}
               type="password"
               name="password"
-              value={form.password}
+              value={form.values.password}
               placeholder="رمز عبور"
-              onChange={handleInputsChange}
+              onChange={form.handleChange}
             />
           </FormField>
         </Box>
         <Box className="w-[90%] sm:w-90 h-fit">
-          <FormField id="repeatPassword" error={errors.repeatPassword}>
+          <FormField id="repeatPassword" error={form.errors.repeatPassword}>
             <PasswordInput
               size={"3"}
               type="password"
               name="repeatPassword"
-              value={form.repeatPassword}
+              value={form.values.repeatPassword}
               placeholder="تکرار رمز عبور"
-              onChange={handleInputsChange}
+              onChange={form.handleChange}
             />
           </FormField>
         </Box>
