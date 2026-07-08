@@ -8,7 +8,7 @@ from sqlalchemy import select
 from ..config import settings
 from ..deps import CurrentUser, DbSession
 from ..models import Category, InventoryItem
-from ..schemas import InventoryOut, PaginatedInventory, InventoryStats
+from ..schemas import InventoryOut, PaginatedInventory, InventoryStats, PaginationMeta
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -111,10 +111,12 @@ def list_products(
     paginated = products[start:end]
 
     return PaginatedInventory(
-        items=paginated,
+    items=paginated,
+    meta=PaginationMeta(
         total=total,
         page=page,
         limit=limit,
+    ),
     )
 
 

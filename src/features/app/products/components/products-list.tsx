@@ -27,13 +27,17 @@ const ProductsList = () => {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<ProductSort>("newest");
 
-  const {
-    data: products = [],
-    isLoading,
-    isError,
-  } = useProducts({ search: search || undefined, sort });
+  const { data, isLoading, isError } = useProducts({
+    search: search || undefined,
+    sort,
+  });
+
+  const products = data?.items ?? [];
+  const meta = data?.meta;
+
   const deleteProduct = useDeleteProduct();
 
+  console.log(products);
   return (
     <>
       <Flex
@@ -79,12 +83,7 @@ const ProductsList = () => {
                   gap="4"
                 >
                   {(Object.keys(SORT_LABELS) as ProductSort[]).map((key) => (
-                    <Flex
-                      key={key}
-                      align={"center"}
-                      justify={"end"}
-                      gap={"2"}
-                    >
+                    <Flex key={key} align={"center"} justify={"end"} gap={"2"}>
                       <Text size={"2"} weight={"bold"}>
                         {SORT_LABELS[key]}
                       </Text>
