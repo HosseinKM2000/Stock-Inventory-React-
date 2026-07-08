@@ -1,28 +1,67 @@
-import { useState } from "react";
-import type { z } from "zod";
+import { useEffect, useRef, useState } from "react";
+import type { ZodType } from "zod";
 
-type Options<T extends z.ZodType> = {
-  schema: T;
-  initialValues: z.input<T>;
-  onSubmit: (values: z.output<T>) => void;
+type Options<TValues extends Record<string, unknown>> = {
+  schema: ZodType<TValues>;
+  initialValues: TValues;
+  onSubmit: (values: TValues) => void;
 };
 
-export function useAppForm<T extends z.ZodType>({
+export function useAppForm<TValues extends Record<string, unknown>>({
   schema,
   initialValues,
   onSubmit,
-}: Options<T>) {
-  type Values = z.input<T>;
+}: Options<TValues>) {
+  const initialized = useRef(false);
 
-  const [values, setValues] = useState<Values>(initialValues);
+  const [values, setValues] = useState<TValues>(initialValues);
 
   const [errors, setErrors] = useState<
-    Partial<Record<keyof Values, string>>
+    Partial<Record<keyof TValues, string>>
   >({});
 
-  function setValue<K extends keyof Values>(
+  useEffect(() => {
+    if (initialized.current) return;
+
+    initialized.current = true;
+
+    setValues(initialValues);
+  }, [initialValues]);
+
+  function load(values: TValues) {
+    setValues(values);
+    setErrors({});
+  }
+
+  function patch(values: Partial<TValues>) {
+    setValues((prev) => ({
+      ...prev,
+      ...values,
+    }));
+  }
+
+  function reset() {
+    setValues(initialValues);
+    setErrors({});
+  }
+
+  function clearErrors() {
+    setErrors({});
+  }
+
+  function setFieldError<K extends keyof TValues>(
     key: K,
-    value: Values[K],
+    message?: string,
+  ) {
+    setErrors((prev) => ({
+      ...prev,
+      [key]: message,
+    }));
+  }
+
+  function setValue<K extends keyof TValues>(
+    key: K,
+    value: TValues[K],
   ) {
     setValues((prev) => ({
       ...prev,
@@ -44,14 +83,17 @@ export function useAppForm<T extends z.ZodType>({
   ) {
     const { name, value } = e.target;
 
-    setValue(name as keyof Values, value as Values[keyof Values]);
+    setValue(
+      name as keyof TValues,
+      value as TValues[keyof TValues],
+    );
   }
 
   function submit() {
     const result = schema.safeParse(values);
 
     if (!result.success) {
-      const fieldErrors: Partial<Record<keyof Values, string>> =
+      const fieldErrors: Partial<Record<keyof TValues, string>> =
         {};
 
       for (const issue of result.error.issues) {
@@ -61,7 +103,7 @@ export function useAppForm<T extends z.ZodType>({
           typeof field === "string" &&
           !(field in fieldErrors)
         ) {
-          fieldErrors[field as keyof Values] =
+          fieldErrors[field as keyof TValues] =
             issue.message;
         }
       }
@@ -71,24 +113,25 @@ export function useAppForm<T extends z.ZodType>({
       return;
     }
 
-    setErrors({});
+    clearErrors();
 
     onSubmit(result.data);
-  }
-
-  function reset() {
-    setValues(initialValues);
-    setErrors({});
   }
 
   return {
     values,
     errors,
+
     submit,
     reset,
-    handleChange,
+
+    load,
+    patch,
+
     setValue,
-    setValues,
-    setErrors,
+    handleChange,
+
+    clearErrors,
+    setFieldError,
   };
 }

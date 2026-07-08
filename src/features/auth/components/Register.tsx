@@ -12,7 +12,7 @@ import { useRegister } from "../mutations/use-register";
 import { registerSchema } from "../validators/register.schema";
 
 function RegisterComponent() {
-  const RegisterMutation = useRegister();
+  const registerMutation = useRegister();
   const form = useAppForm({
     schema: registerSchema,
 
@@ -27,7 +27,7 @@ function RegisterComponent() {
     },
 
     onSubmit(values) {
-      RegisterMutation.mutate({
+      registerMutation.mutate({
         first_name: values.firstName,
         last_name: values.lastName,
         username: values.username,
@@ -38,16 +38,16 @@ function RegisterComponent() {
   });
 
   const serverError =
-    RegisterMutation.error instanceof ApiError
-      ? RegisterMutation.error.message
-      : RegisterMutation.isError
+    registerMutation.error instanceof ApiError
+      ? registerMutation.error.message
+      : registerMutation.isError
         ? "خطا در ارتباط با سرور"
         : null;
 
   return (
     <Form
       className="h-dvh w-full"
-      isSubmitting={RegisterMutation.isPending}
+      isSubmitting={registerMutation.isPending}
       onSubmit={preventEventHandler(form.submit)}
     >
       <Flex
@@ -150,7 +150,7 @@ function RegisterComponent() {
           <Button
             type="submit"
             style={{ width: "100%" }}
-            loading={RegisterMutation.isPending}
+            loading={registerMutation.isPending}
           >
             ثبت
           </Button>
