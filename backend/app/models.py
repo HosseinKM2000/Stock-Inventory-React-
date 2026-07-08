@@ -85,6 +85,7 @@ class User(Base):
     cascade="all, delete-orphan",
     )
 
+
 class UserSession(Base):
     __tablename__ = "user_sessions"
 
@@ -285,7 +286,6 @@ class CustomProduct(Base):
         back_populates="custom_products"
     )
 
-
 # ---------- Inventory Transactions ----------
 class InventoryTransaction(Base):
     __tablename__ = "inventory_transactions"
@@ -322,6 +322,7 @@ class InventoryTransaction(Base):
     inventory_item: Mapped["InventoryItem"] = relationship(
         back_populates="transactions"
     )
+
 
 class Industry(Base):
     __tablename__ = "industries"
