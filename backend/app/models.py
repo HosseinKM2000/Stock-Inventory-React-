@@ -50,7 +50,9 @@ class User(Base):
         index=True,
     )
 
-    industry: Mapped["Industry | None"] = relationship()
+    industry: Mapped["Industry | None"] = relationship(
+    back_populates="users"
+    )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
@@ -149,9 +151,13 @@ class CatalogProduct(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    industry: Mapped[str] = mapped_column(
-    String(120),
-    index=True
+    industry_id: Mapped[int] = mapped_column(
+        ForeignKey("industries.id"),
+        index=True,
+    )
+
+    industry: Mapped["Industry"] = relationship(
+    back_populates="catalog_products"
     )
 
     name: Mapped[str] = mapped_column(String(200), index=True)
@@ -336,4 +342,13 @@ class Industry(Base):
     is_active: Mapped[bool] = mapped_column(
         Boolean,
         default=True,
+    )
+
+    catalog_products: Mapped[list["CatalogProduct"]] = relationship(
+    back_populates="industry",
+    cascade="all, delete-orphan"
+    )
+
+    users: Mapped[list["User"]] = relationship(
+        back_populates="industry"
     )

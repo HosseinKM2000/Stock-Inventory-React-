@@ -30,7 +30,7 @@ function ProtectedLayout() {
       {!hideLayout && <Header />}
       {!hideLayout && <NavMenu />}
 
-      <main className="flex-1 p-10">
+      <main className="flex-1">
         <Outlet />
       </main>
     </>

@@ -16,9 +16,9 @@ export function useAppForm<TValues extends Record<string, unknown>>({
 
   const [values, setValues] = useState<TValues>(initialValues);
 
-  const [errors, setErrors] = useState<
-    Partial<Record<keyof TValues, string>>
-  >({});
+  const [errors, setErrors] = useState<Partial<Record<keyof TValues, string>>>(
+    {},
+  );
 
   useEffect(() => {
     if (initialized.current) return;
@@ -49,20 +49,14 @@ export function useAppForm<TValues extends Record<string, unknown>>({
     setErrors({});
   }
 
-  function setFieldError<K extends keyof TValues>(
-    key: K,
-    message?: string,
-  ) {
+  function setFieldError<K extends keyof TValues>(key: K, message?: string) {
     setErrors((prev) => ({
       ...prev,
       [key]: message,
     }));
   }
 
-  function setValue<K extends keyof TValues>(
-    key: K,
-    value: TValues[K],
-  ) {
+  function setValue<K extends keyof TValues>(key: K, value: TValues[K]) {
     setValues((prev) => ({
       ...prev,
       [key]: value,
@@ -77,34 +71,24 @@ export function useAppForm<TValues extends Record<string, unknown>>({
   }
 
   function handleChange(
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement
-    >,
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) {
     const { name, value } = e.target;
 
-    setValue(
-      name as keyof TValues,
-      value as TValues[keyof TValues],
-    );
+    setValue(name as keyof TValues, value as TValues[keyof TValues]);
   }
 
   function submit() {
     const result = schema.safeParse(values);
 
     if (!result.success) {
-      const fieldErrors: Partial<Record<keyof TValues, string>> =
-        {};
+      const fieldErrors: Partial<Record<keyof TValues, string>> = {};
 
       for (const issue of result.error.issues) {
         const field = issue.path[0];
 
-        if (
-          typeof field === "string" &&
-          !(field in fieldErrors)
-        ) {
-          fieldErrors[field as keyof TValues] =
-            issue.message;
+        if (typeof field === "string" && !(field in fieldErrors)) {
+          fieldErrors[field as keyof TValues] = issue.message;
         }
       }
 

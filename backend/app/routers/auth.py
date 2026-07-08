@@ -3,7 +3,7 @@ from sqlalchemy import select
 from fastapi import Header
 
 from ..deps import CurrentUser, DbSession
-from ..models import User
+from ..models import User, Industry
 from ..schemas import (
     IndustrySelect,
     LoginRequest,
@@ -179,8 +179,18 @@ def set_industry(
     current_user: CurrentUser,
     db: DbSession,
 ):
+    industry = db.get(
+        Industry,
+        payload.industry_id,
+    )
 
-    current_user.industry = payload.industry
+    if industry is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Industry not found",
+        )
+
+    current_user.industry_id = industry.id
 
     db.commit()
     db.refresh(current_user)

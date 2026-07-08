@@ -2,11 +2,11 @@ import { apiFetch } from "@/shared/api/client";
 import { getDeviceFingerprint } from "@/shared/lib/device/fingerprint";
 
 import type {
+  User,
   AuthResponse,
   LoginPayload,
   RegisterPayload,
   UpdateProfilePayload,
-  User,
 } from "../types";
 
 export function login(payload: LoginPayload): Promise<AuthResponse> {

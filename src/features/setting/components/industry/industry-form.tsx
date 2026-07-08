@@ -3,28 +3,30 @@ import { preventEventHandler } from "@/shared/lib/prevent-event";
 import { FormField } from "@/shared/ui/form/field/form-field";
 import { Form } from "@/shared/ui/form/form";
 import { SelectInput } from "@/shared/ui/form/input/select-input";
-import { Box, Button, Callout, Flex, Text } from "@radix-ui/themes";
+import { Box, Button, Callout, Flex, Link, Text } from "@radix-ui/themes";
 import { useState } from "react";
-import { useIndustry } from "../mutations/use-industry";
-import type { Industry } from "../types";
-
-type FieldErrors = Partial<Record<keyof LoginForm, string>>;
+import { useIndustries, useSetIndustry } from "../../mutations/use-industry";
 
 function IndustryForm() {
-  const loginMutation = useIndustry();
-  const [industry, setIndustry] = useState<Industry>(null);
-  const [errors, setErrors] = useState<FieldErrors>({});
+  const setIndustryMutation = useSetIndustry();
+  const [industry, setIndustry] = useState<string>("");
+
+  const {
+    data: industries = [],
+    isLoading: industriesLoading,
+    isError,
+    error,
+  } = useIndustries();
 
   function loginHandler() {
-    setErrors({});
-
-    loginMutation.mutate(industry);
+    setIndustryMutation.mutate(Number(industry));
   }
 
+  console.log(industries);
   const serverError =
-    loginMutation.error instanceof ApiError
-      ? loginMutation.error.message
-      : loginMutation.isError
+    setIndustryMutation.error instanceof ApiError
+      ? setIndustryMutation.error.message
+      : setIndustryMutation.isError
         ? "خطا در ارتباط با سرور"
         : null;
 
@@ -32,7 +34,7 @@ function IndustryForm() {
     <Flex>
       <Form
         className="h-dvh w-full"
-        isSubmitting={loginMutation.isPending}
+        isSubmitting={setIndustryMutation.isPending}
         onSubmit={preventEventHandler(loginHandler)}
       >
         <Flex
@@ -51,30 +53,47 @@ function IndustryForm() {
               <Callout.Text>{serverError}</Callout.Text>
             </Callout.Root>
           )}
+          {isError && (
+            <Callout.Root color="red">
+              <Callout.Text>
+                {error instanceof Error
+                  ? error.message
+                  : "خطا در دریافت حوزه‌های کاری"}
+              </Callout.Text>
+            </Callout.Root>
+          )}
 
           <Box className="w-[90%] sm:w-90">
-            <FormField id="username" error={errors.username}>
+            <FormField id="username">
               <SelectInput
                 name="username"
                 size="3"
-                options={[{ label: "لوازم یدکی", value: "spare_parts" }]}
+                options={
+                  industries?.map((industry) => ({
+                    label: industry.name,
+                    value: industry.id.toString(),
+                  })) ?? []
+                }
                 placeholder="حوزه کاری"
                 value={industry ?? ""}
-                onValueChange={(value: string) =>
-                  setIndustry(value as Industry)
-                }
+                onValueChange={(value: string) => setIndustry(value ?? "")}
               />
             </FormField>
           </Box>
-
           <Box className="w-[90%] sm:w-90">
             <Button
               type="submit"
               style={{ width: "100%" }}
-              //   loading={loginMutation.isPending}
+              loading={setIndustryMutation.isPending}
+              disabled={industriesLoading || !industry}
             >
               ثبت
             </Button>
+          </Box>
+          <Box className="w-[90%] sm:w-90 text-center">
+            <Link href="/" style={{ width: "100%" }}>
+              رد کردن
+            </Link>
           </Box>
         </Flex>
       </Form>

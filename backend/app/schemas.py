@@ -38,8 +38,15 @@ class PasswordUpdate(BaseModel):
 
 
 class IndustrySelect(BaseModel):
-    industry: str
+    industry_id: int
 
+class IndustrySimpleOut(BaseModel):
+    id: int
+    name: str
+
+    model_config = ConfigDict(
+        from_attributes=True
+    )
 
 class UserOut(BaseModel):
     id: int
@@ -49,8 +56,9 @@ class UserOut(BaseModel):
     email: str | None = None
     phone: str | None = None
     plan: str
-    industry: str | None = None
+    industry_id: int | None = None
     created_at: datetime
+    industry: IndustrySimpleOut | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -102,12 +110,13 @@ class CatalogProductBase(BaseModel):
 
 
 class CatalogProductOut(CatalogProductBase):
-    model_config = ConfigDict(from_attributes=True)
-
     id: int
-    industry: str
-    category_id: int | None = None
+    industry_id: int
     created_at: datetime
+
+    model_config = ConfigDict(
+        from_attributes=True
+    )
 
 
 # =========================================================

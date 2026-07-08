@@ -4,6 +4,7 @@ import {
   createIndustry,
   deleteIndustry,
   getIndustries,
+  setIndustry,
   updateIndustry,
 } from "../api/industry.api";
 import { toast } from "sonner";
@@ -58,6 +59,15 @@ export function useDeleteIndustry() {
       qc.invalidateQueries({
         queryKey: industryKeys.all,
       });
+    },
+  });
+}
+
+export function useSetIndustry() {
+  return useMutation({
+    mutationFn: setIndustry,
+    onSuccess(data) {
+      console.log(data);
     },
   });
 }
