@@ -22,3 +22,33 @@ export type CategoryInput = {
   name: string;
   description?: string | null;
 };
+
+export type CatalogProduct = {
+  id: number;
+
+  industry_id: number;
+
+  name: string;
+
+  description: string | null;
+
+  brand: string | null;
+
+  image_url: string | null;
+
+  created_at: string;
+};
+
+export type CatalogProductInput = {
+  industry_id: number;
+
+  name: string;
+
+  description: string;
+
+  brand: string;
+
+  image_url: string;
+};
+
+export type CatalogProductUpdate = Partial<CatalogProductInput>;

@@ -108,15 +108,46 @@ class CatalogProductBase(BaseModel):
     brand: str | None = None
     image_url: str | None = None
 
-
-class CatalogProductOut(CatalogProductBase):
-    id: int
+class CatalogProductCreate(CatalogProductBase):
     industry_id: int
+
+    name: str
+
+    description: str | None = None
+
+    brand: str | None = None
+
+    image_url: str | None = None
+
+
+class CatalogProductUpdate(BaseModel):
+    industry_id: int | None = None
+
+    name: str | None = None
+
+    description: str | None = None
+
+    brand: str | None = None
+
+    image_url: str | None = None
+
+
+class CatalogProductOut(BaseModel):
+    id: int
+
+    industry_id: int
+
+    name: str
+
+    description: str | None
+
+    brand: str | None
+
+    image_url: str | None
+
     created_at: datetime
 
-    model_config = ConfigDict(
-        from_attributes=True
-    )
+    model_config = ConfigDict(from_attributes=True)
 
 
 # =========================================================
@@ -330,3 +361,4 @@ class IndustryOut(IndustryBase):
     is_active: bool
 
     model_config = ConfigDict(from_attributes=True)
+

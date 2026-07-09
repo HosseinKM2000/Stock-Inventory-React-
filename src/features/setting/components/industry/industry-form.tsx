@@ -23,7 +23,6 @@ function IndustryForm() {
     setIndustryMutation.mutate(Number(industry));
   }
 
-  console.log(industries);
   const serverError =
     setIndustryMutation.error instanceof ApiError
       ? setIndustryMutation.error.message

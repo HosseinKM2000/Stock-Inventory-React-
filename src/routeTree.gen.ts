@@ -17,6 +17,7 @@ import { Route as SettingProfileRouteImport } from './routes/setting/profile'
 import { Route as SettingIndustryRouteImport } from './routes/setting/industry'
 import { Route as SettingExportRouteImport } from './routes/setting/export'
 import { Route as SettingCategoriesRouteImport } from './routes/setting/categories'
+import { Route as SettingCatalogsRouteImport } from './routes/setting/catalogs'
 import { Route as SettingAppearanceRouteImport } from './routes/setting/appearance'
 import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
@@ -63,6 +64,11 @@ const SettingExportRoute = SettingExportRouteImport.update({
 const SettingCategoriesRoute = SettingCategoriesRouteImport.update({
   id: '/categories',
   path: '/categories',
+  getParentRoute: () => SettingRouteRoute,
+} as any)
+const SettingCatalogsRoute = SettingCatalogsRouteImport.update({
+  id: '/catalogs',
+  path: '/catalogs',
   getParentRoute: () => SettingRouteRoute,
 } as any)
 const SettingAppearanceRoute = SettingAppearanceRouteImport.update({
@@ -113,6 +119,7 @@ export interface FileRoutesByFullPath {
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/setting/appearance': typeof SettingAppearanceRoute
+  '/setting/catalogs': typeof SettingCatalogsRoute
   '/setting/categories': typeof SettingCategoriesRoute
   '/setting/export': typeof SettingExportRoute
   '/setting/industry': typeof SettingIndustryRoute
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/setting/appearance': typeof SettingAppearanceRoute
+  '/setting/catalogs': typeof SettingCatalogsRoute
   '/setting/categories': typeof SettingCategoriesRoute
   '/setting/export': typeof SettingExportRoute
   '/setting/industry': typeof SettingIndustryRoute
@@ -148,6 +156,7 @@ export interface FileRoutesById {
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/setting/appearance': typeof SettingAppearanceRoute
+  '/setting/catalogs': typeof SettingCatalogsRoute
   '/setting/categories': typeof SettingCategoriesRoute
   '/setting/export': typeof SettingExportRoute
   '/setting/industry': typeof SettingIndustryRoute
@@ -167,6 +176,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/register'
     | '/setting/appearance'
+    | '/setting/catalogs'
     | '/setting/categories'
     | '/setting/export'
     | '/setting/industry'
@@ -183,6 +193,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/register'
     | '/setting/appearance'
+    | '/setting/catalogs'
     | '/setting/categories'
     | '/setting/export'
     | '/setting/industry'
@@ -201,6 +212,7 @@ export interface FileRouteTypes {
     | '/auth/login'
     | '/auth/register'
     | '/setting/appearance'
+    | '/setting/catalogs'
     | '/setting/categories'
     | '/setting/export'
     | '/setting/industry'
@@ -274,6 +286,13 @@ declare module '@tanstack/react-router' {
       path: '/categories'
       fullPath: '/setting/categories'
       preLoaderRoute: typeof SettingCategoriesRouteImport
+      parentRoute: typeof SettingRouteRoute
+    }
+    '/setting/catalogs': {
+      id: '/setting/catalogs'
+      path: '/catalogs'
+      fullPath: '/setting/catalogs'
+      preLoaderRoute: typeof SettingCatalogsRouteImport
       parentRoute: typeof SettingRouteRoute
     }
     '/setting/appearance': {
@@ -382,6 +401,7 @@ const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
 
 interface SettingRouteRouteChildren {
   SettingAppearanceRoute: typeof SettingAppearanceRoute
+  SettingCatalogsRoute: typeof SettingCatalogsRoute
   SettingCategoriesRoute: typeof SettingCategoriesRoute
   SettingExportRoute: typeof SettingExportRoute
   SettingIndustryRoute: typeof SettingIndustryRoute
@@ -390,6 +410,7 @@ interface SettingRouteRouteChildren {
 
 const SettingRouteRouteChildren: SettingRouteRouteChildren = {
   SettingAppearanceRoute: SettingAppearanceRoute,
+  SettingCatalogsRoute: SettingCatalogsRoute,
   SettingCategoriesRoute: SettingCategoriesRoute,
   SettingExportRoute: SettingExportRoute,
   SettingIndustryRoute: SettingIndustryRoute,
