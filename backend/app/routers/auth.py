@@ -3,7 +3,7 @@ from sqlalchemy import select
 from fastapi import Header
 
 from ..deps import CurrentUser, DbSession
-from ..models import User, Industry
+from ..models import User, Industry, CatalogProduct, InventoryItem
 from ..schemas import (
     IndustrySelect,
     LoginRequest,
@@ -187,7 +187,41 @@ def set_industry(
             detail="Industry not found",
         )
 
+    # -----------------------------
+    # Update user's industry
+    # -----------------------------
     current_user.industry_id = industry.id
+
+    # -----------------------------
+    # Remove previous inventory
+    # -----------------------------
+    db.query(InventoryItem).filter(
+        InventoryItem.user_id == current_user.id
+    ).delete()
+
+    # -----------------------------
+    # Load catalog of selected industry
+    # -----------------------------
+    catalog_products = list(
+        db.scalars(
+            select(CatalogProduct).where(
+                CatalogProduct.industry_id  == industry.id
+            )
+        )
+    )
+
+    # -----------------------------
+    # Create user's inventory
+    # -----------------------------
+    inventory_items = [
+        InventoryItem(
+            user_id=current_user.id,
+            product_catalog_id=product.id,
+        )
+        for product in catalog_products
+    ]
+
+    db.bulk_save_objects(inventory_items)
 
     db.commit()
     db.refresh(current_user)
