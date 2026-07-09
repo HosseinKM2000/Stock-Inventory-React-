@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 from ..services.inventory_service import (
     get_inventory_item_or_404,
     update_inventory_item
@@ -30,6 +31,9 @@ def list_inventory(
 ) -> list[InventoryItem]:
     stmt = (
         select(InventoryItem)
+        .options(
+            joinedload(InventoryItem.catalog_product)
+        )
         .where(
             InventoryItem.user_id == current_user.id,
             InventoryItem.deleted_at.is_(None),

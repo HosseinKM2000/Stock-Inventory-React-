@@ -216,7 +216,7 @@ def set_industry(
     inventory_items = [
         InventoryItem(
             user_id=current_user.id,
-            product_catalog_id=product.id,
+            catalog_product_id=product.id,
         )
         for product in catalog_products
     ]

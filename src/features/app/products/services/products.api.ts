@@ -33,7 +33,7 @@ function toFormData(input: ProductInput): FormData {
 }
 
 export function listProducts(params: ProductListParams = {}): Promise<GetProductResponse> {
-  return apiFetch<GetProductResponse>(`/products${buildQuery(params)}`);
+  return apiFetch<GetProductResponse>(`/inventory${buildQuery(params)}`);
 }
 
 export function getProduct(id: number): Promise<Product> {

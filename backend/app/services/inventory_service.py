@@ -1,18 +1,30 @@
-from sqlalchemy import select
 from fastapi import HTTPException, status
-from datetime import datetime, timezone
-from sqlalchemy.orm import Session
+from sqlalchemy import select
+from sqlalchemy.orm import Session, joinedload
 
-from ..models import InventoryItem, InventoryTransaction
+from ..models import InventoryItem
+
 
 def get_inventory_item_or_404(
     db: Session,
     item_id: int,
     user_id: int,
 ) -> InventoryItem:
-    item = db.get(InventoryItem, item_id)
 
-    if item is None or item.user_id != user_id:
+    stmt = (
+        select(InventoryItem)
+        .options(
+            joinedload(InventoryItem.catalog_product)
+        )
+        .where(
+            InventoryItem.id == item_id,
+            InventoryItem.user_id == user_id,
+        )
+    )
+
+    item = db.scalar(stmt)
+
+    if item is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="آیتم یافت نشد",
