@@ -33,7 +33,7 @@ const ProductsList = () => {
   });
 
   const products = data?.items ?? [];
-  const meta = data?.meta;
+  // const meta = data?.meta;
 
   const deleteProduct = useDeleteProduct();
 

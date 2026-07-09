@@ -1,5 +1,4 @@
 import { ProductImageUpload } from "@/features/app/products/components/upload-file";
-import { useCategories } from "@/features/categories/use-categories";
 import { resolveAssetUrl } from "@/shared/api/client";
 import { Button } from "@/shared/ui/button/button";
 import { FormField } from "@/shared/ui/form/field/form-field";
@@ -12,6 +11,7 @@ import { BellIcon } from "@radix-ui/react-icons";
 import { Box, Callout, Card, Flex, Grid, Switch, Text } from "@radix-ui/themes";
 import { useState } from "react";
 import { PRODUCT_UNITS, type Product, type ProductInput } from "../types";
+import { useCategories } from "@/features/setting/mutations/use-categories";
 
 type ProductFormProps = {
   mode: "create" | "edit";
