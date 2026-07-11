@@ -1,28 +1,58 @@
 export type ProductStatus = "in_stock" | "low_stock" | "out_of_stock";
 
-export type Product = {
+export type CatalogProduct = {
   id: number;
+
+  industry_id: number;
+
   name: string;
+
   description: string | null;
-  unit: string | null;
-  quantity: number;
-  price: number;
-  low_stock_threshold: number;
-  low_stock_alert: boolean;
+
+  brand: string | null;
+
   image_url: string | null;
-  category_id: number | null;
-  status: ProductStatus;
+
   created_at: string;
-  updated_at: string;
 };
 
-export type GetProductResponse = {
+export type Product = {
+  id: number;
+
+  quantity: number;
+
+  price: number;
+
+  custom_label: string | null;
+
+  note: string | null;
+
+  low_stock_threshold: number;
+
+  low_stock_alert: boolean;
+
+  is_hidden: boolean;
+
+  deleted_at: string | null;
+
+  status: "in_stock" | "low_stock" | "out_of_stock";
+
+  created_at: string;
+
+  updated_at: string;
+
+  catalog_product: CatalogProduct;
+};
+
+export type InventoryMeta = {
+  page: number;
+  limit: number;
+  total: number;
+};
+
+export type GetProductsResponse = {
   items: Product[];
-  meta: {
-    page: number;
-    limit: number;
-    total: number;
-  };
+  meta: InventoryMeta;
 };
 
 export type ProductSort = "newest" | "price_desc" | "price_asc" | "name";

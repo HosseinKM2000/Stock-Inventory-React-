@@ -1,5 +1,5 @@
 import { apiFetch } from "@/shared/api/client";
-import type { GetProductResponse, Product, ProductInput, ProductListParams } from "../types";
+import type { GetProductsResponse, Product, ProductInput, ProductListParams } from "../types";
 
 function buildQuery(params: ProductListParams): string {
   const search = new URLSearchParams();
@@ -32,8 +32,8 @@ function toFormData(input: ProductInput): FormData {
   return fd;
 }
 
-export function listProducts(params: ProductListParams = {}): Promise<GetProductResponse> {
-  return apiFetch<GetProductResponse>(`/inventory${buildQuery(params)}`);
+export function listProducts(params: ProductListParams = {}): Promise<GetProductsResponse> {
+  return apiFetch<GetProductsResponse>(`/inventory${buildQuery(params)}`);
 }
 
 export function getProduct(id: number): Promise<Product> {

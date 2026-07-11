@@ -195,6 +195,16 @@ class InventoryOut(BaseModel):
     catalog_product: CatalogProductOut
 
 
+class InventoryMeta(BaseModel):
+    page: int
+    limit: int
+    total: int
+
+
+class InventoryListResponse(BaseModel):
+    items: list[InventoryOut]
+    meta: InventoryMeta
+
 # =========================================================
 # TRANSACTIONS
 # =========================================================
