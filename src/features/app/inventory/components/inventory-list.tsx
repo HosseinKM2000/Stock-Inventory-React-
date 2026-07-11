@@ -14,7 +14,7 @@ import { useState } from "react";
 import { useDeleteProduct, useProducts } from "../hooks/use-products";
 import type { ProductSort } from "../types";
 import AddButton from "./add-button";
-import { ProductCard } from "./product-card";
+import { ProductCard } from "./inventory-card";
 
 const SORT_LABELS: Record<ProductSort, string> = {
   newest: "جدیدترین",
@@ -23,7 +23,7 @@ const SORT_LABELS: Record<ProductSort, string> = {
   name: "نام",
 };
 
-const ProductsList = () => {
+const InventoryList = () => {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<ProductSort>("newest");
 
@@ -37,7 +37,7 @@ const ProductsList = () => {
 
   const deleteProduct = useDeleteProduct();
 
-  console.log(products);
+  console.log(data);
   return (
     <>
       <Flex
@@ -133,4 +133,4 @@ const ProductsList = () => {
   );
 };
 
-export default ProductsList;
+export default InventoryList;

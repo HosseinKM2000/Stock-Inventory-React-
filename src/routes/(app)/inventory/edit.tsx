@@ -1,11 +1,11 @@
-import EditProductForm from "@/features/app/products/components/edit-product-form";
+import EditProductForm from "@/features/app/inventory/components/edit-inventory-form";
 import { createFileRoute } from "@tanstack/react-router";
 
 type ProductEditSearch = {
   id: number;
 };
 
-export const Route = createFileRoute("/(app)/product/edit")({
+export const Route = createFileRoute("/(app)/inventory/edit")({
   validateSearch: (search: Record<string, unknown>): ProductEditSearch => ({
     id: Number(search.id),
   }),

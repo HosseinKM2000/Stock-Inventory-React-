@@ -1,4 +1,4 @@
-
+import { ApiError } from "@/shared/api/api-error";
 import { Callout, Flex, Spinner } from "@radix-ui/themes";
 import { useNavigate } from "@tanstack/react-router";
 import {
@@ -6,8 +6,7 @@ import {
   useProduct,
   useUpdateProduct,
 } from "../hooks/use-products";
-import { ProductForm } from "./product-form";
-import { ApiError } from "@/shared/api/api-error";
+import { ProductForm } from "./inventory-form";
 
 type EditProductFormProps = {
   id: number;
@@ -49,12 +48,12 @@ const EditProductForm = ({ id }: EditProductFormProps) => {
       onSubmit={(input) =>
         updateProduct.mutate(
           { id, input },
-          { onSuccess: () => navigate({ to: "/product/list" }) },
+          { onSuccess: () => navigate({ to: "/inventory/list" }) },
         )
       }
       onDelete={() =>
         deleteProduct.mutate(id, {
-          onSuccess: () => navigate({ to: "/product/list" }),
+          onSuccess: () => navigate({ to: "/inventory/list" }),
         })
       }
     />

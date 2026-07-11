@@ -2,7 +2,7 @@ import { Cross2Icon, ImageIcon, Pencil1Icon } from "@radix-ui/react-icons";
 import { Box, Button, Card, Flex, IconButton, Text } from "@radix-ui/themes";
 import { useRef } from "react";
 
-type ProductImageUploadProps = {
+type ProductsImageUploadProps = {
   value?: string;
   onChange?: (file: File | null) => void;
 };
@@ -10,7 +10,7 @@ type ProductImageUploadProps = {
 export function ProductImageUpload({
   value,
   onChange,
-}: ProductImageUploadProps) {
+}: ProductsImageUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = (file: File | null) => {

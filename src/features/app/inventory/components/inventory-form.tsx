@@ -1,17 +1,17 @@
-import { ProductImageUpload } from "@/features/app/products/components/upload-file";
+import { ProductImageUpload } from "@/features/app/inventory/components/upload-file";
+import { useCategories } from "@/features/setting/mutations/use-categories";
 import { resolveAssetUrl } from "@/shared/api/client";
+import { preventEventHandler } from "@/shared/lib/prevent-event";
 import { Button } from "@/shared/ui/button/button";
 import { FormField } from "@/shared/ui/form/field/form-field";
 import { Form } from "@/shared/ui/form/form";
 import { SelectInput } from "@/shared/ui/form/input/select-input";
 import { TextAreaInput } from "@/shared/ui/form/input/text-area";
 import { TextInput } from "@/shared/ui/form/input/text-input";
-import { preventEventHandler } from "@/shared/lib/prevent-event";
 import { BellIcon } from "@radix-ui/react-icons";
 import { Box, Callout, Card, Flex, Grid, Switch, Text } from "@radix-ui/themes";
 import { useState } from "react";
 import { PRODUCT_UNITS, type Product, type ProductInput } from "../types";
-import { useCategories } from "@/features/setting/mutations/use-categories";
 
 type ProductFormProps = {
   mode: "create" | "edit";

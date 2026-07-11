@@ -23,9 +23,9 @@ import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as appIndustryRouteRouteImport } from './routes/(app)/industry/route'
 import { Route as appIndustryIndexRouteImport } from './routes/(app)/industry/index'
-import { Route as appProductListRouteImport } from './routes/(app)/product/list'
-import { Route as appProductEditRouteImport } from './routes/(app)/product/edit'
-import { Route as appProductAddRouteImport } from './routes/(app)/product/add'
+import { Route as appInventoryListRouteImport } from './routes/(app)/inventory/list'
+import { Route as appInventoryEditRouteImport } from './routes/(app)/inventory/edit'
+import { Route as appInventoryAddRouteImport } from './routes/(app)/inventory/add'
 
 const SettingRouteRoute = SettingRouteRouteImport.update({
   id: '/setting',
@@ -96,19 +96,19 @@ const appIndustryIndexRoute = appIndustryIndexRouteImport.update({
   path: '/',
   getParentRoute: () => appIndustryRouteRoute,
 } as any)
-const appProductListRoute = appProductListRouteImport.update({
-  id: '/product/list',
-  path: '/product/list',
+const appInventoryListRoute = appInventoryListRouteImport.update({
+  id: '/inventory/list',
+  path: '/inventory/list',
   getParentRoute: () => appRouteRoute,
 } as any)
-const appProductEditRoute = appProductEditRouteImport.update({
-  id: '/product/edit',
-  path: '/product/edit',
+const appInventoryEditRoute = appInventoryEditRouteImport.update({
+  id: '/inventory/edit',
+  path: '/inventory/edit',
   getParentRoute: () => appRouteRoute,
 } as any)
-const appProductAddRoute = appProductAddRouteImport.update({
-  id: '/product/add',
-  path: '/product/add',
+const appInventoryAddRoute = appInventoryAddRouteImport.update({
+  id: '/inventory/add',
+  path: '/inventory/add',
   getParentRoute: () => appRouteRoute,
 } as any)
 
@@ -125,9 +125,9 @@ export interface FileRoutesByFullPath {
   '/setting/industry': typeof SettingIndustryRoute
   '/setting/profile': typeof SettingProfileRoute
   '/': typeof appIndexRoute
-  '/product/add': typeof appProductAddRoute
-  '/product/edit': typeof appProductEditRoute
-  '/product/list': typeof appProductListRoute
+  '/inventory/add': typeof appInventoryAddRoute
+  '/inventory/edit': typeof appInventoryEditRoute
+  '/inventory/list': typeof appInventoryListRoute
   '/industry/': typeof appIndustryIndexRoute
 }
 export interface FileRoutesByTo {
@@ -142,9 +142,9 @@ export interface FileRoutesByTo {
   '/setting/industry': typeof SettingIndustryRoute
   '/setting/profile': typeof SettingProfileRoute
   '/': typeof appIndexRoute
-  '/product/add': typeof appProductAddRoute
-  '/product/edit': typeof appProductEditRoute
-  '/product/list': typeof appProductListRoute
+  '/inventory/add': typeof appInventoryAddRoute
+  '/inventory/edit': typeof appInventoryEditRoute
+  '/inventory/list': typeof appInventoryListRoute
   '/industry': typeof appIndustryIndexRoute
 }
 export interface FileRoutesById {
@@ -162,9 +162,9 @@ export interface FileRoutesById {
   '/setting/industry': typeof SettingIndustryRoute
   '/setting/profile': typeof SettingProfileRoute
   '/(app)/': typeof appIndexRoute
-  '/(app)/product/add': typeof appProductAddRoute
-  '/(app)/product/edit': typeof appProductEditRoute
-  '/(app)/product/list': typeof appProductListRoute
+  '/(app)/inventory/add': typeof appInventoryAddRoute
+  '/(app)/inventory/edit': typeof appInventoryEditRoute
+  '/(app)/inventory/list': typeof appInventoryListRoute
   '/(app)/industry/': typeof appIndustryIndexRoute
 }
 export interface FileRouteTypes {
@@ -182,9 +182,9 @@ export interface FileRouteTypes {
     | '/setting/industry'
     | '/setting/profile'
     | '/'
-    | '/product/add'
-    | '/product/edit'
-    | '/product/list'
+    | '/inventory/add'
+    | '/inventory/edit'
+    | '/inventory/list'
     | '/industry/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -199,9 +199,9 @@ export interface FileRouteTypes {
     | '/setting/industry'
     | '/setting/profile'
     | '/'
-    | '/product/add'
-    | '/product/edit'
-    | '/product/list'
+    | '/inventory/add'
+    | '/inventory/edit'
+    | '/inventory/list'
     | '/industry'
   id:
     | '__root__'
@@ -218,9 +218,9 @@ export interface FileRouteTypes {
     | '/setting/industry'
     | '/setting/profile'
     | '/(app)/'
-    | '/(app)/product/add'
-    | '/(app)/product/edit'
-    | '/(app)/product/list'
+    | '/(app)/inventory/add'
+    | '/(app)/inventory/edit'
+    | '/(app)/inventory/list'
     | '/(app)/industry/'
   fileRoutesById: FileRoutesById
 }
@@ -330,25 +330,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appIndustryIndexRouteImport
       parentRoute: typeof appIndustryRouteRoute
     }
-    '/(app)/product/list': {
-      id: '/(app)/product/list'
-      path: '/product/list'
-      fullPath: '/product/list'
-      preLoaderRoute: typeof appProductListRouteImport
+    '/(app)/inventory/list': {
+      id: '/(app)/inventory/list'
+      path: '/inventory/list'
+      fullPath: '/inventory/list'
+      preLoaderRoute: typeof appInventoryListRouteImport
       parentRoute: typeof appRouteRoute
     }
-    '/(app)/product/edit': {
-      id: '/(app)/product/edit'
-      path: '/product/edit'
-      fullPath: '/product/edit'
-      preLoaderRoute: typeof appProductEditRouteImport
+    '/(app)/inventory/edit': {
+      id: '/(app)/inventory/edit'
+      path: '/inventory/edit'
+      fullPath: '/inventory/edit'
+      preLoaderRoute: typeof appInventoryEditRouteImport
       parentRoute: typeof appRouteRoute
     }
-    '/(app)/product/add': {
-      id: '/(app)/product/add'
-      path: '/product/add'
-      fullPath: '/product/add'
-      preLoaderRoute: typeof appProductAddRouteImport
+    '/(app)/inventory/add': {
+      id: '/(app)/inventory/add'
+      path: '/inventory/add'
+      fullPath: '/inventory/add'
+      preLoaderRoute: typeof appInventoryAddRouteImport
       parentRoute: typeof appRouteRoute
     }
   }
@@ -368,17 +368,17 @@ const appIndustryRouteRouteWithChildren =
 interface appRouteRouteChildren {
   appIndustryRouteRoute: typeof appIndustryRouteRouteWithChildren
   appIndexRoute: typeof appIndexRoute
-  appProductAddRoute: typeof appProductAddRoute
-  appProductEditRoute: typeof appProductEditRoute
-  appProductListRoute: typeof appProductListRoute
+  appInventoryAddRoute: typeof appInventoryAddRoute
+  appInventoryEditRoute: typeof appInventoryEditRoute
+  appInventoryListRoute: typeof appInventoryListRoute
 }
 
 const appRouteRouteChildren: appRouteRouteChildren = {
   appIndustryRouteRoute: appIndustryRouteRouteWithChildren,
   appIndexRoute: appIndexRoute,
-  appProductAddRoute: appProductAddRoute,
-  appProductEditRoute: appProductEditRoute,
-  appProductListRoute: appProductListRoute,
+  appInventoryAddRoute: appInventoryAddRoute,
+  appInventoryEditRoute: appInventoryEditRoute,
+  appInventoryListRoute: appInventoryListRoute,
 }
 
 const appRouteRouteWithChildren = appRouteRoute._addFileChildren(
