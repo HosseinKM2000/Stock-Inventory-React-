@@ -5,7 +5,7 @@ import {
   useDeleteProduct,
   useProduct,
   useUpdateProduct,
-} from "../hooks/use-products";
+} from "../mutations/use-products";
 import { ProductForm } from "./inventory-form";
 
 type EditProductFormProps = {

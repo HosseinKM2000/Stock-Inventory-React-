@@ -11,7 +11,7 @@ export const menuNavItems = [
   },
   {
     label: "محصولات",
-    to: "/product/list",
+    to: "/inventory/list",
     match: "/product",
     icon: MixIcon,
   },

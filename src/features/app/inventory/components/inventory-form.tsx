@@ -1,17 +1,16 @@
-import { ProductImageUpload } from "@/features/app/inventory/components/upload-file";
-import { useCategories } from "@/features/setting/mutations/use-categories";
-import { resolveAssetUrl } from "@/shared/api/client";
-import { preventEventHandler } from "@/shared/lib/prevent-event";
-import { Button } from "@/shared/ui/button/button";
-import { FormField } from "@/shared/ui/form/field/form-field";
-import { Form } from "@/shared/ui/form/form";
-import { SelectInput } from "@/shared/ui/form/input/select-input";
-import { TextAreaInput } from "@/shared/ui/form/input/text-area";
-import { TextInput } from "@/shared/ui/form/input/text-input";
-import { BellIcon } from "@radix-ui/react-icons";
-import { Box, Callout, Card, Flex, Grid, Switch, Text } from "@radix-ui/themes";
 import { useState } from "react";
-import { PRODUCT_UNITS, type Product, type ProductInput } from "../types";
+import { Form } from "@/shared/ui/form/form";
+import { Button } from "@/shared/ui/button/button";
+import { resolveAssetUrl } from "@/shared/api/client";
+import { productSchema } from "../schema/product.schema";
+import { type Product, type ProductInput } from "../types";
+import { useAppForm } from "@/shared/lib/form/use-app-form";
+import { FormField } from "@/shared/ui/form/field/form-field";
+import { TextInput } from "@/shared/ui/form/input/text-input";
+import { preventEventHandler } from "@/shared/lib/prevent-event";
+import { TextAreaInput } from "@/shared/ui/form/input/text-area";
+import { Box, Callout, Card, Grid, Text } from "@radix-ui/themes";
+import { ProductImageUpload } from "@/features/app/inventory/components/upload-file";
 
 type ProductFormProps = {
   mode: "create" | "edit";
@@ -32,32 +31,47 @@ export function ProductForm({
   onDelete,
   deleting = false,
 }: ProductFormProps) {
-  const { data: categories = [] } = useCategories();
+  // const { data: categories = [] } = useCategories();
 
-  const [name, setName] = useState(initial?.name ?? "");
-  const [description, setDescription] = useState(initial?.description ?? "");
-  const [categoryId, setCategoryId] = useState<string | undefined>(
-    initial?.category_id != null ? String(initial.category_id) : undefined,
-  );
-  const [unit, setUnit] = useState<string | undefined>(
-    initial?.unit ?? undefined,
-  );
-  const [quantity, setQuantity] = useState(String(initial?.quantity ?? ""));
-  const [price, setPrice] = useState(String(initial?.price ?? ""));
-  const [threshold, setThreshold] = useState(
-    String(initial?.low_stock_threshold ?? ""),
-  );
-  const [lowStockAlert, setLowStockAlert] = useState(
-    initial?.low_stock_alert ?? false,
-  );
+  const form = useAppForm({
+    schema: productSchema,
+
+    initialValues: {
+      name: initial?.catalog_product?.name ?? "",
+
+      description: initial?.catalog_product?.description ?? null,
+
+      // unit: initial?.unit ?? null,
+
+      quantity: initial?.quantity ?? 0,
+
+      price: initial?.price ?? 0,
+
+      low_stock_threshold: initial?.low_stock_threshold ?? 0,
+
+      low_stock_alert: initial?.low_stock_alert ?? false,
+
+      image: null,
+
+      remove_image: false,
+    },
+
+    onSubmit(values) {
+      onSubmit({
+        ...values,
+
+        image: imageFile ?? undefined,
+
+        remove_image: mode === "edit" ? removeImage : undefined,
+      });
+    },
+  });
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | undefined>(
-    resolveAssetUrl(initial?.image_url),
+    resolveAssetUrl(initial?.catalog_product?.image_url),
   );
   const [removeImage, setRemoveImage] = useState(false);
-
-  const [nameError, setNameError] = useState<string | null>(null);
 
   const handleImageChange = (file: File | null) => {
     setImageFile(file);
@@ -70,35 +84,14 @@ export function ProductForm({
     }
   };
 
-  const submit = () => {
-    if (!name.trim()) {
-      setNameError("نام محصول الزامی است");
-      return;
-    }
-    setNameError(null);
-
-    onSubmit({
-      name: name.trim(),
-      description: description.trim() || null,
-      unit: unit ?? null,
-      quantity: Number(quantity) || 0,
-      price: Number(price) || 0,
-      low_stock_threshold: Number(threshold) || 0,
-      low_stock_alert: lowStockAlert,
-      category_id: categoryId ? Number(categoryId) : null,
-      image: imageFile ?? undefined,
-      remove_image: mode === "edit" ? removeImage : undefined,
-    });
-  };
-
-  const categoryOptions = categories.map((c) => ({
-    value: String(c.id),
-    label: c.name,
-  }));
-  const unitOptions = PRODUCT_UNITS.map((u) => ({ value: u, label: u }));
+  // const categoryOptions = categories.map((c) => ({
+  //   value: String(c.id),
+  //   label: c.name,
+  // }));
+  // const unitOptions = PRODUCT_UNITS.map((u) => ({ value: u, label: u }));
 
   return (
-    <Form onSubmit={preventEventHandler(submit)} isSubmitting={submitting}>
+    <Form isSubmitting={submitting} onSubmit={preventEventHandler(form.submit)}>
       <Box
         mt={"6"}
         mb={"9"}
@@ -121,53 +114,57 @@ export function ProductForm({
               onChange={handleImageChange}
             />
           </Box>
-          <FormField label="نام محصول" id="name" error={nameError ?? undefined}>
+          <FormField label="نام محصول" id="name" error={form.errors.name}>
             <TextInput
               size={"3"}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              name="name"
+              value={form.values.name}
+              onChange={form.handleChange}
             />
           </FormField>
-          <FormField label="دسته بندی" id="category">
+          {/* <FormField label="دسته بندی" id="category_id">
             <SelectInput
               size={"3"}
               placeholder="دسته بندی محصول"
-              value={categoryId}
-              onValueChange={setCategoryId}
+              value={`${form.values.category_id}`}
+              onValueChange={(value) =>
+                form.setValue("category_id", Number(value))
+              }
               options={categoryOptions}
             />
-          </FormField>
-          <FormField label="واحد" id="unit">
+          </FormField> */}
+          {/* <FormField label="واحد" id="unit">
             <SelectInput
-              size={"3"}
-              placeholder="واحد محصول"
-              value={unit}
-              onValueChange={setUnit}
+              value={form.values.unit ?? ""}
+              onValueChange={(value) => form.setValue("unit", value)}
               options={unitOptions}
             />
-          </FormField>
+          </FormField> */}
           <FormField label="تعداد" id="quantity">
             <TextInput
               size={"3"}
               type="number"
-              value={quantity}
-              onChange={(e) => setQuantity(e.target.value)}
+              name="quantity"
+              value={form.values.quantity}
+              onChange={form.handleChange}
             />
           </FormField>
           <FormField label="قیمت (تومان)" id="price">
             <TextInput
               size={"3"}
               type="number"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
+              name="price"
+              value={form.values.price}
+              onChange={form.handleChange}
             />
           </FormField>
           <Box className="md:col-span-3">
             <FormField id="description" label="توضیحات">
               <TextAreaInput
                 size="3"
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
+                name="description"
+                value={form.values.description ?? ""}
+                onChange={form.handleChange}
               />
             </FormField>
           </Box>
@@ -182,7 +179,7 @@ export function ProductForm({
         bg-violet-1/40
       "
           >
-            <Flex
+            {/* <Flex
               gap="3"
               wrap={"wrap"}
               width={"100%"}
@@ -214,12 +211,12 @@ export function ProductForm({
                   <TextInput
                     size="3"
                     type="number"
-                    value={threshold}
-                    onChange={(e) => setThreshold(e.target.value)}
+                    value={form.values.t}
+                    onChange={form.handleChange}
                   />
                 </FormField>
               </Box>
-            </Flex>
+            </Flex> */}
           </Card>
         </Grid>
         <Grid width={"100%"} mt={"6"}>
@@ -228,9 +225,9 @@ export function ProductForm({
           </Button>
           {mode === "edit" && onDelete && (
             <Button
-              type="button"
-              color="red"
               mt={"3"}
+              color="red"
+              type="button"
               loading={deleting}
               onClick={onDelete}
             >

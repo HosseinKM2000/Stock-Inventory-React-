@@ -1,7 +1,8 @@
 import { ApiError } from "@/shared/api/api-error";
 import { useNavigate } from "@tanstack/react-router";
-import { useCreateProduct } from "../hooks/use-products";
+import { useCreateProduct } from "../mutations/use-products";
 import { ProductForm } from "./inventory-form";
+import type { Product } from "../types";
 
 const AddProductForm = () => {
   const navigate = useNavigate();
@@ -17,7 +18,7 @@ const AddProductForm = () => {
           : null
       }
       onSubmit={(input) =>
-        createProduct.mutate(input, {
+        createProduct.mutate(input as Product, {
           onSuccess: () => navigate({ to: "/inventory/list" }),
         })
       }

@@ -1,11 +1,11 @@
-import { Box, Callout, Flex, Spinner, Text } from "@radix-ui/themes";
 import { useState } from "react";
-import { useDeleteProduct, useProducts } from "../hooks/use-products";
-import { useInventoryVirtual } from "../hooks/useInventoryVirtual";
-import type { ProductSort } from "../types";
 import AddButton from "./add-button";
 import FilterPanel from "./filter-panel";
+import type { ProductSort } from "../types";
 import { ProductCard } from "./inventory-card";
+import { Box, Callout, Flex, Spinner, Text } from "@radix-ui/themes";
+import { useInventoryVirtual } from "../mutations/useInventoryVirtual";
+import { useDeleteProduct, useProducts } from "../mutations/use-products";
 
 const InventoryList = () => {
   const [search, setSearch] = useState("");
@@ -16,7 +16,9 @@ const InventoryList = () => {
     sort,
   });
 
-  const products = data?.items ?? [];
+  const products = data ?? [];
+
+  console.log(products);
 
   const { parentRef, virtualizer } = useInventoryVirtual(products.length);
 

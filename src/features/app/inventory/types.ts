@@ -58,6 +58,7 @@ export type GetProductsResponse = {
 export type ProductSort = "newest" | "price_desc" | "price_asc" | "name";
 
 export type ProductListParams = {
+  id?: number;
   search?: string;
   sort?: ProductSort;
   category_id?: number;
