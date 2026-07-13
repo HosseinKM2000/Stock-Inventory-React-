@@ -1,7 +1,6 @@
-import { db } from "../storage/db";
+
+import { queueStorage } from "../storage/queue-storage";
 import type { QueueAction } from "../storage/types";
-
-
 
 export const queueService = {
 
@@ -12,36 +11,37 @@ export const queueService = {
     payload: unknown,
   ) {
 
-    await db.syncQueue.put({
+    await queueStorage.upsert({
+
       id: `${entity}-${entityId}`,
+
       entity,
+
       entityId,
+
       action,
+
       payload,
+
       updatedAt: Date.now(),
+
     });
 
   },
 
 
   async getAll() {
-
-    return db.syncQueue.toArray();
-
+    return queueStorage.getAll();
   },
 
 
   async remove(id: string) {
-
-    return db.syncQueue.delete(id);
-
+    return queueStorage.remove(id);
   },
 
 
   async clear() {
-
-    return db.syncQueue.clear();
-
-  }
+    return queueStorage.clear();
+  },
 
 };

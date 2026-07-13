@@ -41,7 +41,7 @@ export type Product = {
 
   updated_at: string;
 
-  catalog_product: CatalogProduct;
+  catalog_product?: CatalogProduct;
 };
 
 export type InventoryMeta = {
@@ -55,7 +55,13 @@ export type GetProductsResponse = {
   meta: InventoryMeta;
 };
 
-export type ProductSort = "newest" | "price_desc" | "price_asc" | "name";
+export type ProductSort =
+  | "newest"
+  | "oldest"
+  | "price_high"
+  | "price_low"
+  | "quantity_high"
+  | "quantity_low";
 
 export type ProductListParams = {
   id?: number;

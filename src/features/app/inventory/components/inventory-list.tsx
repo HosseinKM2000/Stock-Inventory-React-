@@ -57,6 +57,30 @@ const InventoryList = () => {
           gap-5
         "
       >
+        {/* DESKTOP FILTER */}
+
+        <Box
+          className="
+            hidden!
+            lg:block!
+            w-80
+            shrink-0
+          "
+        >
+          <div
+            className="
+              sticky
+              top-5
+            "
+          >
+            <FilterPanel
+              search={search}
+              setSearch={setSearch}
+              sort={sort}
+              setSort={setSort}
+            />
+          </div>
+        </Box>
         {/* PRODUCTS */}
 
         <Box
@@ -132,31 +156,6 @@ const InventoryList = () => {
               </div>
             </div>
           )}
-        </Box>
-
-        {/* DESKTOP FILTER */}
-
-        <Box
-          className="
-            hidden!
-            lg:block!
-            w-80
-            shrink-0
-          "
-        >
-          <div
-            className="
-              sticky
-              top-5
-            "
-          >
-            <FilterPanel
-              search={search}
-              setSearch={setSearch}
-              sort={sort}
-              setSort={setSort}
-            />
-          </div>
         </Box>
       </Flex>
 

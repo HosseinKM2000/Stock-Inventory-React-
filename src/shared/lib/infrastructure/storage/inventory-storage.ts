@@ -1,5 +1,5 @@
+import type { Product } from "@/features/app/inventory/types";
 import { db } from "@/shared/lib/infrastructure/storage/db";
-import type { Product } from "../types";
 
 export const inventoryStorage = {
   getAll(): Promise<Product[]> {

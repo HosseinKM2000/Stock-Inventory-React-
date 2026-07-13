@@ -56,7 +56,7 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
         <div className="w-36 shrink-0">
           <img
             src={image}
-            alt={product.catalog_product.name}
+            alt={product?.catalog_product?.name}
             className="
               w-full
               h-full
@@ -73,12 +73,12 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
           <Flex justify="between" align="start">
             <Flex direction="column" gap="1">
               <Text weight="bold" size="3">
-                {product.custom_label ?? product.catalog_product.name}
+                {product?.custom_label ?? product?.catalog_product?.name}
               </Text>
 
-              {product.catalog_product.brand && (
+              {product.catalog_product?.brand && (
                 <Text size="1" color="gray">
-                  {product.catalog_product.brand}
+                  {product.catalog_product?.brand}
                 </Text>
               )}
             </Flex>
@@ -89,8 +89,8 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
           {/* Description */}
 
           <Text size="2" color="gray" className="line-clamp-2">
-            {product.note ??
-              product.catalog_product.description ??
+            {product?.note ??
+              product?.catalog_product?.description ??
               "بدون توضیح"}
           </Text>
           <Flex align={"end"} justify={"between"}>
@@ -102,11 +102,11 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
               align="center"
             >
               <Badge color="indigo" size={"3"} radius="full">
-                100000 {product.price.toLocaleString("fa-IR")} تومان
+                {product.price.toLocaleString("fa-IR")} تومان
               </Badge>
 
               <Badge variant="soft" color="gray" size={"3"}>
-                تعداد: {product.quantity.toLocaleString("fa-IR")}
+                تعداد: {product.quantity}
               </Badge>
             </Flex>
 

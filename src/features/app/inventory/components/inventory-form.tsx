@@ -1,25 +1,36 @@
-import { useState } from "react";
-import { Form } from "@/shared/ui/form/form";
-import { Button } from "@/shared/ui/button/button";
-import { resolveAssetUrl } from "@/shared/api/client";
-import { productSchema } from "../schema/product.schema";
-import { type Product, type ProductInput } from "../types";
-import { useAppForm } from "@/shared/lib/form/use-app-form";
-import { FormField } from "@/shared/ui/form/field/form-field";
-import { TextInput } from "@/shared/ui/form/input/text-input";
-import { preventEventHandler } from "@/shared/lib/prevent-event";
-import { TextAreaInput } from "@/shared/ui/form/input/text-area";
-import { Box, Callout, Card, Grid, Text } from "@radix-ui/themes";
 import { ProductImageUpload } from "@/features/app/inventory/components/upload-file";
+import { resolveAssetUrl } from "@/shared/api/client";
+import { useAppForm } from "@/shared/lib/form/use-app-form";
+import { preventEventHandler } from "@/shared/lib/prevent-event";
+import { Button } from "@/shared/ui/button/button";
+import { SwitchInput } from "@/shared/ui/button/toggle-button";
+import { FormField } from "@/shared/ui/form/field/form-field";
+import { Form } from "@/shared/ui/form/form";
+import { SelectInput } from "@/shared/ui/form/input/select-input";
+import { TextAreaInput } from "@/shared/ui/form/input/text-area";
+import { TextInput } from "@/shared/ui/form/input/text-input";
+import { Box, Callout, Card, Grid, Switch, Text } from "@radix-ui/themes";
+import { useState } from "react";
+import { createProductInitialValues } from "../form/product-form.initial";
+import { productSchema } from "../schema/product.schema";
+import { type Product } from "../types";
+
+type ProductFormMode = "create" | "edit" | "view";
 
 type ProductFormProps = {
-  mode: "create" | "edit";
+  mode: ProductFormMode;
+
   initial?: Product;
+
   submitting?: boolean;
-  errorMessage?: string | null;
-  onSubmit: (input: ProductInput) => void;
-  onDelete?: () => void;
+
   deleting?: boolean;
+
+  errorMessage?: string | null;
+
+  onSubmit?(product: Product): void;
+
+  onDelete?(): void;
 };
 
 export function ProductForm({
@@ -32,37 +43,32 @@ export function ProductForm({
   deleting = false,
 }: ProductFormProps) {
   // const { data: categories = [] } = useCategories();
+  const readOnly = mode === "view";
+
+  const statusOptions = [
+    { label: "موجود", value: "in_stock" },
+    { label: "کمبود موجودی", value: "low_stock" },
+    { label: "ناموجود", value: "out_of_stock" },
+  ];
 
   const form = useAppForm({
     schema: productSchema,
 
-    initialValues: {
-      name: initial?.catalog_product?.name ?? "",
-
-      description: initial?.catalog_product?.description ?? null,
-
-      // unit: initial?.unit ?? null,
-
-      quantity: initial?.quantity ?? 0,
-
-      price: initial?.price ?? 0,
-
-      low_stock_threshold: initial?.low_stock_threshold ?? 0,
-
-      low_stock_alert: initial?.low_stock_alert ?? false,
-
-      image: null,
-
-      remove_image: false,
-    },
+    initialValues: createProductInitialValues(initial),
 
     onSubmit(values) {
-      onSubmit({
+      onSubmit?.({
         ...values,
 
-        image: imageFile ?? undefined,
+        catalog_product: {
+          ...values.catalog_product,
 
-        remove_image: mode === "edit" ? removeImage : undefined,
+          image_url: imagePreview
+            ? imagePreview
+            : values?.catalog_product?.image_url
+              ? values?.catalog_product?.image_url
+              : null,
+        },
       });
     },
   });
@@ -93,12 +99,16 @@ export function ProductForm({
   return (
     <Form isSubmitting={submitting} onSubmit={preventEventHandler(form.submit)}>
       <Box
-        mt={"6"}
-        mb={"9"}
-        className="bg-foreground/5 p-5 rounded-2xl mt-5 border-foreground/20 border"
+        mt="6"
+        mb="9"
+        className="bg-foreground/5 border border-foreground/20 rounded-2xl p-5"
       >
-        <Text className="text-xl font-medium">
-          {mode === "create" ? "افزودن محصول جدید" : "ویرایش محصول"}
+        <Text size="6" weight="bold">
+          {mode === "create"
+            ? "افزودن محصول"
+            : mode === "edit"
+              ? "ویرایش محصول"
+              : "مشاهده محصول"}
         </Text>
 
         {errorMessage && (
@@ -107,134 +117,197 @@ export function ProductForm({
           </Callout.Root>
         )}
 
-        <Grid columns={{ xs: "1", md: "3" }} gap={"5"} width="auto" mt={"5"}>
+        <Grid columns={{ xs: "1", md: "3" }} gap="5" mt="5">
           <Box className="md:col-span-3">
             <ProductImageUpload
               value={imagePreview}
               onChange={handleImageChange}
+              disabled={readOnly}
             />
           </Box>
-          <FormField label="نام محصول" id="name" error={form.errors.name}>
+
+          {/* Custom Label */}
+
+          <FormField
+            id="custom_label"
+            label="لیبل محصول"
+            error={form.errors.custom_label}
+          >
             <TextInput
-              size={"3"}
-              name="name"
-              value={form.values.name}
+              size="3"
+              name="custom_label"
+              value={form.values.custom_label ?? ""}
               onChange={form.handleChange}
+              disabled={readOnly}
             />
           </FormField>
-          {/* <FormField label="دسته بندی" id="category_id">
-            <SelectInput
-              size={"3"}
-              placeholder="دسته بندی محصول"
-              value={`${form.values.category_id}`}
-              onValueChange={(value) =>
-                form.setValue("category_id", Number(value))
-              }
-              options={categoryOptions}
-            />
-          </FormField> */}
-          {/* <FormField label="واحد" id="unit">
-            <SelectInput
-              value={form.values.unit ?? ""}
-              onValueChange={(value) => form.setValue("unit", value)}
-              options={unitOptions}
-            />
-          </FormField> */}
-          <FormField label="تعداد" id="quantity">
+
+          {/* Catalog Name */}
+
+          <FormField id="catalog_name" label="نام کاتالوگ">
             <TextInput
-              size={"3"}
+              size="3"
+              value={form.values?.catalog_product?.name ?? ""}
+              disabled
+            />
+          </FormField>
+
+          {/* Brand */}
+
+          <FormField id="brand" label="برند">
+            <TextInput
+              size="3"
+              value={form.values?.catalog_product?.brand ?? ""}
+              disabled
+            />
+          </FormField>
+
+          {/* Quantity */}
+
+          <FormField id="quantity" label="تعداد" error={form.errors.quantity}>
+            <TextInput
+              size="3"
               type="number"
               name="quantity"
               value={form.values.quantity}
               onChange={form.handleChange}
+              disabled={readOnly}
             />
           </FormField>
-          <FormField label="قیمت (تومان)" id="price">
+
+          {/* Price */}
+
+          <FormField id="price" label="قیمت" error={form.errors.price}>
             <TextInput
-              size={"3"}
+              size="3"
               type="number"
               name="price"
               value={form.values.price}
               onChange={form.handleChange}
+              disabled={readOnly}
             />
           </FormField>
+
+          {/* Status */}
+
+          <FormField id="status" label="وضعیت">
+            <SelectInput
+              size="3"
+              value={form.values.status}
+              onValueChange={(value) =>
+                form.setValue("status", value as Product["status"])
+              }
+              options={statusOptions}
+              disabled={readOnly}
+            />
+          </FormField>
+
+          {/* Catalog Description */}
+
           <Box className="md:col-span-3">
-            <FormField id="description" label="توضیحات">
+            <FormField id="catalog_description" label="توضیحات کاتالوگ">
               <TextAreaInput
                 size="3"
-                name="description"
-                value={form.values.description ?? ""}
-                onChange={form.handleChange}
+                value={form.values?.catalog_product?.description ?? ""}
+                disabled
               />
             </FormField>
           </Box>
+
+          {/* Note */}
+
+          <Box className="md:col-span-3">
+            <FormField id="note" label="یادداشت">
+              <TextAreaInput
+                size="3"
+                name="note"
+                value={form.values.note ?? ""}
+                onChange={form.handleChange}
+                disabled={readOnly}
+              />
+            </FormField>
+          </Box>
+
+          {/* Inventory Settings */}
+
           <Card
             size="3"
             className="
-        w-full
-        rounded-3xl
-        border
-        md:col-span-3
-        border-violet-1
-        bg-violet-1/40
-      "
+          md:col-span-3
+          rounded-3xl
+          border
+          border-violet-1
+          bg-violet-1/40
+        "
           >
-            {/* <Flex
-              gap="3"
-              wrap={"wrap"}
-              width={"100%"}
-              align={"center"}
-              justify={"between"}
-            >
-              <Flex justify="between" wrap={"wrap"} align="start" gap="4">
-                <Switch
+            <Grid columns={{ xs: "1", md: "2" }} gap="5">
+              <FormField id="low_stock_threshold" label="حد نصاب هشدار">
+                <TextInput
                   size="3"
-                  checked={lowStockAlert}
-                  onCheckedChange={setLowStockAlert}
+                  type="number"
+                  name="low_stock_threshold"
+                  value={form.values.low_stock_threshold}
+                  onChange={form.handleChange}
+                  disabled={readOnly}
                 />
-                <Flex align="start" gap="3" wrap={"wrap"}>
-                  <Box className="mt-1 text-amber-600">
-                    <BellIcon width={28} height={28} />
-                  </Box>
-                  <Box>
-                    <Text as="div" size="3" weight="bold">
-                      هشدار کم موجودی
-                    </Text>
-                    <Text as="div" size="2" color="gray" className="mt-1">
-                      هنگام رسیدن موجودی به حد نصاب اطلاع‌رسانی شود.
-                    </Text>
-                  </Box>
-                </Flex>
-              </Flex>
-              <Box className="w-full md:w-45">
-                <FormField id="threshold" label="حد نصاب هشدار">
-                  <TextInput
-                    size="3"
-                    type="number"
-                    value={form.values.t}
-                    onChange={form.handleChange}
+              </FormField>
+
+              <FormField id="low_stock_alert" label="فعال بودن هشدار">
+                <Box pt="2">
+                  <SwitchInput
+                    checked={form.values.low_stock_alert}
+                    disabled={readOnly}
+                    onCheckedChange={(checked) =>
+                      form.setValue("low_stock_alert", checked)
+                    }
                   />
-                </FormField>
-              </Box>
-            </Flex> */}
+                </Box>
+              </FormField>
+
+              <FormField id="is_hidden" label="مخفی باشد">
+                <Box pt="2">
+                  <Switch
+                    checked={form.values.is_hidden}
+                    disabled={readOnly}
+                    onCheckedChange={(checked) =>
+                      form.setValue("is_hidden", checked)
+                    }
+                  />
+                </Box>
+              </FormField>
+            </Grid>
           </Card>
+
+          {/* Dates */}
+
+          <FormField id="created_at" label="تاریخ ایجاد">
+            <TextInput size="3" value={form.values.created_at} disabled />
+          </FormField>
+
+          <FormField id="updated_at" label="آخرین بروزرسانی">
+            <TextInput size="3" value={form.values.updated_at} disabled />
+          </FormField>
         </Grid>
-        <Grid width={"100%"} mt={"6"}>
-          <Button type="submit" loading={submitting}>
-            {mode === "create" ? "افزودن" : "ثبت تغییرات"}
-          </Button>
-          {mode === "edit" && onDelete && (
-            <Button
-              mt={"3"}
-              color="red"
-              type="button"
-              loading={deleting}
-              onClick={onDelete}
-            >
-              حذف
+
+        {mode !== "view" && (
+          <Grid mt="6">
+            <Button type="submit" loading={submitting}>
+              {mode === "create" ? "افزودن" : "ثبت تغییرات"}
             </Button>
-          )}
-        </Grid>
+
+            {mode === "edit" && onDelete && (
+              <Button
+                mt="3"
+                color="red"
+                type="button"
+                loading={deleting}
+                onClick={onDelete}
+              >
+                حذف
+              </Button>
+            )}
+          </Grid>
+        )}
       </Box>
     </Form>
   );

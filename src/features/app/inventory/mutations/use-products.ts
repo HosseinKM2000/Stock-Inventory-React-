@@ -6,15 +6,13 @@ import { inventoryService } from "../services/inventory-service";
 
 import type { Product, ProductInput, ProductListParams } from "../types";
 
-const dashboardKey = ["dashboard", "stats"] as const;
-
 export function useProducts(params: ProductListParams = {}) {
   return useQuery({
     queryKey: productKeys.list(params),
 
-    queryFn: () => inventoryService.getAll(),
+    queryFn: () => inventoryService.getAll(params),
 
-    staleTime: Infinity,
+    staleTime: 0,
   });
 }
 
@@ -37,10 +35,6 @@ export function useCreateProduct() {
     onSuccess() {
       queryClient.invalidateQueries({
         queryKey: productKeys.all,
-      });
-
-      queryClient.invalidateQueries({
-        queryKey: dashboardKey,
       });
     },
   });
