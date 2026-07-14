@@ -1,7 +1,8 @@
-import { ApiError } from "@/shared/api/client";
+
 import { useNavigate } from "@tanstack/react-router";
 import { useCreateProduct } from "../hooks/use-products";
 import { ProductForm } from "./product-form";
+import { ApiError } from "@/shared/api/api-error";
 
 const AddProductForm = () => {
   const navigate = useNavigate();

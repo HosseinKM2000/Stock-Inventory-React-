@@ -1,65 +1,72 @@
-
+import { useEffect } from "react";
 
 import { Button } from "@/shared/ui/button/button";
-import { FormField } from "@/shared/ui/form/field/form-field";
 import { Form } from "@/shared/ui/form/form";
+import { FormField } from "@/shared/ui/form/field/form-field";
 import { TextInput } from "@/shared/ui/form/input/text-input";
+
+import { useAppForm } from "@/shared/lib/form/use-app-form";
 import { preventEventHandler } from "@/shared/lib/prevent-event";
+
+import { ApiError } from "@/shared/api/api-error";
+
+import {
+  useMe,
+  useUpdateProfile,
+} from "@/features/auth/mutations/use-register";
+
 import { Box, Callout, Grid, Text } from "@radix-ui/themes";
-import { useEffect, useState } from "react";
-import { useMe, useUpdateProfile } from "@/features/auth/mutations/use-register";
-import { ApiError } from "@/services/api/api-error";
+import {
+  profileSchema,
+  type ProfileFormValues,
+} from "../../validators/profile.schema";
+
+const emptyValues: ProfileFormValues = {
+  first_name: "",
+  last_name: "",
+  username: "",
+  email: "",
+  phone: "",
+};
 
 const PersonalInformationFields = () => {
   const { data: me } = useMe();
   const updateProfile = useUpdateProfile();
 
-  const [form, setForm] = useState({
-    first_name: "",
-    last_name: "",
-    username: "",
-    email: "",
-    phone: "",
+  const form = useAppForm({
+    schema: profileSchema,
+    initialValues: emptyValues,
+
+    onSubmit(values) {
+      updateProfile.mutate(values);
+    },
   });
 
   useEffect(() => {
-    if (me) {
-      setForm({
-        first_name: me.first_name,
-        last_name: me.last_name,
-        username: me.username,
-        email: me.email ?? "",
-        phone: me.phone ?? "",
-      });
-    }
+    if (!me) return;
+
+    form.load({
+      first_name: me.first_name,
+      last_name: me.last_name,
+      username: me.username,
+      email: me.email ?? "",
+      phone: me.phone ?? "",
+    });
   }, [me]);
 
-  const handleChange = (e: { target: { name: string; value: string } }) => {
-    const { name, value } = e.target;
-    setForm((prev) => ({ ...prev, [name]: value }));
-  };
-
-  const handleSubmit = () => {
-    updateProfile.mutate({
-      first_name: form.first_name,
-      last_name: form.last_name,
-      username: form.username,
-      email: form.email || null,
-      phone: form.phone || null,
-    });
-  };
-
   const errorMessage =
-    updateProfile.error instanceof ApiError ? updateProfile.error.message : null;
+    updateProfile.error instanceof ApiError
+      ? updateProfile.error.message
+      : null;
 
   return (
     <Form
-      onSubmit={preventEventHandler(handleSubmit)}
+      onSubmit={preventEventHandler(form.submit)}
       isSubmitting={updateProfile.isPending}
     >
       <Box
-        mt={"6"}
-        className="bg-foreground/5 p-5 rounded-2xl mt-5 border-foreground/20 border"
+        mt="6"
+        className="bg-foreground/5 p-5 rounded-2xl border border-foreground/20"
       >
         <Text className="text-xl font-medium">اطلاعات کاربری</Text>
 
@@ -68,55 +75,69 @@ const PersonalInformationFields = () => {
             <Callout.Text>{errorMessage}</Callout.Text>
           </Callout.Root>
         )}
+
         {updateProfile.isSuccess && (
           <Callout.Root color="green" dir="rtl" mt="4">
             <Callout.Text>اطلاعات با موفقیت ذخیره شد</Callout.Text>
           </Callout.Root>
         )}
 
-        <Grid columns={{ xs: "1", md: "3" }} gap={"5"} width="auto" mt={"5"}>
-          <FormField label="نام" id="first_name">
+        <Grid columns={{ xs: "1", md: "3" }} gap="5" mt="5">
+          <FormField label="نام" id="first_name" error={form.errors.first_name}>
             <TextInput
-              size={"3"}
+              size="3"
               name="first_name"
-              value={form.first_name}
-              onChange={handleChange}
+              value={form.values.first_name}
+              onChange={form.handleChange}
             />
           </FormField>
-          <FormField label="نام خانوادگی" id="last_name">
+
+          <FormField
+            label="نام خانوادگی"
+            id="last_name"
+            error={form.errors.last_name}
+          >
             <TextInput
-              size={"3"}
+              size="3"
               name="last_name"
-              value={form.last_name}
-              onChange={handleChange}
+              value={form.values.last_name}
+              onChange={form.handleChange}
             />
           </FormField>
-          <FormField label="نام کاربری" id="username">
+
+          <FormField
+            label="نام کاربری"
+            id="username"
+            error={form.errors.username}
+          >
             <TextInput
-              size={"3"}
+              size="3"
               name="username"
-              value={form.username}
-              onChange={handleChange}
+              value={form.values.username}
+              onChange={form.handleChange}
             />
           </FormField>
-          <FormField label="ایمیل" id="email">
+
+          <FormField label="ایمیل" id="email" error={form.errors.email}>
             <TextInput
-              size={"3"}
+              size="3"
               name="email"
-              value={form.email}
-              onChange={handleChange}
+              value={form.values.email}
+              onChange={form.handleChange}
             />
           </FormField>
-          <FormField label="شماره تماس" id="phone">
+
+          <FormField label="شماره تماس" id="phone" error={form.errors.phone}>
             <TextInput
-              size={"3"}
+              size="3"
               name="phone"
-              value={form.phone}
-              onChange={handleChange}
+              value={form.values.phone}
+              onChange={form.handleChange}
             />
           </FormField>
         </Grid>
-        <Grid width={"100%"} mt={"6"}>
+
+        <Grid mt="6">
           <Button type="submit" loading={updateProfile.isPending}>
             ویرایش
           </Button>

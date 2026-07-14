@@ -89,21 +89,35 @@ def validate_session(
     db: Session,
     user_id: int,
     fingerprint: str,
-):
+    token: str,
+) -> UserSession:
+
     session = get_session_by_fingerprint(
-        db=db,
-        user_id=user_id,
-        fingerprint=fingerprint,
+        db,
+        user_id,
+        fingerprint,
     )
 
     if session is None:
         raise HTTPException(
             status_code=403,
-            detail="Session invalid",
+            detail="Invalid device session",
+        )
+
+    if (
+        not session.is_active
+        or session.access_token != token
+    ):
+        raise HTTPException(
+            status_code=403,
+            detail="Session expired",
+        )
+    if not session.is_active:
+        raise HTTPException(
+            status_code=403,
+            detail="Session inactive",
         )
 
     update_last_seen(session)
-
-    db.commit()
 
     return session

@@ -16,6 +16,15 @@ export type Product = {
   updated_at: string;
 };
 
+export type GetProductResponse = {
+  items: Product[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+  };
+};
+
 export type ProductSort = "newest" | "price_desc" | "price_asc" | "name";
 
 export type ProductListParams = {
@@ -26,15 +35,15 @@ export type ProductListParams = {
 
 export type ProductInput = {
   name?: string;
-  description?: string | null;
-  unit?: string | null;
-  quantity?: number;
   price?: number;
-  low_stock_threshold?: number;
-  low_stock_alert?: boolean;
-  category_id?: number | null;
+  quantity?: number;
   image?: File | null;
+  unit?: string | null;
   remove_image?: boolean;
+  low_stock_alert?: boolean;
+  description?: string | null;
+  category_id?: number | null;
+  low_stock_threshold?: number;
 };
 
 export const PRODUCT_UNITS = [

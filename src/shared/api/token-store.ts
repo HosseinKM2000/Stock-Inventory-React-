@@ -1,15 +1,16 @@
-const TOKEN_KEY = "stock_auth_token";
+import { storage } from "@/shared/storage/local-storage";
+import { STORAGE_KEYS } from "@/shared/storage/keys";
 
-export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+export function getToken() {
+  return storage.get<string>(STORAGE_KEYS.ACCESS_TOKEN);
 }
 
-export function setToken(token: string): void {
-  localStorage.setItem(TOKEN_KEY, token);
+export function setToken(token: string) {
+  storage.set(STORAGE_KEYS.ACCESS_TOKEN, token);
 }
 
-export function clearToken(): void {
-  localStorage.removeItem(TOKEN_KEY);
+export function clearToken() {
+  storage.remove(STORAGE_KEYS.ACCESS_TOKEN);
 }
 
 export function isAuthenticated(): boolean {

@@ -49,6 +49,7 @@ def get_current_user(
         db=db,
         user_id=user.id,
         fingerprint=device_fingerprint,
+        token=token,
     )
 
     return user

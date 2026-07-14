@@ -1,4 +1,4 @@
-import { ApiError } from "@/shared/api/client";
+
 import { Callout, Flex, Spinner } from "@radix-ui/themes";
 import { useNavigate } from "@tanstack/react-router";
 import {
@@ -7,6 +7,7 @@ import {
   useUpdateProduct,
 } from "../hooks/use-products";
 import { ProductForm } from "./product-form";
+import { ApiError } from "@/shared/api/api-error";
 
 type EditProductFormProps = {
   id: number;

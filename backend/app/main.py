@@ -6,7 +6,7 @@ from .config import settings
 from sqlalchemy import text
 from .database import Base, engine
 from .exceptions import global_exception_handler
-from .routers import auth, bale, categories, dashboard, plans, backup, products, inventory, export, transactions, catalog, custom_products
+from .routers import auth, bale, categories, dashboard, plans, backup, products, inventory, export, transactions, catalog, custom_products, backup, industries
 
 # Create tables on startup (simple approach; swap for Alembic if needed).
 Base.metadata.create_all(bind=engine)
@@ -37,6 +37,7 @@ app.include_router(transactions.router, prefix=api)
 app.include_router(catalog.router, prefix=api)
 app.include_router(custom_products.router, prefix=api)
 app.include_router(backup.router, prefix=api)
+app.include_router(industries.router, prefix=api)
 
 
 @app.get("/api/health")

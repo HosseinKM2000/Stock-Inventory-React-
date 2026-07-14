@@ -1,53 +1,69 @@
-
-import { passwordSchema } from "@/shared/validation/password.schema";
-import { Button } from "@/shared/ui/button/button";
-import { FormField } from "@/shared/ui/form/field/form-field";
-import { Form } from "@/shared/ui/form/form";
-import { PasswordInput } from "@/shared/ui/form/input/password-input";
-import { preventEventHandler } from "@/shared/lib/prevent-event";
 import { Box, Callout, Grid, Text } from "@radix-ui/themes";
-import { useState } from "react";
+
+import { Button } from "@/shared/ui/button/button";
+import { Form } from "@/shared/ui/form/form";
+import { FormField } from "@/shared/ui/form/field/form-field";
+import { PasswordInput } from "@/shared/ui/form/input/password-input";
+
+import { useAppForm } from "@/shared/lib/form/use-app-form";
+import { preventEventHandler } from "@/shared/lib/prevent-event";
+
+import { ApiError } from "@/shared/api/api-error";
+
 import { useUpdatePassword } from "@/features/auth/mutations/use-register";
-import { ApiError } from "@/services/api/api-error";
+import { passwordSchema } from "@/shared/validation/password.schema";
+import { z } from "zod";
+
+const schema = z
+  .object({
+    password: passwordSchema,
+    repeatPassword: z.string(),
+  })
+  .refine(
+    (data) => data.password === data.repeatPassword,
+    {
+      path: ["repeatPassword"],
+      message: "رمز عبور و تکرار یکسان نیستند",
+    },
+  );
+
+const emptyValues: z.input<typeof schema> = {
+  password: "",
+  repeatPassword: "",
+};
 
 const PasswordFields = () => {
-  const [password, setPassword] = useState("");
-  const [repeatPassword, setRepeatPassword] = useState("");
-  const [validationError, setValidationError] = useState<string | null>(null);
   const updatePassword = useUpdatePassword();
 
-  const handleSubmit = () => {
-    const result = passwordSchema.safeParse(password);
-    if (!result.success) {
-      setValidationError(result.error.issues[0]?.message ?? "رمز عبور نامعتبر است");
-      return;
-    }
-    if (password !== repeatPassword) {
-      setValidationError("رمز عبور و تکرار آن یکسان نیستند");
-      return;
-    }
-    setValidationError(null);
-    updatePassword.mutate(password, {
-      onSuccess: () => {
-        setPassword("");
-        setRepeatPassword("");
-      },
-    });
-  };
+  const form = useAppForm({
+    schema,
+    initialValues: emptyValues,
 
-  const serverError =
-    updatePassword.error instanceof ApiError ? updatePassword.error.message : null;
-  const errorMessage = validationError ?? serverError;
+    onSubmit(values) {
+      updatePassword.mutate(values.password, {
+        onSuccess() {
+          form.reset();
+        },
+      });
+    },
+  });
+
+  const errorMessage =
+    updatePassword.error instanceof ApiError
+      ? updatePassword.error.message
+      : updatePassword.isError
+        ? "خطا در ارتباط با سرور"
+        : null;
 
   return (
     <Form
-      onSubmit={preventEventHandler(handleSubmit)}
+      onSubmit={preventEventHandler(form.submit)}
       isSubmitting={updatePassword.isPending}
     >
       <Box
-        mt={"6"}
+        mt="6"
         mb={{ xs: "9", md: "0" }}
-        className="bg-foreground/5 p-5 rounded-2xl mt-5 border-foreground/20 border"
+        className="bg-foreground/5 p-5 rounded-2xl border border-foreground/20"
       >
         <Text className="text-xl font-medium">امنیت</Text>
 
@@ -56,30 +72,52 @@ const PasswordFields = () => {
             <Callout.Text>{errorMessage}</Callout.Text>
           </Callout.Root>
         )}
+
         {updatePassword.isSuccess && (
           <Callout.Root color="green" dir="rtl" mt="4">
-            <Callout.Text>رمز عبور با موفقیت تغییر کرد</Callout.Text>
+            <Callout.Text>
+              رمز عبور با موفقیت تغییر کرد
+            </Callout.Text>
           </Callout.Root>
         )}
 
-        <Grid gap={"5"} width="auto" mt={"5"} columns={{ xs: "1", md: "3" }}>
-          <FormField label="رمز عبور" id="password">
+        <Grid
+          gap="5"
+          mt="5"
+          columns={{ xs: "1", md: "3" }}
+        >
+          <FormField
+            label="رمز عبور"
+            id="password"
+            error={form.errors.password}
+          >
             <PasswordInput
-              size={"3"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              size="3"
+              name="password"
+              value={form.values.password}
+              onChange={form.handleChange}
             />
           </FormField>
-          <FormField label="تکرار رمز عبور" id="repeat-password">
+
+          <FormField
+            label="تکرار رمز عبور"
+            id="repeatPassword"
+            error={form.errors.repeatPassword}
+          >
             <PasswordInput
-              size={"3"}
-              value={repeatPassword}
-              onChange={(e) => setRepeatPassword(e.target.value)}
+              size="3"
+              name="repeatPassword"
+              value={form.values.repeatPassword}
+              onChange={form.handleChange}
             />
           </FormField>
         </Grid>
-        <Grid width={"100%"} mt={"6"}>
-          <Button type="submit" loading={updatePassword.isPending}>
+
+        <Grid width="100%" mt="6">
+          <Button
+            type="submit"
+            loading={updatePassword.isPending}
+          >
             ویرایش رمز عبور
           </Button>
         </Grid>

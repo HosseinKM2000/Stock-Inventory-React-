@@ -43,8 +43,15 @@ class PasswordUpdate(BaseModel):
 
 
 class IndustrySelect(BaseModel):
-    industry: str
+    industry_id: int
 
+class IndustrySimpleOut(BaseModel):
+    id: int
+    name: str
+
+    model_config = ConfigDict(
+        from_attributes=True
+    )
 
 class UserOut(BaseModel):
     id: int
@@ -54,8 +61,9 @@ class UserOut(BaseModel):
     email: str | None = None
     phone: str | None = None
     plan: str
-    industry: str | None = None
+    industry_id: int | None = None
     created_at: datetime
+    industry: IndustrySimpleOut | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -107,12 +115,13 @@ class CatalogProductBase(BaseModel):
 
 
 class CatalogProductOut(CatalogProductBase):
-    model_config = ConfigDict(from_attributes=True)
-
     id: int
-    industry: str
-    category_id: int | None = None
+    industry_id: int
     created_at: datetime
+
+    model_config = ConfigDict(
+        from_attributes=True
+    )
 
 
 # =========================================================
@@ -304,3 +313,25 @@ class PlanUpdate(BaseModel):
 
 class DeviceInfo(BaseModel):
     device_fingerprint: str
+
+class IndustryBase(BaseModel):
+    name: str
+    description: str | None = None
+
+
+class IndustryCreate(IndustryBase):
+    is_active: bool = True
+    pass
+
+
+class IndustryUpdate(BaseModel):
+    name: str | None = None
+    is_active: bool | None = None
+    description: str | None = None
+
+
+class IndustryOut(IndustryBase):
+    id: int
+    is_active: bool
+
+    model_config = ConfigDict(from_attributes=True)

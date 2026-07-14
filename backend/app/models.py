@@ -44,9 +44,14 @@ class User(Base):
         default="free"
     )
 
-    industry: Mapped[str | None] = mapped_column(
-        String(120),
-        nullable=True
+    industry_id: Mapped[int | None] = mapped_column(
+        ForeignKey("industries.id"),
+        nullable=True,
+        index=True,
+    )
+
+    industry: Mapped["Industry | None"] = relationship(
+    back_populates="users"
     )
 
     created_at: Mapped[datetime] = mapped_column(
@@ -79,6 +84,7 @@ class User(Base):
     back_populates="user",
     cascade="all, delete-orphan",
     )
+
 
 class UserSession(Base):
     __tablename__ = "user_sessions"
@@ -146,9 +152,13 @@ class CatalogProduct(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
 
-    industry: Mapped[str] = mapped_column(
-    String(120),
-    index=True
+    industry_id: Mapped[int] = mapped_column(
+        ForeignKey("industries.id"),
+        index=True,
+    )
+
+    industry: Mapped["Industry"] = relationship(
+    back_populates="catalog_products"
     )
 
     name: Mapped[str] = mapped_column(String(200), index=True)
@@ -276,7 +286,6 @@ class CustomProduct(Base):
         back_populates="custom_products"
     )
 
-
 # ---------- Inventory Transactions ----------
 class InventoryTransaction(Base):
     __tablename__ = "inventory_transactions"
@@ -312,4 +321,35 @@ class InventoryTransaction(Base):
 
     inventory_item: Mapped["InventoryItem"] = relationship(
         back_populates="transactions"
+    )
+
+
+class Industry(Base):
+    __tablename__ = "industries"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+
+    name: Mapped[str] = mapped_column(
+        String(100),
+        unique=True,
+        index=True,
+    )
+
+    description: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    is_active: Mapped[bool] = mapped_column(
+        Boolean,
+        default=True,
+    )
+
+    catalog_products: Mapped[list["CatalogProduct"]] = relationship(
+    back_populates="industry",
+    cascade="all, delete-orphan"
+    )
+
+    users: Mapped[list["User"]] = relationship(
+        back_populates="industry"
     )

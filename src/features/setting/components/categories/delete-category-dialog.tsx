@@ -1,9 +1,10 @@
-import { useDeleteCategory } from "@/features/categories/use-categories";
-import type { Category } from "@/features/categories/types";
+
 import { Button } from "@/shared/ui/button/button";
 import { TrashIcon } from "@radix-ui/react-icons";
 import { Dialog, Flex } from "@radix-ui/themes";
 import { useState } from "react";
+import { useDeleteCategory } from "../../mutations/use-categories";
+import type { Category } from "../../types";
 
 type DeleteCategoryDialogProps = {
   category: Category;

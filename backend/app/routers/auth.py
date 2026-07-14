@@ -1,10 +1,9 @@
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 from fastapi import Header
-from ..services.auth_service import logout
 
 from ..deps import CurrentUser, DbSession
-from ..models import User
+from ..models import User, Industry
 from ..schemas import (
     IndustrySelect,
     BaleAuthRequest,
@@ -21,6 +20,7 @@ from ..services.auth_service import (
     signup as signup_service,
     login as login_service,
     login_with_bale,
+    logout,
     update_user,
     update_password as update_password_service,
 )
@@ -135,15 +135,13 @@ def update_me(
     current_user: CurrentUser,
     db: DbSession,
 ):
-
-    data = payload.model_dump(exclude_unset=True)
-
-    username = data.get("username")
-
-    if username and _username_taken(
-        db,
-        username,
-        current_user.id,
+    if (
+        payload.username
+        and _username_taken(
+            db,
+            payload.username,
+            current_user.id,
+        )
     ):
         raise HTTPException(
             status_code=409,
@@ -153,9 +151,8 @@ def update_me(
     return update_user(
         db=db,
         user=current_user,
-        data=data,
+        payload=payload,
     )
-
 
 # =========================================================
 # CHANGE PASSWORD
@@ -195,8 +192,18 @@ def set_industry(
     current_user: CurrentUser,
     db: DbSession,
 ):
+    industry = db.get(
+        Industry,
+        payload.industry_id,
+    )
 
-    current_user.industry = payload.industry
+    if industry is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Industry not found",
+        )
+
+    current_user.industry_id = industry.id
 
     db.commit()
     db.refresh(current_user)

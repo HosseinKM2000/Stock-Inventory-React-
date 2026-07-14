@@ -1,7 +1,7 @@
 import { apiFetch } from "@/shared/api/client";
-import type { Category, CategoryInput } from "./types";
+import type { Category, CategoryInput } from "../types";
 
-export function listCategories(): Promise<Category[]> {
+export function getCategories(): Promise<Category[]> {
   return apiFetch<Category[]>("/categories");
 }
 

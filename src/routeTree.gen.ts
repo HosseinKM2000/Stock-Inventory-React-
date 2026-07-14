@@ -14,11 +14,14 @@ import { Route as AuthRouteRouteImport } from './routes/auth/route'
 import { Route as appRouteRouteImport } from './routes/(app)/route'
 import { Route as appIndexRouteImport } from './routes/(app)/index'
 import { Route as SettingProfileRouteImport } from './routes/setting/profile'
+import { Route as SettingIndustryRouteImport } from './routes/setting/industry'
 import { Route as SettingExportRouteImport } from './routes/setting/export'
 import { Route as SettingCategoriesRouteImport } from './routes/setting/categories'
 import { Route as SettingAppearanceRouteImport } from './routes/setting/appearance'
 import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
+import { Route as appIndustryRouteRouteImport } from './routes/(app)/industry/route'
+import { Route as appIndustryIndexRouteImport } from './routes/(app)/industry/index'
 import { Route as appProductListRouteImport } from './routes/(app)/product/list'
 import { Route as appProductEditRouteImport } from './routes/(app)/product/edit'
 import { Route as appProductAddRouteImport } from './routes/(app)/product/add'
@@ -47,6 +50,11 @@ const SettingProfileRoute = SettingProfileRouteImport.update({
   path: '/profile',
   getParentRoute: () => SettingRouteRoute,
 } as any)
+const SettingIndustryRoute = SettingIndustryRouteImport.update({
+  id: '/industry',
+  path: '/industry',
+  getParentRoute: () => SettingRouteRoute,
+} as any)
 const SettingExportRoute = SettingExportRouteImport.update({
   id: '/export',
   path: '/export',
@@ -72,6 +80,16 @@ const AuthLoginRoute = AuthLoginRouteImport.update({
   path: '/login',
   getParentRoute: () => AuthRouteRoute,
 } as any)
+const appIndustryRouteRoute = appIndustryRouteRouteImport.update({
+  id: '/industry',
+  path: '/industry',
+  getParentRoute: () => appRouteRoute,
+} as any)
+const appIndustryIndexRoute = appIndustryIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => appIndustryRouteRoute,
+} as any)
 const appProductListRoute = appProductListRouteImport.update({
   id: '/product/list',
   path: '/product/list',
@@ -91,16 +109,19 @@ const appProductAddRoute = appProductAddRouteImport.update({
 export interface FileRoutesByFullPath {
   '/auth': typeof AuthRouteRouteWithChildren
   '/setting': typeof SettingRouteRouteWithChildren
+  '/industry': typeof appIndustryRouteRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/setting/appearance': typeof SettingAppearanceRoute
   '/setting/categories': typeof SettingCategoriesRoute
   '/setting/export': typeof SettingExportRoute
+  '/setting/industry': typeof SettingIndustryRoute
   '/setting/profile': typeof SettingProfileRoute
   '/': typeof appIndexRoute
   '/product/add': typeof appProductAddRoute
   '/product/edit': typeof appProductEditRoute
   '/product/list': typeof appProductListRoute
+  '/industry/': typeof appIndustryIndexRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRouteRouteWithChildren
@@ -110,43 +131,51 @@ export interface FileRoutesByTo {
   '/setting/appearance': typeof SettingAppearanceRoute
   '/setting/categories': typeof SettingCategoriesRoute
   '/setting/export': typeof SettingExportRoute
+  '/setting/industry': typeof SettingIndustryRoute
   '/setting/profile': typeof SettingProfileRoute
   '/': typeof appIndexRoute
   '/product/add': typeof appProductAddRoute
   '/product/edit': typeof appProductEditRoute
   '/product/list': typeof appProductListRoute
+  '/industry': typeof appIndustryIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/(app)': typeof appRouteRouteWithChildren
   '/auth': typeof AuthRouteRouteWithChildren
   '/setting': typeof SettingRouteRouteWithChildren
+  '/(app)/industry': typeof appIndustryRouteRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
   '/setting/appearance': typeof SettingAppearanceRoute
   '/setting/categories': typeof SettingCategoriesRoute
   '/setting/export': typeof SettingExportRoute
+  '/setting/industry': typeof SettingIndustryRoute
   '/setting/profile': typeof SettingProfileRoute
   '/(app)/': typeof appIndexRoute
   '/(app)/product/add': typeof appProductAddRoute
   '/(app)/product/edit': typeof appProductEditRoute
   '/(app)/product/list': typeof appProductListRoute
+  '/(app)/industry/': typeof appIndustryIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/auth'
     | '/setting'
+    | '/industry'
     | '/auth/login'
     | '/auth/register'
     | '/setting/appearance'
     | '/setting/categories'
     | '/setting/export'
+    | '/setting/industry'
     | '/setting/profile'
     | '/'
     | '/product/add'
     | '/product/edit'
     | '/product/list'
+    | '/industry/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -156,26 +185,31 @@ export interface FileRouteTypes {
     | '/setting/appearance'
     | '/setting/categories'
     | '/setting/export'
+    | '/setting/industry'
     | '/setting/profile'
     | '/'
     | '/product/add'
     | '/product/edit'
     | '/product/list'
+    | '/industry'
   id:
     | '__root__'
     | '/(app)'
     | '/auth'
     | '/setting'
+    | '/(app)/industry'
     | '/auth/login'
     | '/auth/register'
     | '/setting/appearance'
     | '/setting/categories'
     | '/setting/export'
+    | '/setting/industry'
     | '/setting/profile'
     | '/(app)/'
     | '/(app)/product/add'
     | '/(app)/product/edit'
     | '/(app)/product/list'
+    | '/(app)/industry/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -221,6 +255,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingProfileRouteImport
       parentRoute: typeof SettingRouteRoute
     }
+    '/setting/industry': {
+      id: '/setting/industry'
+      path: '/industry'
+      fullPath: '/setting/industry'
+      preLoaderRoute: typeof SettingIndustryRouteImport
+      parentRoute: typeof SettingRouteRoute
+    }
     '/setting/export': {
       id: '/setting/export'
       path: '/export'
@@ -256,6 +297,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthLoginRouteImport
       parentRoute: typeof AuthRouteRoute
     }
+    '/(app)/industry': {
+      id: '/(app)/industry'
+      path: '/industry'
+      fullPath: '/industry'
+      preLoaderRoute: typeof appIndustryRouteRouteImport
+      parentRoute: typeof appRouteRoute
+    }
+    '/(app)/industry/': {
+      id: '/(app)/industry/'
+      path: '/'
+      fullPath: '/industry/'
+      preLoaderRoute: typeof appIndustryIndexRouteImport
+      parentRoute: typeof appIndustryRouteRoute
+    }
     '/(app)/product/list': {
       id: '/(app)/product/list'
       path: '/product/list'
@@ -280,7 +335,19 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface appIndustryRouteRouteChildren {
+  appIndustryIndexRoute: typeof appIndustryIndexRoute
+}
+
+const appIndustryRouteRouteChildren: appIndustryRouteRouteChildren = {
+  appIndustryIndexRoute: appIndustryIndexRoute,
+}
+
+const appIndustryRouteRouteWithChildren =
+  appIndustryRouteRoute._addFileChildren(appIndustryRouteRouteChildren)
+
 interface appRouteRouteChildren {
+  appIndustryRouteRoute: typeof appIndustryRouteRouteWithChildren
   appIndexRoute: typeof appIndexRoute
   appProductAddRoute: typeof appProductAddRoute
   appProductEditRoute: typeof appProductEditRoute
@@ -288,6 +355,7 @@ interface appRouteRouteChildren {
 }
 
 const appRouteRouteChildren: appRouteRouteChildren = {
+  appIndustryRouteRoute: appIndustryRouteRouteWithChildren,
   appIndexRoute: appIndexRoute,
   appProductAddRoute: appProductAddRoute,
   appProductEditRoute: appProductEditRoute,
@@ -316,6 +384,7 @@ interface SettingRouteRouteChildren {
   SettingAppearanceRoute: typeof SettingAppearanceRoute
   SettingCategoriesRoute: typeof SettingCategoriesRoute
   SettingExportRoute: typeof SettingExportRoute
+  SettingIndustryRoute: typeof SettingIndustryRoute
   SettingProfileRoute: typeof SettingProfileRoute
 }
 
@@ -323,6 +392,7 @@ const SettingRouteRouteChildren: SettingRouteRouteChildren = {
   SettingAppearanceRoute: SettingAppearanceRoute,
   SettingCategoriesRoute: SettingCategoriesRoute,
   SettingExportRoute: SettingExportRoute,
+  SettingIndustryRoute: SettingIndustryRoute,
   SettingProfileRoute: SettingProfileRoute,
 }
 
