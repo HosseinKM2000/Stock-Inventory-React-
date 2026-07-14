@@ -12,7 +12,7 @@ const AddProductForm = () => {
       mode="create"
       submitting={createProduct.isPending}
       errorMessage={
-        createProduct.error instanceof ApiError
+        createProduct.error && createProduct.error instanceof ApiError
           ? createProduct.error.message
           : null
       }

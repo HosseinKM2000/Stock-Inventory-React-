@@ -7,6 +7,7 @@ from ..deps import CurrentUser, DbSession
 from ..models import User
 from ..schemas import (
     IndustrySelect,
+    BaleAuthRequest,
     LoginRequest,
     MessageResponse,
     PasswordUpdate,
@@ -19,6 +20,7 @@ from ..schemas import (
 from ..services.auth_service import (
     signup as signup_service,
     login as login_service,
+    login_with_bale,
     update_user,
     update_password as update_password_service,
 )
@@ -87,6 +89,20 @@ def login(
 ):
 
     return login_service(
+        db=db,
+        payload=payload,
+    )
+
+
+@router.post(
+    "/bale",
+    response_model=TokenResponse,
+)
+def bale_login(
+    payload: BaleAuthRequest,
+    db: DbSession,
+):
+    return login_with_bale(
         db=db,
         payload=payload,
     )

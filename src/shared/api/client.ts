@@ -2,6 +2,8 @@ import { ApiError } from "@/services/api/api-error";
 import { clearToken, getToken } from "./token-store";
 import { getDeviceFingerprint } from "@/shared/lib/device/fingerprint";
 
+export { ApiError };
+
 const API_BASE_URL =
   import.meta.env.VITE_API_URL ?? "http://localhost:8000/api";
 

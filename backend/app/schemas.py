@@ -25,6 +25,11 @@ class LoginRequest(BaseModel):
     device_fingerprint: str
 
 
+class BaleAuthRequest(BaseModel):
+    init_data: str
+    device_fingerprint: str
+
+
 class UserUpdate(BaseModel):
     first_name: str | None = Field(default=None, min_length=1, max_length=120)
     last_name: str | None = Field(default=None, min_length=1, max_length=120)

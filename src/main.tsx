@@ -8,8 +8,10 @@ import { Toaster } from "sonner";
 import { routeTree } from "./routeTree.gen";
 
 import "@/style/index.css";
+import "@/shared/bale/types";
 import "@radix-ui/themes/styles.css";
 import { AuthProvider } from "./shared/auth/auth-provider";
+import { BaleMiniAppBridge } from "./shared/bale/mini-app-bridge";
 
 const router = createRouter({ routeTree });
 
@@ -35,6 +37,7 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
               className: "font-sans",
             }}
           />
+          <BaleMiniAppBridge />
           <RouterProvider router={router} />
         </Theme>
       </AuthProvider>

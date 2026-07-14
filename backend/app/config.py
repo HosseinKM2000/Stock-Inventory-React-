@@ -38,7 +38,12 @@ class Settings:
         ).split(",")
         if origin.strip()
     ]
-    UPLOAD_DIR: Path = BASE_DIR / "uploads"
+    UPLOAD_DIR: Path = Path(os.getenv("UPLOAD_DIR", BASE_DIR / "uploads"))
+    BALE_BOT_TOKEN: str = os.getenv("BALE_BOT_TOKEN", "")
+    BALE_WEB_APP_URL: str = os.getenv(
+        "BALE_WEB_APP_URL",
+        "https://st.parsindade.com",
+    )
 
 
 settings = Settings()

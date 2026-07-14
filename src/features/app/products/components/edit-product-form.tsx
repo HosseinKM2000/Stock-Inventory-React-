@@ -41,7 +41,7 @@ const EditProductForm = ({ id }: EditProductFormProps) => {
       submitting={updateProduct.isPending}
       deleting={deleteProduct.isPending}
       errorMessage={
-        updateProduct.error instanceof ApiError
+        updateProduct.error && updateProduct.error instanceof ApiError
           ? updateProduct.error.message
           : null
       }

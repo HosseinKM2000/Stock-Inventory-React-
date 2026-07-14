@@ -21,6 +21,16 @@ export function login(
   });
 }
 
+export function baleLogin(payload: {
+  init_data: string;
+  device_fingerprint: string;
+}): Promise<AuthResponse> {
+  return apiFetch<AuthResponse>("/auth/bale", {
+    method: "POST",
+    json: payload,
+  });
+}
+
 export function register(
   payload: RegisterPayload,
 ): Promise<AuthResponse> {
