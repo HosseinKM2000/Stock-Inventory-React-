@@ -1,5 +1,5 @@
-import { storage } from "@/shared/storage/local-storage";
-import { STORAGE_KEYS } from "@/shared/storage/keys";
+import { STORAGE_KEYS } from "@/shared/lib/infrastructure/storage/keys";
+import { storage } from "@/shared/lib/infrastructure/storage/local-storage";
 
 export function getToken() {
   return storage.get<string>(STORAGE_KEYS.ACCESS_TOKEN);

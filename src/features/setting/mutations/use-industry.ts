@@ -82,7 +82,7 @@ export function useSetIndustry() {
       });
       toast.success("حوزه کاری ثبت شد.");
       navigate({
-        to: "/",
+        to: "/dashboard",
       });
     },
   });

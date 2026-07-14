@@ -46,7 +46,7 @@ const Header = () => {
           <Box className="w-2.5 h-2.5 bg-red-500 rounded-full absolute top-0" />
         </Box>
         {showHomeIcon && (
-          <Link to="/">
+          <Link to="/dashboard">
             <HomeIcon width={"25"} height={"25"} />
           </Link>
         )}

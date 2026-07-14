@@ -22,7 +22,7 @@ function ProtectedLayout() {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
-
+ 
   const hideLayout = pathname === "/industry";
 
   return (

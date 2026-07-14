@@ -6,7 +6,7 @@ export const Route = createFileRoute("/auth")({
   beforeLoad: () => {
     if (isAuthenticated()) {
       throw redirect({
-        to: "/",
+        to: "/dashboard",
       });
     }
   },

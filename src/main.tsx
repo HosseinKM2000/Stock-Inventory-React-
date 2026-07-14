@@ -12,6 +12,7 @@ import "@/shared/bale/types";
 import "@radix-ui/themes/styles.css";
 import { AuthProvider } from "./shared/auth/auth-provider";
 import { BaleMiniAppBridge } from "./shared/bale/mini-app-bridge";
+import "@/shared/lib/infrastructure/sync/sync-listener";
 
 const router = createRouter({ routeTree });
 

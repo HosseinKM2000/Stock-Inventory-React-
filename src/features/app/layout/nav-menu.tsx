@@ -11,14 +11,14 @@ export const menuNavItems = [
   },
   {
     label: "محصولات",
-    to: "/product/list",
+    to: "/inventory/list",
     match: "/product",
     icon: MixIcon,
   },
   {
     label: "خانه",
-    to: "/",
-    match: "/",
+    to: "/dashboard",
+    match: "/dashboard",
     icon: HomeIcon,
   },
 ] as const;
@@ -64,8 +64,8 @@ const NavMenu = () => {
           const Icon = item.icon;
 
           const active =
-            item.match === "/"
-              ? pathname === "/"
+            item.match === "/dashboard"
+              ? pathname === "/dashboard"
               : pathname.startsWith(item.match);
               
           return (

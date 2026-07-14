@@ -1,7 +1,8 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import select
+from fastapi import APIRouter, HTTPException, status, Query
+from sqlalchemy import select, func
+from sqlalchemy.orm import joinedload
 from ..services.inventory_service import (
     get_inventory_item_or_404,
     update_inventory_item
@@ -12,6 +13,8 @@ from ..models import InventoryItem, InventoryTransaction
 from ..schemas import (
     InventoryBulkSync,
     InventoryOut,
+    InventoryListResponse,
+    InventoryMeta,
     InventoryUpdate,
     MessageResponse,
     TransactionCreate,
@@ -23,23 +26,47 @@ router = APIRouter(prefix="/inventory", tags=["inventory"])
 
 
 
-@router.get("", response_model=list[InventoryOut])
+@router.get("", response_model=InventoryListResponse)
 def list_inventory(
     current_user: CurrentUser,
     db: DbSession,
-) -> list[InventoryItem]:
-    stmt = (
+    page: int = Query(1, ge=1),
+    limit: int = Query(50, ge=1, le=200),
+):
+    base_query = (
         select(InventoryItem)
         .where(
             InventoryItem.user_id == current_user.id,
             InventoryItem.deleted_at.is_(None),
             InventoryItem.is_hidden.is_(False),
         )
-        .order_by(InventoryItem.created_at.desc())
     )
 
-    return list(db.scalars(stmt))
+    total = db.scalar(
+        select(func.count())
+        .select_from(base_query.subquery())
+    )
 
+    items = list(
+        db.scalars(
+            base_query
+            .options(
+                joinedload(InventoryItem.catalog_product)
+            )
+            .order_by(InventoryItem.created_at.desc())
+            .offset((page - 1) * limit)
+            .limit(limit)
+        )
+    )
+
+    return InventoryListResponse(
+        items=items,
+        meta=InventoryMeta(
+            page=page,
+            limit=limit,
+            total=total or 0,
+        ),
+    )
 
 @router.get("/{item_id}", response_model=InventoryOut)
 def get_inventory_item(

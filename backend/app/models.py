@@ -158,20 +158,37 @@ class CatalogProduct(Base):
     )
 
     industry: Mapped["Industry"] = relationship(
-    back_populates="catalog_products"
+        back_populates="catalog_products"
     )
 
-    name: Mapped[str] = mapped_column(String(200), index=True)
-    description: Mapped[str | None] = mapped_column(Text, nullable=True)
-    brand: Mapped[str | None] = mapped_column(String(120), nullable=True)
-    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    name: Mapped[str] = mapped_column(
+        String(200),
+        index=True,
+    )
 
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    description: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+    )
+
+    brand: Mapped[str | None] = mapped_column(
+        String(120),
+        nullable=True,
+    )
+
+    image_url: Mapped[str | None] = mapped_column(
+        String(500),
+        nullable=True,
+    )
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=_now,
+    )
 
     inventory_items: Mapped[list["InventoryItem"]] = relationship(
         back_populates="catalog_product"
     )
-
 
 # ---------- User Inventory ----------
 class InventoryItem(Base):
