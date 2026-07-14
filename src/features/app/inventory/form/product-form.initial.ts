@@ -24,6 +24,8 @@ export function createProductInitialValues(initial?: Product) {
 
     is_hidden: initial?.is_hidden ?? false,
 
+    image_url: initial?.image_url ?? null,
+
     deleted_at: initial?.deleted_at ?? null,
 
     status: initial?.status ?? "out_of_stock",

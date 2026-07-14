@@ -7,7 +7,6 @@ export const inventoryRepository = {
   },
 
   get(id: number): Promise<Product | undefined> {
-    console.log("this is result of storage =>", inventoryStorage.get(id));
     return inventoryStorage.get(id);
   },
 

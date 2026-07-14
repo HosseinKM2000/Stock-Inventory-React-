@@ -18,8 +18,6 @@ const InventoryList = () => {
 
   const products = data ?? [];
 
-  console.log(products);
-
   const { parentRef, virtualizer } = useInventoryVirtual(products.length);
 
   const deleteProduct = useDeleteProduct();

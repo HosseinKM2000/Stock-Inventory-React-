@@ -25,6 +25,8 @@ export const productSchema = z.object({
 
   custom_label: z.string().nullable(),
 
+  image_url: z.string().nullable(),
+
   note: z.string().nullable(),
 
   low_stock_threshold: z.coerce.number().min(0),
@@ -35,11 +37,7 @@ export const productSchema = z.object({
 
   deleted_at: z.string().nullable(),
 
-  status: z.enum([
-    "in_stock",
-    "low_stock",
-    "out_of_stock",
-  ]),
+  status: z.enum(["in_stock", "low_stock", "out_of_stock"]),
 
   created_at: z.string(),
 

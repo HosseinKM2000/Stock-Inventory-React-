@@ -1,5 +1,7 @@
 import { Cross2Icon, ImageIcon, Pencil1Icon } from "@radix-ui/react-icons";
+
 import { Box, Button, Card, Flex, IconButton, Text } from "@radix-ui/themes";
+
 import { useRef } from "react";
 
 type ProductImageUploadProps = {
@@ -51,17 +53,12 @@ export function ProductImageUpload({
       {!value ? (
         <Card
           className={`
-            rounded-3xl
-            border-2
-            border-dashed
-            border-foreground/15
-            transition-all
-            ${
-              disabled
-                ? "opacity-70"
-                : "cursor-pointer hover:border-accent-8 hover:bg-foreground/5"
-            }
-          `}
+              rounded-3xl
+              border-2
+              border-dashed
+              border-foreground/15
+              ${!disabled && "cursor-pointer hover:bg-foreground/5"}
+            `}
           onClick={openPicker}
         >
           <Flex
@@ -71,17 +68,9 @@ export function ProductImageUpload({
             gap="3"
             py="8"
           >
-            <Box className="text-accent-9">
-              <ImageIcon width={40} height={40} />
-            </Box>
+            <ImageIcon width={40} height={40} />
 
-            <Text weight="medium">تصویر محصول</Text>
-
-            <Text size="2" color="gray" align="center">
-              {disabled
-                ? "تصویری ثبت نشده است."
-                : "برای انتخاب تصویر کلیک کنید."}
-            </Text>
+            <Text>تصویر محصول</Text>
 
             {!disabled && (
               <Button type="button" variant="soft">
@@ -95,28 +84,28 @@ export function ProductImageUpload({
           <Box className="relative">
             <img
               src={value}
-              alt="Product"
-              className="h-64 w-full object-cover"
+              alt="product"
+              className="
+                  h-64
+                  w-full
+                  object-cover
+                "
             />
 
             {!disabled && (
-              <Flex gap="2" className="absolute left-3 top-3">
-                <IconButton
-                  type="button"
-                  radius="full"
-                  variant="solid"
-                  onClick={openPicker}
-                >
+              <Flex
+                gap="2"
+                className="
+                      absolute
+                      left-3
+                      top-3
+                    "
+              >
+                <IconButton type="button" onClick={openPicker}>
                   <Pencil1Icon />
                 </IconButton>
 
-                <IconButton
-                  type="button"
-                  radius="full"
-                  color="red"
-                  variant="solid"
-                  onClick={handleRemove}
-                >
+                <IconButton type="button" color="red" onClick={handleRemove}>
                   <Cross2Icon />
                 </IconButton>
               </Flex>

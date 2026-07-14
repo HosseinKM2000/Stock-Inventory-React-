@@ -74,7 +74,6 @@ export function useAppForm<TValues extends Record<string, unknown>>({
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) {
     const { name, value } = e.target;
-    console.log(name, value);
     setValue(name as keyof TValues, value as TValues[keyof TValues]);
   }
 

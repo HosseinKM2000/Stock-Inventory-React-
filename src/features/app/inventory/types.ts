@@ -33,6 +33,8 @@ export type Product = {
 
   is_hidden: boolean;
 
+  image_url: string | null;
+
   deleted_at: string | null;
 
   status: "in_stock" | "low_stock" | "out_of_stock";

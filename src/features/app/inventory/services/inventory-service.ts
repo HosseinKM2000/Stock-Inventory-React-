@@ -61,7 +61,7 @@ class InventoryService {
   }
 
   async create(product: Product): Promise<Product> {
-    console.log(product)
+    
     await inventoryRepository.save(product);
 
     const saved = await inventoryRepository.get(product.id);

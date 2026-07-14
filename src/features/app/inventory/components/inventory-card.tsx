@@ -1,9 +1,9 @@
-import { resolveAssetUrl } from "@/shared/api/client";
 import { Button } from "@/shared/ui/button/button";
 import { Pencil1Icon, TrashIcon } from "@radix-ui/react-icons";
 import { Badge, Card, Flex, Text } from "@radix-ui/themes";
 import { Link } from "@tanstack/react-router";
 
+import { useImage } from "@/shared/lib/infrastructure/media/useImage";
 import type { Product, ProductStatus } from "../types";
 
 const STATUS_META: Record<
@@ -38,7 +38,10 @@ type Props = {
 export function ProductCard({ product, deleting, onDelete }: Props) {
   const status = STATUS_META[product.status];
 
-  const image = resolveAssetUrl(product.image_url) ?? PLACEHOLDER;
+  // const image =
+  //   resolveAssetUrl(product.catalog_product?.image_url) ?? PLACEHOLDER;
+
+  const imagePreview = useImage(product?.image_url) ?? PLACEHOLDER;
 
   return (
     <Card
@@ -52,10 +55,9 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
     >
       <Flex className="h-full">
         {/* Image */}
-
         <div className="w-36 shrink-0">
           <img
-            src={image}
+            src={imagePreview}
             alt={product?.catalog_product?.name}
             className="
               w-full
@@ -66,10 +68,8 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
         </div>
 
         {/* Content */}
-
         <Flex direction="column" justify="between" className="flex-1 p-4 ">
           {/* Header */}
-
           <Flex justify="between" align="start">
             <Flex direction="column" gap="1">
               <Text weight="bold" size="3">
@@ -87,12 +87,12 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
           </Flex>
 
           {/* Description */}
-
           <Text size="2" color="gray" className="line-clamp-2">
             {product?.note ??
               product?.catalog_product?.description ??
               "بدون توضیح"}
           </Text>
+
           <Flex align={"end"} justify={"between"}>
             {/* Price & Quantity */}
             <Flex

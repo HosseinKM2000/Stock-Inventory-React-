@@ -1,6 +1,7 @@
 import { ProductImageUpload } from "@/features/app/inventory/components/upload-file";
-import { resolveAssetUrl } from "@/shared/api/client";
 import { useAppForm } from "@/shared/lib/form/use-app-form";
+import { imageService } from "@/shared/lib/infrastructure/media/image.service";
+import { useImage } from "@/shared/lib/infrastructure/media/useImage";
 import { preventEventHandler } from "@/shared/lib/prevent-event";
 import { Button } from "@/shared/ui/button/button";
 import { SwitchInput } from "@/shared/ui/button/toggle-button";
@@ -10,7 +11,6 @@ import { SelectInput } from "@/shared/ui/form/input/select-input";
 import { TextAreaInput } from "@/shared/ui/form/input/text-area";
 import { TextInput } from "@/shared/ui/form/input/text-input";
 import { Box, Callout, Card, Grid, Switch, Text } from "@radix-ui/themes";
-import { useState } from "react";
 import { createProductInitialValues } from "../form/product-form.initial";
 import { productSchema } from "../schema/product.schema";
 import { type Product } from "../types";
@@ -60,33 +60,29 @@ export function ProductForm({
       onSubmit?.({
         ...values,
 
-        catalog_product: {
-          ...values.catalog_product,
-
-          image_url: imagePreview
-            ? imagePreview
-            : values?.catalog_product?.image_url
-              ? values?.catalog_product?.image_url
-              : null,
-        },
+        image_url: values.image_url ?? null,
       });
     },
   });
 
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | undefined>(
-    resolveAssetUrl(initial?.catalog_product?.image_url),
-  );
-  const [removeImage, setRemoveImage] = useState(false);
+  const imagePath = form.values.image_url ?? null;
 
-  const handleImageChange = (file: File | null) => {
-    setImageFile(file);
-    if (file) {
-      setImagePreview(URL.createObjectURL(file));
-      setRemoveImage(false);
-    } else {
-      setImagePreview(undefined);
-      setRemoveImage(true);
+  const imagePreview = useImage(imagePath);
+
+  const handleImageChange = async (file: File | null) => {
+    const previousPath = form.values.image_url;
+
+    if (!file) {
+      form.setValue("image_url", null);
+      await imageService.remove(previousPath);
+      return;
+    }
+
+    const path = await imageService.save(file);
+    form.setValue("image_url", path);
+
+    if (previousPath && previousPath !== path) {
+      await imageService.remove(previousPath);
     }
   };
 
