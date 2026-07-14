@@ -91,7 +91,7 @@ function IndustryForm() {
             </Button>
           </Box>
           <Box className="w-[90%] sm:w-90 text-center">
-            <Link href="/" style={{ width: "100%" }}>
+            <Link href="/dashboard" style={{ width: "100%" }}>
               رد کردن
             </Link>
           </Box>

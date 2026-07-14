@@ -3,10 +3,40 @@ export type CategoryBreakdown = {
   value: number;
 };
 
+import type { Product } from "../inventory/types";
+
+export const DashboardFilters = {
+  LOW_STOCK: "low-stock",
+  OUT_OF_STOCK: "out-of-stock",
+  NO_IMAGE: "no-image",
+  NO_PRICE: "no-price",
+  HIDDEN: "hidden",
+  URGENT_PURCHASE: "urgent-purchase",
+} as const;
+
+export type DashboardFilter =
+  (typeof DashboardFilters)[keyof typeof DashboardFilters];
+
 export type DashboardStats = {
-  total_products: number;
-  low_stock_count: number;
-  out_of_stock_count: number;
-  inventory_value: number;
-  category_breakdown: CategoryBreakdown[];
+  totalProducts: number;
+
+  inventoryValue: number;
+
+  lowStockCount: number;
+
+  outOfStockCount: number;
+
+  hiddenCount: number;
+
+  noImageCount: number;
+
+  noPriceCount: number;
+
+  urgentPurchaseCount: number;
+};
+
+export type DashboardProductList = {
+  title: string;
+
+  products: Product[];
 };

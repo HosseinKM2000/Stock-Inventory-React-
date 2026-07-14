@@ -45,7 +45,7 @@ export function useLogin() {
       toast.success("با موفقیت وارد شدید");
 
       navigate({
-        to: "/",
+        to: "/dashboard",
       });
     },
   });

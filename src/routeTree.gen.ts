@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingRouteRouteImport } from './routes/setting/route'
 import { Route as AuthRouteRouteImport } from './routes/auth/route'
 import { Route as appRouteRouteImport } from './routes/(app)/route'
-import { Route as appIndexRouteImport } from './routes/(app)/index'
 import { Route as SettingProfileRouteImport } from './routes/setting/profile'
 import { Route as SettingIndustryRouteImport } from './routes/setting/industry'
 import { Route as SettingExportRouteImport } from './routes/setting/export'
@@ -22,10 +21,19 @@ import { Route as SettingAppearanceRouteImport } from './routes/setting/appearan
 import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as appIndustryRouteRouteImport } from './routes/(app)/industry/route'
+import { Route as appDashboardRouteRouteImport } from './routes/(app)/dashboard/route'
 import { Route as appIndustryIndexRouteImport } from './routes/(app)/industry/index'
+import { Route as appDashboardIndexRouteImport } from './routes/(app)/dashboard/index'
 import { Route as appInventoryListRouteImport } from './routes/(app)/inventory/list'
 import { Route as appInventoryEditRouteImport } from './routes/(app)/inventory/edit'
 import { Route as appInventoryAddRouteImport } from './routes/(app)/inventory/add'
+import { Route as appDashboardProductsRouteRouteImport } from './routes/(app)/dashboard/products/route'
+import { Route as appDashboardProductsUrgentPurchaseIndexRouteImport } from './routes/(app)/dashboard/products/urgent-purchase/index'
+import { Route as appDashboardProductsOutOfStockIndexRouteImport } from './routes/(app)/dashboard/products/out-of-stock/index'
+import { Route as appDashboardProductsNoPriceIndexRouteImport } from './routes/(app)/dashboard/products/no-price/index'
+import { Route as appDashboardProductsNoImageIndexRouteImport } from './routes/(app)/dashboard/products/no-image/index'
+import { Route as appDashboardProductsLowStockIndexRouteImport } from './routes/(app)/dashboard/products/low-stock/index'
+import { Route as appDashboardProductsHiddenIndexRouteImport } from './routes/(app)/dashboard/products/hidden/index'
 
 const SettingRouteRoute = SettingRouteRouteImport.update({
   id: '/setting',
@@ -40,11 +48,6 @@ const AuthRouteRoute = AuthRouteRouteImport.update({
 const appRouteRoute = appRouteRouteImport.update({
   id: '/(app)',
   getParentRoute: () => rootRouteImport,
-} as any)
-const appIndexRoute = appIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => appRouteRoute,
 } as any)
 const SettingProfileRoute = SettingProfileRouteImport.update({
   id: '/profile',
@@ -91,10 +94,20 @@ const appIndustryRouteRoute = appIndustryRouteRouteImport.update({
   path: '/industry',
   getParentRoute: () => appRouteRoute,
 } as any)
+const appDashboardRouteRoute = appDashboardRouteRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => appRouteRoute,
+} as any)
 const appIndustryIndexRoute = appIndustryIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => appIndustryRouteRoute,
+} as any)
+const appDashboardIndexRoute = appDashboardIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => appDashboardRouteRoute,
 } as any)
 const appInventoryListRoute = appInventoryListRouteImport.update({
   id: '/inventory/list',
@@ -111,10 +124,53 @@ const appInventoryAddRoute = appInventoryAddRouteImport.update({
   path: '/inventory/add',
   getParentRoute: () => appRouteRoute,
 } as any)
+const appDashboardProductsRouteRoute =
+  appDashboardProductsRouteRouteImport.update({
+    id: '/products',
+    path: '/products',
+    getParentRoute: () => appDashboardRouteRoute,
+  } as any)
+const appDashboardProductsUrgentPurchaseIndexRoute =
+  appDashboardProductsUrgentPurchaseIndexRouteImport.update({
+    id: '/urgent-purchase/',
+    path: '/urgent-purchase/',
+    getParentRoute: () => appDashboardProductsRouteRoute,
+  } as any)
+const appDashboardProductsOutOfStockIndexRoute =
+  appDashboardProductsOutOfStockIndexRouteImport.update({
+    id: '/out-of-stock/',
+    path: '/out-of-stock/',
+    getParentRoute: () => appDashboardProductsRouteRoute,
+  } as any)
+const appDashboardProductsNoPriceIndexRoute =
+  appDashboardProductsNoPriceIndexRouteImport.update({
+    id: '/no-price/',
+    path: '/no-price/',
+    getParentRoute: () => appDashboardProductsRouteRoute,
+  } as any)
+const appDashboardProductsNoImageIndexRoute =
+  appDashboardProductsNoImageIndexRouteImport.update({
+    id: '/no-image/',
+    path: '/no-image/',
+    getParentRoute: () => appDashboardProductsRouteRoute,
+  } as any)
+const appDashboardProductsLowStockIndexRoute =
+  appDashboardProductsLowStockIndexRouteImport.update({
+    id: '/low-stock/',
+    path: '/low-stock/',
+    getParentRoute: () => appDashboardProductsRouteRoute,
+  } as any)
+const appDashboardProductsHiddenIndexRoute =
+  appDashboardProductsHiddenIndexRouteImport.update({
+    id: '/hidden/',
+    path: '/hidden/',
+    getParentRoute: () => appDashboardProductsRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/auth': typeof AuthRouteRouteWithChildren
   '/setting': typeof SettingRouteRouteWithChildren
+  '/dashboard': typeof appDashboardRouteRouteWithChildren
   '/industry': typeof appIndustryRouteRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
@@ -124,11 +180,18 @@ export interface FileRoutesByFullPath {
   '/setting/export': typeof SettingExportRoute
   '/setting/industry': typeof SettingIndustryRoute
   '/setting/profile': typeof SettingProfileRoute
-  '/': typeof appIndexRoute
+  '/dashboard/products': typeof appDashboardProductsRouteRouteWithChildren
   '/inventory/add': typeof appInventoryAddRoute
   '/inventory/edit': typeof appInventoryEditRoute
   '/inventory/list': typeof appInventoryListRoute
+  '/dashboard/': typeof appDashboardIndexRoute
   '/industry/': typeof appIndustryIndexRoute
+  '/dashboard/products/hidden/': typeof appDashboardProductsHiddenIndexRoute
+  '/dashboard/products/low-stock/': typeof appDashboardProductsLowStockIndexRoute
+  '/dashboard/products/no-image/': typeof appDashboardProductsNoImageIndexRoute
+  '/dashboard/products/no-price/': typeof appDashboardProductsNoPriceIndexRoute
+  '/dashboard/products/out-of-stock/': typeof appDashboardProductsOutOfStockIndexRoute
+  '/dashboard/products/urgent-purchase/': typeof appDashboardProductsUrgentPurchaseIndexRoute
 }
 export interface FileRoutesByTo {
   '/auth': typeof AuthRouteRouteWithChildren
@@ -141,17 +204,25 @@ export interface FileRoutesByTo {
   '/setting/export': typeof SettingExportRoute
   '/setting/industry': typeof SettingIndustryRoute
   '/setting/profile': typeof SettingProfileRoute
-  '/': typeof appIndexRoute
+  '/dashboard/products': typeof appDashboardProductsRouteRouteWithChildren
   '/inventory/add': typeof appInventoryAddRoute
   '/inventory/edit': typeof appInventoryEditRoute
   '/inventory/list': typeof appInventoryListRoute
+  '/dashboard': typeof appDashboardIndexRoute
   '/industry': typeof appIndustryIndexRoute
+  '/dashboard/products/hidden': typeof appDashboardProductsHiddenIndexRoute
+  '/dashboard/products/low-stock': typeof appDashboardProductsLowStockIndexRoute
+  '/dashboard/products/no-image': typeof appDashboardProductsNoImageIndexRoute
+  '/dashboard/products/no-price': typeof appDashboardProductsNoPriceIndexRoute
+  '/dashboard/products/out-of-stock': typeof appDashboardProductsOutOfStockIndexRoute
+  '/dashboard/products/urgent-purchase': typeof appDashboardProductsUrgentPurchaseIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/(app)': typeof appRouteRouteWithChildren
   '/auth': typeof AuthRouteRouteWithChildren
   '/setting': typeof SettingRouteRouteWithChildren
+  '/(app)/dashboard': typeof appDashboardRouteRouteWithChildren
   '/(app)/industry': typeof appIndustryRouteRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
@@ -161,17 +232,25 @@ export interface FileRoutesById {
   '/setting/export': typeof SettingExportRoute
   '/setting/industry': typeof SettingIndustryRoute
   '/setting/profile': typeof SettingProfileRoute
-  '/(app)/': typeof appIndexRoute
+  '/(app)/dashboard/products': typeof appDashboardProductsRouteRouteWithChildren
   '/(app)/inventory/add': typeof appInventoryAddRoute
   '/(app)/inventory/edit': typeof appInventoryEditRoute
   '/(app)/inventory/list': typeof appInventoryListRoute
+  '/(app)/dashboard/': typeof appDashboardIndexRoute
   '/(app)/industry/': typeof appIndustryIndexRoute
+  '/(app)/dashboard/products/hidden/': typeof appDashboardProductsHiddenIndexRoute
+  '/(app)/dashboard/products/low-stock/': typeof appDashboardProductsLowStockIndexRoute
+  '/(app)/dashboard/products/no-image/': typeof appDashboardProductsNoImageIndexRoute
+  '/(app)/dashboard/products/no-price/': typeof appDashboardProductsNoPriceIndexRoute
+  '/(app)/dashboard/products/out-of-stock/': typeof appDashboardProductsOutOfStockIndexRoute
+  '/(app)/dashboard/products/urgent-purchase/': typeof appDashboardProductsUrgentPurchaseIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/auth'
     | '/setting'
+    | '/dashboard'
     | '/industry'
     | '/auth/login'
     | '/auth/register'
@@ -181,11 +260,18 @@ export interface FileRouteTypes {
     | '/setting/export'
     | '/setting/industry'
     | '/setting/profile'
-    | '/'
+    | '/dashboard/products'
     | '/inventory/add'
     | '/inventory/edit'
     | '/inventory/list'
+    | '/dashboard/'
     | '/industry/'
+    | '/dashboard/products/hidden/'
+    | '/dashboard/products/low-stock/'
+    | '/dashboard/products/no-image/'
+    | '/dashboard/products/no-price/'
+    | '/dashboard/products/out-of-stock/'
+    | '/dashboard/products/urgent-purchase/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/auth'
@@ -198,16 +284,24 @@ export interface FileRouteTypes {
     | '/setting/export'
     | '/setting/industry'
     | '/setting/profile'
-    | '/'
+    | '/dashboard/products'
     | '/inventory/add'
     | '/inventory/edit'
     | '/inventory/list'
+    | '/dashboard'
     | '/industry'
+    | '/dashboard/products/hidden'
+    | '/dashboard/products/low-stock'
+    | '/dashboard/products/no-image'
+    | '/dashboard/products/no-price'
+    | '/dashboard/products/out-of-stock'
+    | '/dashboard/products/urgent-purchase'
   id:
     | '__root__'
     | '/(app)'
     | '/auth'
     | '/setting'
+    | '/(app)/dashboard'
     | '/(app)/industry'
     | '/auth/login'
     | '/auth/register'
@@ -217,11 +311,18 @@ export interface FileRouteTypes {
     | '/setting/export'
     | '/setting/industry'
     | '/setting/profile'
-    | '/(app)/'
+    | '/(app)/dashboard/products'
     | '/(app)/inventory/add'
     | '/(app)/inventory/edit'
     | '/(app)/inventory/list'
+    | '/(app)/dashboard/'
     | '/(app)/industry/'
+    | '/(app)/dashboard/products/hidden/'
+    | '/(app)/dashboard/products/low-stock/'
+    | '/(app)/dashboard/products/no-image/'
+    | '/(app)/dashboard/products/no-price/'
+    | '/(app)/dashboard/products/out-of-stock/'
+    | '/(app)/dashboard/products/urgent-purchase/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -252,13 +353,6 @@ declare module '@tanstack/react-router' {
       fullPath: ''
       preLoaderRoute: typeof appRouteRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/(app)/': {
-      id: '/(app)/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof appIndexRouteImport
-      parentRoute: typeof appRouteRoute
     }
     '/setting/profile': {
       id: '/setting/profile'
@@ -323,12 +417,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appIndustryRouteRouteImport
       parentRoute: typeof appRouteRoute
     }
+    '/(app)/dashboard': {
+      id: '/(app)/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof appDashboardRouteRouteImport
+      parentRoute: typeof appRouteRoute
+    }
     '/(app)/industry/': {
       id: '/(app)/industry/'
       path: '/'
       fullPath: '/industry/'
       preLoaderRoute: typeof appIndustryIndexRouteImport
       parentRoute: typeof appIndustryRouteRoute
+    }
+    '/(app)/dashboard/': {
+      id: '/(app)/dashboard/'
+      path: '/'
+      fullPath: '/dashboard/'
+      preLoaderRoute: typeof appDashboardIndexRouteImport
+      parentRoute: typeof appDashboardRouteRoute
     }
     '/(app)/inventory/list': {
       id: '/(app)/inventory/list'
@@ -351,8 +459,99 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appInventoryAddRouteImport
       parentRoute: typeof appRouteRoute
     }
+    '/(app)/dashboard/products': {
+      id: '/(app)/dashboard/products'
+      path: '/products'
+      fullPath: '/dashboard/products'
+      preLoaderRoute: typeof appDashboardProductsRouteRouteImport
+      parentRoute: typeof appDashboardRouteRoute
+    }
+    '/(app)/dashboard/products/urgent-purchase/': {
+      id: '/(app)/dashboard/products/urgent-purchase/'
+      path: '/urgent-purchase'
+      fullPath: '/dashboard/products/urgent-purchase/'
+      preLoaderRoute: typeof appDashboardProductsUrgentPurchaseIndexRouteImport
+      parentRoute: typeof appDashboardProductsRouteRoute
+    }
+    '/(app)/dashboard/products/out-of-stock/': {
+      id: '/(app)/dashboard/products/out-of-stock/'
+      path: '/out-of-stock'
+      fullPath: '/dashboard/products/out-of-stock/'
+      preLoaderRoute: typeof appDashboardProductsOutOfStockIndexRouteImport
+      parentRoute: typeof appDashboardProductsRouteRoute
+    }
+    '/(app)/dashboard/products/no-price/': {
+      id: '/(app)/dashboard/products/no-price/'
+      path: '/no-price'
+      fullPath: '/dashboard/products/no-price/'
+      preLoaderRoute: typeof appDashboardProductsNoPriceIndexRouteImport
+      parentRoute: typeof appDashboardProductsRouteRoute
+    }
+    '/(app)/dashboard/products/no-image/': {
+      id: '/(app)/dashboard/products/no-image/'
+      path: '/no-image'
+      fullPath: '/dashboard/products/no-image/'
+      preLoaderRoute: typeof appDashboardProductsNoImageIndexRouteImport
+      parentRoute: typeof appDashboardProductsRouteRoute
+    }
+    '/(app)/dashboard/products/low-stock/': {
+      id: '/(app)/dashboard/products/low-stock/'
+      path: '/low-stock'
+      fullPath: '/dashboard/products/low-stock/'
+      preLoaderRoute: typeof appDashboardProductsLowStockIndexRouteImport
+      parentRoute: typeof appDashboardProductsRouteRoute
+    }
+    '/(app)/dashboard/products/hidden/': {
+      id: '/(app)/dashboard/products/hidden/'
+      path: '/hidden'
+      fullPath: '/dashboard/products/hidden/'
+      preLoaderRoute: typeof appDashboardProductsHiddenIndexRouteImport
+      parentRoute: typeof appDashboardProductsRouteRoute
+    }
   }
 }
+
+interface appDashboardProductsRouteRouteChildren {
+  appDashboardProductsHiddenIndexRoute: typeof appDashboardProductsHiddenIndexRoute
+  appDashboardProductsLowStockIndexRoute: typeof appDashboardProductsLowStockIndexRoute
+  appDashboardProductsNoImageIndexRoute: typeof appDashboardProductsNoImageIndexRoute
+  appDashboardProductsNoPriceIndexRoute: typeof appDashboardProductsNoPriceIndexRoute
+  appDashboardProductsOutOfStockIndexRoute: typeof appDashboardProductsOutOfStockIndexRoute
+  appDashboardProductsUrgentPurchaseIndexRoute: typeof appDashboardProductsUrgentPurchaseIndexRoute
+}
+
+const appDashboardProductsRouteRouteChildren: appDashboardProductsRouteRouteChildren =
+  {
+    appDashboardProductsHiddenIndexRoute: appDashboardProductsHiddenIndexRoute,
+    appDashboardProductsLowStockIndexRoute:
+      appDashboardProductsLowStockIndexRoute,
+    appDashboardProductsNoImageIndexRoute:
+      appDashboardProductsNoImageIndexRoute,
+    appDashboardProductsNoPriceIndexRoute:
+      appDashboardProductsNoPriceIndexRoute,
+    appDashboardProductsOutOfStockIndexRoute:
+      appDashboardProductsOutOfStockIndexRoute,
+    appDashboardProductsUrgentPurchaseIndexRoute:
+      appDashboardProductsUrgentPurchaseIndexRoute,
+  }
+
+const appDashboardProductsRouteRouteWithChildren =
+  appDashboardProductsRouteRoute._addFileChildren(
+    appDashboardProductsRouteRouteChildren,
+  )
+
+interface appDashboardRouteRouteChildren {
+  appDashboardProductsRouteRoute: typeof appDashboardProductsRouteRouteWithChildren
+  appDashboardIndexRoute: typeof appDashboardIndexRoute
+}
+
+const appDashboardRouteRouteChildren: appDashboardRouteRouteChildren = {
+  appDashboardProductsRouteRoute: appDashboardProductsRouteRouteWithChildren,
+  appDashboardIndexRoute: appDashboardIndexRoute,
+}
+
+const appDashboardRouteRouteWithChildren =
+  appDashboardRouteRoute._addFileChildren(appDashboardRouteRouteChildren)
 
 interface appIndustryRouteRouteChildren {
   appIndustryIndexRoute: typeof appIndustryIndexRoute
@@ -366,16 +565,16 @@ const appIndustryRouteRouteWithChildren =
   appIndustryRouteRoute._addFileChildren(appIndustryRouteRouteChildren)
 
 interface appRouteRouteChildren {
+  appDashboardRouteRoute: typeof appDashboardRouteRouteWithChildren
   appIndustryRouteRoute: typeof appIndustryRouteRouteWithChildren
-  appIndexRoute: typeof appIndexRoute
   appInventoryAddRoute: typeof appInventoryAddRoute
   appInventoryEditRoute: typeof appInventoryEditRoute
   appInventoryListRoute: typeof appInventoryListRoute
 }
 
 const appRouteRouteChildren: appRouteRouteChildren = {
+  appDashboardRouteRoute: appDashboardRouteRouteWithChildren,
   appIndustryRouteRoute: appIndustryRouteRouteWithChildren,
-  appIndexRoute: appIndexRoute,
   appInventoryAddRoute: appInventoryAddRoute,
   appInventoryEditRoute: appInventoryEditRoute,
   appInventoryListRoute: appInventoryListRoute,
