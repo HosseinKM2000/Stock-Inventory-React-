@@ -6,8 +6,16 @@ export const queueStorage = {
     return db.syncQueue.put(item);
   },
 
+  async get(id: string) {
+    return db.syncQueue.get(id);
+  },
+
   async getAll() {
-    return db.syncQueue.toArray();
+    return db.syncQueue.orderBy("createdAt").toArray();
+  },
+
+  async count() {
+    return db.syncQueue.count();
   },
 
   async remove(id: string) {

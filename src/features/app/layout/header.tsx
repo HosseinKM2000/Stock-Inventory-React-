@@ -7,6 +7,7 @@ import {
 } from "@radix-ui/react-icons";
 import { Avatar, Box, DropdownMenu, Flex, IconButton } from "@radix-ui/themes";
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
+import ConnectionStatus from "./connection-status";
 
 const Header = () => {
   const router = useRouter();
@@ -50,6 +51,8 @@ const Header = () => {
             <HomeIcon width={"25"} height={"25"} />
           </Link>
         )}
+
+        <ConnectionStatus />
       </Flex>
       <IconButton
         variant="ghost"

@@ -33,6 +33,41 @@ class AppDatabase extends Dexie {
         "id, entity, entityId, updatedAt",
 
     });
+
+
+    this.version(2)
+      .stores({
+
+        inventoryItems:
+          "id, catalog_product_id, updated_at",
+
+        syncQueue:
+          "id, entity, entityId, status, nextAttemptAt, createdAt, updatedAt",
+
+      })
+      .upgrade(async (transaction) => {
+
+        await transaction
+          .table<SyncQueueItem>("syncQueue")
+          .toCollection()
+          .modify((item) => {
+
+            const legacyAction = item.action as string;
+
+            item.action =
+              legacyAction === "UPSERT" ? "UPDATE" : item.action;
+
+            item.createdAt = item.createdAt ?? item.updatedAt ?? Date.now();
+
+            item.retryCount = item.retryCount ?? 0;
+
+            item.status = item.status ?? "pending";
+
+            item.nextAttemptAt = item.nextAttemptAt ?? 0;
+
+          });
+
+      });
   }
 }
 

@@ -9,10 +9,12 @@ async function getRoot() {
 }
 
 export const imageRepository = {
-  async save(id: string, file: Blob) {
+  async save(id: string, file: Blob, extension = "webp") {
     const dir = await getRoot();
 
-    const handle = await dir.getFileHandle(`${id}.webp`, {
+    const name = `${id}.${extension}`;
+
+    const handle = await dir.getFileHandle(name, {
       create: true,
     });
 
@@ -22,7 +24,7 @@ export const imageRepository = {
 
     await writable.close();
 
-    return `local://${id}.webp`;
+    return `local://${name}`;
   },
 
   async read(path: string) {
@@ -53,5 +55,17 @@ export const imageRepository = {
     } catch {
       return false;
     }
+  },
+
+  async list(): Promise<string[]> {
+    const dir = await getRoot();
+
+    const names: string[] = [];
+
+    for await (const name of dir.keys()) {
+      names.push(`local://${name}`);
+    }
+
+    return names;
   },
 };

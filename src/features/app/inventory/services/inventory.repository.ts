@@ -21,4 +21,13 @@ export const inventoryRepository = {
   remove(id: number) {
     return inventoryStorage.remove(id);
   },
+
+  /** Replaces a locally generated id with the identifier assigned by the server. */
+  async replaceId(localId: number, product: Product) {
+    if (localId !== product.id) {
+      await inventoryStorage.remove(localId);
+    }
+
+    await inventoryStorage.save(product);
+  },
 };

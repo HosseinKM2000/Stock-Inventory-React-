@@ -1,6 +1,37 @@
+import { imageService } from "@/shared/lib/infrastructure/media/image.service";
+import { queueService } from "@/shared/lib/infrastructure/sync/queue.service";
+
 import { inventoryRepository } from "./inventory.repository";
 
 import type { Product, ProductInput, ProductListParams } from "../types";
+
+export const PRODUCT_ENTITY = "product";
+
+function sanitize(product: Product): Product {
+  // Local data is never trusted blindly — it may come from an older schema,
+  // a corrupted record or a future import.
+  const quantity = Number(product.quantity);
+
+  const price = Number(product.price);
+
+  const threshold = Number(product.low_stock_threshold);
+
+  return {
+    ...product,
+
+    quantity: Number.isFinite(quantity) ? Math.max(0, quantity) : 0,
+
+    price: Number.isFinite(price) ? Math.max(0, price) : 0,
+
+    low_stock_threshold: Number.isFinite(threshold) ? Math.max(0, threshold) : 0,
+
+    low_stock_alert: Boolean(product.low_stock_alert),
+
+    is_hidden: Boolean(product.is_hidden),
+
+    image_url: product.image_url ?? null,
+  };
+}
 
 class InventoryService {
   async getAll(params: ProductListParams = {}): Promise<Product[]> {
@@ -61,13 +92,16 @@ class InventoryService {
   }
 
   async create(product: Product): Promise<Product> {
-    
-    await inventoryRepository.save(product);
+    const record = sanitize(product);
 
-    const saved = await inventoryRepository.get(product.id);
+    await inventoryRepository.save(record);
+
+    const saved = await inventoryRepository.get(record.id);
     if (!saved) {
       throw new Error("product was not saved");
     }
+
+    await queueService.enqueue(PRODUCT_ENTITY, saved.id, "CREATE", saved);
 
     return saved;
   }
@@ -79,13 +113,13 @@ class InventoryService {
       throw new Error("product not found");
     }
 
-    const updated: Product = {
+    const updated = sanitize({
       ...current,
 
       ...input,
 
       updated_at: new Date().toISOString(),
-    };
+    } as Product);
 
     await inventoryRepository.save(updated);
 
@@ -95,11 +129,32 @@ class InventoryService {
       throw new Error("update failed");
     }
 
+    if (current.image_url && current.image_url !== saved.image_url) {
+      await imageService.remove(current.image_url);
+    }
+
+    await queueService.enqueue(PRODUCT_ENTITY, id, "UPDATE", saved);
+
     return saved;
   }
 
   async remove(id: number): Promise<void> {
+    const current = await inventoryRepository.get(id);
+
     await inventoryRepository.remove(id);
+
+    await imageService.remove(current?.image_url);
+
+    await queueService.enqueue(PRODUCT_ENTITY, id, "DELETE", null);
+  }
+
+  /** Removes OPFS files that no product references any more. */
+  async cleanupImages(): Promise<string[]> {
+    const products = await inventoryRepository.getAll();
+
+    return imageService.removeOrphans(
+      products.map((product) => product.image_url),
+    );
   }
 }
 

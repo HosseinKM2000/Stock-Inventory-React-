@@ -11,6 +11,7 @@ import { SelectInput } from "@/shared/ui/form/input/select-input";
 import { TextAreaInput } from "@/shared/ui/form/input/text-area";
 import { TextInput } from "@/shared/ui/form/input/text-input";
 import { Box, Callout, Card, Grid, Switch, Text } from "@radix-ui/themes";
+import { toast } from "sonner";
 import { createProductInitialValues } from "../form/product-form.initial";
 import { productSchema } from "../schema/product.schema";
 import { type Product } from "../types";
@@ -78,11 +79,18 @@ export function ProductForm({
       return;
     }
 
-    const path = await imageService.save(file);
-    form.setValue("image_url", path);
+    try {
+      const path = await imageService.save(file);
 
-    if (previousPath && previousPath !== path) {
-      await imageService.remove(previousPath);
+      form.setValue("image_url", path);
+
+      if (previousPath && previousPath !== path) {
+        await imageService.remove(previousPath);
+      }
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "ذخیره تصویر ناموفق بود",
+      );
     }
   };
 

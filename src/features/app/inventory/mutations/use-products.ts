@@ -1,10 +1,30 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
+import { dashboardKeys } from "@/features/app/dashboard/query/dashboard-query-keys";
+import { networkService } from "@/shared/lib/infrastructure/network/network-service";
+import { syncService } from "@/shared/lib/infrastructure/sync/sync-service";
+
 import { productKeys } from "../query/query-keys";
 
 import { inventoryService } from "../services/inventory-service";
 
 import type { Product, ProductInput, ProductListParams } from "../types";
+
+function useInvalidateProducts() {
+  const queryClient = useQueryClient();
+
+  return () => {
+    queryClient.invalidateQueries({ queryKey: productKeys.all });
+
+    queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+
+    if (networkService.isOnline()) {
+      void syncService.sync();
+    } else {
+      void syncService.refreshPending();
+    }
+  };
+}
 
 export function useProducts(params: ProductListParams = {}) {
   return useQuery({
@@ -27,44 +47,38 @@ export function useProduct(id: number | undefined) {
 }
 
 export function useCreateProduct() {
-  const queryClient = useQueryClient();
+  const invalidate = useInvalidateProducts();
 
   return useMutation({
     mutationFn: (input: Product) => inventoryService.create(input),
 
     onSuccess() {
-      queryClient.invalidateQueries({
-        queryKey: productKeys.all,
-      });
+      invalidate();
     },
   });
 }
 
 export function useUpdateProduct() {
-  const queryClient = useQueryClient();
+  const invalidate = useInvalidateProducts();
 
   return useMutation({
     mutationFn: ({ id, input }: { id: number; input: ProductInput }) =>
       inventoryService.update(id, input),
 
     onSuccess() {
-      queryClient.invalidateQueries({
-        queryKey: productKeys.all,
-      });
+      invalidate();
     },
   });
 }
 
 export function useDeleteProduct() {
-  const queryClient = useQueryClient();
+  const invalidate = useInvalidateProducts();
 
   return useMutation({
     mutationFn: (id: number) => inventoryService.remove(id),
 
     onSuccess() {
-      queryClient.invalidateQueries({
-        queryKey: productKeys.all,
-      });
+      invalidate();
     },
   });
 }

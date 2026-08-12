@@ -14,6 +14,7 @@ type RequestOptions = {
   formData?: FormData;
   signal?: AbortSignal;
   headers?: Record<string, string>;
+  responseType?: "json" | "blob";
 };
 
 function extractMessage(data: unknown): string | null {
@@ -38,6 +39,7 @@ export async function apiFetch<T>(
     formData,
     signal,
     headers: customHeaders,
+    responseType = "json",
   } = options;
 
   const headers: Record<string, string> = {
@@ -69,6 +71,10 @@ export async function apiFetch<T>(
 
   if (response.status === 204) {
     return undefined as T;
+  }
+
+  if (responseType === "blob" && response.ok) {
+    return (await response.blob()) as T;
   }
 
   const text = await response.text();

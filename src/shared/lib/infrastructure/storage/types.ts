@@ -1,6 +1,12 @@
 export type QueueAction =
-  | "UPSERT"
+  | "CREATE"
+  | "UPDATE"
   | "DELETE";
+
+export type QueueStatus =
+  | "pending"
+  | "processing"
+  | "failed";
 
 export interface SyncQueueItem {
 
@@ -14,6 +20,16 @@ export interface SyncQueueItem {
 
   payload: unknown;
 
+  createdAt: number;
+
   updatedAt: number;
+
+  retryCount: number;
+
+  status: QueueStatus;
+
+  nextAttemptAt: number;
+
+  lastError?: string;
 
 }

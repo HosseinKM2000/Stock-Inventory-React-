@@ -10,9 +10,11 @@ import { routeTree } from "./routeTree.gen";
 import "@/style/index.css";
 import "@radix-ui/themes/styles.css";
 import { AuthProvider } from "./shared/auth/auth-provider";
-import "@/shared/lib/infrastructure/sync/sync-listener";
+import { startSync } from "@/shared/lib/infrastructure/sync/sync-bootstrap";
 
 const router = createRouter({ routeTree });
+
+startSync();
 
 declare module "@tanstack/react-router" {
   interface Register {
