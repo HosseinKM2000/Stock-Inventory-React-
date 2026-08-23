@@ -8,36 +8,39 @@ import type {
   RegisterPayload,
   UpdateProfilePayload,
 } from "../types";
+import { normalizeUser } from "../normalize-user";
 
-export function login(payload: LoginPayload): Promise<AuthResponse> {
-  return apiFetch<AuthResponse>("/auth/login", {
+export async function login(payload: LoginPayload): Promise<AuthResponse> {
+  const response = await apiFetch<AuthResponse>("/auth/login", {
     method: "POST",
     json: {
       ...payload,
       device_fingerprint: getDeviceFingerprint(),
     },
   });
+  return { ...response, user: normalizeUser(response.user) };
 }
 
-export function register(payload: RegisterPayload): Promise<AuthResponse> {
-  return apiFetch<AuthResponse>("/auth/signup", {
+export async function register(payload: RegisterPayload): Promise<AuthResponse> {
+  const response = await apiFetch<AuthResponse>("/auth/signup", {
     method: "POST",
     json: {
       ...payload,
       device_fingerprint: getDeviceFingerprint(),
     },
   });
+  return { ...response, user: normalizeUser(response.user) };
 }
 
-export function getMe(): Promise<User> {
-  return apiFetch<User>("/auth/me");
+export async function getMe(): Promise<User> {
+  return normalizeUser(await apiFetch<User>("/auth/me"));
 }
 
-export function updateProfile(payload: UpdateProfilePayload): Promise<User> {
-  return apiFetch<User>("/auth/me", {
+export async function updateProfile(payload: UpdateProfilePayload): Promise<User> {
+  return normalizeUser(await apiFetch<User>("/auth/me", {
     method: "PATCH",
     json: payload,
-  });
+  }));
 }
 
 export function updatePassword(password: string): Promise<void> {

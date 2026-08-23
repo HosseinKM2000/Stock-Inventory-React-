@@ -38,6 +38,8 @@ class SyncApiTest(unittest.TestCase):
             },
         )
         assert signup.status_code == 201, signup.text
+        assert signup.json()["user"]["is_active"] is True
+        assert signup.json()["user"]["is_admin"] is False
         cls.headers = {
             "Authorization": f"Bearer {signup.json()['access_token']}",
             "X-Device-Fingerprint": "sync-test-device",

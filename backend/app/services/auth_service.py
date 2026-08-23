@@ -53,6 +53,7 @@ def signup(
         phone=payload.phone,
         hashed_password=hash_password(payload.password),
         plan="free",
+        is_active=True,
         is_admin=payload.username in settings.ADMIN_USERNAMES,
     )
 

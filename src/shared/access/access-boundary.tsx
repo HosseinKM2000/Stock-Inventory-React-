@@ -7,8 +7,8 @@ import { useEntitlement } from "./use-entitlement";
 export function AccessBoundary({ children }: PropsWithChildren) {
   const { user, logout } = useAuth();
   const entitlement = useEntitlement();
-  
-  if (user && !user.is_active) {
+
+  if (user?.is_active === false) {
     return (
       <Flex minHeight="100vh" align="center" justify="center" p="4">
         <Card size="4" className="max-w-lg text-center">

@@ -1,4 +1,5 @@
 import type { User } from "@/features/auth/types";
+import { normalizeUser } from "@/features/auth/normalize-user";
 
 export type Entitlement = {
   plan: string;
@@ -18,7 +19,10 @@ function read<T>(key: string): T | null {
 }
 
 export const accessState = {
-  user: () => read<User>(USER_KEY),
+  user: () => {
+    const user = read<User>(USER_KEY);
+    return user ? normalizeUser(user) : null;
+  },
   entitlement: () => read<Entitlement>(ENTITLEMENT_KEY),
   canWrite() {
     const value = this.entitlement();
@@ -28,7 +32,7 @@ export const accessState = {
     }
     return value.status !== "expired" && value.capabilities["inventory.write"] !== false;
   },
-  saveUser(user: User) { localStorage.setItem(USER_KEY, JSON.stringify(user)); },
+  saveUser(user: User) { localStorage.setItem(USER_KEY, JSON.stringify(normalizeUser(user))); },
   saveEntitlement(value: Entitlement) { localStorage.setItem(ENTITLEMENT_KEY, JSON.stringify(value)); },
   disableAccount() {
     const user = this.user();

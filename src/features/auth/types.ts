@@ -5,7 +5,7 @@ export type User = {
   username: string;
   email: string | null;
   phone: string | null;
-  industry_id: number;
+  industry_id: number | null;
   plan: "free" | "starter" | "pro" | "vip";
   is_active: boolean;
   is_admin: boolean;
