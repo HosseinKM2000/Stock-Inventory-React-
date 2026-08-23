@@ -3,6 +3,7 @@ import { isAuthenticated } from "@/shared/api/token-store";
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { accessState, type Entitlement } from "./access-state";
+import { planKeys } from "@/features/setting/query/query-keys";
 
 export function useEntitlement() {
   const [now, setNow] = useState(Date.now);
@@ -11,7 +12,7 @@ export function useEntitlement() {
     return () => window.clearInterval(timer);
   }, []);
   const query = useQuery({
-    queryKey: ["auth", "entitlement"],
+    queryKey: planKeys.current,
     queryFn: async () => {
       const value = await apiFetch<Entitlement>("/plans/current");
       accessState.saveEntitlement(value);
@@ -20,6 +21,7 @@ export function useEntitlement() {
     enabled: isAuthenticated(),
     initialData: accessState.entitlement() ?? undefined,
     retry: false,
+    refetchOnWindowFocus: true,
   });
   const value = query.data ?? null;
   if (

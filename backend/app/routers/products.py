@@ -10,7 +10,8 @@ from ..deps import CurrentUser, CurrentWritableUser, DbSession
 from ..models import CatalogProduct, Category, InventoryItem
 from sqlalchemy.orm import joinedload
 from ..schemas import InventoryOut, PaginatedInventory, InventoryStats, PaginationMeta
-from ..plans import entitlement_for
+from ..services.subscription_service import entitlement_for_user
+from ..services.authorization_service import is_admin
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -141,7 +142,7 @@ async def create_product(
 ) -> InventoryItem:
     _validate_category(db, category_id, current_user.id)
 
-    limit = entitlement_for(current_user)["limits"]["inventory_items"]
+    limit = None if is_admin(current_user) else entitlement_for_user(db, current_user)["limits"]["inventory_items"]
     count = db.scalar(select(func.count(InventoryItem.id)).where(InventoryItem.user_id == current_user.id)) or 0
     if limit is not None and count >= limit:
         raise HTTPException(status_code=403, detail="INVENTORY_LIMIT_REACHED")

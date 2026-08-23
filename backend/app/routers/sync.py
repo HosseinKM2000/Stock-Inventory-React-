@@ -10,7 +10,8 @@ from sqlalchemy.orm import joinedload
 from ..config import settings
 from ..deps import CurrentUser, CurrentWritableUser, DbSession
 from ..models import CatalogProduct, InventoryItem, SyncChange, SyncOperation
-from ..plans import entitlement_for
+from ..services.subscription_service import entitlement_for_user
+from ..services.authorization_service import is_admin
 from ..schemas import (
     InventoryOut,
     SyncBatchRequest,
@@ -195,7 +196,7 @@ async def push_batch(
                 else:
                     created = item is None
                     if item is None:
-                        limit = entitlement_for(current_user)["limits"]["inventory_items"]
+                        limit = None if is_admin(current_user) else entitlement_for_user(db, current_user)["limits"]["inventory_items"]
                         count = db.scalar(
                             select(func.count(InventoryItem.id)).where(
                                 InventoryItem.user_id == current_user.id

@@ -6,6 +6,8 @@ import { Box, Callout, Flex, Separator, Text } from "@radix-ui/themes";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useEntitlement } from "@/shared/access/use-entitlement";
+import { useAuth } from "@/shared/auth/use-auth";
+import { isAdmin } from "@/shared/access/authorization";
 
 import {
   exportService,
@@ -18,6 +20,8 @@ import FormatCads from "./file-format";
 const ExportTools = () => {
   const online = useOnline();
   const entitlement = useEntitlement();
+  const { user } = useAuth();
+  const serverAllowed = isAdmin(user) || Boolean(entitlement?.capabilities["export.server"]);
 
   const { pending } = useSyncStatus();
 
@@ -94,7 +98,7 @@ const ExportTools = () => {
 
         <Button
           variant="soft"
-          disabled={!online || !entitlement?.capabilities["export.server"]}
+          disabled={!online || !serverAllowed}
           loading={busy === "server"}
           onClick={() => run("server")}
         >
@@ -104,7 +108,7 @@ const ExportTools = () => {
 
         <Text size={"1"} color="gray" className="text-right">
           {online
-            ? entitlement?.capabilities["export.server"]
+            ? serverAllowed
               ? "خروجی محلی از داده های ذخیره شده روی این دستگاه و خروجی سرور از پایگاه داده تهیه می شود."
               : "خروجی سرور در طرح فعلی فعال نیست؛ خروجی محلی همچنان در دسترس است."
             : "در حالت آفلاین فقط خروجی داده های محلی در دسترس است."}

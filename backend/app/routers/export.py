@@ -19,7 +19,7 @@ def export_inventory_json(
     current_user: CurrentUser,
     db: DbSession,
 ):
-    require_capability(current_user, "export.server")
+    require_capability(db, current_user, "export.server")
     items = db.scalars(
         select(InventoryItem).where(
             InventoryItem.user_id == current_user.id,
@@ -39,7 +39,7 @@ def export_inventory_csv(
     current_user: CurrentUser,
     db: DbSession,
 ):
-    require_capability(current_user, "export.server")
+    require_capability(db, current_user, "export.server")
     items = db.scalars(
         select(InventoryItem).where(
             InventoryItem.user_id == current_user.id,
@@ -89,7 +89,7 @@ def export_transactions_csv(
     current_user: CurrentUser,
     db: DbSession,
 ):
-    require_capability(current_user, "export.server")
+    require_capability(db, current_user, "export.server")
     transactions = db.scalars(
         select(InventoryTransaction).where(
             InventoryTransaction.user_id == current_user.id

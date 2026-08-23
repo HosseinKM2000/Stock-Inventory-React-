@@ -46,6 +46,12 @@ class User(Base):
 
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    role: Mapped[str] = mapped_column(String(20), default="USER", index=True)
+    is_system_admin: Mapped[bool] = mapped_column(Boolean, default=False, index=True)
+    system_key: Mapped[str | None] = mapped_column(String(80), nullable=True, unique=True)
+    subscription_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True
+    )
     subscription_expires_at: Mapped[datetime | None] = mapped_column(
         DateTime, nullable=True
     )
@@ -312,6 +318,35 @@ class SyncChange(Base):
     operation: Mapped[str] = mapped_column(String(20))
     payload: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+
+class SubscriptionPlan(Base):
+    __tablename__ = "subscription_plans"
+
+    id: Mapped[str] = mapped_column(String(40), primary_key=True)
+    name: Mapped[str] = mapped_column(String(120))
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    price_minor: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    currency: Mapped[str] = mapped_column(String(10), default="IRR")
+    duration: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    duration_unit: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    features_json: Mapped[str] = mapped_column(Text, default="{}")
+    limits_json: Mapped[str] = mapped_column(Text, default="{}")
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=_now, onupdate=_now)
+
+
+class AdminAuditLog(Base):
+    __tablename__ = "admin_audit_logs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    # Intentionally not a foreign key: the audit trail must survive target deletion.
+    target_user_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    action: Mapped[str] = mapped_column(String(80), index=True)
+    metadata_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now, index=True)
 
 
 # ---------- Custom Products ----------

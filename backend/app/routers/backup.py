@@ -13,7 +13,7 @@ def get_backup(
     current_user: CurrentUser,
     db: DbSession,
 ):
-    require_backup_access(current_user)
+    require_backup_access(db, current_user)
 
     stmt = (
         select(InventoryItem)
@@ -32,7 +32,7 @@ def restore_backup(
     current_user: CurrentUser,
     db: DbSession,
 ):
-    require_backup_access(current_user)
+    require_backup_access(db, current_user)
 
     return MessageResponse(
         message="بکاپ با موفقیت بازیابی شد"

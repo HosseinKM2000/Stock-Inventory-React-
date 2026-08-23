@@ -7,12 +7,13 @@ from pathlib import Path
 
 _database_path = Path(tempfile.mktemp(suffix="-inventory-test.db"))
 os.environ["DATABASE_URL"] = f"sqlite:///{_database_path.as_posix()}"
+os.environ["SYSTEM_ADMIN_PASSWORD"] = "Test-only-system-admin-password-123!"
 
 from fastapi.testclient import TestClient
 
 from app.database import SessionLocal, engine
 from app.main import app
-from app.models import Industry, User
+from app.models import Industry, User, UserSession
 
 
 class SyncApiTest(unittest.TestCase):
@@ -43,6 +44,22 @@ class SyncApiTest(unittest.TestCase):
         cls.headers = {
             "Authorization": f"Bearer {signup.json()['access_token']}",
             "X-Device-Fingerprint": "sync-test-device",
+        }
+        admin_login = cls.client.post(
+            "/api/auth/login",
+            json={
+                "username": "HosseinKM2000",
+                "password": "Test-only-system-admin-password-123!",
+                "device_fingerprint": "system-admin-test-device",
+            },
+        )
+        assert admin_login.status_code == 200, admin_login.text
+        assert admin_login.json()["user"]["is_system_admin"] is True
+        assert admin_login.json()["user"]["role"] == "ADMIN"
+        cls.admin_user_id = admin_login.json()["user"]["id"]
+        cls.admin_headers = {
+            "Authorization": f"Bearer {admin_login.json()['access_token']}",
+            "X-Device-Fingerprint": "system-admin-test-device",
         }
         selected = cls.client.patch(
             "/api/auth/industry",
@@ -207,6 +224,126 @@ class SyncApiTest(unittest.TestCase):
 
         users = self.client.get("/api/admin/users", headers=self.headers)
         self.assertEqual(users.status_code, 403, users.text)
+
+    def test_permanent_admin_rbac_subscription_and_audit(self) -> None:
+        # SQLite reloads persisted timestamps without timezone information,
+        # while the current request updates last_seen with UTC awareness.
+        # User listing must handle both representations across devices.
+        with SessionLocal() as db:
+            db.add(UserSession(
+                user_id=self.admin_user_id,
+                device_fingerprint="legacy-admin-device",
+                access_token=None,
+                is_active=False,
+                last_seen=datetime.now(),
+            ))
+            db.commit()
+
+        users = self.client.get("/api/admin/users", headers=self.admin_headers)
+        self.assertEqual(users.status_code, 200, users.text)
+        target = next(user for user in users.json() if user["username"] == "offline-sync-test")
+
+        promoted = self.client.patch(
+            f"/api/admin/users/{target['id']}/role",
+            headers=self.admin_headers,
+            json={"role": "ADMIN"},
+        )
+        self.assertEqual(promoted.status_code, 200, promoted.text)
+        self.assertEqual(promoted.json()["role"], "ADMIN")
+        promoted_access = self.client.get("/api/admin/plans", headers=self.headers)
+        self.assertEqual(promoted_access.status_code, 200, promoted_access.text)
+
+        demoted = self.client.patch(
+            f"/api/admin/users/{target['id']}/role",
+            headers=self.admin_headers,
+            json={"role": "USER"},
+        )
+        self.assertEqual(demoted.status_code, 200, demoted.text)
+
+        for method, path, payload in (
+            ("patch", f"/api/admin/users/{self.admin_user_id}/role", {"role": "USER"}),
+            ("patch", f"/api/admin/users/{self.admin_user_id}/state", {"is_active": False}),
+            ("delete", f"/api/admin/users/{self.admin_user_id}", None),
+        ):
+            response = self.client.request(method, path, headers=self.admin_headers, json=payload)
+            self.assertEqual(response.status_code, 409, response.text)
+            self.assertEqual(response.json()["detail"], "SYSTEM_ADMIN_IMMUTABLE")
+
+        plans = self.client.get("/api/admin/plans", headers=self.admin_headers)
+        self.assertEqual(plans.status_code, 200, plans.text)
+        self.assertTrue(any(plan["id"] == "free" for plan in plans.json()))
+
+        created_plan = self.client.post(
+            "/api/admin/plans",
+            headers=self.admin_headers,
+            json={
+                "id": "test_release_plan",
+                "name": "Test release plan",
+                "description": "Automated test",
+                "price_minor": None,
+                "currency": "IRR",
+                "duration": None,
+                "duration_unit": None,
+                "is_active": True,
+                "features": {"inventory.read": True, "inventory.write": True},
+                "limits": {"inventory_items": 10, "devices": 2},
+            },
+        )
+        self.assertEqual(created_plan.status_code, 201, created_plan.text)
+
+        assigned = self.client.patch(
+            f"/api/admin/users/{target['id']}/subscription",
+            headers=self.admin_headers,
+            json={"plan": "test_release_plan"},
+        )
+        self.assertEqual(assigned.status_code, 200, assigned.text)
+        self.assertEqual(assigned.json()["plan"], "test_release_plan")
+
+        changed_plan = self.client.patch(
+            "/api/admin/plans/test_release_plan",
+            headers=self.admin_headers,
+            json={"features": {"inventory.read": True, "inventory.write": False}},
+        )
+        self.assertEqual(changed_plan.status_code, 200, changed_plan.text)
+        refreshed = self.client.get("/api/plans/current", headers=self.headers)
+        self.assertEqual(refreshed.status_code, 200, refreshed.text)
+        self.assertFalse(refreshed.json()["capabilities"]["inventory.write"])
+
+        audit = self.client.get("/api/admin/audit", headers=self.admin_headers)
+        self.assertEqual(audit.status_code, 200, audit.text)
+        actions = {entry["action"] for entry in audit.json()}
+        self.assertIn("role.admin_granted", actions)
+        self.assertIn("subscription.changed", actions)
+
+        with SessionLocal() as db:
+            user = db.query(User).filter(User.username == "offline-sync-test").one()
+            user.plan = "free"
+            user.subscription_started_at = None
+            user.subscription_expires_at = None
+            db.commit()
+
+    def test_resource_ownership_blocks_cross_user_access(self) -> None:
+        signup = self.client.post(
+            "/api/auth/signup",
+            json={
+                "first_name": "Second",
+                "last_name": "Tenant",
+                "username": "second-tenant-test",
+                "password": "StrongPass123!",
+                "device_fingerprint": "second-tenant-device",
+            },
+        )
+        self.assertEqual(signup.status_code, 201, signup.text)
+        other_headers = {
+            "Authorization": f"Bearer {signup.json()['access_token']}",
+            "X-Device-Fingerprint": "second-tenant-device",
+        }
+        response = self.client.patch(
+            "/api/categories/1800000000001",
+            headers=other_headers,
+            json={"name": "Stolen category"},
+        )
+        self.assertEqual(response.status_code, 404, response.text)
 
     def test_expired_subscription_blocks_writes_but_allows_reads(self) -> None:
         with SessionLocal() as db:

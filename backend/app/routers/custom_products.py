@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
-from ..deps import CurrentUser, DbSession
+from ..deps import CurrentUser, CurrentWritableUser, DbSession
 from ..models import CustomProduct
 from ..schemas import (
     CustomProductCreate,
@@ -65,7 +65,7 @@ def get_custom_product(
 )
 def create_custom_product(
     payload: CustomProductCreate,
-    current_user: CurrentUser,
+    current_user: CurrentWritableUser,
     db: DbSession,
 ) -> CustomProduct:
     product = CustomProduct(
@@ -89,7 +89,7 @@ def create_custom_product(
 def update_custom_product(
     product_id: int,
     payload: CustomProductUpdate,
-    current_user: CurrentUser,
+    current_user: CurrentWritableUser,
     db: DbSession,
 ) -> CustomProduct:
     product = _get_custom_product(
@@ -110,7 +110,7 @@ def update_custom_product(
 @router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_custom_product(
     product_id: int,
-    current_user: CurrentUser,
+    current_user: CurrentWritableUser,
     db: DbSession,
 ):
     product = _get_custom_product(

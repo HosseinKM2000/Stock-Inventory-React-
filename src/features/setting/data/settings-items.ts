@@ -51,4 +51,10 @@ export const settingsNavItems = [
     icon: LockClosedIcon,
     adminOnly: true,
   },
+  {
+    label: "مدیریت اشتراک‌ها",
+    to: "/setting/subscription-management",
+    icon: StarIcon,
+    adminOnly: true,
+  },
 ] as const;

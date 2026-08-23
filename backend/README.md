@@ -51,15 +51,25 @@ Set via environment variables or a `.env` file (see `.env.example`):
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `10080` (7 days) | Access-token lifetime |
 | `DATABASE_URL` | `sqlite:///./stock_inventory.db` | SQLAlchemy database URL |
 | `CORS_ORIGINS` | localhost 5173/5174 | Comma-separated allowed frontend origins |
-| `ADMIN_USERNAMES` | empty | Comma-separated usernames that may manage industries, catalogs, plans, and users |
+| `SYSTEM_ADMIN_PASSWORD` | unset | Bootstrap secret for the immutable system administrator; use a secret manager and remove it after the first successful startup |
 
-## Phase 1 account and subscription controls
+## Account, RBAC, and subscription controls
 
 - User access can be disabled globally; disabled accounts are rejected with `423 ACCOUNT_DISABLED`.
-- Plan capabilities and limits are defined centrally in `app/plans.py` and exposed by `GET /api/plans/current`.
+- Roles and permissions are enforced centrally by the authorization service. The legacy `is_admin` field remains synchronized for compatibility.
+- Subscription plans, capabilities, pricing metadata, durations, and limits are persisted and exposed by `GET /api/plans/current`.
 - Paid-plan expiration is server enforced. Expired accounts retain reads while inventory/category writes are rejected.
-- Admin user/plan operations live under `/api/admin/users` and require `is_admin`; configure the initial administrator with `ADMIN_USERNAMES`.
+- Admin user, role, subscription, plan, subscriber, and audit operations live under `/api/admin` and require the `ADMIN` role.
+- The permanent system administrator is identified by a stable system key and cannot be disabled, deleted, or demoted. On a fresh database an inaccessible credential is generated; set `SYSTEM_ADMIN_PASSWORD` (minimum 12 characters) and restart once to establish the login password securely.
 - SQLite installations receive additive compatibility columns at startup. Use Alembic before adopting non-additive production migrations.
+
+For an explicit one-time bootstrap from `backend/` in PowerShell:
+
+```powershell
+$env:SYSTEM_ADMIN_PASSWORD = Read-Host "Temporary bootstrap password"
+python -m app.bootstrap_admin
+Remove-Item Env:SYSTEM_ADMIN_PASSWORD
+```
 
 ## API overview
 

@@ -38,11 +38,7 @@ class Settings:
         ).split(",")
         if origin.strip()
     ]
-    ADMIN_USERNAMES: set[str] = {
-        username.strip()
-        for username in os.getenv("ADMIN_USERNAMES", "").split(",")
-        if username.strip()
-    }
+    SYSTEM_ADMIN_PASSWORD: str | None = os.getenv("SYSTEM_ADMIN_PASSWORD")
     UPLOAD_DIR: Path = BASE_DIR / "uploads"
 
 

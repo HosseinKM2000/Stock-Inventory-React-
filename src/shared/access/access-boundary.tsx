@@ -3,6 +3,7 @@ import { Button } from "@/shared/ui/button/button";
 import { Box, Callout, Card, Flex, Text } from "@radix-ui/themes";
 import { type PropsWithChildren } from "react";
 import { useEntitlement } from "./use-entitlement";
+import { isAdmin } from "./authorization";
 
 export function AccessBoundary({ children }: PropsWithChildren) {
   const { user, logout } = useAuth();
@@ -20,7 +21,7 @@ export function AccessBoundary({ children }: PropsWithChildren) {
     );
   }
 
-  const expired = entitlement?.status === "expired";
+  const expired = !isAdmin(user) && entitlement?.status === "expired";
   return (
     <>
       {expired && (

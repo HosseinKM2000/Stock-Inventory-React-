@@ -3,6 +3,7 @@ import { Box, Flex, Text } from "@radix-ui/themes";
 
 import { settingsNavItems } from "../data/settings-items";
 import { useAuth } from "@/shared/auth/use-auth";
+import { isAdmin } from "@/shared/access/authorization";
 
 export function SettingsMobileNav() {
   const { user } = useAuth();
@@ -47,7 +48,7 @@ export function SettingsMobileNav() {
           backdrop-blur-2xl
         "
       >
-        {settingsNavItems.filter((item) => !("adminOnly" in item) || user?.is_admin).map((item) => {
+        {settingsNavItems.filter((item) => !("adminOnly" in item) || isAdmin(user)).map((item) => {
           const Icon = item.icon;
 
           const active = pathname.startsWith(item.to);

@@ -1,6 +1,7 @@
 import { inventoryService } from "@/features/app/inventory/services/inventory-service";
 import type { Product } from "@/features/app/inventory/types";
 import { apiFetch } from "@/shared/api/client";
+import { accessState } from "@/shared/access/access-state";
 import { networkService } from "@/shared/lib/infrastructure/network/network-service";
 
 export type ExportFormat = "xlsx" | "csv" | "pdf";
@@ -181,6 +182,7 @@ export class ServerExportUnavailableError extends Error {
 export const exportService = {
   /** Exports the current offline state, straight from IndexedDB. */
   async exportLocal(options: ExportOptions) {
+    accessState.requireCapability("export.local");
     const products = applyScope(await inventoryService.getAll(), options);
 
     const title = "خروجی داده های محلی";
@@ -200,6 +202,7 @@ export const exportService = {
 
   /** Exports the server dataset, which may differ while changes are pending. */
   async exportServer(options: ExportOptions) {
+    accessState.requireCapability("export.server");
     if (networkService.isOffline()) {
       throw new ServerExportUnavailableError();
     }

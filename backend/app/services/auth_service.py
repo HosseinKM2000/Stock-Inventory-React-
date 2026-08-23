@@ -19,7 +19,6 @@ from .session_service import (
     create_session,
     update_last_seen,
 )
-from ..config import settings
 
 
 def username_taken(
@@ -54,7 +53,8 @@ def signup(
         hashed_password=hash_password(payload.password),
         plan="free",
         is_active=True,
-        is_admin=payload.username in settings.ADMIN_USERNAMES,
+        is_admin=False,
+        role="USER",
     )
 
     db.add(user)
@@ -109,9 +109,6 @@ def login(
     if not user.is_active:
         raise HTTPException(status_code=423, detail="ACCOUNT_DISABLED")
 
-    if user.username in settings.ADMIN_USERNAMES:
-        user.is_admin = True
-
     # ----------------------------------------------------
     # Device Session
     # ----------------------------------------------------
@@ -140,6 +137,7 @@ def login(
         )
 
         if not can_add_device(
+            db,
             user,
             len(active_sessions),
         ):

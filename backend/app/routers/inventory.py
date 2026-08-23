@@ -5,10 +5,10 @@ from sqlalchemy import select, func
 from sqlalchemy.orm import joinedload
 from ..services.inventory_service import (
     get_inventory_item_or_404,
-    update_inventory_item
+    update_inventory_item as apply_inventory_update,
 )
 
-from ..deps import CurrentUser, DbSession
+from ..deps import CurrentUser, CurrentWritableUser, DbSession
 from ..models import InventoryItem, InventoryTransaction
 from ..schemas import (
     InventoryBulkSync,
@@ -22,6 +22,23 @@ from ..schemas import (
 )
 
 router = APIRouter(prefix="/inventory", tags=["inventory"])
+
+
+@router.get("/trash", response_model=list[InventoryOut])
+def trash_inventory(
+    current_user: CurrentUser,
+    db: DbSession,
+) -> list[InventoryItem]:
+    stmt = (
+        select(InventoryItem)
+        .where(
+            InventoryItem.user_id == current_user.id,
+            InventoryItem.deleted_at.is_not(None),
+        )
+        .order_by(InventoryItem.created_at.desc())
+    )
+
+    return list(db.scalars(stmt))
 
 
 
@@ -85,7 +102,7 @@ def get_inventory_item(
 def update_inventory_item(
     item_id: int,
     payload: InventoryUpdate,
-    current_user: CurrentUser,
+    current_user: CurrentWritableUser,
     db: DbSession,
 ) -> InventoryItem:
     item = get_inventory_item_or_404(
@@ -94,7 +111,7 @@ def update_inventory_item(
         current_user.id,
     )
 
-    update_inventory_item(
+    apply_inventory_update(
         item,
         payload.model_dump(exclude_unset=True),
     )
@@ -108,7 +125,7 @@ def update_inventory_item(
 @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_inventory_item(
     item_id: int,
-    current_user: CurrentUser,
+    current_user: CurrentWritableUser,
     db: DbSession,
 ):
     item = get_inventory_item_or_404(
@@ -126,7 +143,7 @@ def delete_inventory_item(
 def create_transaction(
     item_id: int,
     payload: TransactionCreate,
-    current_user: CurrentUser,
+    current_user: CurrentWritableUser,
     db: DbSession,
 ) -> InventoryTransaction:
     item = get_inventory_item_or_404(
@@ -194,7 +211,7 @@ def list_transactions(
 @router.patch("/{item_id}/hide", response_model=InventoryOut)
 def hide_inventory_item(
     item_id: int,
-    current_user: CurrentUser,
+    current_user: CurrentWritableUser,
     db: DbSession,
 ) -> InventoryItem:
     item = get_inventory_item_or_404(
@@ -214,7 +231,7 @@ def hide_inventory_item(
 @router.patch("/{item_id}/restore", response_model=InventoryOut)
 def restore_inventory_item(
     item_id: int,
-    current_user: CurrentUser,
+    current_user: CurrentWritableUser,
     db: DbSession,
 ) -> InventoryItem:
     item = get_inventory_item_or_404(
@@ -235,7 +252,7 @@ def restore_inventory_item(
 @router.delete("/{item_id}/force", response_model=MessageResponse)
 def force_delete_inventory_item(
     item_id: int,
-    current_user: CurrentUser,
+    current_user: CurrentWritableUser,
     db: DbSession,
 ):
     item = get_inventory_item_or_404(
@@ -252,27 +269,10 @@ def force_delete_inventory_item(
     )
 
 
-@router.get("/trash", response_model=list[InventoryOut])
-def trash_inventory(
-    current_user: CurrentUser,
-    db: DbSession,
-) -> list[InventoryItem]:
-    stmt = (
-        select(InventoryItem)
-        .where(
-            InventoryItem.user_id == current_user.id,
-            InventoryItem.deleted_at.is_not(None),
-        )
-        .order_by(InventoryItem.created_at.desc())
-    )
-
-    return list(db.scalars(stmt))
-
-
 @router.post("/sync", response_model=MessageResponse)
 def bulk_sync_inventory(
     payload: InventoryBulkSync,
-    current_user: CurrentUser,
+    current_user: CurrentWritableUser,
     db: DbSession,
 ):
     for sync_item in payload.items:

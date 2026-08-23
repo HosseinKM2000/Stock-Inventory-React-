@@ -2,6 +2,7 @@ import { categoryStorage } from "@/shared/lib/infrastructure/storage/category-st
 import { queueService } from "@/shared/lib/infrastructure/sync/queue.service";
 import type { Category, CategoryInput } from "../types";
 import { inventoryService } from "@/features/app/inventory/services/inventory-service";
+import { accessState } from "@/shared/access/access-state";
 
 export const CATEGORY_ENTITY = "category";
 
@@ -9,6 +10,7 @@ export const categoryService = {
   getAll: () => categoryStorage.getAll(),
 
   async create(input: CategoryInput) {
+    accessState.requireWrite();
     const now = new Date().toISOString();
     const category: Category = {
       id: input.id ?? Date.now(),
@@ -23,6 +25,7 @@ export const categoryService = {
   },
 
   async update(id: number, input: CategoryInput) {
+    accessState.requireWrite();
     const current = await categoryStorage.get(id);
     if (!current) throw new Error("Category not found");
     const category = {
@@ -37,6 +40,7 @@ export const categoryService = {
   },
 
   async remove(id: number) {
+    accessState.requireWrite();
     for (const product of await inventoryService.getAll({ category_id: id })) {
       await inventoryService.update(product.id, { category_id: null });
     }

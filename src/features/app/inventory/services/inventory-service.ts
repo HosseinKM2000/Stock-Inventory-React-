@@ -1,5 +1,6 @@
 import { imageService } from "@/shared/lib/infrastructure/media/image.service";
 import { queueService } from "@/shared/lib/infrastructure/sync/queue.service";
+import { accessState } from "@/shared/access/access-state";
 
 import { inventoryRepository } from "./inventory.repository";
 
@@ -113,6 +114,7 @@ class InventoryService {
   }
 
   async create(product: Product): Promise<Product> {
+    accessState.requireWrite();
     const record = sanitize(product);
 
     await inventoryRepository.save(record);
@@ -128,6 +130,7 @@ class InventoryService {
   }
 
   async update(id: number, input: ProductInput): Promise<Product> {
+    accessState.requireWrite();
     const current = await inventoryRepository.get(id);
 
     if (!current) {
@@ -160,6 +163,7 @@ class InventoryService {
   }
 
   async remove(id: number): Promise<void> {
+    accessState.requireWrite();
     const current = await inventoryRepository.get(id);
 
     await inventoryRepository.remove(id);

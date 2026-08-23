@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
-from ..deps import CurrentUser, DbSession
+from ..deps import CurrentUser, CurrentWritableUser, DbSession
 from ..models import InventoryItem, InventoryTransaction
 from ..schemas import TransactionCreate, TransactionOut
 
@@ -32,7 +32,7 @@ def _get_owned_product(
 def create_transaction(
     product_id: int,
     payload: TransactionCreate,
-    current_user: CurrentUser,
+    current_user: CurrentWritableUser,
     db: DbSession,
 ) -> InventoryTransaction:
 

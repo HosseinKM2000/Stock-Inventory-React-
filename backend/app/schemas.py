@@ -58,6 +58,9 @@ class UserOut(BaseModel):
     plan: str
     is_active: bool
     is_admin: bool
+    role: Literal["USER", "ADMIN"]
+    is_system_admin: bool
+    subscription_started_at: datetime | None = None
     subscription_expires_at: datetime | None = None
     industry_id: int | None = None
     created_at: datetime
@@ -392,6 +395,7 @@ class ErrorResponse(BaseModel):
 # =========================================================
 class PlanUpdate(BaseModel):
     plan: Literal["free", "starter", "pro", "vip"]
+    subscription_started_at: datetime | None = None
     subscription_expires_at: datetime | None = None
 
 
@@ -399,23 +403,71 @@ class EntitlementOut(BaseModel):
     plan: str
     label: str
     status: Literal["active", "expired"]
+    started_at: datetime | None = None
     expires_at: datetime | None = None
+    synced_at: datetime
     capabilities: dict[str, bool]
     limits: dict[str, int | None]
 
 
 class PlanDefinitionOut(BaseModel):
     id: str
-    label: str
+    name: str
+    description: str | None = None
     price_minor: int | None = None
     currency: str
-    duration_days: int | None = None
-    capabilities: dict[str, bool]
+    duration: int | None = None
+    duration_unit: Literal["day", "month", "year"] | None = None
+    is_active: bool
+    features: dict[str, bool]
     limits: dict[str, int | None]
+    created_at: datetime
+    updated_at: datetime
+
+
+class PlanCreate(BaseModel):
+    id: str = Field(pattern=r"^[a-z0-9_-]+$", min_length=2, max_length=40)
+    name: str = Field(min_length=1, max_length=120)
+    description: str | None = None
+    price_minor: int | None = Field(default=None, ge=0)
+    currency: str = Field(default="IRR", min_length=3, max_length=10)
+    duration: int | None = Field(default=None, gt=0)
+    duration_unit: Literal["day", "month", "year"] | None = None
+    is_active: bool = True
+    features: dict[str, bool]
+    limits: dict[str, int | None]
+
+
+class PlanPatch(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    description: str | None = None
+    price_minor: int | None = Field(default=None, ge=0)
+    currency: str | None = Field(default=None, min_length=3, max_length=10)
+    duration: int | None = Field(default=None, gt=0)
+    duration_unit: Literal["day", "month", "year"] | None = None
+    is_active: bool | None = None
+    features: dict[str, bool] | None = None
+    limits: dict[str, int | None] | None = None
 
 
 class AdminUserStateUpdate(BaseModel):
     is_active: bool
+
+
+class AdminUserRoleUpdate(BaseModel):
+    role: Literal["USER", "ADMIN"]
+
+
+class AdminSubscriptionUpdate(BaseModel):
+    plan: str
+    subscription_started_at: datetime | None = None
+    subscription_expires_at: datetime | None = None
+
+
+class AdminUserOut(UserOut):
+    subscription_status: Literal["active", "expired"]
+    last_activity_at: datetime | None = None
+    remaining_days: int | None = None
     
 
 class DeviceInfo(BaseModel):

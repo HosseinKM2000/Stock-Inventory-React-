@@ -103,6 +103,15 @@ async function runSync() {
     return;
   }
 
+  if (!accessState.canAccess()) {
+    syncStatusStore.set({
+      state: "failed",
+      pending: await queueService.count(),
+      error: "ACCOUNT_DISABLED",
+    });
+    return;
+  }
+
   const writeAllowed = accessState.canWrite();
   const items = writeAllowed ? await queueService.getDue() : [];
 

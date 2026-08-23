@@ -5,8 +5,9 @@ from sqlalchemy.orm import Session
 
 from .database import get_db
 from .models import User
-from .plans import entitlement_for
 from .security import decode_access_token
+from .services.authorization_service import Permission, is_admin, require_permission
+from .services.subscription_service import entitlement_for_user
 from .services.session_service import validate_session
 
 DeviceFingerprint = Annotated[str, Header(alias="X-Device-Fingerprint")]
@@ -40,28 +41,30 @@ def get_current_user(
     return user
 
 
-def require_capability(user: User, capability: str) -> None:
-    if not entitlement_for(user)["capabilities"].get(capability, False):
+def require_capability(db: Session, user: User, capability: str) -> None:
+    if is_admin(user):
+        return
+    if not entitlement_for_user(db, user)["capabilities"].get(capability, False):
         raise HTTPException(status_code=403, detail=f"CAPABILITY_REQUIRED:{capability}")
 
 
 def get_current_writable_user(
     user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
 ) -> User:
-    require_capability(user, "inventory.write")
+    require_capability(db, user, "inventory.write")
     return user
 
 
 def get_current_admin(
     user: Annotated[User, Depends(get_current_user)],
 ) -> User:
-    if not user.is_admin:
-        raise HTTPException(status_code=403, detail="ADMIN_REQUIRED")
+    require_permission(user, Permission.USERS_READ)
     return user
 
 
-def require_backup_access(user: User) -> None:
-    require_capability(user, "backup")
+def require_backup_access(db: Session, user: User) -> None:
+    require_capability(db, user, "backup")
 
 
 CurrentUser = Annotated[User, Depends(get_current_user)]

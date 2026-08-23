@@ -54,3 +54,20 @@ export type CatalogProductInput = {
 };
 
 export type CatalogProductUpdate = Partial<CatalogProductInput>;
+
+export type SubscriptionPlan = {
+  id: string;
+  name: string;
+  description: string | null;
+  price_minor: number | null;
+  currency: string;
+  duration: number | null;
+  duration_unit: "day" | "month" | "year" | null;
+  is_active: boolean;
+  features: Record<string, boolean>;
+  limits: Record<string, number | null>;
+  created_at: string;
+  updated_at: string;
+};
+
+export type SubscriptionPlanInput = Omit<SubscriptionPlan, "created_at" | "updated_at">;

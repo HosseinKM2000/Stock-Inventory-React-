@@ -8,6 +8,7 @@ import {
 } from "@radix-ui/react-icons";
 import { useLogout } from "@/features/auth/mutations/use-register";
 import { useAuth } from "@/shared/auth/use-auth";
+import { isAdmin } from "@/shared/access/authorization";
 
 export function SettingNav() {
   const logout = useLogout();
@@ -64,7 +65,7 @@ export function SettingNav() {
       {/* MENU */}
       <nav className="flex-1 px-3">
         <div className="space-y-1">
-          {settingsNavItems.filter((item) => !("adminOnly" in item) || user?.is_admin).map((item) => {
+          {settingsNavItems.filter((item) => !("adminOnly" in item) || isAdmin(user)).map((item) => {
             const Icon = item.icon;
             const active = pathname.startsWith(item.to);
 

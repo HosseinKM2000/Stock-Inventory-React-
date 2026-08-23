@@ -52,10 +52,6 @@ PLAN_CATALOG: dict[str, dict[str, Any]] = {
 }
 
 
-def plan_definition(plan: str) -> dict[str, Any]:
-    return PLAN_CATALOG.get(plan, PLAN_CATALOG["free"])
-
-
 def subscription_expired(plan: str, expires_at: datetime | None) -> bool:
     if plan == "free" or expires_at is None:
         return False
@@ -63,16 +59,3 @@ def subscription_expired(plan: str, expires_at: datetime | None) -> bool:
     if value.tzinfo is None:
         value = value.replace(tzinfo=timezone.utc)
     return value <= datetime.now(timezone.utc)
-
-
-def entitlement_for(user: Any) -> dict[str, Any]:
-    definition = plan_definition(user.plan)
-    expired = subscription_expired(user.plan, user.subscription_expires_at)
-    capabilities = dict(definition["capabilities"])
-    if expired:
-        capabilities = {key: value if key == "inventory.read" else False
-                        for key, value in capabilities.items()}
-    return {"plan": user.plan, "label": definition["label"],
-            "status": "expired" if expired else "active",
-            "expires_at": user.subscription_expires_at,
-            "capabilities": capabilities, "limits": definition["limits"]}
