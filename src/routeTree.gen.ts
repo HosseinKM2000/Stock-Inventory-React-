@@ -13,6 +13,8 @@ import { Route as SettingRouteRouteImport } from './routes/setting/route'
 import { Route as AuthRouteRouteImport } from './routes/auth/route'
 import { Route as appRouteRouteImport } from './routes/(app)/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as SettingUsersRouteImport } from './routes/setting/users'
+import { Route as SettingSubscriptionRouteImport } from './routes/setting/subscription'
 import { Route as SettingProfileRouteImport } from './routes/setting/profile'
 import { Route as SettingIndustryRouteImport } from './routes/setting/industry'
 import { Route as SettingExportRouteImport } from './routes/setting/export'
@@ -54,6 +56,16 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const SettingUsersRoute = SettingUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => SettingRouteRoute,
+} as any)
+const SettingSubscriptionRoute = SettingSubscriptionRouteImport.update({
+  id: '/subscription',
+  path: '/subscription',
+  getParentRoute: () => SettingRouteRoute,
 } as any)
 const SettingProfileRoute = SettingProfileRouteImport.update({
   id: '/profile',
@@ -187,6 +199,8 @@ export interface FileRoutesByFullPath {
   '/setting/export': typeof SettingExportRoute
   '/setting/industry': typeof SettingIndustryRoute
   '/setting/profile': typeof SettingProfileRoute
+  '/setting/subscription': typeof SettingSubscriptionRoute
+  '/setting/users': typeof SettingUsersRoute
   '/dashboard/products': typeof appDashboardProductsRouteRouteWithChildren
   '/inventory/add': typeof appInventoryAddRoute
   '/inventory/edit': typeof appInventoryEditRoute
@@ -212,6 +226,8 @@ export interface FileRoutesByTo {
   '/setting/export': typeof SettingExportRoute
   '/setting/industry': typeof SettingIndustryRoute
   '/setting/profile': typeof SettingProfileRoute
+  '/setting/subscription': typeof SettingSubscriptionRoute
+  '/setting/users': typeof SettingUsersRoute
   '/dashboard/products': typeof appDashboardProductsRouteRouteWithChildren
   '/inventory/add': typeof appInventoryAddRoute
   '/inventory/edit': typeof appInventoryEditRoute
@@ -241,6 +257,8 @@ export interface FileRoutesById {
   '/setting/export': typeof SettingExportRoute
   '/setting/industry': typeof SettingIndustryRoute
   '/setting/profile': typeof SettingProfileRoute
+  '/setting/subscription': typeof SettingSubscriptionRoute
+  '/setting/users': typeof SettingUsersRoute
   '/(app)/dashboard/products': typeof appDashboardProductsRouteRouteWithChildren
   '/(app)/inventory/add': typeof appInventoryAddRoute
   '/(app)/inventory/edit': typeof appInventoryEditRoute
@@ -270,6 +288,8 @@ export interface FileRouteTypes {
     | '/setting/export'
     | '/setting/industry'
     | '/setting/profile'
+    | '/setting/subscription'
+    | '/setting/users'
     | '/dashboard/products'
     | '/inventory/add'
     | '/inventory/edit'
@@ -295,6 +315,8 @@ export interface FileRouteTypes {
     | '/setting/export'
     | '/setting/industry'
     | '/setting/profile'
+    | '/setting/subscription'
+    | '/setting/users'
     | '/dashboard/products'
     | '/inventory/add'
     | '/inventory/edit'
@@ -323,6 +345,8 @@ export interface FileRouteTypes {
     | '/setting/export'
     | '/setting/industry'
     | '/setting/profile'
+    | '/setting/subscription'
+    | '/setting/users'
     | '/(app)/dashboard/products'
     | '/(app)/inventory/add'
     | '/(app)/inventory/edit'
@@ -373,6 +397,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/setting/users': {
+      id: '/setting/users'
+      path: '/users'
+      fullPath: '/setting/users'
+      preLoaderRoute: typeof SettingUsersRouteImport
+      parentRoute: typeof SettingRouteRoute
+    }
+    '/setting/subscription': {
+      id: '/setting/subscription'
+      path: '/subscription'
+      fullPath: '/setting/subscription'
+      preLoaderRoute: typeof SettingSubscriptionRouteImport
+      parentRoute: typeof SettingRouteRoute
     }
     '/setting/profile': {
       id: '/setting/profile'
@@ -625,6 +663,8 @@ interface SettingRouteRouteChildren {
   SettingExportRoute: typeof SettingExportRoute
   SettingIndustryRoute: typeof SettingIndustryRoute
   SettingProfileRoute: typeof SettingProfileRoute
+  SettingSubscriptionRoute: typeof SettingSubscriptionRoute
+  SettingUsersRoute: typeof SettingUsersRoute
 }
 
 const SettingRouteRouteChildren: SettingRouteRouteChildren = {
@@ -634,6 +674,8 @@ const SettingRouteRouteChildren: SettingRouteRouteChildren = {
   SettingExportRoute: SettingExportRoute,
   SettingIndustryRoute: SettingIndustryRoute,
   SettingProfileRoute: SettingProfileRoute,
+  SettingSubscriptionRoute: SettingSubscriptionRoute,
+  SettingUsersRoute: SettingUsersRoute,
 }
 
 const SettingRouteRouteWithChildren = SettingRouteRoute._addFileChildren(

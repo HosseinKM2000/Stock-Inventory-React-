@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { createProductInitialValues } from "../form/product-form.initial";
 import { productSchema } from "../schema/product.schema";
 import { type Product } from "../types";
+import { useCategories } from "@/features/setting/mutations/use-categories";
 
 type ProductFormMode = "create" | "edit" | "view";
 
@@ -44,7 +45,7 @@ export function ProductForm({
   onDelete,
   deleting = false,
 }: ProductFormProps) {
-  // const { data: categories = [] } = useCategories();
+  const { data: categories = [] } = useCategories();
   const readOnly = mode === "view";
 
   const statusOptions = [
@@ -110,10 +111,10 @@ export function ProductForm({
     }
   };
 
-  // const categoryOptions = categories.map((c) => ({
-  //   value: String(c.id),
-  //   label: c.name,
-  // }));
+  const categoryOptions = categories.map((category) => ({
+    value: String(category.id),
+    label: category.name,
+  }));
   // const unitOptions = PRODUCT_UNITS.map((u) => ({ value: u, label: u }));
 
   return (
@@ -218,6 +219,16 @@ export function ProductForm({
                 form.setValue("status", value as Product["status"])
               }
               options={statusOptions}
+              disabled={readOnly}
+            />
+          </FormField>
+
+          <FormField id="category_id" label="دسته‌بندی">
+            <SelectInput
+              size="3"
+              value={form.values.category_id == null ? "none" : String(form.values.category_id)}
+              onValueChange={(value) => form.setValue("category_id", value === "none" ? null : Number(value))}
+              options={[{ label: "بدون دسته‌بندی", value: "none" }, ...categoryOptions]}
               disabled={readOnly}
             />
           </FormField>

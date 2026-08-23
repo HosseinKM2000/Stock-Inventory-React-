@@ -19,6 +19,7 @@ from .session_service import (
     create_session,
     update_last_seen,
 )
+from ..config import settings
 
 
 def username_taken(
@@ -52,6 +53,7 @@ def signup(
         phone=payload.phone,
         hashed_password=hash_password(payload.password),
         plan="free",
+        is_admin=payload.username in settings.ADMIN_USERNAMES,
     )
 
     db.add(user)
@@ -102,6 +104,12 @@ def login(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid credentials",
         )
+
+    if not user.is_active:
+        raise HTTPException(status_code=423, detail="ACCOUNT_DISABLED")
+
+    if user.username in settings.ADMIN_USERNAMES:
+        user.is_admin = True
 
     # ----------------------------------------------------
     # Device Session

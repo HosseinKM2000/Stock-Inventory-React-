@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status
 
-from ..deps import DbSession
+from ..deps import CurrentAdmin, CurrentUser, DbSession
 
 from ..schemas import (
     CatalogProductCreate,
@@ -30,6 +30,7 @@ router = APIRouter(
     response_model=list[CatalogProductOut],
 )
 def list_catalog_products(
+    _: CurrentUser,
     db: DbSession,
     search: str | None = None,
     industry_id: int | None = None,
@@ -50,6 +51,7 @@ def list_catalog_products(
 )
 def get_catalog(
     catalog_id: int,
+    _: CurrentUser,
     db: DbSession,
 ):
     product = get_catalog_product(
@@ -76,6 +78,7 @@ def get_catalog(
 )
 def create_catalog(
     payload: CatalogProductCreate,
+    _: CurrentAdmin,
     db: DbSession,
 ):
     return create_catalog_product(
@@ -94,6 +97,7 @@ def create_catalog(
 def update_catalog(
     catalog_id: int,
     payload: CatalogProductUpdate,
+    _: CurrentAdmin,
     db: DbSession,
 ):
     product = get_catalog_product(
@@ -123,6 +127,7 @@ def update_catalog(
 )
 def delete_catalog(
     catalog_id: int,
+    _: CurrentAdmin,
     db: DbSession,
 ):
     product = get_catalog_product(

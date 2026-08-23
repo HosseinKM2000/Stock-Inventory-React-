@@ -1,9 +1,13 @@
 import Header from "@/features/app/layout/header";
 import { SettingNavigation } from "@/features/setting/components/layout";
 import { Box, Flex } from "@radix-ui/themes";
-import { Outlet, createFileRoute } from "@tanstack/react-router";
+import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
+import { isAuthenticated } from "@/shared/api/token-store";
 
 export const Route = createFileRoute("/setting")({
+  beforeLoad: () => {
+    if (!isAuthenticated()) throw redirect({ to: "/auth/login" });
+  },
   component: SettingLayout,
 });
 
@@ -35,7 +39,7 @@ function SettingLayout() {
           className="
             flex-1
             overflow-y-auto
-            p-10
+            p-4 md:p-10
           "
         >
           <Outlet />

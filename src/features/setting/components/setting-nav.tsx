@@ -7,9 +7,11 @@ import {
   ExitIcon,
 } from "@radix-ui/react-icons";
 import { useLogout } from "@/features/auth/mutations/use-register";
+import { useAuth } from "@/shared/auth/use-auth";
 
 export function SettingNav() {
   const logout = useLogout();
+  const { user } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
 
   const pathname = useRouterState({
@@ -62,7 +64,7 @@ export function SettingNav() {
       {/* MENU */}
       <nav className="flex-1 px-3">
         <div className="space-y-1">
-          {settingsNavItems.map((item) => {
+          {settingsNavItems.filter((item) => !("adminOnly" in item) || user?.is_admin).map((item) => {
             const Icon = item.icon;
             const active = pathname.startsWith(item.to);
 

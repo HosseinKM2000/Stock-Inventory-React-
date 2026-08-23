@@ -1,10 +1,8 @@
 import { queryClient } from "@/shared/api/query-client";
-import { Theme } from "@radix-ui/themes";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { createRouter, RouterProvider } from "@tanstack/react-router";
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { Toaster } from "sonner";
 import { routeTree } from "./routeTree.gen";
 
 import "@/style/index.css";
@@ -12,6 +10,7 @@ import "@radix-ui/themes/styles.css";
 import { startSync } from "@/shared/lib/infrastructure/sync/sync-bootstrap";
 import { inventoryService } from "@/features/app/inventory/services/inventory-service";
 import { registerServiceWorker } from "@/shared/lib/infrastructure/pwa/register-service-worker";
+import { AppTheme } from "@/shared/theme/app-theme";
 
 const router = createRouter({ routeTree });
 
@@ -34,20 +33,9 @@ declare module "@tanstack/react-router" {
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <Theme appearance="dark" accentColor="violet">
-          <Toaster
-            richColors
-            closeButton
-            theme="system"
-            expand={false}
-            duration={4000}
-            position="top-center"
-            toastOptions={{
-              className: "font-sans",
-            }}
-          />
+      <AppTheme>
         <RouterProvider router={router} />
-      </Theme>
+      </AppTheme>
     </QueryClientProvider>
   </React.StrictMode>,
 );

@@ -5,6 +5,7 @@ import { DownloadIcon, FaceIcon } from "@radix-ui/react-icons";
 import { Box, Callout, Flex, Separator, Text } from "@radix-ui/themes";
 import { useState } from "react";
 import { toast } from "sonner";
+import { useEntitlement } from "@/shared/access/use-entitlement";
 
 import {
   exportService,
@@ -16,6 +17,7 @@ import FormatCads from "./file-format";
 
 const ExportTools = () => {
   const online = useOnline();
+  const entitlement = useEntitlement();
 
   const { pending } = useSyncStatus();
 
@@ -25,9 +27,11 @@ const ExportTools = () => {
 
   const [categoryId, setCategoryId] = useState<number | null>(null);
 
+  const [selectedIds, setSelectedIds] = useState<number[]>([]);
+
   const [busy, setBusy] = useState<"local" | "server" | null>(null);
 
-  const options = { format, scope, categoryId };
+  const options = { format, scope, categoryId, selectedIds };
 
   const run = async (source: "local" | "server") => {
     setBusy(source);
@@ -69,6 +73,8 @@ const ExportTools = () => {
         onScopeChange={setScope}
         categoryId={categoryId}
         onCategoryChange={setCategoryId}
+        selectedIds={selectedIds}
+        onSelectedIdsChange={setSelectedIds}
       />
 
       {pending > 0 && (
@@ -88,7 +94,7 @@ const ExportTools = () => {
 
         <Button
           variant="soft"
-          disabled={!online}
+          disabled={!online || !entitlement?.capabilities["export.server"]}
           loading={busy === "server"}
           onClick={() => run("server")}
         >
@@ -98,7 +104,9 @@ const ExportTools = () => {
 
         <Text size={"1"} color="gray" className="text-right">
           {online
-            ? "خروجی محلی از داده های ذخیره شده روی این دستگاه و خروجی سرور از پایگاه داده تهیه می شود."
+            ? entitlement?.capabilities["export.server"]
+              ? "خروجی محلی از داده های ذخیره شده روی این دستگاه و خروجی سرور از پایگاه داده تهیه می شود."
+              : "خروجی سرور در طرح فعلی فعال نیست؛ خروجی محلی همچنان در دسترس است."
             : "در حالت آفلاین فقط خروجی داده های محلی در دسترس است."}
         </Text>
       </Flex>

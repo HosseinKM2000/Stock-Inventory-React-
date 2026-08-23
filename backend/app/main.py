@@ -6,7 +6,7 @@ from .config import settings
 from sqlalchemy import inspect, text
 from .database import Base, engine
 from .exceptions import global_exception_handler
-from .routers import auth, categories, dashboard, plans, backup, industries, products, inventory, export, transactions, custom_products, catalog_products, sync
+from .routers import admin, auth, categories, dashboard, plans, backup, industries, products, inventory, export, transactions, custom_products, catalog_products, sync
 
 # Create tables on startup (simple approach; swap for Alembic if needed).
 Base.metadata.create_all(bind=engine)
@@ -14,15 +14,28 @@ Base.metadata.create_all(bind=engine)
 
 def _apply_compatibility_migrations() -> None:
     """Additive migration for installations created before offline sync."""
-    columns = {column["name"] for column in inspect(engine).get_columns("inventory_items")}
+    inventory_columns = {column["name"] for column in inspect(engine).get_columns("inventory_items")}
+    user_columns = {column["name"] for column in inspect(engine).get_columns("users")}
+    category_columns = {column["name"] for column in inspect(engine).get_columns("categories")}
 
     with engine.begin() as connection:
-        if "image_url" not in columns:
+        if "image_url" not in inventory_columns:
             connection.execute(text("ALTER TABLE inventory_items ADD COLUMN image_url VARCHAR(500)"))
-        if "version" not in columns:
+        if "version" not in inventory_columns:
             connection.execute(
                 text("ALTER TABLE inventory_items ADD COLUMN version INTEGER NOT NULL DEFAULT 1")
             )
+        if "category_id" not in inventory_columns:
+            connection.execute(text("ALTER TABLE inventory_items ADD COLUMN category_id INTEGER"))
+        if "is_active" not in user_columns:
+            connection.execute(text("ALTER TABLE users ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1"))
+        if "is_admin" not in user_columns:
+            connection.execute(text("ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT 0"))
+        if "subscription_expires_at" not in user_columns:
+            connection.execute(text("ALTER TABLE users ADD COLUMN subscription_expires_at DATETIME"))
+        if "updated_at" not in category_columns:
+            connection.execute(text("ALTER TABLE categories ADD COLUMN updated_at DATETIME"))
+            connection.execute(text("UPDATE categories SET updated_at = created_at WHERE updated_at IS NULL"))
 
 
 _apply_compatibility_migrations()
@@ -43,6 +56,7 @@ app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads"
 api = "/api"
 app.include_router(auth.router, prefix=api)
 app.include_router(plans.router, prefix=api)
+app.include_router(admin.router, prefix=api)
 app.include_router(categories.router, prefix=api)
 app.include_router(products.router, prefix=api)
 app.include_router(dashboard.router, prefix=api)

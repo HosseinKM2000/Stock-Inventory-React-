@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select, func
 
-from ..deps import CurrentUser, DbSession
+from ..deps import CurrentUser, CurrentWritableUser, DbSession
 from ..models import Category, InventoryItem
 from ..schemas import (
     CategoryCreate,
@@ -67,9 +67,16 @@ def list_categories(
 )
 def create_category(
     payload: CategoryCreate,
-    current_user: CurrentUser,
+    current_user: CurrentWritableUser,
     db: DbSession,
 ) -> Category:
+    if payload.id is not None:
+        existing = db.get(Category, payload.id)
+        if existing is not None:
+            if existing.user_id == current_user.id:
+                return existing
+            raise HTTPException(status_code=409, detail="CATEGORY_ID_CONFLICT")
+
     if _category_exists(db, payload.name, current_user.id):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -77,6 +84,7 @@ def create_category(
         )
 
     category = Category(
+        id=payload.id,
         name=payload.name,
         description=payload.description,
         user_id=current_user.id,
@@ -93,7 +101,7 @@ def create_category(
 def update_category(
     category_id: int,
     payload: CategoryUpdate,
-    current_user: CurrentUser,
+    current_user: CurrentWritableUser,
     db: DbSession,
 ) -> Category:
     category = _get_owned_category(
@@ -128,7 +136,7 @@ def update_category(
 )
 def delete_category(
     category_id: int,
-    current_user: CurrentUser,
+    current_user: CurrentWritableUser,
     db: DbSession,
 ) -> None:
     category = _get_owned_category(
@@ -136,6 +144,11 @@ def delete_category(
         category_id,
         current_user.id,
     )
+
+    db.query(InventoryItem).filter(
+        InventoryItem.user_id == current_user.id,
+        InventoryItem.category_id == category.id,
+    ).update({InventoryItem.category_id: None})
 
     db.delete(category)
     db.commit()
@@ -170,6 +183,7 @@ def category_stats(
                 name=category.name,
                 description=category.description,
                 created_at=category.created_at,
+                updated_at=category.updated_at,
                 product_count=product_count,
                 total_quantity=total_quantity,
             )

@@ -1,6 +1,7 @@
 import { ApiError } from "./api-error";
 import { clearToken, getToken } from "./token-store";
 import { getDeviceFingerprint } from "@/shared/lib/device/fingerprint";
+import { accessState } from "@/shared/access/access-state";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_URL ?? "http://localhost:8000/api";
@@ -88,6 +89,10 @@ export async function apiFetch<T>(
       (response.status === 403 &&
         (message === "Session expired" ||
           message === "Invalid device session"));
+
+    if (response.status === 423 && message === "ACCOUNT_DISABLED") {
+      accessState.disableAccount();
+    }
 
     if (shouldLogout) {
       clearToken();

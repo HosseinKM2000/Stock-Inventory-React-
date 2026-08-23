@@ -51,6 +51,15 @@ Set via environment variables or a `.env` file (see `.env.example`):
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `10080` (7 days) | Access-token lifetime |
 | `DATABASE_URL` | `sqlite:///./stock_inventory.db` | SQLAlchemy database URL |
 | `CORS_ORIGINS` | localhost 5173/5174 | Comma-separated allowed frontend origins |
+| `ADMIN_USERNAMES` | empty | Comma-separated usernames that may manage industries, catalogs, plans, and users |
+
+## Phase 1 account and subscription controls
+
+- User access can be disabled globally; disabled accounts are rejected with `423 ACCOUNT_DISABLED`.
+- Plan capabilities and limits are defined centrally in `app/plans.py` and exposed by `GET /api/plans/current`.
+- Paid-plan expiration is server enforced. Expired accounts retain reads while inventory/category writes are rejected.
+- Admin user/plan operations live under `/api/admin/users` and require `is_admin`; configure the initial administrator with `ADMIN_USERNAMES`.
+- SQLite installations receive additive compatibility columns at startup. Use Alembic before adopting non-additive production migrations.
 
 ## API overview
 

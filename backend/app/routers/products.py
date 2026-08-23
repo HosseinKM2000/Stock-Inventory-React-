@@ -6,9 +6,11 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import select
 
 from ..config import settings
-from ..deps import CurrentUser, DbSession
-from ..models import Category, InventoryItem
+from ..deps import CurrentUser, CurrentWritableUser, DbSession
+from ..models import CatalogProduct, Category, InventoryItem
+from sqlalchemy.orm import joinedload
 from ..schemas import InventoryOut, PaginatedInventory, InventoryStats, PaginationMeta
+from ..plans import entitlement_for
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -80,10 +82,13 @@ def list_products(
     page: int = 1,
     limit: int = 10,
 ) -> PaginatedInventory:
-    stmt = select(InventoryItem).where(InventoryItem.user_id == current_user.id)
+    stmt = select(InventoryItem).options(joinedload(InventoryItem.catalog_product)).where(InventoryItem.user_id == current_user.id)
 
     if search:
-        stmt = stmt.where(InventoryItem.name.ilike(f"%{search}%"))
+        stmt = stmt.join(CatalogProduct).where(
+            (CatalogProduct.name.ilike(f"%{search}%")) |
+            (InventoryItem.custom_label.ilike(f"%{search}%"))
+        )
 
     if category_id is not None:
         stmt = stmt.where(InventoryItem.category_id == category_id)
@@ -98,7 +103,7 @@ def list_products(
             "newest": p.created_at.timestamp(),
             "price_desc": p.price,
             "price_asc": p.price,
-            "name": p.name.lower(),
+            "name": (p.custom_label or p.catalog_product.name).lower(),
         }[sort],
         reverse=sort in ["newest", "price_desc"],
     )
@@ -122,7 +127,7 @@ def list_products(
 
 @router.post("", response_model=InventoryOut, status_code=status.HTTP_201_CREATED)
 async def create_product(
-    current_user: CurrentUser,
+    current_user: CurrentWritableUser,
     db: DbSession,
     name: Annotated[str, Form(min_length=1)],
     quantity: Annotated[int, Form(ge=0)] = 0,
@@ -136,12 +141,26 @@ async def create_product(
 ) -> InventoryItem:
     _validate_category(db, category_id, current_user.id)
 
+    limit = entitlement_for(current_user)["limits"]["inventory_items"]
+    count = db.scalar(select(func.count(InventoryItem.id)).where(InventoryItem.user_id == current_user.id)) or 0
+    if limit is not None and count >= limit:
+        raise HTTPException(status_code=403, detail="INVENTORY_LIMIT_REACHED")
+
     image_url = await _save_image(image) if image is not None else None
 
-    product = InventoryItem(
+    if current_user.industry_id is None:
+        raise HTTPException(status_code=400, detail="INDUSTRY_REQUIRED")
+    catalog = CatalogProduct(
+        industry_id=current_user.industry_id,
         name=name,
         description=description,
-        unit=unit,
+    )
+    db.add(catalog)
+    db.flush()
+    product = InventoryItem(
+        catalog_product_id=catalog.id,
+        custom_label=name,
+        note=description,
         quantity=quantity,
         price=price,
         low_stock_threshold=low_stock_threshold,
@@ -159,7 +178,7 @@ async def create_product(
 @router.patch("/{product_id}", response_model=InventoryOut)
 async def update_product(
     product_id: int,
-    current_user: CurrentUser,
+    current_user: CurrentWritableUser,
     db: DbSession,
     name: Annotated[str | None, Form()] = None,
     quantity: Annotated[int | None, Form(ge=0)] = None,
@@ -178,11 +197,10 @@ async def update_product(
         _validate_category(db, category_id, current_user.id)
 
     updates = {
-        "name": name,
+        "custom_label": name,
         "quantity": quantity,
         "price": price,
-        "description": description,
-        "unit": unit,
+        "note": description,
         "category_id": category_id,
         "low_stock_threshold": low_stock_threshold,
         "low_stock_alert": low_stock_alert,
@@ -205,7 +223,7 @@ async def update_product(
 
 @router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_product(
-    product_id: int, current_user: CurrentUser, db: DbSession
+    product_id: int, current_user: CurrentWritableUser, db: DbSession
 ) -> None:
     product = _get_owned_product(db, product_id, current_user.id)
     _delete_image(product.image_url)
@@ -234,13 +252,13 @@ def product_stats(
     cheapest = min(products, key=lambda p: p.price, default=None)
 
     return InventoryStats(
-        total_products=total_products,
+        total_items=total_products,
         total_quantity=total_quantity,
         inventory_value=inventory_value,
         low_stock_count=low_stock_count,
         out_of_stock_count=out_of_stock_count,
-        most_expensive=most_expensive,
-        cheapest=cheapest,
+        most_expensive_price=most_expensive.price if most_expensive else None,
+        cheapest_price=cheapest.price if cheapest else None,
     )
 
 

@@ -2,8 +2,10 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { Box, Flex, Text } from "@radix-ui/themes";
 
 import { settingsNavItems } from "../data/settings-items";
+import { useAuth } from "@/shared/auth/use-auth";
 
 export function SettingsMobileNav() {
+  const { user } = useAuth();
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
@@ -18,7 +20,7 @@ export function SettingsMobileNav() {
         right-4
         bottom-4
         lg:hidden!
-        overflow-hidden
+        overflow-x-auto
       "
       style={{
         paddingBottom: "env(safe-area-inset-bottom)",
@@ -26,7 +28,7 @@ export function SettingsMobileNav() {
     >
       <Flex
         align="center"
-        justify="between"
+        justify="start"
         className="
           relative
 
@@ -45,7 +47,7 @@ export function SettingsMobileNav() {
           backdrop-blur-2xl
         "
       >
-        {settingsNavItems.map((item) => {
+        {settingsNavItems.filter((item) => !("adminOnly" in item) || user?.is_admin).map((item) => {
           const Icon = item.icon;
 
           const active = pathname.startsWith(item.to);

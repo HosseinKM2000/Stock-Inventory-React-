@@ -4,9 +4,26 @@ import { Box, Callout, Card, Flex, Spinner, Text } from "@radix-ui/themes";
 import CategoryFormDialog from "./category-form-dialog";
 import DeleteCategoryDialog from "./delete-category-dialog";
 import { useCategories } from "../../mutations/use-categories";
+import { syncService } from "@/shared/lib/infrastructure/sync/sync-service";
+import { useOnline } from "@/shared/lib/infrastructure/sync/use-sync-status";
+import { ReloadIcon } from "@radix-ui/react-icons";
+import { useState } from "react";
+import { toast } from "sonner";
 
 const CategoriesCards = () => {
   const { data: categories = [], isLoading, isError, error } = useCategories();
+  const online = useOnline();
+  const [refreshing, setRefreshing] = useState(false);
+
+  const refresh = async () => {
+    setRefreshing(true);
+    try {
+      await syncService.sync();
+      toast.success("دسته‌بندی‌ها با سرور همگام شدند");
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   return (
     <Box className="space-y-6">
@@ -15,15 +32,15 @@ const CategoriesCards = () => {
           دسته بندی ها
         </Text>
 
-        <CategoryFormDialog
-          mode="create"
-          trigger={
-            <Button>
-              <PlusIcon />
-              افزودن دسته بندی
-            </Button>
-          }
-        />
+        <Flex gap="2">
+          <Button variant="soft" disabled={!online} loading={refreshing} onClick={refresh}>
+            <ReloadIcon /> تازه‌سازی از سرور
+          </Button>
+          <CategoryFormDialog
+            mode="create"
+            trigger={<Button><PlusIcon />افزودن دسته بندی</Button>}
+          />
+        </Flex>
       </Flex>
 
       {isLoading && (

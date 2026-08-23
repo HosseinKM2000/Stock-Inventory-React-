@@ -30,6 +30,8 @@ function sanitize(product: Product): Product {
   return {
     ...product,
 
+    category_id: product.category_id ?? null,
+
     quantity: safeQuantity,
 
     price: Number.isFinite(price) ? Math.max(0, price) : 0,
@@ -61,6 +63,10 @@ class InventoryService {
 
         return name.includes(search) || label.includes(search);
       });
+    }
+
+    if (params.category_id != null) {
+      products = products.filter((product) => product.category_id === params.category_id);
     }
 
     // Sort

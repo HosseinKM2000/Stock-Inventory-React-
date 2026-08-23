@@ -1,5 +1,5 @@
-from ..limits import PLAN_LIMITS
+from ..plans import entitlement_for
 
 
 def get_user_limits(user):
-    return PLAN_LIMITS.get(user.plan, PLAN_LIMITS["free"])
+    return entitlement_for(user)["limits"]

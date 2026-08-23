@@ -2,6 +2,7 @@ import json
 import os
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 _database_path = Path(tempfile.mktemp(suffix="-inventory-test.db"))
@@ -11,7 +12,7 @@ from fastapi.testclient import TestClient
 
 from app.database import SessionLocal, engine
 from app.main import app
-from app.models import Industry
+from app.models import Industry, User
 
 
 class SyncApiTest(unittest.TestCase):
@@ -183,6 +184,69 @@ class SyncApiTest(unittest.TestCase):
             ]
         )
         self.assertEqual(deleted.status_code, 200, deleted.text)
+
+    def test_category_ids_are_client_stable_and_admin_is_guarded(self) -> None:
+        category_id = 1_800_000_000_001
+        created = self.client.post(
+            "/api/categories",
+            headers=self.headers,
+            json={"id": category_id, "name": "Offline category", "description": "local"},
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        self.assertEqual(created.json()["id"], category_id)
+
+        replay = self.client.post(
+            "/api/categories",
+            headers=self.headers,
+            json={"id": category_id, "name": "Offline category", "description": "local"},
+        )
+        self.assertEqual(replay.status_code, 201, replay.text)
+        self.assertEqual(replay.json()["id"], category_id)
+
+        users = self.client.get("/api/admin/users", headers=self.headers)
+        self.assertEqual(users.status_code, 403, users.text)
+
+    def test_expired_subscription_blocks_writes_but_allows_reads(self) -> None:
+        with SessionLocal() as db:
+            user = db.query(User).filter(User.username == "offline-sync-test").one()
+            user.plan = "pro"
+            user.subscription_expires_at = datetime.now(timezone.utc) - timedelta(days=1)
+            db.commit()
+
+        entitlement = self.client.get("/api/plans/current", headers=self.headers)
+        self.assertEqual(entitlement.status_code, 200, entitlement.text)
+        self.assertEqual(entitlement.json()["status"], "expired")
+        self.assertFalse(entitlement.json()["capabilities"]["inventory.write"])
+
+        categories = self.client.get("/api/categories", headers=self.headers)
+        self.assertEqual(categories.status_code, 200, categories.text)
+        blocked = self.client.post(
+            "/api/categories",
+            headers=self.headers,
+            json={"name": "Blocked write"},
+        )
+        self.assertEqual(blocked.status_code, 403, blocked.text)
+
+        with SessionLocal() as db:
+            user = db.query(User).filter(User.username == "offline-sync-test").one()
+            user.plan = "free"
+            user.subscription_expires_at = None
+            db.commit()
+
+    def test_z_disabled_account_is_rejected_globally(self) -> None:
+        with SessionLocal() as db:
+            user = db.query(User).filter(User.username == "offline-sync-test").one()
+            user.is_active = False
+            db.commit()
+
+        response = self.client.get("/api/auth/me", headers=self.headers)
+        self.assertEqual(response.status_code, 423, response.text)
+        self.assertEqual(response.json()["detail"], "ACCOUNT_DISABLED")
+
+        with SessionLocal() as db:
+            user = db.query(User).filter(User.username == "offline-sync-test").one()
+            user.is_active = True
+            db.commit()
 
 
 if __name__ == "__main__":

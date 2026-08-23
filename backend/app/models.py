@@ -44,6 +44,12 @@ class User(Base):
         default="free"
     )
 
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_admin: Mapped[bool] = mapped_column(Boolean, default=False)
+    subscription_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime, nullable=True
+    )
+
     industry_id: Mapped[int | None] = mapped_column(
         ForeignKey("industries.id"),
         nullable=True,
@@ -143,6 +149,10 @@ class Category(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=_now, onupdate=_now
+    )
+
     owner: Mapped["User"] = relationship(back_populates="categories")
 
 
@@ -204,6 +214,10 @@ class InventoryItem(Base):
     catalog_product_id: Mapped[int] = mapped_column(
         ForeignKey("catalog_products.id"),
         index=True
+    )
+
+    category_id: Mapped[int | None] = mapped_column(
+        ForeignKey("categories.id"), nullable=True, index=True
     )
 
     quantity: Mapped[int] = mapped_column(Integer, default=0)

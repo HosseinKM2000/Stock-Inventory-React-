@@ -17,6 +17,7 @@ import {
 
 import type { AuthResponse } from "../types";
 import { authKeys } from "../query/query-keys";
+import { accessState } from "@/shared/access/access-state";
 
 
 
@@ -25,6 +26,7 @@ export function useMe(enabled = true) {
     queryKey: authKeys.me,
     queryFn: getMe,
     enabled,
+    retry: false,
   });
 }
 
@@ -37,6 +39,7 @@ export function useLogin() {
 
     onSuccess: async (data: AuthResponse) => {
       setToken(data.access_token);
+      accessState.saveUser(data.user);
 
       await syncMetadataStorage.set("product-sync-cursor", 0);
 
@@ -68,6 +71,7 @@ export function useRegister() {
 
     onSuccess: async (data: AuthResponse) => {
       setToken(data.access_token);
+      accessState.saveUser(data.user);
 
       await syncMetadataStorage.set("product-sync-cursor", 0);
 
@@ -97,6 +101,7 @@ export function useUpdateProfile() {
     mutationFn: updateProfile,
 
     onSuccess: (user) => {
+      accessState.saveUser(user);
       queryClient.setQueryData(authKeys.me, user);
 
       toast.success("اطلاعات بروزرسانی شد");
@@ -123,6 +128,7 @@ export function useLogout() {
       await logout();
     } finally {
       clearToken();
+      accessState.clear();
       queryClient.clear();
 
       navigate({

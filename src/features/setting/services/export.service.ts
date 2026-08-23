@@ -5,7 +5,7 @@ import { networkService } from "@/shared/lib/infrastructure/network/network-serv
 
 export type ExportFormat = "xlsx" | "csv" | "pdf";
 
-export type ExportScope = "all" | "low_stock" | "category";
+export type ExportScope = "all" | "low_stock" | "category" | "selected";
 
 export type ExportOptions = {
   format: ExportFormat;
@@ -13,6 +13,7 @@ export type ExportOptions = {
   scope: ExportScope;
 
   categoryId?: number | null;
+  selectedIds?: number[];
 };
 
 const COLUMNS: { key: string; label: string; value(product: Product): string }[] =
@@ -131,9 +132,12 @@ function applyScope(products: Product[], options: ExportOptions) {
   }
 
   if (options.scope === "category" && options.categoryId != null) {
-    return products.filter(
-      (product) => product.catalog_product?.industry_id === options.categoryId,
-    );
+    return products.filter((product) => product.category_id === options.categoryId);
+  }
+
+  if (options.scope === "selected") {
+    const selected = new Set(options.selectedIds ?? []);
+    return products.filter((product) => selected.has(product.id));
   }
 
   return products;
@@ -204,7 +208,7 @@ export const exportService = {
 
     // The backend exposes CSV and JSON snapshots; other formats are rendered
     // client-side from the server payload so the two exports stay comparable.
-    if (options.format === "csv") {
+    if (options.format === "csv" && options.scope === "all") {
       const blob = await apiFetch<Blob>("/export/inventory/csv", {
         responseType: "blob",
       });

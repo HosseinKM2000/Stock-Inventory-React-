@@ -14,6 +14,8 @@ export function createProductInitialValues(initial?: Product) {
   return {
     id: initial?.id ?? generateLocalId(),
 
+    category_id: initial?.category_id ?? null,
+
     quantity: initial?.quantity ?? 0,
 
     price: initial?.price ?? 0,

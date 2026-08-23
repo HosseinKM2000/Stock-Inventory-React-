@@ -19,6 +19,8 @@ const catalogProductSchema = z.object({
 export const productSchema = z.object({
   id: z.number(),
 
+  category_id: z.number().nullable(),
+
   quantity: z.coerce.number().min(0, "تعداد نامعتبر است"),
 
   price: z.coerce.number().min(0, "قیمت نامعتبر است"),

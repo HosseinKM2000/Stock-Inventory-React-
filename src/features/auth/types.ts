@@ -6,6 +6,10 @@ export type User = {
   email: string | null;
   phone: string | null;
   industry_id: number;
+  plan: "free" | "starter" | "pro" | "vip";
+  is_active: boolean;
+  is_admin: boolean;
+  subscription_expires_at: string | null;
   created_at: string;
 };
 

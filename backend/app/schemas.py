@@ -56,6 +56,9 @@ class UserOut(BaseModel):
     email: str | None = None
     phone: str | None = None
     plan: str
+    is_active: bool
+    is_admin: bool
+    subscription_expires_at: datetime | None = None
     industry_id: int | None = None
     created_at: datetime
     industry: IndustrySimpleOut | None = None
@@ -77,7 +80,7 @@ class CategoryBase(BaseModel):
 
 
 class CategoryCreate(CategoryBase):
-    pass
+    id: int | None = Field(default=None, gt=0)
 
 
 class CategoryUpdate(BaseModel):
@@ -92,6 +95,7 @@ class CategoryOut(BaseModel):
     name: str
     description: str | None = None
     created_at: datetime
+    updated_at: datetime
 
 
 class CategoryWithStats(CategoryOut):
@@ -175,6 +179,7 @@ class InventoryOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    category_id: int | None = None
     quantity: int
     price: int
 
@@ -387,6 +392,30 @@ class ErrorResponse(BaseModel):
 # =========================================================
 class PlanUpdate(BaseModel):
     plan: Literal["free", "starter", "pro", "vip"]
+    subscription_expires_at: datetime | None = None
+
+
+class EntitlementOut(BaseModel):
+    plan: str
+    label: str
+    status: Literal["active", "expired"]
+    expires_at: datetime | None = None
+    capabilities: dict[str, bool]
+    limits: dict[str, int | None]
+
+
+class PlanDefinitionOut(BaseModel):
+    id: str
+    label: str
+    price_minor: int | None = None
+    currency: str
+    duration_days: int | None = None
+    capabilities: dict[str, bool]
+    limits: dict[str, int | None]
+
+
+class AdminUserStateUpdate(BaseModel):
+    is_active: bool
     
 
 class DeviceInfo(BaseModel):

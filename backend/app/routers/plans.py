@@ -1,23 +1,17 @@
 from fastapi import APIRouter
 
-from ..deps import CurrentUser, DbSession
-from ..schemas import PlanUpdate, UserOut
+from ..deps import CurrentUser
+from ..plans import PLAN_CATALOG, entitlement_for
+from ..schemas import EntitlementOut, PlanDefinitionOut
 
 router = APIRouter(prefix="/plans", tags=["plans"])
 
 
-@router.patch("/upgrade", response_model=UserOut)
-def upgrade_plan(
-    payload: PlanUpdate,
-    current_user: CurrentUser,
-    db: DbSession,
-):
-    current_user.plan = payload.plan
+@router.get("", response_model=list[PlanDefinitionOut])
+def available_plans(_: CurrentUser):
+    return [{"id": plan_id, **definition} for plan_id, definition in PLAN_CATALOG.items()]
 
-    if payload.plan != "free":
-        current_user.device_id = None
 
-    db.commit()
-    db.refresh(current_user)
-
-    return current_user
+@router.get("/current", response_model=EntitlementOut)
+def current_plan(current_user: CurrentUser):
+    return entitlement_for(current_user)

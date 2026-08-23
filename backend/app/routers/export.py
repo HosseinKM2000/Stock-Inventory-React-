@@ -5,7 +5,7 @@ from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
 
-from ..deps import CurrentUser, DbSession
+from ..deps import CurrentUser, DbSession, require_capability
 from ..models import InventoryItem, InventoryTransaction, CatalogProduct
 
 router = APIRouter(prefix="/export", tags=["export"])
@@ -19,6 +19,7 @@ def export_inventory_json(
     current_user: CurrentUser,
     db: DbSession,
 ):
+    require_capability(current_user, "export.server")
     items = db.scalars(
         select(InventoryItem).where(
             InventoryItem.user_id == current_user.id,
@@ -38,6 +39,7 @@ def export_inventory_csv(
     current_user: CurrentUser,
     db: DbSession,
 ):
+    require_capability(current_user, "export.server")
     items = db.scalars(
         select(InventoryItem).where(
             InventoryItem.user_id == current_user.id,
@@ -87,6 +89,7 @@ def export_transactions_csv(
     current_user: CurrentUser,
     db: DbSession,
 ):
+    require_capability(current_user, "export.server")
     transactions = db.scalars(
         select(InventoryTransaction).where(
             InventoryTransaction.user_id == current_user.id

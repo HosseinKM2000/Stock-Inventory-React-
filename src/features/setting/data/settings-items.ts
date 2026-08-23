@@ -5,6 +5,8 @@ import {
   MixerHorizontalIcon,
   CubeIcon,
   ClipboardIcon,
+  LockClosedIcon,
+  StarIcon,
 } from "@radix-ui/react-icons";
 
 export const settingsNavItems = [
@@ -37,5 +39,16 @@ export const settingsNavItems = [
     label: "کاتالوگ",
     to: "/setting/catalogs",
     icon: ClipboardIcon,
+  },
+  {
+    label: "اشتراک",
+    to: "/setting/subscription",
+    icon: StarIcon,
+  },
+  {
+    label: "کاربران",
+    to: "/setting/users",
+    icon: LockClosedIcon,
+    adminOnly: true,
   },
 ] as const;

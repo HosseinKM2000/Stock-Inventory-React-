@@ -5,6 +5,7 @@ import { networkService } from "../network/network-service";
 import type { SyncQueueItem } from "../storage/types";
 import { queueService } from "./queue.service";
 import { syncStatusStore } from "./sync-status";
+import { accessState } from "@/shared/access/access-state";
 
 export type SyncHandlerResult = {
   itemId: string;
@@ -46,7 +47,8 @@ function isFatalRequest(error: unknown) {
     error.status < 500 &&
     error.status !== 408 &&
     error.status !== 409 &&
-    error.status !== 429
+    error.status !== 429 &&
+    error.message !== "SUBSCRIPTION_EXPIRED"
   );
 }
 
@@ -101,12 +103,13 @@ async function runSync() {
     return;
   }
 
-  const items = await queueService.getDue();
+  const writeAllowed = accessState.canWrite();
+  const items = writeAllowed ? await queueService.getDue() : [];
 
   syncStatusStore.set({ state: "syncing", pending: items.length, error: null });
 
   let changed = false;
-  let lastError: string | null = null;
+  let lastError: string | null = writeAllowed ? null : "SUBSCRIPTION_EXPIRED";
 
   const groups = new Map<string, SyncQueueItem[]>();
   for (const item of items) {

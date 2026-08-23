@@ -4,6 +4,7 @@ import type {
   SyncMetadataItem,
   SyncQueueItem,
 } from "./types";
+import type { Category } from "@/features/setting/types";
 
 export interface InventoryDatabase {
 
@@ -12,5 +13,7 @@ export interface InventoryDatabase {
   syncQueue: SyncQueueItem;
 
   syncMetadata: SyncMetadataItem;
+
+  categories: Category;
 
 }

@@ -19,6 +19,8 @@ export type CatalogProduct = {
 export type Product = {
   id: number;
 
+  category_id: number | null;
+
   version?: number;
 
   quantity: number;

@@ -1,6 +1,8 @@
 import { dashboardKeys } from "@/features/app/dashboard/query/dashboard-query-keys";
 import { productKeys } from "@/features/app/inventory/query/query-keys";
 import { registerProductSync } from "@/features/app/inventory/services/product-sync";
+import { registerCategorySync } from "@/features/setting/services/category-sync";
+import { categoryKeys } from "@/features/setting/query/query-keys";
 import { queryClient } from "@/shared/api/query-client";
 
 import { startSyncListeners } from "./sync-listener";
@@ -15,11 +17,13 @@ export function startSync() {
   started = true;
 
   registerProductSync();
+  registerCategorySync();
 
   onSyncSettled(() => {
     queryClient.invalidateQueries({ queryKey: productKeys.all });
 
     queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+    queryClient.invalidateQueries({ queryKey: categoryKeys.all });
   });
 
   startSyncListeners();

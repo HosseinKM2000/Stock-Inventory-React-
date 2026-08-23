@@ -5,6 +5,7 @@ import type {
   SyncQueueItem,
 } from "./types";
 import type { LocalInventoryItem } from "@/features/app/inventory/storage/types";
+import type { Category } from "@/features/setting/types";
 
 
 class AppDatabase extends Dexie {
@@ -20,6 +21,8 @@ class AppDatabase extends Dexie {
   >;
 
   syncMetadata!: EntityTable<SyncMetadataItem, "key">;
+
+  categories!: EntityTable<Category, "id">;
 
 
   constructor() {
@@ -95,6 +98,14 @@ class AppDatabase extends Dexie {
                   : item.status;
           });
       });
+
+    this.version(4).stores({
+      inventoryItems: "id, catalog_product_id, category_id, updated_at",
+      syncQueue:
+        "id, operationId, entity, entityId, status, nextAttemptAt, createdAt, updatedAt",
+      syncMetadata: "key, updatedAt",
+      categories: "id, name, updated_at",
+    });
   }
 }
 

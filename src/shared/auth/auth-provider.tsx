@@ -1,15 +1,18 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import type { PropsWithChildren } from "react";
 
 import { useMe, useLogout } from "@/features/auth/mutations/use-register";
 import { getToken } from "@/shared/api/token-store";
 
 import { AuthContext } from "./auth-context";
+import { accessState } from "@/shared/access/access-state";
+import { useEffect } from "react";
 
 export function AuthProvider({
   children,
 }: PropsWithChildren) {
   const logout = useLogout();
+  const [, refreshAccountState] = useState(0);
 
   const hasToken = !!getToken();
 
@@ -20,24 +23,37 @@ export function AuthProvider({
     refetch,
   } = useMe(hasToken);
 
+  const cachedUser = hasToken ? accessState.user() : null;
+  const effectiveUser = cachedUser?.is_active === false ? cachedUser : user ?? cachedUser;
+
+  useEffect(() => {
+    if (user) accessState.saveUser(user);
+  }, [user]);
+
+  useEffect(() => {
+    const refresh = () => refreshAccountState((value) => value + 1);
+    window.addEventListener("account-state-change", refresh);
+    return () => window.removeEventListener("account-state-change", refresh);
+  }, []);
+
   const refetchUser = useCallback(async () => {
     await refetch();
   }, [refetch]);
 
   const value = useMemo(
     () => ({
-      user: user ?? null,
+      user: effectiveUser,
 
       loading: hasToken && (isLoading || isFetching),
 
-      isAuthenticated: !!user,
+      isAuthenticated: !!effectiveUser,
 
       logout,
 
       refetchUser,
     }),
     [
-      user,
+      effectiveUser,
       hasToken,
       isLoading,
       isFetching,

@@ -8,8 +8,9 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload
 
 from ..config import settings
-from ..deps import CurrentUser, DbSession
+from ..deps import CurrentUser, CurrentWritableUser, DbSession
 from ..models import CatalogProduct, InventoryItem, SyncChange, SyncOperation
+from ..plans import entitlement_for
 from ..schemas import (
     InventoryOut,
     SyncBatchRequest,
@@ -93,6 +94,12 @@ def _apply_fields(item: InventoryItem, payload: dict) -> None:
                 raise ValueError(f"{field} must be text or null")
             setattr(item, field, value)
 
+    if "category_id" in payload:
+        value = payload["category_id"]
+        if value is not None and (isinstance(value, bool) or not isinstance(value, int)):
+            raise ValueError("category_id must be an integer or null")
+        item.category_id = value
+
 
 async def _save_image(file: UploadFile, previous: str | None) -> str:
     extension = _IMAGE_EXTENSIONS.get(file.content_type or "")
@@ -134,7 +141,7 @@ def _record_change(
 @router.post("/batch", response_model=SyncBatchResponse)
 async def push_batch(
     operations_json: Annotated[str, Form()],
-    current_user: CurrentUser,
+    current_user: CurrentWritableUser,
     db: DbSession,
     files: Annotated[list[UploadFile] | None, File()] = None,
 ) -> SyncBatchResponse:
@@ -188,6 +195,14 @@ async def push_batch(
                 else:
                     created = item is None
                     if item is None:
+                        limit = entitlement_for(current_user)["limits"]["inventory_items"]
+                        count = db.scalar(
+                            select(func.count(InventoryItem.id)).where(
+                                InventoryItem.user_id == current_user.id
+                            )
+                        ) or 0
+                        if limit is not None and count >= limit:
+                            raise ValueError("INVENTORY_LIMIT_REACHED")
                         catalog = _catalog_for_operation(db, current_user, operation)
                         item = InventoryItem(
                             id=operation.entity_id,
