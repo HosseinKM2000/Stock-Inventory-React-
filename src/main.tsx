@@ -9,12 +9,21 @@ import { routeTree } from "./routeTree.gen";
 
 import "@/style/index.css";
 import "@radix-ui/themes/styles.css";
-import { AuthProvider } from "./shared/auth/auth-provider";
 import { startSync } from "@/shared/lib/infrastructure/sync/sync-bootstrap";
+import { inventoryService } from "@/features/app/inventory/services/inventory-service";
+import { registerServiceWorker } from "@/shared/lib/infrastructure/pwa/register-service-worker";
 
 const router = createRouter({ routeTree });
 
+registerServiceWorker();
+
 startSync();
+
+// Clean files left by an abandoned/failed image form on the next app start.
+void inventoryService.cleanupImages().catch(() => {
+  // OPFS is not available in every browser; image operations surface their own
+  // errors when the user attempts them.
+});
 
 declare module "@tanstack/react-router" {
   interface Register {
@@ -25,8 +34,7 @@ declare module "@tanstack/react-router" {
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <Theme appearance="dark" accentColor="violet">
+      <Theme appearance="dark" accentColor="violet">
           <Toaster
             richColors
             closeButton
@@ -38,9 +46,8 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
               className: "font-sans",
             }}
           />
-          <RouterProvider router={router} />
-        </Theme>
-      </AuthProvider>
+        <RouterProvider router={router} />
+      </Theme>
     </QueryClientProvider>
   </React.StrictMode>,
 );

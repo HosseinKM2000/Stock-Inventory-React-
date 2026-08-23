@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { imageService } from "./image.service";
+import { resolveAssetUrl } from "@/shared/api/client";
+import { imageService, isLocalImage } from "./image.service";
 
 export function useImage(path?: string | null) {
   const [result, setResult] = useState<{ path: string; src: string }>();
@@ -9,7 +10,7 @@ export function useImage(path?: string | null) {
     const normalizedPath = path ?? null;
     currentPathRef.current = normalizedPath;
 
-    if (!normalizedPath) {
+    if (!normalizedPath || !isLocalImage(normalizedPath)) {
       // nothing to load — render derives "no src" on its own, no setState needed
       return;
     }
@@ -39,5 +40,10 @@ export function useImage(path?: string | null) {
   // Only trust the cached result if it matches the currently requested path.
   // This is what makes the reset "automatic" instead of an explicit setState.
   const normalizedPath = path ?? null;
+
+  if (normalizedPath && !isLocalImage(normalizedPath)) {
+    return resolveAssetUrl(normalizedPath);
+  }
+
   return result?.path === normalizedPath ? result.src : undefined;
 }

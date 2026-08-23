@@ -178,6 +178,9 @@ class InventoryOut(BaseModel):
     quantity: int
     price: int
 
+    image_url: str | None = None
+    version: int = 1
+
     custom_label: str | None = None
     note: str | None = None
 
@@ -321,6 +324,45 @@ class InventorySyncItem(BaseModel):
 
 class InventoryBulkSync(BaseModel):
     items: list[InventorySyncItem]
+
+
+class SyncOperationIn(BaseModel):
+    operation_id: str = Field(min_length=1, max_length=64)
+    entity: Literal["product"]
+    entity_id: int
+    operation: Literal["CREATE", "UPDATE", "DELETE"]
+    payload: dict[str, Any] | None = None
+    base_version: int | None = Field(default=None, ge=1)
+
+
+class SyncBatchRequest(BaseModel):
+    operations: list[SyncOperationIn] = Field(max_length=200)
+
+
+class SyncOperationResult(BaseModel):
+    operation_id: str
+    status: Literal["applied", "conflict", "fatal_error"]
+    entity_id: int
+    record: InventoryOut | None = None
+    error: str | None = None
+
+
+class SyncBatchResponse(BaseModel):
+    results: list[SyncOperationResult]
+    cursor: int
+
+
+class SyncChangeOut(BaseModel):
+    cursor: int
+    entity: Literal["product"]
+    entity_id: int
+    operation: Literal["UPSERT", "DELETE"]
+    record: InventoryOut | None = None
+
+
+class SyncChangesResponse(BaseModel):
+    cursor: int
+    changes: list[SyncChangeOut]
 
 
 # =========================================================

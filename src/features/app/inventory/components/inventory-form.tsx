@@ -11,6 +11,7 @@ import { SelectInput } from "@/shared/ui/form/input/select-input";
 import { TextAreaInput } from "@/shared/ui/form/input/text-area";
 import { TextInput } from "@/shared/ui/form/input/text-input";
 import { Box, Callout, Card, Grid, Switch, Text } from "@radix-ui/themes";
+import { useRef } from "react";
 import { toast } from "sonner";
 import { createProductInitialValues } from "../form/product-form.initial";
 import { productSchema } from "../schema/product.schema";
@@ -70,21 +71,36 @@ export function ProductForm({
 
   const imagePreview = useImage(imagePath);
 
+  // Images selected in the form are staged in OPFS. Replaced staged files can
+  // be removed immediately; the image referenced by the persisted product is
+  // only removed by InventoryService after the metadata update succeeds.
+  const stagedImages = useRef(new Set<string>());
+
   const handleImageChange = async (file: File | null) => {
     const previousPath = form.values.image_url;
 
     if (!file) {
       form.setValue("image_url", null);
-      await imageService.remove(previousPath);
+
+      if (previousPath && stagedImages.current.delete(previousPath)) {
+        await imageService.remove(previousPath);
+      }
+
       return;
     }
 
     try {
       const path = await imageService.save(file);
 
+      stagedImages.current.add(path);
+
       form.setValue("image_url", path);
 
-      if (previousPath && previousPath !== path) {
+      if (
+        previousPath &&
+        previousPath !== path &&
+        stagedImages.current.delete(previousPath)
+      ) {
         await imageService.remove(previousPath);
       }
     } catch (error) {

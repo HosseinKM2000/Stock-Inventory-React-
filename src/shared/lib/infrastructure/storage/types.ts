@@ -5,12 +5,16 @@ export type QueueAction =
 
 export type QueueStatus =
   | "pending"
-  | "processing"
-  | "failed";
+  | "in_flight"
+  | "retryable_error"
+  | "fatal_error"
+  | "dead_letter";
 
 export interface SyncQueueItem {
 
   id: string;
+
+  operationId: string;
 
   entity: string;
 
@@ -32,4 +36,10 @@ export interface SyncQueueItem {
 
   lastError?: string;
 
+}
+
+export interface SyncMetadataItem {
+  key: string;
+  value: number | string | null;
+  updatedAt: number;
 }

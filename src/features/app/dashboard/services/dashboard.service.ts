@@ -1,4 +1,4 @@
-import { inventoryRepository } from "@/features/app/inventory/services/inventory.repository";
+import { inventoryService } from "@/features/app/inventory/services/inventory-service";
 import {
   DashboardFilters,
   type DashboardFilter,
@@ -11,7 +11,7 @@ class DashboardService {
     return image != null && image !== "";
   }
   async getStats(): Promise<DashboardStats> {
-    const products = await inventoryRepository.getAll();
+    const products = await inventoryService.getAll();
 
     return {
       totalProducts: products.length,
@@ -46,7 +46,7 @@ class DashboardService {
   }
 
   async getProducts(filter: DashboardFilter): Promise<DashboardProductList> {
-    const products = await inventoryRepository.getAll();
+    const products = await inventoryService.getAll();
 
     switch (filter) {
       case DashboardFilters.LOW_STOCK:

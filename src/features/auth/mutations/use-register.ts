@@ -3,6 +3,8 @@ import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 
 import { clearToken, setToken } from "@/shared/api/token-store";
+import { syncService } from "@/shared/lib/infrastructure/sync/sync-service";
+import { syncMetadataStorage } from "@/shared/lib/infrastructure/storage/sync-metadata-storage";
 
 import {
   getMe,
@@ -36,6 +38,12 @@ export function useLogin() {
     onSuccess: async (data: AuthResponse) => {
       setToken(data.access_token);
 
+      await syncMetadataStorage.set("product-sync-cursor", 0);
+
+      await syncMetadataStorage.set("product-sync-initialized", 0);
+
+      await syncService.sync();
+
       queryClient.setQueryData(authKeys.me, data.user);
 
       await queryClient.invalidateQueries({
@@ -60,6 +68,12 @@ export function useRegister() {
 
     onSuccess: async (data: AuthResponse) => {
       setToken(data.access_token);
+
+      await syncMetadataStorage.set("product-sync-cursor", 0);
+
+      await syncMetadataStorage.set("product-sync-initialized", 0);
+
+      await syncService.sync();
 
       queryClient.setQueryData(authKeys.me, data.user);
 

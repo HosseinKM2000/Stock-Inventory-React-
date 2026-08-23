@@ -92,6 +92,36 @@ function download(blob: Blob, filename: string) {
   URL.revokeObjectURL(url);
 }
 
+function printAsPdf(blob: Blob) {
+  const url = URL.createObjectURL(blob);
+  const frame = document.createElement("iframe");
+
+  frame.hidden = true;
+  frame.src = url;
+  document.body.appendChild(frame);
+
+  const cleanup = () => {
+    URL.revokeObjectURL(url);
+    frame.remove();
+  };
+
+  frame.onload = () => {
+    const printWindow = frame.contentWindow;
+
+    if (!printWindow) {
+      cleanup();
+      return;
+    }
+
+    printWindow.addEventListener("afterprint", cleanup, { once: true });
+    printWindow.focus();
+    printWindow.print();
+
+    // Some browsers do not emit afterprint when the dialog is cancelled.
+    window.setTimeout(cleanup, 60_000);
+  };
+}
+
 function applyScope(products: Product[], options: ExportOptions) {
   if (options.scope === "low_stock") {
     return products.filter(
@@ -155,11 +185,10 @@ export const exportService = {
 
     const stamp = new Date().toISOString().slice(0, 10);
 
-    download(file.blob, `inventory-local-${stamp}.${file.extension}`);
-
     if (options.format === "pdf") {
-      // Let the user print-to-PDF without pulling in a PDF renderer.
-      window.open(URL.createObjectURL(file.blob), "_blank")?.focus();
+      printAsPdf(file.blob);
+    } else {
+      download(file.blob, `inventory-local-${stamp}.${file.extension}`);
     }
 
     return products.length;
@@ -194,6 +223,10 @@ export const exportService = {
 
     const file = buildFile(products, options, title);
 
-    download(file.blob, `inventory-server-${stamp}.${file.extension}`);
+    if (options.format === "pdf") {
+      printAsPdf(file.blob);
+    } else {
+      download(file.blob, `inventory-server-${stamp}.${file.extension}`);
+    }
   },
 };

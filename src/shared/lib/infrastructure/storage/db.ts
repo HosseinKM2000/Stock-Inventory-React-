@@ -1,6 +1,7 @@
 import Dexie, { type EntityTable } from "dexie";
 
 import type {
+  SyncMetadataItem,
   SyncQueueItem,
 } from "./types";
 import type { LocalInventoryItem } from "@/features/app/inventory/storage/types";
@@ -17,6 +18,8 @@ class AppDatabase extends Dexie {
     SyncQueueItem,
     "id"
   >;
+
+  syncMetadata!: EntityTable<SyncMetadataItem, "key">;
 
 
   constructor() {
@@ -67,6 +70,30 @@ class AppDatabase extends Dexie {
 
           });
 
+      });
+
+    this.version(3)
+      .stores({
+        inventoryItems: "id, catalog_product_id, updated_at",
+        syncQueue:
+          "id, operationId, entity, entityId, status, nextAttemptAt, createdAt, updatedAt",
+        syncMetadata: "key, updatedAt",
+      })
+      .upgrade(async (transaction) => {
+        await transaction
+          .table<SyncQueueItem>("syncQueue")
+          .toCollection()
+          .modify((item) => {
+            item.operationId = item.operationId ?? crypto.randomUUID();
+
+            const legacyStatus = item.status as string;
+            item.status =
+              legacyStatus === "failed"
+                ? "retryable_error"
+                : legacyStatus === "processing" || legacyStatus === "in_flight"
+                  ? "pending"
+                  : item.status;
+          });
       });
   }
 }

@@ -37,6 +37,10 @@ export function consolidate(
   }
 
   if (action === "DELETE") {
+    if (pending.status === "in_flight") {
+      return { action: "DELETE", payload };
+    }
+
     if (pending.action === "CREATE") return null;
 
     return { action: "DELETE", payload };
@@ -79,8 +83,15 @@ export const queueService = {
 
     const now = Date.now();
 
+    const updatedAt = Math.max(now, (pending?.updatedAt ?? 0) + 1);
+
     await queueStorage.upsert({
       id,
+
+      operationId:
+        pending?.status === "pending" || pending?.status === "retryable_error"
+          ? pending.operationId
+          : crypto.randomUUID(),
 
       entity,
 
@@ -92,7 +103,7 @@ export const queueService = {
 
       createdAt: pending?.createdAt ?? now,
 
-      updatedAt: now,
+      updatedAt,
 
       retryCount: 0,
 
@@ -110,7 +121,10 @@ export const queueService = {
     const items = await queueStorage.getAll();
 
     return items.filter(
-      (item) => item.retryCount < MAX_RETRIES && item.nextAttemptAt <= now,
+      (item) =>
+        (item.status === "pending" || item.status === "retryable_error") &&
+        item.retryCount < MAX_RETRIES &&
+        item.nextAttemptAt <= now,
     );
   },
 
@@ -118,15 +132,37 @@ export const queueService = {
     return queueStorage.count();
   },
 
-  async markFailed(item: SyncQueueItem, error: unknown) {
+  async markInFlight(item: SyncQueueItem) {
+    const current = await queueStorage.get(item.id);
+
+    if (!current || current.updatedAt !== item.updatedAt) return false;
+
+    await queueStorage.upsert({ ...current, status: "in_flight" });
+
+    return true;
+  },
+
+  async markFailed(item: SyncQueueItem, error: unknown, fatal = false) {
+    const current = await queueStorage.get(item.id);
+
+    // A mutation may have produced a newer consolidated payload while this
+    // request was in flight. Leave that newer pending item untouched.
+    if (!current || current.updatedAt !== item.updatedAt) return;
+
     const retryCount = item.retryCount + 1;
+
+    const status = fatal
+      ? "fatal_error"
+      : retryCount >= MAX_RETRIES
+        ? "dead_letter"
+        : "retryable_error";
 
     await queueStorage.upsert({
       ...item,
 
       retryCount,
 
-      status: "failed",
+      status,
 
       updatedAt: Date.now(),
 
@@ -143,7 +179,10 @@ export const queueService = {
 
     await Promise.all(
       items
-        .filter((item) => item.status === "failed")
+        .filter(
+          (item) =>
+            item.status === "retryable_error" || item.status === "dead_letter",
+        )
         .map((item) =>
           queueStorage.upsert({
             ...item,
@@ -160,6 +199,19 @@ export const queueService = {
 
   async remove(id: string) {
     return queueStorage.remove(id);
+  },
+
+  /** Avoid dropping a newer mutation queued while an older one was syncing. */
+  async removeIfUnchanged(item: SyncQueueItem) {
+    const current = await queueStorage.get(item.id);
+
+    if (current?.updatedAt === item.updatedAt) {
+      await queueStorage.remove(item.id);
+
+      return true;
+    }
+
+    return false;
   },
 
   async clear() {

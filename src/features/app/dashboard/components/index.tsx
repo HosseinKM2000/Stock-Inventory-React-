@@ -19,7 +19,7 @@ const DashboardComponent = () => {
   const navigate = useNavigate();
 
   const { data: stats, isLoading, isError } = useDashboardStats();
-  console.log(stats);
+
   return (
     <main className="container mx-auto">
       <Flex direction="column" gap="2">
@@ -41,7 +41,7 @@ const DashboardComponent = () => {
       <Grid columns={{ xs: "1", md: "4" }} gap="5" mt="5">
         {dashboardCards.map((card) => (
           <Card
-            key={card.filter}
+            key={card.label}
             size="2"
             className="cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1"
             onClick={() =>

@@ -1,89 +1,101 @@
-import { imageService } from "@/shared/lib/infrastructure/media/image.service";
-import { conflictPolicy } from "@/shared/lib/infrastructure/sync/conflict-policy";
-import { registerSyncHandler } from "@/shared/lib/infrastructure/sync/sync-service";
+import { queueStorage } from "@/shared/lib/infrastructure/storage/queue-storage";
+import { syncMetadataStorage } from "@/shared/lib/infrastructure/storage/sync-metadata-storage";
 import type { SyncQueueItem } from "@/shared/lib/infrastructure/storage/types";
-
 import {
-  createProduct,
-  deleteProduct,
-  updateProduct,
-} from "../api/products.api";
+  registerInboundSyncHandler,
+  registerSyncHandler,
+  type SyncHandlerResult,
+} from "@/shared/lib/infrastructure/sync/sync-service";
 
+import { pullProductChanges, pushProductBatch } from "../api/sync.api";
+import type { Product } from "../types";
 import { inventoryRepository } from "./inventory.repository";
 import { PRODUCT_ENTITY } from "./inventory-service";
 
-import type { Product, ProductInput } from "../types";
+const CURSOR_KEY = "product-sync-cursor";
+const INITIALIZED_KEY = "product-sync-initialized";
 
-async function toInput(product: Product): Promise<ProductInput> {
-  const input: ProductInput = {
-    name: product.catalog_product?.name ?? product.custom_label ?? undefined,
+function localRepresentation(server: Product, local?: Product): Product {
+  const localImage = local?.image_url?.startsWith("local://")
+    ? local.image_url
+    : undefined;
 
-    price: product.price,
-
-    quantity: product.quantity,
-
-    description: product.note ?? null,
-
-    low_stock_alert: product.low_stock_alert,
-
-    low_stock_threshold: product.low_stock_threshold,
+  return {
+    ...server,
+    image_url: localImage ?? server.image_url ?? null,
+    server_image_url: server.image_url ?? null,
   };
+}
 
-  if (product.image_url) {
-    try {
-      input.image = await imageService.read(product.image_url);
-    } catch {
-      // The binary vanished — push the record without it rather than blocking.
+async function push(items: SyncQueueItem[]): Promise<SyncHandlerResult[]> {
+  const response = await pushProductBatch(items);
+
+  const output: SyncHandlerResult[] = [];
+
+  for (const result of response.results) {
+    const item = items.find(
+      (candidate) => candidate.operationId === result.operation_id,
+    );
+
+    if (!item) continue;
+
+    if (result.record) {
+      const local = await inventoryRepository.get(item.entityId);
+      await inventoryRepository.save(localRepresentation(result.record, local));
     }
-  } else {
-    input.remove_image = true;
+
+    output.push({
+      itemId: item.id,
+      status: result.status,
+      error: result.error,
+    });
   }
 
-  return input;
+  return output;
 }
 
-/**
- * Applies the server response locally, letting the conflict policy decide
- * whether the server payload may overwrite the local record.
- */
-async function reconcile(localId: number, server: Product) {
-  const local = await inventoryRepository.get(localId);
+async function pull() {
+  const cursor = await syncMetadataStorage.getNumber(CURSOR_KEY);
+  const initialized = await syncMetadataStorage.getNumber(INITIALIZED_KEY);
+  const requestCursor = initialized && cursor === 0 ? -1 : cursor;
+  const response = await pullProductChanges(requestCursor);
 
-  if (!local) {
-    await inventoryRepository.save(server);
+  if (!initialized) {
+    const serverIds = new Set(
+      response.changes
+        .filter((change) => change.operation === "UPSERT")
+        .map((change) => change.entity_id),
+    );
 
-    return;
+    for (const local of await inventoryRepository.getAll()) {
+      const pending = await queueStorage.get(`${PRODUCT_ENTITY}-${local.id}`);
+
+      if (!pending && !serverIds.has(local.id)) {
+        await inventoryRepository.remove(local.id);
+      }
+    }
   }
 
-  const winner =
-    conflictPolicy.resolve(local, server) === "local"
-      ? { ...server, ...local, id: server.id }
-      : { ...local, ...server };
+  for (const change of response.changes) {
+    const pending = await queueStorage.get(
+      `${PRODUCT_ENTITY}-${change.entity_id}`,
+    );
 
-  await inventoryRepository.replaceId(localId, winner);
-}
+    if (pending) continue;
 
-async function handle(item: SyncQueueItem) {
-  if (item.action === "DELETE") {
-    await deleteProduct(item.entityId);
-
-    return;
+    if (change.operation === "DELETE") {
+      await inventoryRepository.remove(change.entity_id);
+    } else if (change.record) {
+      const local = await inventoryRepository.get(change.entity_id);
+      await inventoryRepository.save(localRepresentation(change.record, local));
+    }
   }
 
-  const local = await inventoryRepository.get(item.entityId);
-
-  if (!local) return;
-
-  const input = await toInput(local);
-
-  const server =
-    item.action === "CREATE"
-      ? await createProduct(input)
-      : await updateProduct(item.entityId, input);
-
-  await reconcile(item.entityId, server);
+  await syncMetadataStorage.set(CURSOR_KEY, response.cursor);
+  await syncMetadataStorage.set(INITIALIZED_KEY, 1);
 }
 
 export function registerProductSync() {
-  registerSyncHandler(PRODUCT_ENTITY, handle);
+  registerSyncHandler(PRODUCT_ENTITY, push);
+  registerInboundSyncHandler(PRODUCT_ENTITY, pull);
 }

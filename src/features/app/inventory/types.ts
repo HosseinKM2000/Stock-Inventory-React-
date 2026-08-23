@@ -19,6 +19,8 @@ export type CatalogProduct = {
 export type Product = {
   id: number;
 
+  version?: number;
+
   quantity: number;
 
   price: number;
@@ -34,6 +36,8 @@ export type Product = {
   is_hidden: boolean;
 
   image_url: string | null;
+
+  server_image_url?: string | null;
 
   deleted_at: string | null;
 

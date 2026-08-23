@@ -11,6 +11,8 @@ import { toast } from "sonner";
 import { authKeys } from "@/features/auth/query/query-keys";
 import type { User } from "@/features/auth/types";
 import { useNavigate } from "@tanstack/react-router";
+import { syncMetadataStorage } from "@/shared/lib/infrastructure/storage/sync-metadata-storage";
+import { syncService } from "@/shared/lib/infrastructure/sync/sync-service";
 
 export function useIndustries() {
   return useQuery({
@@ -72,6 +74,12 @@ export function useSetIndustry() {
   return useMutation({
     mutationFn: setIndustry,
     onSuccess: async (data: User) => {
+      await syncMetadataStorage.set("product-sync-cursor", 0);
+
+      await syncMetadataStorage.set("product-sync-initialized", 0);
+
+      await syncService.sync();
+
       await queryClient.setQueryData(authKeys.me, (old: User) => {
         if (!old) return old;
 

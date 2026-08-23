@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as SettingRouteRouteImport } from './routes/setting/route'
 import { Route as AuthRouteRouteImport } from './routes/auth/route'
 import { Route as appRouteRouteImport } from './routes/(app)/route'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as SettingProfileRouteImport } from './routes/setting/profile'
 import { Route as SettingIndustryRouteImport } from './routes/setting/industry'
 import { Route as SettingExportRouteImport } from './routes/setting/export'
@@ -47,6 +48,11 @@ const AuthRouteRoute = AuthRouteRouteImport.update({
 } as any)
 const appRouteRoute = appRouteRouteImport.update({
   id: '/(app)',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingProfileRoute = SettingProfileRouteImport.update({
@@ -168,6 +174,7 @@ const appDashboardProductsHiddenIndexRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
+  '/': typeof IndexRoute
   '/auth': typeof AuthRouteRouteWithChildren
   '/setting': typeof SettingRouteRouteWithChildren
   '/dashboard': typeof appDashboardRouteRouteWithChildren
@@ -194,6 +201,7 @@ export interface FileRoutesByFullPath {
   '/dashboard/products/urgent-purchase/': typeof appDashboardProductsUrgentPurchaseIndexRoute
 }
 export interface FileRoutesByTo {
+  '/': typeof IndexRoute
   '/auth': typeof AuthRouteRouteWithChildren
   '/setting': typeof SettingRouteRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
@@ -219,6 +227,7 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
+  '/': typeof IndexRoute
   '/(app)': typeof appRouteRouteWithChildren
   '/auth': typeof AuthRouteRouteWithChildren
   '/setting': typeof SettingRouteRouteWithChildren
@@ -248,6 +257,7 @@ export interface FileRoutesById {
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
+    | '/'
     | '/auth'
     | '/setting'
     | '/dashboard'
@@ -274,6 +284,7 @@ export interface FileRouteTypes {
     | '/dashboard/products/urgent-purchase/'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/'
     | '/auth'
     | '/setting'
     | '/auth/login'
@@ -298,6 +309,7 @@ export interface FileRouteTypes {
     | '/dashboard/products/urgent-purchase'
   id:
     | '__root__'
+    | '/'
     | '/(app)'
     | '/auth'
     | '/setting'
@@ -326,6 +338,7 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
+  IndexRoute: typeof IndexRoute
   appRouteRoute: typeof appRouteRouteWithChildren
   AuthRouteRoute: typeof AuthRouteRouteWithChildren
   SettingRouteRoute: typeof SettingRouteRouteWithChildren
@@ -352,6 +365,13 @@ declare module '@tanstack/react-router' {
       path: ''
       fullPath: ''
       preLoaderRoute: typeof appRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/setting/profile': {
@@ -621,6 +641,7 @@ const SettingRouteRouteWithChildren = SettingRouteRoute._addFileChildren(
 )
 
 const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
   appRouteRoute: appRouteRouteWithChildren,
   AuthRouteRoute: AuthRouteRouteWithChildren,
   SettingRouteRoute: SettingRouteRouteWithChildren,

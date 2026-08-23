@@ -80,7 +80,7 @@ const ExportTools = () => {
         </Callout.Root>
       )}
 
-      <Flex mt={"5"} direction={"column"} gapY={"3"} maxWidth={"600px"}>
+      <Flex mt={"5"} direction={"column"} gapY={"3"}>
         <Button loading={busy === "local"} onClick={() => run("local")}>
           <DownloadIcon />
           خروجی داده های محلی

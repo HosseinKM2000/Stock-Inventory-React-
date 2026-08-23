@@ -2,106 +2,145 @@ import { ApiError } from "@/shared/api/api-error";
 import { isAuthenticated } from "@/shared/api/token-store";
 
 import { networkService } from "../network/network-service";
-
+import type { SyncQueueItem } from "../storage/types";
 import { queueService } from "./queue.service";
 import { syncStatusStore } from "./sync-status";
-import type { SyncQueueItem } from "../storage/types";
 
-export type SyncHandler = (item: SyncQueueItem) => Promise<void>;
+export type SyncHandlerResult = {
+  itemId: string;
+  status: "applied" | "conflict" | "fatal_error";
+  error?: string | null;
+};
+
+export type SyncHandler = (
+  items: SyncQueueItem[],
+) => Promise<SyncHandlerResult[]>;
+
+export type InboundSyncHandler = () => Promise<void>;
 
 const handlers = new Map<string, SyncHandler>();
+const inboundHandlers = new Map<string, InboundSyncHandler>();
 
 let running: Promise<void> | null = null;
-
 let onSettled: (() => void) | null = null;
 
-/**
- * Entities register their own push logic so the engine stays independent from
- * feature code (and from the future backend contract).
- */
 export function registerSyncHandler(entity: string, handler: SyncHandler) {
   handlers.set(entity, handler);
 }
 
-/** Called after a sync pass changes local data, so the UI can refetch. */
+export function registerInboundSyncHandler(
+  entity: string,
+  handler: InboundSyncHandler,
+) {
+  inboundHandlers.set(entity, handler);
+}
+
 export function onSyncSettled(listener: () => void) {
   onSettled = listener;
 }
 
-function isPermanent(error: unknown) {
+function isFatalRequest(error: unknown) {
   return (
-    error instanceof ApiError && error.status >= 400 && error.status < 500
-    && error.status !== 408 && error.status !== 429
+    error instanceof ApiError &&
+    error.status >= 400 &&
+    error.status < 500 &&
+    error.status !== 408 &&
+    error.status !== 409 &&
+    error.status !== 429
   );
+}
+
+async function processGroup(entity: string, items: SyncQueueItem[]) {
+  const handler = handlers.get(entity);
+  if (!handler) return { changed: false, error: null as string | null };
+
+  const active: SyncQueueItem[] = [];
+  for (const item of items) {
+    if (await queueService.markInFlight(item)) active.push(item);
+  }
+  if (active.length === 0) return { changed: false, error: null };
+
+  try {
+    const results = await handler(active);
+    const byId = new Map(results.map((result) => [result.itemId, result]));
+    let lastError: string | null = null;
+
+    for (const item of active) {
+      const result = byId.get(item.id);
+
+      if (!result) {
+        const error = new Error("Sync server omitted an operation result");
+        await queueService.markFailed(item, error);
+        lastError = error.message;
+      } else if (result.status === "applied" || result.status === "conflict") {
+        await queueService.removeIfUnchanged(item);
+        if (result.status === "conflict") lastError = result.error ?? "Sync conflict";
+      } else {
+        const error = new Error(result.error ?? "Server rejected the operation");
+        await queueService.markFailed(item, error, true);
+        lastError = error.message;
+      }
+    }
+
+    return { changed: true, error: lastError };
+  } catch (error) {
+    for (const item of active) {
+      await queueService.markFailed(item, error, isFatalRequest(error));
+    }
+
+    return {
+      changed: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
 }
 
 async function runSync() {
   if (networkService.isOffline() || !isAuthenticated()) {
-    syncStatusStore.set({
-      state: "idle",
-      pending: await queueService.count(),
-    });
-
+    syncStatusStore.set({ state: "idle", pending: await queueService.count() });
     return;
   }
 
   const items = await queueService.getDue();
 
-  if (items.length === 0) {
-    syncStatusStore.set({
-      state: syncStatusStore.get().lastSyncedAt ? "synced" : "idle",
-      pending: await queueService.count(),
-      error: null,
-    });
-
-    return;
-  }
-
-  syncStatusStore.set({
-    state: "syncing",
-    pending: items.length,
-    error: null,
-  });
+  syncStatusStore.set({ state: "syncing", pending: items.length, error: null });
 
   let changed = false;
-
   let lastError: string | null = null;
 
+  const groups = new Map<string, SyncQueueItem[]>();
   for (const item of items) {
-    const handler = handlers.get(item.entity);
+    groups.set(item.entity, [...(groups.get(item.entity) ?? []), item]);
+  }
 
-    if (!handler) continue;
+  for (const [entity, group] of groups) {
+    const result = await processGroup(entity, group);
+    changed ||= result.changed;
+    lastError = result.error ?? lastError;
+    if (networkService.isOffline()) break;
+  }
 
-    try {
-      await handler(item);
-
-      await queueService.remove(item.id);
-
-      changed = true;
-    } catch (error) {
-      if (isPermanent(error)) {
-        // The server rejected the operation for good; keeping it queued would
-        // block every later change for this entity.
-        await queueService.remove(item.id);
-      } else {
-        await queueService.markFailed(item, error);
+  if (networkService.isOnline()) {
+    for (const handler of inboundHandlers.values()) {
+      try {
+        await handler();
+        changed = true;
+      } catch (error) {
+        lastError = error instanceof Error ? error.message : String(error);
+        if (networkService.isOffline()) break;
       }
-
-      lastError = error instanceof Error ? error.message : String(error);
-
-      if (networkService.isOffline()) break;
     }
   }
 
-  const pending = await queueService.count();
+  const queued = await queueService.getAll();
+  const terminal = queued.find(
+    (item) => item.status === "fatal_error" || item.status === "dead_letter",
+  );
 
   syncStatusStore.set({
-    state: lastError ? "failed" : "synced",
-
-    pending,
-
-    error: lastError,
-
+    state: lastError || terminal ? "failed" : "synced",
+    pending: queued.length,
+    error: lastError ?? terminal?.lastError ?? null,
     lastSyncedAt: lastError ? syncStatusStore.get().lastSyncedAt : Date.now(),
   });
 
@@ -109,7 +148,6 @@ async function runSync() {
 }
 
 export const syncService = {
-  /** Safe to call from any trigger — concurrent calls share one pass. */
   async sync() {
     if (running) return running;
 
@@ -127,10 +165,8 @@ export const syncService = {
     return running;
   },
 
-  /** Explicit user retry — clears backoff so failed items run immediately. */
   async retry() {
     await queueService.resetFailures();
-
     return this.sync();
   },
 

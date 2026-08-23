@@ -8,7 +8,7 @@ import {
   YAxis,
   type TooltipContentProps,
 } from "recharts";
-import type { CategoryBreakdown } from "./types";
+import type { CategoryBreakdown } from "../types";
 
 const CustomTooltip = ({ active, payload, label }: TooltipContentProps) => {
   const firstPayload = payload?.[0];

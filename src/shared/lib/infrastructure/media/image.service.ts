@@ -1,6 +1,7 @@
 import { imageProcessor } from "./image-processor";
 import { imageRepository } from "./image.repository";
 import type { ImageProcessOptions } from "./types";
+import { storageQuotaService } from "../storage/storage-quota.service";
 
 export const LOCAL_IMAGE_PREFIX = "local://";
 
@@ -11,6 +12,8 @@ export function isLocalImage(path?: string | null): path is string {
 export const imageService = {
   async save(file: File, options?: ImageProcessOptions) {
     const processed = await imageProcessor.process(file, options);
+
+    await storageQuotaService.ensureAvailable(processed.blob.size);
 
     const id = crypto.randomUUID();
 
@@ -26,8 +29,11 @@ export const imageService = {
 
     try {
       await imageRepository.remove(path);
-    } catch {
+    } catch (error) {
       // already missing — nothing to clean up
+      if (!(error instanceof DOMException && error.name === "NotFoundError")) {
+        throw error;
+      }
     }
   },
 

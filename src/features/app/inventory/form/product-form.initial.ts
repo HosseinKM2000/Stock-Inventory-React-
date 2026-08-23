@@ -1,7 +1,11 @@
 import type { Product } from "../types";
 
 function generateLocalId() {
-  return Date.now();
+  const entropy = crypto.getRandomValues(new Uint16Array(1))[0] % 1_000;
+
+  // Millisecond timestamps alone collide when multiple products are created
+  // quickly. This remains a safe integer while adding per-millisecond entropy.
+  return Date.now() * 1_000 + entropy;
 }
 
 export function createProductInitialValues(initial?: Product) {

@@ -3,13 +3,29 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from .config import settings
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 from .database import Base, engine
 from .exceptions import global_exception_handler
-from .routers import auth, categories, dashboard, plans, backup, industries, products, inventory, export, transactions, custom_products, catalog_products
+from .routers import auth, categories, dashboard, plans, backup, industries, products, inventory, export, transactions, custom_products, catalog_products, sync
 
 # Create tables on startup (simple approach; swap for Alembic if needed).
 Base.metadata.create_all(bind=engine)
+
+
+def _apply_compatibility_migrations() -> None:
+    """Additive migration for installations created before offline sync."""
+    columns = {column["name"] for column in inspect(engine).get_columns("inventory_items")}
+
+    with engine.begin() as connection:
+        if "image_url" not in columns:
+            connection.execute(text("ALTER TABLE inventory_items ADD COLUMN image_url VARCHAR(500)"))
+        if "version" not in columns:
+            connection.execute(
+                text("ALTER TABLE inventory_items ADD COLUMN version INTEGER NOT NULL DEFAULT 1")
+            )
+
+
+_apply_compatibility_migrations()
 
 app = FastAPI(title="Stock Inventory API", version="1.0.0")
 app.add_exception_handler(Exception, global_exception_handler)
@@ -37,6 +53,7 @@ app.include_router(custom_products.router, prefix=api)
 app.include_router(backup.router, prefix=api)
 app.include_router(industries.router, prefix=api)
 app.include_router(catalog_products.router, prefix=api)
+app.include_router(sync.router, prefix=api)
 
 
 @app.get("/api/health")

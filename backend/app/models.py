@@ -1,7 +1,7 @@
 
 import enum
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime, timezone
 
@@ -209,6 +209,10 @@ class InventoryItem(Base):
     quantity: Mapped[int] = mapped_column(Integer, default=0)
     price: Mapped[int] = mapped_column(Integer, default=0)
 
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    version: Mapped[int] = mapped_column(Integer, default=1)
+
     custom_label: Mapped[str | None] = mapped_column(
         String(200),
         nullable=True
@@ -269,6 +273,31 @@ class InventoryItem(Base):
             return "low_stock"
 
         return "in_stock"
+
+
+class SyncOperation(Base):
+    __tablename__ = "sync_operations"
+    __table_args__ = (
+        UniqueConstraint("user_id", "operation_id", name="uq_sync_user_operation"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    operation_id: Mapped[str] = mapped_column(String(64), index=True)
+    result_payload: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
+
+
+class SyncChange(Base):
+    __tablename__ = "sync_changes"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    entity: Mapped[str] = mapped_column(String(40), index=True)
+    entity_id: Mapped[int] = mapped_column(Integer, index=True)
+    operation: Mapped[str] = mapped_column(String(20))
+    payload: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=_now)
 
 
 # ---------- Custom Products ----------

@@ -16,26 +16,39 @@ function sanitize(product: Product): Product {
 
   const threshold = Number(product.low_stock_threshold);
 
+  const safeQuantity = Number.isFinite(quantity) ? Math.max(0, quantity) : 0;
+
+  const safeThreshold = Number.isFinite(threshold) ? Math.max(0, threshold) : 0;
+
+  const status =
+    safeQuantity <= 0
+      ? "out_of_stock"
+      : safeThreshold > 0 && safeQuantity <= safeThreshold
+        ? "low_stock"
+        : "in_stock";
+
   return {
     ...product,
 
-    quantity: Number.isFinite(quantity) ? Math.max(0, quantity) : 0,
+    quantity: safeQuantity,
 
     price: Number.isFinite(price) ? Math.max(0, price) : 0,
 
-    low_stock_threshold: Number.isFinite(threshold) ? Math.max(0, threshold) : 0,
+    low_stock_threshold: safeThreshold,
 
     low_stock_alert: Boolean(product.low_stock_alert),
 
     is_hidden: Boolean(product.is_hidden),
 
-    image_url: product.image_url ?? null,
+    image_url: typeof product.image_url === "string" ? product.image_url : null,
+
+    status,
   };
 }
 
 class InventoryService {
   async getAll(params: ProductListParams = {}): Promise<Product[]> {
-    let products = await inventoryRepository.getAll();
+    let products = (await inventoryRepository.getAll()).map(sanitize);
 
     // Search
     if (params.search) {
@@ -88,7 +101,9 @@ class InventoryService {
   }
 
   async get(id: number): Promise<Product | undefined> {
-    return inventoryRepository.get(id);
+    const product = await inventoryRepository.get(id);
+
+    return product ? sanitize(product) : undefined;
   }
 
   async create(product: Product): Promise<Product> {
