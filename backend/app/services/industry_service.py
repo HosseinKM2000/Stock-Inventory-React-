@@ -1,7 +1,8 @@
-from sqlalchemy import select
+from fastapi import HTTPException
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..models import Industry
+from ..models import CatalogProduct, Industry
 from ..schemas import IndustryCreate, IndustryUpdate
 
 
@@ -46,5 +47,13 @@ def delete_industry(
     db: Session,
     industry: Industry,
 ):
+    dependent_products = db.scalar(
+        select(func.count(CatalogProduct.id)).where(
+            CatalogProduct.industry_id == industry.id
+        )
+    )
+    if dependent_products:
+        raise HTTPException(status_code=409, detail="INDUSTRY_HAS_CATALOG_PRODUCTS")
+
     db.delete(industry)
     db.commit()

@@ -1,10 +1,9 @@
 import { useState } from "react";
 
-import { Dialog, Flex } from "@radix-ui/themes";
-
 import { TrashIcon } from "@radix-ui/react-icons";
 
 import { Button } from "@/shared/ui/button/button";
+import { ConfirmDialog } from "@/shared/ui/dialog/confirm-dialog";
 
 import { useDeleteIndustry } from "../../mutations/use-industry";
 import type { Industry } from "../../types";
@@ -30,60 +29,20 @@ export default function DeleteIndustryDialog({
   }
 
   return (
-    <Dialog.Root
-      open={open}
-      onOpenChange={setOpen}
-    >
-      <Dialog.Trigger>
-        <Button
-          color="red"
-          size="2"
-        >
-          <TrashIcon />
-        </Button>
-      </Dialog.Trigger>
-
-      <Dialog.Content
-        maxWidth="420px"
-      >
-        <Dialog.Title color="red">
-          حذف حوزه کاری
-        </Dialog.Title>
-
-        <Dialog.Description mt="3">
-          آیا از حذف
-          <strong>
-            {" "}
-            {industry.name}{" "}
-          </strong>
-          اطمینان دارید؟
-        </Dialog.Description>
-
-        <Flex
-          justify="end"
-          gap="3"
-          mt="6"
-        >
-          <Dialog.Close>
-            <Button
-              variant="soft"
-              color="gray"
-            >
-              لغو
-            </Button>
-          </Dialog.Close>
-
-          <Button
-            color="red"
-            loading={
-              deleteMutation.isPending
-            }
-            onClick={handleDelete}
-          >
-            حذف
-          </Button>
-        </Flex>
-      </Dialog.Content>
-    </Dialog.Root>
+    <>
+      <Button color="red" size="2" onClick={() => setOpen(true)} aria-label={`حذف حوزه کاری ${industry.name}`}>
+        <TrashIcon />
+      </Button>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title="حذف حوزه کاری"
+        description={`حوزه کاری «${industry.name}» حذف می‌شود. اگر محصول کاتالوگی به آن وابسته باشد، سرور از حذف جلوگیری خواهد کرد.`}
+        confirmLabel="حذف حوزه کاری"
+        variant="danger"
+        loading={deleteMutation.isPending}
+        onConfirm={handleDelete}
+      />
+    </>
   );
 }

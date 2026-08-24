@@ -25,7 +25,7 @@ export function useEntitlement() {
   });
   const value = query.data ?? null;
   if (
-    value && value.plan !== "free" && value.expires_at &&
+    value && value.expires_at &&
     new Date(value.expires_at).getTime() <= now
   ) {
     return {

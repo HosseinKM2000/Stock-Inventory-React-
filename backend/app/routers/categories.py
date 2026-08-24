@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select, func
 
-from ..deps import CurrentUser, CurrentWritableUser, DbSession
+from ..deps import CurrentCategoryWriter, CurrentUser, DbSession
 from ..models import Category, InventoryItem
 from ..schemas import (
     CategoryCreate,
@@ -67,7 +67,7 @@ def list_categories(
 )
 def create_category(
     payload: CategoryCreate,
-    current_user: CurrentWritableUser,
+    current_user: CurrentCategoryWriter,
     db: DbSession,
 ) -> Category:
     if payload.id is not None:
@@ -101,7 +101,7 @@ def create_category(
 def update_category(
     category_id: int,
     payload: CategoryUpdate,
-    current_user: CurrentWritableUser,
+    current_user: CurrentCategoryWriter,
     db: DbSession,
 ) -> Category:
     category = _get_owned_category(
@@ -136,7 +136,7 @@ def update_category(
 )
 def delete_category(
     category_id: int,
-    current_user: CurrentWritableUser,
+    current_user: CurrentCategoryWriter,
     db: DbSession,
 ) -> None:
     category = _get_owned_category(

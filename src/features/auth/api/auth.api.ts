@@ -43,12 +43,15 @@ export async function updateProfile(payload: UpdateProfilePayload): Promise<User
   }));
 }
 
-export function updatePassword(password: string): Promise<void> {
+export type PasswordChangePayload = {
+  current_password: string;
+  new_password: string;
+};
+
+export function updatePassword(payload: PasswordChangePayload): Promise<void> {
   return apiFetch<void>("/auth/me/password", {
     method: "PATCH",
-    json: {
-      password,
-    },
+    json: payload,
   });
 }
 

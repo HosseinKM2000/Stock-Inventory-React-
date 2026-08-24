@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { adminKeys, planKeys } from "../query/query-keys";
-import { createPlan, listAdminPlans, listAvailablePlans, listPlanSubscribers, updatePlan } from "../api/plans.api";
+import { createPlan, deletePlan, listAdminPlans, listAvailablePlans, listPlanSubscribers, updatePlan } from "../api/plans.api";
 import { deleteUser, listUsers, setUserActive, setUserRole, setUserSubscription } from "../api/users.api";
 import type { SubscriptionPlanInput } from "../types";
 
@@ -45,6 +45,17 @@ export function useUpdatePlan() {
       client.invalidateQueries({ queryKey: adminKeys.plans }),
       client.invalidateQueries({ queryKey: planKeys.all }),
       client.invalidateQueries({ queryKey: planKeys.current }),
+    ]),
+  });
+}
+
+export function useDeletePlan() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: deletePlan,
+    onSuccess: () => Promise.all([
+      client.invalidateQueries({ queryKey: adminKeys.plans }),
+      client.invalidateQueries({ queryKey: planKeys.all }),
     ]),
   });
 }

@@ -10,7 +10,7 @@ export const categoryService = {
   getAll: () => categoryStorage.getAll(),
 
   async create(input: CategoryInput) {
-    accessState.requireWrite();
+    accessState.requireCapability("categories.write");
     const now = new Date().toISOString();
     const category: Category = {
       id: input.id ?? Date.now(),
@@ -25,7 +25,7 @@ export const categoryService = {
   },
 
   async update(id: number, input: CategoryInput) {
-    accessState.requireWrite();
+    accessState.requireCapability("categories.write");
     const current = await categoryStorage.get(id);
     if (!current) throw new Error("Category not found");
     const category = {
@@ -40,7 +40,7 @@ export const categoryService = {
   },
 
   async remove(id: number) {
-    accessState.requireWrite();
+    accessState.requireCapability("categories.write");
     for (const product of await inventoryService.getAll({ category_id: id })) {
       await inventoryService.update(product.id, { category_id: null });
     }

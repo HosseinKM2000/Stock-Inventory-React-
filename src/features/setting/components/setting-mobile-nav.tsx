@@ -4,6 +4,7 @@ import { Box, Flex, Text } from "@radix-ui/themes";
 import { settingsNavItems } from "../data/settings-items";
 import { useAuth } from "@/shared/auth/use-auth";
 import { isAdmin } from "@/shared/access/authorization";
+import { isPathActive } from "@/shared/lib/navigation/is-path-active";
 
 export function SettingsMobileNav() {
   const { user } = useAuth();
@@ -51,7 +52,7 @@ export function SettingsMobileNav() {
         {settingsNavItems.filter((item) => !("adminOnly" in item) || isAdmin(user)).map((item) => {
           const Icon = item.icon;
 
-          const active = pathname.startsWith(item.to);
+          const active = isPathActive(pathname, item.to);
 
           return (
             <Link

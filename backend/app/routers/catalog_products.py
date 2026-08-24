@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, status
 
-from ..deps import CurrentAdmin, CurrentUser, DbSession
+from ..deps import CurrentCatalogManager, CurrentUser, DbSession
 
 from ..schemas import (
     CatalogProductCreate,
@@ -78,7 +78,7 @@ def get_catalog(
 )
 def create_catalog(
     payload: CatalogProductCreate,
-    _: CurrentAdmin,
+    _: CurrentCatalogManager,
     db: DbSession,
 ):
     return create_catalog_product(
@@ -97,7 +97,7 @@ def create_catalog(
 def update_catalog(
     catalog_id: int,
     payload: CatalogProductUpdate,
-    _: CurrentAdmin,
+    _: CurrentCatalogManager,
     db: DbSession,
 ):
     product = get_catalog_product(
@@ -127,7 +127,7 @@ def update_catalog(
 )
 def delete_catalog(
     catalog_id: int,
-    _: CurrentAdmin,
+    _: CurrentCatalogManager,
     db: DbSession,
 ):
     product = get_catalog_product(

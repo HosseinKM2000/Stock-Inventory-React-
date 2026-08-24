@@ -56,10 +56,38 @@ def get_current_writable_user(
     return user
 
 
+def get_current_category_writer(
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> User:
+    require_capability(db, user, "categories.write")
+    return user
+
+
 def get_current_admin(
     user: Annotated[User, Depends(get_current_user)],
 ) -> User:
     require_permission(user, Permission.USERS_READ)
+    return user
+
+
+def get_current_user_manager(user: Annotated[User, Depends(get_current_user)]) -> User:
+    require_permission(user, Permission.USERS_MANAGE)
+    return user
+
+
+def get_current_plan_manager(user: Annotated[User, Depends(get_current_user)]) -> User:
+    require_permission(user, Permission.PLANS_MANAGE)
+    return user
+
+
+def get_current_catalog_manager(user: Annotated[User, Depends(get_current_user)]) -> User:
+    require_permission(user, Permission.CATALOG_MANAGE)
+    return user
+
+
+def get_current_industry_manager(user: Annotated[User, Depends(get_current_user)]) -> User:
+    require_permission(user, Permission.INDUSTRY_MANAGE)
     return user
 
 
@@ -69,5 +97,10 @@ def require_backup_access(db: Session, user: User) -> None:
 
 CurrentUser = Annotated[User, Depends(get_current_user)]
 CurrentWritableUser = Annotated[User, Depends(get_current_writable_user)]
+CurrentCategoryWriter = Annotated[User, Depends(get_current_category_writer)]
 CurrentAdmin = Annotated[User, Depends(get_current_admin)]
+CurrentUserManager = Annotated[User, Depends(get_current_user_manager)]
+CurrentPlanManager = Annotated[User, Depends(get_current_plan_manager)]
+CurrentCatalogManager = Annotated[User, Depends(get_current_catalog_manager)]
+CurrentIndustryManager = Annotated[User, Depends(get_current_industry_manager)]
 DbSession = Annotated[Session, Depends(get_db)]

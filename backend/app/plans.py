@@ -2,6 +2,16 @@ from datetime import datetime, timezone
 from typing import Any
 
 
+SUBSCRIPTION_CAPABILITIES = frozenset({
+    "inventory.read",
+    "inventory.write",
+    "categories.write",
+    "export.local",
+    "export.server",
+    "backup",
+})
+
+
 # Plan behavior lives here as data. Callers check capabilities/limits instead
 # of scattering plan-name comparisons throughout the application.
 PLAN_CATALOG: dict[str, dict[str, Any]] = {
@@ -12,8 +22,7 @@ PLAN_CATALOG: dict[str, dict[str, Any]] = {
         "duration_days": None,
         "limits": {"inventory_items": 50, "devices": 1},
         "capabilities": {"inventory.read": True, "inventory.write": True,
-            "categories.write": True, "catalog.manage": False,
-            "industry.manage": False, "export.local": True,
+            "categories.write": True, "export.local": True,
             "export.server": True, "backup": False},
     },
     "starter": {
@@ -23,8 +32,7 @@ PLAN_CATALOG: dict[str, dict[str, Any]] = {
         "duration_days": 30,
         "limits": {"inventory_items": 500, "devices": 2},
         "capabilities": {"inventory.read": True, "inventory.write": True,
-            "categories.write": True, "catalog.manage": False,
-            "industry.manage": False, "export.local": True,
+            "categories.write": True, "export.local": True,
             "export.server": True, "backup": True},
     },
     "pro": {
@@ -34,8 +42,7 @@ PLAN_CATALOG: dict[str, dict[str, Any]] = {
         "duration_days": 30,
         "limits": {"inventory_items": 5000, "devices": 3},
         "capabilities": {"inventory.read": True, "inventory.write": True,
-            "categories.write": True, "catalog.manage": True,
-            "industry.manage": False, "export.local": True,
+            "categories.write": True, "export.local": True,
             "export.server": True, "backup": True},
     },
     "vip": {
@@ -45,8 +52,7 @@ PLAN_CATALOG: dict[str, dict[str, Any]] = {
         "duration_days": 30,
         "limits": {"inventory_items": None, "devices": None},
         "capabilities": {"inventory.read": True, "inventory.write": True,
-            "categories.write": True, "catalog.manage": True,
-            "industry.manage": True, "export.local": True,
+            "categories.write": True, "export.local": True,
             "export.server": True, "backup": True},
     },
 }

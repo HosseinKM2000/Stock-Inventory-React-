@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
-from ..deps import CurrentAdmin, DbSession
+from ..deps import CurrentAdmin, CurrentPlanManager, CurrentUserManager, DbSession
 from ..models import AdminAuditLog, SubscriptionPlan, User
 from ..schemas import (
     AdminSubscriptionUpdate,
@@ -16,6 +16,7 @@ from ..schemas import (
     PlanPatch,
 )
 from ..services.audit_service import record_admin_action
+from ..plans import PLAN_CATALOG, SUBSCRIPTION_CAPABILITIES
 from ..services.authorization_service import RoleId, set_role
 from ..services.subscription_service import (
     assign_subscription,
@@ -30,6 +31,12 @@ router = APIRouter(prefix="/admin", tags=["administration"])
 def _validate_duration(duration: int | None, unit: str | None) -> None:
     if (duration is None) != (unit is None):
         raise HTTPException(status_code=422, detail="PLAN_DURATION_INVALID")
+
+
+def _validate_features(features: dict[str, bool]) -> None:
+    unknown = set(features) - SUBSCRIPTION_CAPABILITIES
+    if unknown:
+        raise HTTPException(status_code=422, detail="PLAN_CAPABILITY_INVALID")
 
 
 def _as_utc(value: datetime | None) -> datetime | None:
@@ -79,7 +86,7 @@ def list_users(_: CurrentAdmin, db: DbSession):
 def update_user_state(
     user_id: int,
     payload: AdminUserStateUpdate,
-    admin: CurrentAdmin,
+    admin: CurrentUserManager,
     db: DbSession,
 ):
     user = _user_or_404(db, user_id)
@@ -107,11 +114,13 @@ def update_user_state(
 def update_user_role(
     user_id: int,
     payload: AdminUserRoleUpdate,
-    admin: CurrentAdmin,
+    admin: CurrentUserManager,
     db: DbSession,
 ):
     user = _user_or_404(db, user_id)
     role = RoleId(payload.role)
+    if user.id == admin.id and not user.is_system_admin and role is not RoleId.ADMIN:
+        raise HTTPException(status_code=400, detail="CANNOT_DEMOTE_SELF")
     set_role(user, role)
     record_admin_action(
         db,
@@ -128,7 +137,7 @@ def update_user_role(
 def update_user_subscription(
     user_id: int,
     payload: AdminSubscriptionUpdate,
-    admin: CurrentAdmin,
+    admin: CurrentUserManager,
     db: DbSession,
 ):
     user = _user_or_404(db, user_id)
@@ -153,7 +162,7 @@ def update_user_subscription(
 
 
 @router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_user(user_id: int, admin: CurrentAdmin, db: DbSession) -> None:
+def delete_user(user_id: int, admin: CurrentUserManager, db: DbSession) -> None:
     user = _user_or_404(db, user_id)
     if user.is_system_admin:
         raise HTTPException(status_code=409, detail="SYSTEM_ADMIN_IMMUTABLE")
@@ -166,12 +175,12 @@ def delete_user(user_id: int, admin: CurrentAdmin, db: DbSession) -> None:
 
 
 @router.get("/plans", response_model=list[PlanDefinitionOut])
-def admin_list_plans(_: CurrentAdmin, db: DbSession):
+def admin_list_plans(_: CurrentPlanManager, db: DbSession):
     return [plan_payload(plan) for plan in list_plans(db)]
 
 
 @router.get("/plans/{plan_id}/subscribers", response_model=list[AdminUserOut])
-def plan_subscribers(plan_id: str, _: CurrentAdmin, db: DbSession):
+def plan_subscribers(plan_id: str, _: CurrentPlanManager, db: DbSession):
     if db.get(SubscriptionPlan, plan_id) is None:
         raise HTTPException(status_code=404, detail="PLAN_NOT_FOUND")
     users = list(db.scalars(select(User).where(User.plan == plan_id)))
@@ -179,10 +188,11 @@ def plan_subscribers(plan_id: str, _: CurrentAdmin, db: DbSession):
 
 
 @router.post("/plans", response_model=PlanDefinitionOut, status_code=201)
-def create_plan(payload: PlanCreate, admin: CurrentAdmin, db: DbSession):
+def create_plan(payload: PlanCreate, admin: CurrentPlanManager, db: DbSession):
     if db.get(SubscriptionPlan, payload.id) is not None:
         raise HTTPException(status_code=409, detail="PLAN_EXISTS")
     _validate_duration(payload.duration, payload.duration_unit)
+    _validate_features(payload.features)
     plan = SubscriptionPlan(
         id=payload.id,
         name=payload.name,
@@ -206,7 +216,7 @@ def create_plan(payload: PlanCreate, admin: CurrentAdmin, db: DbSession):
 def update_plan(
     plan_id: str,
     payload: PlanPatch,
-    admin: CurrentAdmin,
+    admin: CurrentPlanManager,
     db: DbSession,
 ):
     plan = db.get(SubscriptionPlan, plan_id)
@@ -217,6 +227,7 @@ def update_plan(
     resulting_unit = values.get("duration_unit", plan.duration_unit)
     _validate_duration(resulting_duration, resulting_unit)
     if "features" in values:
+        _validate_features(values["features"])
         plan.features_json = json.dumps(values.pop("features"))
     if "limits" in values:
         plan.limits_json = json.dumps(values.pop("limits"))
@@ -226,6 +237,21 @@ def update_plan(
     db.commit()
     db.refresh(plan)
     return plan_payload(plan)
+
+
+@router.delete("/plans/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_plan(plan_id: str, admin: CurrentPlanManager, db: DbSession) -> None:
+    plan = db.get(SubscriptionPlan, plan_id)
+    if plan is None:
+        raise HTTPException(status_code=404, detail="PLAN_NOT_FOUND")
+    if plan_id in PLAN_CATALOG:
+        raise HTTPException(status_code=409, detail="PLAN_BUILT_IN")
+    if db.scalar(select(User.id).where(User.plan == plan_id).limit(1)) is not None:
+        raise HTTPException(status_code=409, detail="PLAN_HAS_SUBSCRIBERS")
+    record_admin_action(db, admin, "plan.deleted", metadata={"plan": plan.id})
+    db.flush()
+    db.delete(plan)
+    db.commit()
 
 
 @router.get("/audit")

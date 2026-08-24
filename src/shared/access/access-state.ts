@@ -31,7 +31,7 @@ export const accessState = {
     if (isAdmin(this.user())) return true;
     const value = this.entitlement();
     if (!value) return true;
-    if (value.plan !== "free" && value.expires_at && new Date(value.expires_at).getTime() <= Date.now()) {
+    if (value.expires_at && new Date(value.expires_at).getTime() <= Date.now()) {
       return false;
     }
     return value.status !== "expired" && value.capabilities["inventory.write"] !== false;

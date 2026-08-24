@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..models import SubscriptionPlan, User
-from ..plans import PLAN_CATALOG, subscription_expired
+from ..plans import PLAN_CATALOG, SUBSCRIPTION_CAPABILITIES, subscription_expired
 
 
 def seed_default_plans(db: Session) -> None:
@@ -46,7 +46,11 @@ def plan_payload(plan: SubscriptionPlan) -> dict[str, Any]:
         "duration": plan.duration,
         "duration_unit": plan.duration_unit,
         "is_active": plan.is_active,
-        "features": parse_json_object(plan.features_json),
+        "features": {
+            key: bool(value)
+            for key, value in parse_json_object(plan.features_json).items()
+            if key in SUBSCRIPTION_CAPABILITIES
+        },
         "limits": parse_json_object(plan.limits_json),
         "created_at": plan.created_at,
         "updated_at": plan.updated_at,
@@ -67,7 +71,9 @@ def entitlement_for_user(db: Session, user: User) -> dict[str, Any]:
 
     expired = subscription_expired(user.plan, user.subscription_expires_at)
     capabilities = {
-        key: bool(value) for key, value in parse_json_object(plan.features_json).items()
+        key: bool(value)
+        for key, value in parse_json_object(plan.features_json).items()
+        if key in SUBSCRIPTION_CAPABILITIES
     }
     if expired:
         capabilities = {

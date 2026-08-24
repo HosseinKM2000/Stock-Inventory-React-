@@ -9,6 +9,7 @@ import {
 import { useLogout } from "@/features/auth/mutations/use-register";
 import { useAuth } from "@/shared/auth/use-auth";
 import { isAdmin } from "@/shared/access/authorization";
+import { isPathActive } from "@/shared/lib/navigation/is-path-active";
 
 export function SettingNav() {
   const logout = useLogout();
@@ -54,7 +55,7 @@ export function SettingNav() {
           rounded-md
           items-center
           justify-center
-          hover:bg-gray-100
+          hover:bg-foreground/10
           "
           onClick={() => setCollapsed((prev) => !prev)}
         >
@@ -67,7 +68,7 @@ export function SettingNav() {
         <div className="space-y-1">
           {settingsNavItems.filter((item) => !("adminOnly" in item) || isAdmin(user)).map((item) => {
             const Icon = item.icon;
-            const active = pathname.startsWith(item.to);
+            const active = isPathActive(pathname, item.to);
 
             return (
               <Link
@@ -83,7 +84,7 @@ export function SettingNav() {
                   transition-colors
                   ${
                     active
-                      ? "bg-indigo-700 text-foreground"
+                      ? "bg-indigo-700 text-white"
                       : "hover:bg-indigo-300/10 text-foreground"
                   }
                 `}

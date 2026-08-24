@@ -8,6 +8,7 @@ import {
   updateIndustry,
 } from "../api/industry.api";
 import { toast } from "sonner";
+import { ApiError } from "@/shared/api/api-error";
 import { authKeys } from "@/features/auth/query/query-keys";
 import type { User } from "@/features/auth/types";
 import { useNavigate } from "@tanstack/react-router";
@@ -61,9 +62,17 @@ export function useDeleteIndustry() {
     mutationFn: deleteIndustry,
 
     onSuccess() {
+      toast.success("حوزه کاری حذف شد.");
       qc.invalidateQueries({
         queryKey: industryKeys.all,
       });
+    },
+    onError(error) {
+      toast.error(
+        error instanceof ApiError && error.message === "INDUSTRY_HAS_CATALOG_PRODUCTS"
+          ? "حذف این حوزه کاری امکان‌پذیر نیست؛ محصولات کاتالوگ به آن وابسته هستند."
+          : "حذف حوزه کاری ناموفق بود.",
+      );
     },
   });
 }

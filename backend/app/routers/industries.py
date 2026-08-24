@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException
 
-from ..deps import CurrentAdmin, CurrentUser, DbSession
+from ..deps import CurrentIndustryManager, CurrentUser, DbSession
 from ..models import Industry
 from ..schemas import (
     IndustryCreate,
@@ -37,7 +37,7 @@ def list_industries(
 )
 def create(
     payload: IndustryCreate,
-    _: CurrentAdmin,
+    _: CurrentIndustryManager,
     db: DbSession,
 ):
     return create_industry(db, payload)
@@ -50,7 +50,7 @@ def create(
 def update(
     industry_id: int,
     payload: IndustryUpdate,
-    _: CurrentAdmin,
+    _: CurrentIndustryManager,
     db: DbSession,
 ):
     industry = db.get(Industry, industry_id)
@@ -68,7 +68,7 @@ def update(
 @router.delete("/{industry_id}")
 def remove(
     industry_id: int,
-    _: CurrentAdmin,
+    _: CurrentIndustryManager,
     db: DbSession,
 ):
     industry = db.get(Industry, industry_id)

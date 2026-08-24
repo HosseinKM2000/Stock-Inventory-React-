@@ -16,20 +16,26 @@ import { z } from "zod";
 
 const schema = z
   .object({
-    password: passwordSchema,
-    repeatPassword: z.string(),
+    currentPassword: z.string().min(1, "رمز عبور فعلی را وارد کنید"),
+    newPassword: passwordSchema,
+    confirmNewPassword: z.string(),
   })
   .refine(
-    (data) => data.password === data.repeatPassword,
+    (data) => data.newPassword === data.confirmNewPassword,
     {
-      path: ["repeatPassword"],
+      path: ["confirmNewPassword"],
       message: "رمز عبور و تکرار یکسان نیستند",
     },
-  );
+  )
+  .refine((data) => data.currentPassword !== data.newPassword, {
+    path: ["newPassword"],
+    message: "رمز عبور جدید باید با رمز فعلی متفاوت باشد",
+  });
 
 const emptyValues: z.input<typeof schema> = {
-  password: "",
-  repeatPassword: "",
+  currentPassword: "",
+  newPassword: "",
+  confirmNewPassword: "",
 };
 
 const PasswordFields = () => {
@@ -40,7 +46,10 @@ const PasswordFields = () => {
     initialValues: emptyValues,
 
     onSubmit(values) {
-      updatePassword.mutate(values.password, {
+      updatePassword.mutate({
+        current_password: values.currentPassword,
+        new_password: values.newPassword,
+      }, {
         onSuccess() {
           form.reset();
         },
@@ -50,7 +59,11 @@ const PasswordFields = () => {
 
   const errorMessage =
     updatePassword.error instanceof ApiError
-      ? updatePassword.error.message
+      ? updatePassword.error.message === "CURRENT_PASSWORD_INCORRECT"
+        ? "رمز عبور فعلی صحیح نیست"
+        : updatePassword.error.message === "NEW_PASSWORD_MUST_DIFFER"
+          ? "رمز عبور جدید باید با رمز فعلی متفاوت باشد"
+          : updatePassword.error.message
       : updatePassword.isError
         ? "خطا در ارتباط با سرور"
         : null;
@@ -87,27 +100,43 @@ const PasswordFields = () => {
           columns={{ xs: "1", md: "3" }}
         >
           <FormField
-            label="رمز عبور"
-            id="password"
-            error={form.errors.password}
+            label="رمز عبور فعلی"
+            id="currentPassword"
+            error={form.errors.currentPassword}
           >
             <PasswordInput
               size="3"
-              name="password"
-              value={form.values.password}
+              name="currentPassword"
+              autoComplete="current-password"
+              value={form.values.currentPassword}
               onChange={form.handleChange}
             />
           </FormField>
 
           <FormField
-            label="تکرار رمز عبور"
-            id="repeatPassword"
-            error={form.errors.repeatPassword}
+            label="رمز عبور جدید"
+            id="newPassword"
+            error={form.errors.newPassword}
           >
             <PasswordInput
               size="3"
-              name="repeatPassword"
-              value={form.values.repeatPassword}
+              name="newPassword"
+              autoComplete="new-password"
+              value={form.values.newPassword}
+              onChange={form.handleChange}
+            />
+          </FormField>
+
+          <FormField
+            label="تکرار رمز عبور جدید"
+            id="confirmNewPassword"
+            error={form.errors.confirmNewPassword}
+          >
+            <PasswordInput
+              size="3"
+              name="confirmNewPassword"
+              autoComplete="new-password"
+              value={form.values.confirmNewPassword}
               onChange={form.handleChange}
             />
           </FormField>

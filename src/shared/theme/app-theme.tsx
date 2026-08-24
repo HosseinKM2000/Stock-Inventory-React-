@@ -31,8 +31,10 @@ export function AppTheme({ children }: PropsWithChildren) {
 
   return (
     <Theme appearance={resolved} accentColor="violet">
-      <Toaster richColors closeButton theme={resolved} expand={false} duration={4000} position="top-center" />
-      {children}
+      <div dir="rtl">
+        <Toaster richColors closeButton theme={resolved} dir="rtl" expand={false} duration={4000} position="top-center" />
+        {children}
+      </div>
     </Theme>
   );
 }

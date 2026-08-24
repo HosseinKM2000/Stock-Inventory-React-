@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 from fastapi import Header
 
-from ..deps import CurrentUser, DbSession
+from ..deps import CurrentUser, DbSession, DeviceFingerprint
 from ..models import User, Industry, CatalogProduct, InventoryItem
 from ..schemas import (
     IndustrySelect,
@@ -150,12 +150,15 @@ def update_password(
     payload: PasswordUpdate,
     current_user: CurrentUser,
     db: DbSession,
+    device_fingerprint: DeviceFingerprint,
 ):
 
     update_password_service(
         db=db,
         user=current_user,
-        new_password=payload.password,
+        current_password=payload.current_password,
+        new_password=payload.new_password,
+        current_fingerprint=device_fingerprint,
     )
 
     return MessageResponse(

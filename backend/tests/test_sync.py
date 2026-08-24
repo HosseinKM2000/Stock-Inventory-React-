@@ -204,6 +204,86 @@ class SyncApiTest(unittest.TestCase):
         )
         self.assertEqual(deleted.status_code, 200, deleted.text)
 
+    def test_password_change_requires_current_password(self) -> None:
+        unauthorized = self.client.patch(
+            "/api/auth/me/password",
+            json={"current_password": "StrongPass123!", "new_password": "NewStrongPass456!"},
+        )
+        self.assertEqual(unauthorized.status_code, 401, unauthorized.text)
+
+        wrong = self.client.patch(
+            "/api/auth/me/password",
+            headers=self.headers,
+            json={"current_password": "WrongPass123!", "new_password": "NewStrongPass456!"},
+        )
+        self.assertEqual(wrong.status_code, 400, wrong.text)
+        self.assertEqual(wrong.json()["detail"], "CURRENT_PASSWORD_INCORRECT")
+
+        weak = self.client.patch(
+            "/api/auth/me/password",
+            headers=self.headers,
+            json={"current_password": "StrongPass123!", "new_password": "alllowercase1"},
+        )
+        self.assertEqual(weak.status_code, 422, weak.text)
+
+        unchanged = self.client.patch(
+            "/api/auth/me/password",
+            headers=self.headers,
+            json={"current_password": "StrongPass123!", "new_password": "StrongPass123!"},
+        )
+        self.assertEqual(unchanged.status_code, 400, unchanged.text)
+        self.assertEqual(unchanged.json()["detail"], "NEW_PASSWORD_MUST_DIFFER")
+
+        changed = self.client.patch(
+            "/api/auth/me/password",
+            headers=self.headers,
+            json={"current_password": "StrongPass123!", "new_password": "NewStrongPass456!"},
+        )
+        self.assertEqual(changed.status_code, 200, changed.text)
+
+        restored = self.client.patch(
+            "/api/auth/me/password",
+            headers=self.headers,
+            json={"current_password": "NewStrongPass456!", "new_password": "StrongPass123!"},
+        )
+        self.assertEqual(restored.status_code, 200, restored.text)
+
+    def test_industry_deletion_is_blocked_by_catalog_dependencies(self) -> None:
+        dependent = self.client.post(
+            "/api/industries",
+            headers=self.admin_headers,
+            json={"name": "Dependent industry", "description": "test", "is_active": True},
+        )
+        self.assertEqual(dependent.status_code, 200, dependent.text)
+        catalog = self.client.post(
+            "/api/catalog-products",
+            headers=self.admin_headers,
+            json={
+                "industry_id": dependent.json()["id"],
+                "name": "Dependent catalog item",
+                "description": None,
+                "brand": None,
+                "image_url": None,
+            },
+        )
+        self.assertEqual(catalog.status_code, 201, catalog.text)
+
+        blocked = self.client.delete(
+            f"/api/industries/{dependent.json()['id']}", headers=self.admin_headers
+        )
+        self.assertEqual(blocked.status_code, 409, blocked.text)
+        self.assertEqual(blocked.json()["detail"], "INDUSTRY_HAS_CATALOG_PRODUCTS")
+
+        empty = self.client.post(
+            "/api/industries",
+            headers=self.admin_headers,
+            json={"name": "Empty industry", "description": None, "is_active": True},
+        )
+        removed = self.client.delete(
+            f"/api/industries/{empty.json()['id']}", headers=self.admin_headers
+        )
+        self.assertEqual(removed.status_code, 200, removed.text)
+
     def test_category_ids_are_client_stable_and_admin_is_guarded(self) -> None:
         category_id = 1_800_000_000_001
         created = self.client.post(
@@ -299,6 +379,23 @@ class SyncApiTest(unittest.TestCase):
         self.assertEqual(assigned.status_code, 200, assigned.text)
         self.assertEqual(assigned.json()["plan"], "test_release_plan")
 
+        category_denied = self.client.post(
+            "/api/categories",
+            headers=self.headers,
+            json={"name": "Plan-blocked category"},
+        )
+        self.assertEqual(category_denied.status_code, 403, category_denied.text)
+        self.assertEqual(
+            category_denied.json()["detail"],
+            "CAPABILITY_REQUIRED:categories.write",
+        )
+
+        subscribed_plan_delete = self.client.delete(
+            "/api/admin/plans/test_release_plan", headers=self.admin_headers
+        )
+        self.assertEqual(subscribed_plan_delete.status_code, 409, subscribed_plan_delete.text)
+        self.assertEqual(subscribed_plan_delete.json()["detail"], "PLAN_HAS_SUBSCRIBERS")
+
         changed_plan = self.client.patch(
             "/api/admin/plans/test_release_plan",
             headers=self.admin_headers,
@@ -321,6 +418,11 @@ class SyncApiTest(unittest.TestCase):
             user.subscription_started_at = None
             user.subscription_expires_at = None
             db.commit()
+
+        deleted_plan = self.client.delete(
+            "/api/admin/plans/test_release_plan", headers=self.admin_headers
+        )
+        self.assertEqual(deleted_plan.status_code, 204, deleted_plan.text)
 
     def test_resource_ownership_blocks_cross_user_access(self) -> None:
         signup = self.client.post(

@@ -4,13 +4,12 @@ from sqlalchemy.orm import Session
 
 from ..models import User
 from ..schemas import LoginRequest, TokenResponse, UserOut, SignupRequest, UserUpdate
-from ..security import create_access_token, verify_password
 from .plan_policy import can_add_device
 
 from ..security import (
+    create_access_token,
     hash_password,
     verify_password,
-    create_access_token,
 )
 
 from .session_service import (
@@ -199,9 +198,22 @@ def update_user(
 def update_password(
     db: Session,
     user: User,
+    current_password: str,
     new_password: str,
+    current_fingerprint: str,
 ):
+    if not verify_password(current_password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="CURRENT_PASSWORD_INCORRECT")
+    if verify_password(new_password, user.hashed_password):
+        raise HTTPException(status_code=400, detail="NEW_PASSWORD_MUST_DIFFER")
+
     user.hashed_password = hash_password(new_password)
+
+    # A credential change invalidates every other device while preserving the
+    # verified session that performed the change.
+    for session in get_active_sessions(db, user.id):
+        if session.device_fingerprint != current_fingerprint:
+            session.is_active = False
 
     db.commit()
     db.refresh(user)

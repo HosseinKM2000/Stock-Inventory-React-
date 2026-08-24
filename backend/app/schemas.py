@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 
 # =========================================================
@@ -34,7 +34,19 @@ class UserUpdate(BaseModel):
 
 
 class PasswordUpdate(BaseModel):
-    password: str = Field(min_length=8, max_length=128)
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("new_password")
+    @classmethod
+    def validate_new_password(cls, value: str) -> str:
+        if not any(character.isupper() for character in value):
+            raise ValueError("PASSWORD_UPPERCASE_REQUIRED")
+        if not any(character.islower() for character in value):
+            raise ValueError("PASSWORD_LOWERCASE_REQUIRED")
+        if not any(character.isdigit() for character in value):
+            raise ValueError("PASSWORD_NUMBER_REQUIRED")
+        return value
 
 
 class IndustrySelect(BaseModel):
@@ -393,12 +405,6 @@ class ErrorResponse(BaseModel):
 # =========================================================
 # PLAN
 # =========================================================
-class PlanUpdate(BaseModel):
-    plan: Literal["free", "starter", "pro", "vip"]
-    subscription_started_at: datetime | None = None
-    subscription_expires_at: datetime | None = None
-
-
 class EntitlementOut(BaseModel):
     plan: str
     label: str
