@@ -26,7 +26,7 @@ const InventoryList = () => {
     <Flex
       direction="column"
       className="
-        h-[calc(100dvh-80px)]
+        h-[calc(100dvh-64px)] lg:h-[calc(100dvh-80px)]
         overflow-hidden
         p-4
         gap-4
@@ -126,6 +126,8 @@ const InventoryList = () => {
                   return (
                     <div
                       key={product.id}
+                      data-index={virtualRow.index}
+                      ref={virtualizer.measureElement}
                       style={{
                         position: "absolute",
                         top: 0,

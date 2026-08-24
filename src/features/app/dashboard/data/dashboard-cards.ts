@@ -6,6 +6,7 @@ import {
   IdCardIcon,
   MixIcon,
   QuestionMarkIcon,
+  PlusCircledIcon,
 } from "@radix-ui/react-icons";
 
 export const dashboardCards = [
@@ -20,6 +21,19 @@ export const dashboardCards = [
     icon: MixIcon ,
 
     color: "indigo" as const,
+  },
+
+  {
+    filter: null,
+
+    label: "محصولات افزوده‌شده امروز",
+
+    value: (s: DashboardStats) =>
+      s?.addedTodayCount.toLocaleString("fa-IR") ?? "0",
+
+    icon: PlusCircledIcon,
+
+    color: "cyan" as const,
   },
 
   {

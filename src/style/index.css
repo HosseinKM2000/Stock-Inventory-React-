@@ -4,4 +4,23 @@
 body {
   margin: 0;
   padding: 0;
+  overflow-x: hidden;
+}
+
+@keyframes drawer-overlay-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes drawer-overlay-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes drawer-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes drawer-out { from { transform: translateX(0); } to { transform: translateX(100%); } }
+
+.mobile-drawer-overlay[data-state="open"] { animation: drawer-overlay-in 180ms ease-out; }
+.mobile-drawer-overlay[data-state="closed"] { animation: drawer-overlay-out 160ms ease-in; }
+.mobile-drawer[data-state="open"] { animation: drawer-in 220ms ease-out; }
+.mobile-drawer[data-state="closed"] { animation: drawer-out 180ms ease-in; }
+.drawer-close-button svg { transition: transform 180ms ease; }
+.drawer-close-button:hover svg { transform: rotate(90deg); }
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-drawer-overlay,
+  .mobile-drawer { animation-duration: 1ms !important; }
+  .drawer-close-button svg { transition: none; }
 }

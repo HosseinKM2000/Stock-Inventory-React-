@@ -27,12 +27,12 @@ const CategoriesCards = () => {
 
   return (
     <Box className="space-y-6">
-      <Flex justify="between" align="center">
+      <Flex justify="between" align="center" gap="3" wrap="wrap">
         <Text size="6" weight="bold">
           دسته بندی ها
         </Text>
 
-        <Flex gap="2">
+        <Flex gap="2" wrap="wrap" className="w-full sm:w-auto">
           <Button variant="soft" disabled={!online} loading={refreshing} onClick={refresh}>
             <ReloadIcon /> تازه‌سازی از سرور
           </Button>
@@ -82,7 +82,7 @@ const CategoriesCards = () => {
           {categories.map((category) => (
             <Card
               key={category.id}
-              className="w-full md:w-[33%] h-32 flex! flex-col justify-between"
+              className="flex! h-32 w-full flex-col justify-between md:w-[calc(50%-10px)] xl:w-[calc(33.333%-14px)]"
             >
               <Box>
                 <Text as="div" size="2" weight="bold">

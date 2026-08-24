@@ -33,6 +33,8 @@ export type DashboardStats = {
   noPriceCount: number;
 
   urgentPurchaseCount: number;
+
+  addedTodayCount: number;
 };
 
 export type DashboardProductList = {

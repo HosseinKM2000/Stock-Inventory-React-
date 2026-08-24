@@ -10,7 +10,7 @@ const Industries = () => {
 
   return (
     <Box className="space-y-6">
-      <Flex justify="between" align="center">
+      <Flex justify="between" align="center" gap="3" wrap="wrap">
         <Text size="6" weight="bold">
           حوزه‌های کاری
         </Text>

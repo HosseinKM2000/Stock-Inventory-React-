@@ -56,6 +56,8 @@ const Catalogs = () => {
       <Flex
         justify="between"
         align="center"
+        gap="3"
+        wrap="wrap"
       >
         <Text size="6" weight="bold">
           کاتالوگ محصولات
@@ -91,7 +93,7 @@ const Catalogs = () => {
 
 
 
-      <Flex width="250px">
+      <Flex className="w-full max-w-64">
 
         <SelectInput
           disabled={industriesLoading}

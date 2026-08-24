@@ -1,27 +1,7 @@
-import { GearIcon, HomeIcon, MixIcon } from "@radix-ui/react-icons";
 import { Box, Flex, Text } from "@radix-ui/themes";
 import { Link, useRouterState } from "@tanstack/react-router";
-
-export const menuNavItems = [
-  {
-    label: "تنظیمات",
-    to: "/setting/profile",
-    match: "/setting",
-    icon: GearIcon,
-  },
-  {
-    label: "محصولات",
-    to: "/inventory/list",
-    match: "/product",
-    icon: MixIcon,
-  },
-  {
-    label: "خانه",
-    to: "/dashboard",
-    match: "/dashboard",
-    icon: HomeIcon,
-  },
-] as const;
+import { primaryNavigationItems } from "./navigation-items";
+import { isPathActive } from "@/shared/lib/navigation/is-path-active";
 
 const NavMenu = () => {
   const pathname = useRouterState({
@@ -36,6 +16,7 @@ const NavMenu = () => {
         w-full
         bottom-0
         overflow-hidden
+        hidden lg:block
       "
       style={{
         paddingBottom: "env(safe-area-inset-bottom)",
@@ -60,13 +41,10 @@ const NavMenu = () => {
           backdrop-blur-2xl
         "
       >
-        {menuNavItems.map((item) => {
+        {primaryNavigationItems.map((item) => {
           const Icon = item.icon;
 
-          const active =
-            item.match === "/dashboard"
-              ? pathname === "/dashboard"
-              : pathname.startsWith(item.match);
+          const active = isPathActive(pathname, item.to);
               
           return (
             <Link

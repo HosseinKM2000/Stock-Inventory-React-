@@ -5,7 +5,11 @@ import { Link } from "@tanstack/react-router";
 const AddButton = () => {
   return (
     <Link to="/inventory/add">
-      <Button className="fixed! bottom-25! right-7! md:bottom-25! md:right-10! p-6!">
+      <Button
+        aria-label="افزودن محصول"
+        className="fixed! bottom-4! right-4! z-40 p-6! md:right-8! lg:bottom-24!"
+        style={{ marginBottom: "env(safe-area-inset-bottom)" }}
+      >
         <PlusIcon width={"20"} height={"20"} />
       </Button>
     </Link>

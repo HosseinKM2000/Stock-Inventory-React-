@@ -38,8 +38,10 @@ function SettingLayout() {
         <main
           className="
             flex-1
+            min-w-0
             overflow-y-auto
-            p-4 md:p-10
+            overflow-x-hidden
+            p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] md:p-10
           "
         >
           <Outlet />

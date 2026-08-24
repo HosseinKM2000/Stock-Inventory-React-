@@ -12,6 +12,7 @@ class DashboardService {
   }
   async getStats(): Promise<DashboardStats> {
     const products = await inventoryService.getAll();
+    const now = new Date();
 
     return {
       totalProducts: products.length,
@@ -42,7 +43,21 @@ class DashboardService {
           product.low_stock_alert &&
           product.quantity <= product.low_stock_threshold,
       ).length,
+
+      addedTodayCount: products.filter((product) =>
+        this.isSameLocalDate(product.created_at, now),
+      ).length,
     };
+  }
+
+  private isSameLocalDate(value: string, date: Date): boolean {
+    const createdAt = new Date(value);
+    return (
+      !Number.isNaN(createdAt.getTime()) &&
+      createdAt.getFullYear() === date.getFullYear() &&
+      createdAt.getMonth() === date.getMonth() &&
+      createdAt.getDate() === date.getDate()
+    );
   }
 
   async getProducts(filter: DashboardFilter): Promise<DashboardProductList> {

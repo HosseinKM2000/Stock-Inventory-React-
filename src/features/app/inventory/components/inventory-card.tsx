@@ -4,6 +4,7 @@ import { Badge, Card, Flex, Text } from "@radix-ui/themes";
 import { Link } from "@tanstack/react-router";
 
 import { useImage } from "@/shared/lib/infrastructure/media/useImage";
+import productPlaceholder from "@/assets/product-placeholder.svg";
 import type { Product, ProductStatus } from "../types";
 
 const STATUS_META: Record<
@@ -27,7 +28,7 @@ const STATUS_META: Record<
   },
 };
 
-const PLACEHOLDER = "https://placehold.co/600x400/e5e7eb/6b7280?text=No+Image";
+const PLACEHOLDER = productPlaceholder;
 
 type Props = {
   product: Product;
@@ -47,15 +48,15 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
     <Card
       size="2"
       className="
-        h-47
+        h-auto sm:h-47
         overflow-hidden
         transition-all
         duration-200
       "
     >
-      <Flex className="h-full">
+      <Flex className="h-full" direction={{ initial: "column", sm: "row" }}>
         {/* Image */}
-        <div className="w-36 shrink-0">
+        <div className="h-40 w-full shrink-0 sm:h-full sm:w-36">
           <img
             src={imagePreview}
             alt={product?.catalog_product?.name}
@@ -68,7 +69,12 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
         </div>
 
         {/* Content */}
-        <Flex direction="column" justify="between" className="flex-1 p-4 ">
+        <Flex
+          direction="column"
+          justify="between"
+          gap="3"
+          className="min-w-0 flex-1 p-3 sm:p-4"
+        >
           {/* Header */}
           <Flex justify="between" align="start">
             <Flex direction="column" gap="1">
@@ -93,7 +99,12 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
               "بدون توضیح"}
           </Text>
 
-          <Flex align={"end"} justify={"between"}>
+          <Flex
+            align={{ initial: "stretch", sm: "end" }}
+            justify="between"
+            direction={{ initial: "column", sm: "row" }}
+            gap="3"
+          >
             {/* Price & Quantity */}
             <Flex
               width={"fit-content"}
@@ -112,9 +123,18 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
 
             {/* Actions */}
 
-            <Flex gap="2" justify="end">
+            <Flex
+              gap="2"
+              justify="end"
+              className="w-full sm:w-auto [&_a]:flex-1 sm:[&_a]:flex-none"
+            >
               <Link to="/inventory/edit" search={{ id: product.id }}>
-                <Button size="2" variant="soft" color="amber">
+                <Button
+                  size="2"
+                  variant="soft"
+                  color="amber"
+                  className="w-full sm:w-auto"
+                >
                   <Pencil1Icon />
                   ویرایش
                 </Button>
@@ -126,6 +146,7 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
                 variant="soft"
                 loading={deleting}
                 onClick={() => onDelete(product.id)}
+                aria-label={`حذف ${product.custom_label ?? product.catalog_product?.name ?? "محصول"}`}
               >
                 <TrashIcon width={23} height={23} />
               </Button>

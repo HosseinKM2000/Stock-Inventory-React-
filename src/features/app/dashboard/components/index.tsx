@@ -21,7 +21,7 @@ const DashboardComponent = () => {
   const { data: stats, isLoading, isError } = useDashboardStats();
 
   return (
-    <main className="container mx-auto">
+    <main className="container mx-auto p-4 md:p-6">
       <Flex direction="column" gap="2">
         <Text size="7" weight="bold">
           داشبورد
@@ -38,12 +38,12 @@ const DashboardComponent = () => {
         </Callout.Root>
       )}
 
-      <Grid columns={{ xs: "1", md: "4" }} gap="5" mt="5">
+      <Grid columns={{ initial: "1", sm: "2", lg: "4" }} gap="4" mt="5">
         {dashboardCards.map((card) => (
           <Card
             key={card.label}
             size="2"
-            className="cursor-pointer transition-all hover:shadow-lg hover:-translate-y-1"
+            className={`${card.filter ? "cursor-pointer" : ""} transition-all hover:shadow-lg`}
             onClick={() =>
               card.filter &&
               navigate({ to: `/dashboard/products/${card.filter}` })
