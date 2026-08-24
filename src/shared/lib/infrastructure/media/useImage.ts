@@ -2,18 +2,20 @@ import { useEffect, useRef, useState } from "react";
 import { resolveAssetUrl } from "@/shared/api/client";
 import { imageService, isLocalImage } from "./image.service";
 
-export function useImage(path?: string | null) {
-  const [result, setResult] = useState<{ path: string; src: string }>();
+type ImageResult = {
+  path: string;
+  src?: string;
+  error?: Error;
+};
+
+export function useResolvedImage(path?: string | null) {
+  const [result, setResult] = useState<ImageResult>();
   const currentPathRef = useRef<string | null>(null);
+  const normalizedPath = path ?? null;
 
   useEffect(() => {
-    const normalizedPath = path ?? null;
     currentPathRef.current = normalizedPath;
-
-    if (!normalizedPath || !isLocalImage(normalizedPath)) {
-      // nothing to load — render derives "no src" on its own, no setState needed
-      return;
-    }
+    if (!normalizedPath || !isLocalImage(normalizedPath)) return;
 
     let cancelled = false;
     let objectUrl: string | undefined;
@@ -22,28 +24,39 @@ export function useImage(path?: string | null) {
       .read(normalizedPath)
       .then((file) => {
         if (cancelled || currentPathRef.current !== normalizedPath) return;
-        objectUrl = URL.createObjectURL(file);
-        setResult({ path: normalizedPath, src: objectUrl });
+        try {
+          objectUrl = URL.createObjectURL(file);
+          setResult({ path: normalizedPath, src: objectUrl });
+        } catch (error) {
+          throw error instanceof Error ? error : new Error("Object URL creation failed");
+        }
       })
-      .catch(() => {
-        // load failed — render already falls back to undefined below
+      .catch((error: unknown) => {
+        if (cancelled || currentPathRef.current !== normalizedPath) return;
+        const technicalError = error instanceof Error ? error : new Error("Local image read failed");
+        console.error("Local image could not be resolved", technicalError);
+        setResult({ path: normalizedPath, error: technicalError });
       });
 
     return () => {
       cancelled = true;
-      if (objectUrl) {
-        URL.revokeObjectURL(objectUrl);
-      }
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [path]);
+  }, [normalizedPath]);
 
-  // Only trust the cached result if it matches the currently requested path.
-  // This is what makes the reset "automatic" instead of an explicit setState.
-  const normalizedPath = path ?? null;
-
-  if (normalizedPath && !isLocalImage(normalizedPath)) {
-    return resolveAssetUrl(normalizedPath);
+  if (!normalizedPath) return { src: undefined, loading: false, error: undefined };
+  if (!isLocalImage(normalizedPath)) {
+    return { src: resolveAssetUrl(normalizedPath), loading: false, error: undefined };
   }
 
-  return result?.path === normalizedPath ? result.src : undefined;
+  const current = result?.path === normalizedPath ? result : undefined;
+  return {
+    src: current?.src,
+    loading: !current,
+    error: current?.error,
+  };
+}
+
+export function useImage(path?: string | null) {
+  return useResolvedImage(path).src;
 }

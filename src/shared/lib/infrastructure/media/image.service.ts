@@ -10,12 +10,12 @@ export function isLocalImage(path?: string | null): path is string {
 }
 
 export const imageService = {
-  async save(file: File, options?: ImageProcessOptions) {
+  async save(file: File, options: ImageProcessOptions) {
     const processed = await imageProcessor.process(file, options);
 
     await storageQuotaService.ensureAvailable(processed.blob.size);
 
-    const id = crypto.randomUUID();
+    const id = `${options.purpose}-${crypto.randomUUID()}`;
 
     return imageRepository.save(id, processed.blob, processed.extension);
   },
@@ -47,14 +47,21 @@ export const imageService = {
    * Deletes local image files that are no longer referenced by any record.
    * Returns the paths that were removed.
    */
-  async removeOrphans(referenced: Iterable<string | null | undefined>) {
+  async removeOrphans(
+    referenced: Iterable<string | null | undefined>,
+    options?: { purpose?: "product" | "profile" },
+  ) {
     const keep = new Set<string>();
 
     for (const path of referenced) {
       if (isLocalImage(path)) keep.add(path);
     }
 
-    const stored = await imageRepository.list();
+    const stored = (await imageRepository.list()).filter((path) => {
+      if (options?.purpose === "profile") return path.startsWith("local://profile-");
+      if (options?.purpose === "product") return !path.startsWith("local://profile-");
+      return true;
+    });
 
     const orphans = stored.filter((path) => !keep.has(path));
 

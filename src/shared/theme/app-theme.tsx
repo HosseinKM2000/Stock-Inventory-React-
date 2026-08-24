@@ -23,6 +23,7 @@ export function AppTheme({ children }: PropsWithChildren) {
 
   useEffect(() => {
     document.documentElement.style.colorScheme = resolved;
+    document.documentElement.dataset.appearance = resolved;
     document.querySelector('meta[name="theme-color"]')?.setAttribute(
       "content",
       resolved === "dark" ? "#111113" : "#ffffff",
@@ -31,7 +32,7 @@ export function AppTheme({ children }: PropsWithChildren) {
 
   return (
     <Theme appearance={resolved} accentColor="violet">
-      <div dir="rtl">
+      <div id="app-theme-portal-root" dir="rtl">
         <Toaster richColors closeButton theme={resolved} dir="rtl" expand={false} duration={4000} position="top-center" />
         {children}
       </div>

@@ -16,7 +16,7 @@ const FormatCads = ({ value, onChange }: FormatCadsProps) => {
         value={value}
         onValueChange={(next) => onChange(next as ExportFormat)}
         mt={"3"}
-        columns={{ xs: "1", md: "3" }}
+        columns={{ initial: "1", md: "3" }}
       >
         <RadioCards.Item value="xlsx">
           <Flex align={"center"} direction="column" width="100%">

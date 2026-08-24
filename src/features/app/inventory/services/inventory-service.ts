@@ -179,6 +179,7 @@ class InventoryService {
 
     return imageService.removeOrphans(
       products.map((product) => product.image_url),
+      { purpose: "product" },
     );
   }
 }

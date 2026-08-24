@@ -71,7 +71,17 @@
   --app-foreground: #182230;
 }
 
+:root[data-appearance="light"] {
+  --app-background: #ffffff;
+  --app-foreground: #182230;
+}
+
 .radix-themes.dark {
+  --app-background: #111113;
+  --app-foreground: #f8fafc;
+}
+
+:root[data-appearance="dark"] {
   --app-background: #111113;
   --app-foreground: #f8fafc;
 }

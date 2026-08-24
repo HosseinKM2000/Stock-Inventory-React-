@@ -1,4 +1,4 @@
-const CACHE_NAME = "inventory-shell-v3";
+const CACHE_NAME = "inventory-shell-v4";
 const APP_SHELL = ["/", "/index.html", "/favicon.svg", "/manifest.webmanifest"];
 
 async function precacheApplication() {

@@ -91,7 +91,7 @@ export function ProductForm({
     }
 
     try {
-      const path = await imageService.save(file);
+      const path = await imageService.save(file, { purpose: "product" });
 
       stagedImages.current.add(path);
 
@@ -138,7 +138,7 @@ export function ProductForm({
           </Callout.Root>
         )}
 
-        <Grid columns={{ xs: "1", md: "3" }} gap="5" mt="5">
+        <Grid columns={{ initial: "1", md: "3" }} gap="5" mt="5">
           <Box className="md:col-span-3">
             <ProductImageUpload
               value={imagePreview}
@@ -271,7 +271,7 @@ export function ProductForm({
           bg-violet-1/40
         "
           >
-            <Grid columns={{ xs: "1", md: "2" }} gap="5">
+            <Grid columns={{ initial: "1", md: "2" }} gap="5">
               <FormField id="low_stock_threshold" label="حد نصاب هشدار">
                 <TextInput
                   size="3"

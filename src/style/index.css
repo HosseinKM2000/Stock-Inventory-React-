@@ -12,15 +12,37 @@ body {
 @keyframes drawer-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
 @keyframes drawer-out { from { transform: translateX(0); } to { transform: translateX(100%); } }
 
-.mobile-drawer-overlay[data-state="open"] { animation: drawer-overlay-in 180ms ease-out; }
-.mobile-drawer-overlay[data-state="closed"] { animation: drawer-overlay-out 160ms ease-in; }
-.mobile-drawer[data-state="open"] { animation: drawer-in 220ms ease-out; }
-.mobile-drawer[data-state="closed"] { animation: drawer-out 180ms ease-in; }
-.drawer-close-button svg { transition: transform 180ms ease; }
-.drawer-close-button:hover svg { transform: rotate(90deg); }
+.mobile-drawer-overlay[data-state="open"] { animation: drawer-overlay-in 140ms cubic-bezier(.2,.75,.25,1); }
+.mobile-drawer-overlay[data-state="closed"] { animation: drawer-overlay-out 120ms cubic-bezier(.4,0,1,1); }
+.mobile-drawer[data-state="open"] { animation: drawer-in 180ms cubic-bezier(.16,1,.3,1); }
+.mobile-drawer[data-state="closed"] { animation: drawer-out 150ms cubic-bezier(.4,0,.7,.2); }
+
+.menu-toggle-icon {
+  position: relative;
+  display: inline-block;
+  width: 22px;
+  height: 18px;
+}
+
+.menu-toggle-icon > span {
+  position: absolute;
+  right: 1px;
+  width: 20px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  transition: transform 150ms cubic-bezier(.2,.8,.2,1), opacity 100ms ease, top 150ms cubic-bezier(.2,.8,.2,1);
+}
+
+.menu-toggle-icon > span:nth-child(1) { top: 2px; }
+.menu-toggle-icon > span:nth-child(2) { top: 8px; }
+.menu-toggle-icon > span:nth-child(3) { top: 14px; }
+.menu-toggle-icon.is-open > span:nth-child(1) { top: 8px; transform: rotate(45deg); }
+.menu-toggle-icon.is-open > span:nth-child(2) { opacity: 0; transform: scaleX(.5); }
+.menu-toggle-icon.is-open > span:nth-child(3) { top: 8px; transform: rotate(-45deg); }
 
 @media (prefers-reduced-motion: reduce) {
   .mobile-drawer-overlay,
   .mobile-drawer { animation-duration: 1ms !important; }
-  .drawer-close-button svg { transition: none; }
+  .menu-toggle-icon > span { transition-duration: 1ms !important; }
 }

@@ -11,10 +11,13 @@ import { startSync } from "@/shared/lib/infrastructure/sync/sync-bootstrap";
 import { inventoryService } from "@/features/app/inventory/services/inventory-service";
 import { registerServiceWorker } from "@/shared/lib/infrastructure/pwa/register-service-worker";
 import { AppTheme } from "@/shared/theme/app-theme";
+import { profileMediaRepository } from "@/shared/profile-media/profile-media.repository";
 
 const router = createRouter({ routeTree });
 
 registerServiceWorker();
+
+profileMediaRepository.cleanupLegacyPreference();
 
 startSync();
 

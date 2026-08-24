@@ -1,10 +1,9 @@
 import { settingsNavItems } from "@/features/setting/data/settings-items";
 import { isAdmin } from "@/shared/access/authorization";
 import { useAuth } from "@/shared/auth/use-auth";
-import { getAvatar } from "@/shared/avatar/avatar-registry";
-import { useAvatarPreference } from "@/shared/avatar/use-avatar-preference";
+import { useProfileMedia } from "@/shared/profile-media/use-profile-media";
 import { isPathActive } from "@/shared/lib/navigation/is-path-active";
-import { Cross2Icon, HamburgerMenuIcon } from "@radix-ui/react-icons";
+import { HamburgerMenuIcon } from "@radix-ui/react-icons";
 import { Avatar, Box, Flex, IconButton, Separator, Text } from "@radix-ui/themes";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { Dialog as DialogPrimitive } from "radix-ui";
@@ -14,7 +13,7 @@ import { primaryNavigationItems } from "./navigation-items";
 export function MobileNavigationDrawer() {
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
-  const avatar = getAvatar(useAvatarPreference().id);
+  const profileMedia = useProfileMedia();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const initial = user?.first_name?.[0]?.toUpperCase() ?? "A";
   const settingItems = settingsNavItems.filter((item) => !("adminOnly" in item) || isAdmin(user));
@@ -39,10 +38,10 @@ export function MobileNavigationDrawer() {
     <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
       <DialogPrimitive.Trigger asChild>
         <IconButton size="3" variant="ghost" color="gray" className="lg:hidden!" aria-label="باز کردن منوی اصلی">
-          <HamburgerMenuIcon width="24" height="24" />
+          <span className={`menu-toggle-icon ${open ? "is-open" : ""}`} aria-hidden="true"><span /><span /><span /></span>
         </IconButton>
       </DialogPrimitive.Trigger>
-      <DialogPrimitive.Portal>
+      <DialogPrimitive.Portal container={document.getElementById("app-theme-portal-root") ?? undefined}>
         <DialogPrimitive.Overlay className="mobile-drawer-overlay fixed inset-0 z-[80] bg-black/45 backdrop-blur-sm" />
         <DialogPrimitive.Content
           dir="rtl"
@@ -51,14 +50,14 @@ export function MobileNavigationDrawer() {
         >
           <Flex align="center" justify="between" gap="3" p="4" className="border-b border-foreground/10">
             <Flex align="center" gap="3" className="min-w-0">
-              <Avatar src={avatar.src ?? undefined} fallback={initial} radius="full" />
+              <Avatar src={profileMedia.src} fallback={initial} radius="full" />
               <Box className="min-w-0">
                 <DialogPrimitive.Title asChild><Text as="div" weight="bold" className="truncate">{user ? `${user.first_name} ${user.last_name}` : "StockFlow"}</Text></DialogPrimitive.Title>
                 <Text as="div" size="1" color="gray" className="truncate">{user ? `@${user.username}` : "مدیریت موجودی"}</Text>
               </Box>
             </Flex>
             <DialogPrimitive.Close asChild>
-              <IconButton size="3" variant="soft" color="gray" aria-label="بستن منوی اصلی" className="drawer-close-button shrink-0"><Cross2Icon width="22" height="22" /></IconButton>
+              <IconButton size="3" variant="soft" color="gray" aria-label="بستن منوی اصلی" className="drawer-close-button shrink-0"><span className="menu-toggle-icon is-open" aria-hidden="true"><span /><span /><span /></span></IconButton>
             </DialogPrimitive.Close>
           </Flex>
 

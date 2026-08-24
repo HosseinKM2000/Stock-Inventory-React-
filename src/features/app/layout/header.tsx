@@ -1,6 +1,6 @@
 import { useLogout, useMe } from "@/features/auth/mutations/use-register";
 import { NotificationPanel } from "@/features/notifications/components/notification-panel";
-import { useAvatarPreference } from "@/shared/avatar/use-avatar-preference";
+import { useProfileMedia } from "@/shared/profile-media/use-profile-media";
 import { ArrowLeftIcon, ExitIcon, HomeIcon } from "@radix-ui/react-icons";
 import { Avatar, Box, DropdownMenu, Flex, IconButton, Text } from "@radix-ui/themes";
 import { Link, useRouter, useRouterState } from "@tanstack/react-router";
@@ -11,7 +11,7 @@ const Header = () => {
   const router = useRouter();
   const logout = useLogout();
   const { data: me } = useMe();
-  const { avatar } = useAvatarPreference();
+  const profileMedia = useProfileMedia();
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const showHomeIcon = pathname.startsWith("/setting");
   const initial = me?.first_name?.[0]?.toUpperCase() ?? "A";
@@ -22,7 +22,7 @@ const Header = () => {
         <MobileNavigationDrawer />
         <DropdownMenu.Root>
           <DropdownMenu.Trigger>
-            <Avatar radius="full" fallback={initial} src={avatar.src ?? undefined} className="cursor-pointer" />
+            <Avatar radius="full" fallback={initial} src={profileMedia.src} className="cursor-pointer" />
           </DropdownMenu.Trigger>
           <DropdownMenu.Content style={{ direction: "rtl" }}>
             {me && <DropdownMenu.Label>{me.first_name} {me.last_name}</DropdownMenu.Label>}

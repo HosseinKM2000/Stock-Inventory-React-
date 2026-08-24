@@ -1,14 +1,16 @@
-export type LocalImage = {
-  id: string;
-  path: string;
-};
+export type ImagePurpose = "product" | "profile";
 
 export type ImageProcessOptions = {
-  maxWidth?: number;
+  purpose: ImagePurpose;
+};
 
-  maxHeight?: number;
-
-  quality?: number;
+export type ImageProcessingProfile = {
+  maxInputSize: number;
+  maxOutputSize: number;
+  maxWidth: number;
+  maxHeight: number;
+  quality: number;
+  minQuality: number;
 };
 
 export type ProcessedImage = {
@@ -20,15 +22,3 @@ export type ProcessedImage = {
 
   height: number;
 };
-
-export const IMAGE_CONSTRAINTS = {
-  maxBytes: 10 * 1024 * 1024,
-
-  allowedTypes: [
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-    "image/gif",
-    "image/avif",
-  ],
-} as const;

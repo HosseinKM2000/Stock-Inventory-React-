@@ -24,7 +24,7 @@ function SettingLayout() {
         {/* Sidebar */}
         <Box
           className="
-            hidden lg:flex
+            hidden! lg:flex!
             w-72
             flex-col
             overflow-y-auto

@@ -75,7 +75,7 @@ const PasswordFields = () => {
     >
       <Box
         mt="6"
-        mb={{ xs: "9", md: "0" }}
+        mb={{ initial: "9", md: "0" }}
         className="bg-foreground/5 p-5 rounded-2xl border border-foreground/20"
       >
         <Text className="text-xl font-medium">امنیت</Text>
@@ -97,7 +97,8 @@ const PasswordFields = () => {
         <Grid
           gap="5"
           mt="5"
-          columns={{ xs: "1", md: "3" }}
+          columns={{ initial: "1", md: "3" }}
+          className="w-full min-w-0"
         >
           <FormField
             label="رمز عبور فعلی"

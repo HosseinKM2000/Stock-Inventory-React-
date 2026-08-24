@@ -45,7 +45,7 @@ export function ProductImageUpload({
         ref={inputRef}
         hidden
         type="file"
-        accept="image/*"
+        accept="image/jpeg,image/png,image/webp,image/avif"
         disabled={disabled}
         onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
       />

@@ -20,9 +20,18 @@ export const imageRepository = {
 
     const writable = await handle.createWritable();
 
-    await writable.write(file);
-
-    await writable.close();
+    try {
+      await writable.write(file);
+      await writable.close();
+    } catch (error) {
+      try {
+        await writable.abort();
+        await dir.removeEntry(name);
+      } catch (cleanupError) {
+        console.error("Failed to clean an incomplete OPFS image", cleanupError);
+      }
+      throw error;
+    }
 
     return `local://${name}`;
   },

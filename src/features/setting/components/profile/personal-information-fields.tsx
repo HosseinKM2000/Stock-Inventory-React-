@@ -82,7 +82,7 @@ const PersonalInformationFields = () => {
           </Callout.Root>
         )}
 
-        <Grid columns={{ xs: "1", md: "3" }} gap="5" mt="5">
+        <Grid columns={{ initial: "1", md: "3" }} gap="5" mt="5" className="w-full min-w-0">
           <FormField label="نام" id="first_name" error={form.errors.first_name}>
             <TextInput
               size="3"
