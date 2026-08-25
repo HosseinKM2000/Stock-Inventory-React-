@@ -56,7 +56,7 @@ with SessionLocal() as bootstrap_db:
     seed_default_plans(bootstrap_db)
     ensure_system_admin(bootstrap_db)
 
-app = FastAPI(title="Stock Inventory API", version="1.0.0")
+app = FastAPI(title="Tanzim API", version="1.0.0")
 app.add_exception_handler(Exception, global_exception_handler)
 
 app.add_middleware(

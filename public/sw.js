@@ -1,4 +1,4 @@
-const CACHE_NAME = "inventory-shell-v4";
+const CACHE_NAME = "tanzim-shell-v5";
 const APP_SHELL = ["/", "/index.html", "/favicon.svg", "/manifest.webmanifest"];
 
 async function precacheApplication() {
@@ -40,7 +40,10 @@ self.addEventListener("activate", (event) => {
         Promise.all(
           keys
             .filter(
-              (key) => key.startsWith("inventory-shell-") && key !== CACHE_NAME,
+              (key) =>
+                (key.startsWith("inventory-shell-") ||
+                  key.startsWith("tanzim-shell-")) &&
+                key !== CACHE_NAME,
             )
             .map((key) => caches.delete(key)),
         ),

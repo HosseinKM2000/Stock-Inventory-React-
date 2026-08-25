@@ -52,7 +52,7 @@ export function MobileNavigationDrawer() {
             <Flex align="center" gap="3" className="min-w-0">
               <Avatar src={profileMedia.src} fallback={initial} radius="full" />
               <Box className="min-w-0">
-                <DialogPrimitive.Title asChild><Text as="div" weight="bold" className="truncate">{user ? `${user.first_name} ${user.last_name}` : "StockFlow"}</Text></DialogPrimitive.Title>
+                <DialogPrimitive.Title asChild><Text as="div" weight="bold" className="truncate">{user ? `${user.first_name} ${user.last_name}` : "Tanzim"}</Text></DialogPrimitive.Title>
                 <Text as="div" size="1" color="gray" className="truncate">{user ? `@${user.username}` : "مدیریت موجودی"}</Text>
               </Box>
             </Flex>

@@ -42,7 +42,7 @@ export function SettingNav() {
       <div className="flex items-center justify-between px-4 py-5">
         {!collapsed && (
           <div>
-            <h1 className="font-bold text-lg text-indigo-600">StockFlow</h1>
+            <h1 className="font-bold text-lg text-indigo-600">Tanzim</h1>
 
             <p className="text-xs text-foreground">Retail Business Pro</p>
           </div>

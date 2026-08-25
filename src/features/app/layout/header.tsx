@@ -33,7 +33,7 @@ const Header = () => {
         <Box className="hidden md:block"><ConnectionStatus /></Box>
       </Flex>
 
-      <Text size="3" weight="bold" className="max-w-24 truncate text-center sm:max-w-none">StockFlow</Text>
+      <Text size="3" weight="bold" className="max-w-24 truncate text-center sm:max-w-none">Tanzim</Text>
 
       <Flex align="center" justify="end" gap="1">
         {showHomeIcon && <Link to="/dashboard" className="hidden lg:inline-flex"><IconButton variant="ghost" color="gray" aria-label="خانه"><HomeIcon width="22" height="22" /></IconButton></Link>}

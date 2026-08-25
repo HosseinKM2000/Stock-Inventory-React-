@@ -1,7 +1,8 @@
 {
-  "name": "Inventory Management",
-  "short_name": "Inventory",
-  "description": "Offline-first inventory management",
+  "id": "/",
+  "name": "Tanzim",
+  "short_name": "Tanzim",
+  "description": "Tanzim — offline-first inventory management",
   "start_url": "/dashboard",
   "scope": "/",
   "display": "standalone",

@@ -1,6 +1,6 @@
-# Stock Inventory — Backend (FastAPI + SQLite)
+# Tanzim — Backend (FastAPI + SQLite)
 
-REST API for the Stock Inventory app: JWT auth, product/category CRUD with
+REST API for Tanzim: JWT auth, product/category CRUD with
 image upload, and dashboard statistics. Data is stored in a local SQLite file.
 
 ## Requirements

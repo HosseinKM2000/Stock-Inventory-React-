@@ -1,6 +1,6 @@
-# Stock Inventory
+# Tanzim
 
-A stock/inventory management app: React + TypeScript frontend (Vite, TanStack
+A Tanzim inventory management app: React + TypeScript frontend (Vite, TanStack
 Router/Query, Radix Themes) backed by a FastAPI + SQLite REST API.
 
 ## Running the full stack
