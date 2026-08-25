@@ -4,17 +4,22 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
+  DashboardIcon,
   ExitIcon,
 } from "@radix-ui/react-icons";
 import { useLogout } from "@/features/auth/mutations/use-register";
 import { useAuth } from "@/shared/auth/use-auth";
 import { isAdmin } from "@/shared/access/authorization";
 import { isPathActive } from "@/shared/lib/navigation/is-path-active";
+import { useProfileMedia } from "@/shared/profile-media/use-profile-media";
+import { Avatar } from "@radix-ui/themes";
 
 export function SettingNav() {
   const logout = useLogout();
   const { user } = useAuth();
+  const profileMedia = useProfileMedia();
   const [collapsed, setCollapsed] = useState(false);
+  const initial = user?.first_name?.[0]?.toUpperCase() ?? "A";
 
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
@@ -43,8 +48,6 @@ export function SettingNav() {
         {!collapsed && (
           <div>
             <h1 className="font-bold text-lg text-indigo-600">Tanzim</h1>
-
-            <p className="text-xs text-foreground">Retail Business Pro</p>
           </div>
         )}
         <button
@@ -66,6 +69,18 @@ export function SettingNav() {
       {/* MENU */}
       <nav className="flex-1 px-3">
         <div className="space-y-1">
+          <Link
+            to="/dashboard"
+            className="flex items-center rounded-xl px-3 py-3 text-foreground transition-colors duration-200 hover:bg-indigo-300/10"
+          >
+            <DashboardIcon width={18} height={18} />
+            {!collapsed && (
+              <span className="mr-3 text-sm font-medium">داشبورد</span>
+            )}
+          </Link>
+
+          <div className="my-2 border-t border-foreground/10" />
+
           {settingsNavItems.filter((item) => !("adminOnly" in item) || isAdmin(user)).map((item) => {
             const Icon = item.icon;
             const active = isPathActive(pathname, item.to);
@@ -101,9 +116,34 @@ export function SettingNav() {
 
       {/* FOOTER */}
       <div className="border-t p-3">
-        <div
+        <Link
+          to="/setting/profile"
+          className="mb-1 flex items-center rounded-xl px-3 py-3 transition-colors hover:bg-foreground/5"
+        >
+          <Avatar
+            size="2"
+            radius="full"
+            fallback={initial}
+            src={profileMedia.src}
+            className="shrink-0"
+          />
+          {!collapsed && user && (
+            <span className="mr-3 min-w-0 text-right">
+              <span className="block truncate text-sm font-medium">
+                {user.first_name} {user.last_name}
+              </span>
+              <span className="block truncate text-xs text-foreground/60">
+                @{user.username}
+              </span>
+            </span>
+          )}
+        </Link>
+
+        <button
+          type="button"
           onClick={logout}
           className={`
+            w-full
             flex
             px-3
             py-3
@@ -119,7 +159,7 @@ export function SettingNav() {
               {"خروج از حساب کاربری"}
             </span>
           )}
-        </div>
+        </button>
       </div>
     </aside>
   );

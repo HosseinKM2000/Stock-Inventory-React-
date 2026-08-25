@@ -63,7 +63,7 @@ const InventoryList = () => {
     <Flex
       direction="column"
       className="
-        h-[calc(100dvh-64px)] lg:h-[calc(100dvh-80px)]
+        h-full min-h-0
         overflow-hidden
         p-4
         gap-4

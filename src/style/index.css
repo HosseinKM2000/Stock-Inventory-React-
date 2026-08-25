@@ -7,6 +7,87 @@ body {
   overflow-x: hidden;
 }
 
+:root {
+  --app-bottom-navigation-height: 73px;
+}
+
+.app-shell-content {
+  padding-bottom: calc(
+    var(--app-bottom-navigation-height) + env(safe-area-inset-bottom, 0px)
+  );
+  scroll-padding-bottom: calc(
+    var(--app-bottom-navigation-height) + env(safe-area-inset-bottom, 0px)
+  );
+}
+
+.app-bottom-navigation {
+  min-height: var(--app-bottom-navigation-height);
+}
+
+/* Theme-aware thin scrollbars for every native scroll container. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color:
+    color-mix(in srgb, var(--app-foreground) 32%, transparent)
+    color-mix(in srgb, var(--app-foreground) 5%, transparent);
+}
+
+*::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+*::-webkit-scrollbar-track {
+  background: color-mix(in srgb, var(--app-foreground) 5%, transparent);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  min-height: 32px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background:
+    color-mix(in srgb, var(--app-foreground) 32%, transparent)
+    padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background:
+    color-mix(in srgb, var(--accent-9, var(--app-foreground)) 68%, transparent)
+    padding-box;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Match Radix ScrollArea's rendered scrollbars to native containers. */
+.radix-themes .rt-ScrollAreaScrollbar[data-orientation="vertical"] {
+  width: 6px;
+}
+
+.radix-themes .rt-ScrollAreaScrollbar[data-orientation="horizontal"] {
+  height: 6px;
+}
+
+.radix-themes .rt-ScrollAreaScrollbar {
+  background-color: color-mix(in srgb, var(--app-foreground) 5%, transparent);
+}
+
+.radix-themes .rt-ScrollAreaThumb {
+  background-color: color-mix(in srgb, var(--app-foreground) 32%, transparent);
+}
+
+@media (hover: hover) {
+  .radix-themes .rt-ScrollAreaThumb:hover {
+    background-color: color-mix(
+      in srgb,
+      var(--accent-9, var(--app-foreground)) 68%,
+      transparent
+    );
+  }
+}
+
 @keyframes drawer-overlay-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes drawer-overlay-out { from { opacity: 1; } to { opacity: 0; } }
 @keyframes drawer-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
@@ -41,24 +122,69 @@ body {
 .menu-toggle-icon.is-open > span:nth-child(2) { opacity: 0; transform: scaleX(.5); }
 .menu-toggle-icon.is-open > span:nth-child(3) { top: 8px; transform: rotate(-45deg); }
 
+.inventory-card {
+  container-type: inline-size;
+}
+
+.inventory-card-layout {
+  flex-direction: column;
+}
+
+.inventory-card-image {
+  width: 100%;
+  height: 160px;
+}
+
+.inventory-card-footer {
+  flex-direction: row;
+  align-items: flex-end;
+}
+
+.inventory-card-actions {
+  width: auto;
+  flex-shrink: 0;
+}
+
+.inventory-card-actions > a {
+  flex: none;
+}
+
+.inventory-card-edit-button {
+  width: auto;
+}
+
+.inventory-card-price {
+  height: 32px;
+  min-height: 32px;
+  align-items: center;
+}
+
+.inventory-card-quick {
+  width: 100%;
+  border-width: 1px 0 0;
+  border-style: solid;
+}
+
 .quick-stock-control {
   position: relative;
-  min-height: 40px;
-  padding: 2px;
-  border: 1px solid var(--gray-5);
-  border-radius: 12px;
-  background: var(--gray-2);
+  width: 100%;
+  min-height: 60px;
+  padding: 8px 12px;
+  background: transparent;
+  flex-direction: row;
+  justify-content: flex-start;
 }
 
 .quick-stock-button {
-  position: relative;
-  width: 38px;
-  height: 36px;
-  min-width: 38px;
-  padding: 0 !important;
+  width: 100px !important;
+  height: 45px;
+  min-width: 100px;
+  min-height: 45px;
   overflow: hidden;
-  -webkit-touch-callout: none;
   user-select: none;
+  position: relative;
+  padding: 0 !important;
+  -webkit-touch-callout: none;
   transition: transform 120ms ease, filter 120ms ease;
 }
 
@@ -69,14 +195,14 @@ body {
 
 .quick-stock-button.is-pressing::after {
   content: "";
-  position: absolute;
+  left: 3px;
   right: 3px;
   bottom: 2px;
-  left: 3px;
   height: 2px;
+  position: absolute;
   border-radius: 999px;
-  background: currentColor;
   transform-origin: left;
+  background: currentColor;
   animation: quick-stock-hold-progress 350ms linear forwards;
 }
 
@@ -87,8 +213,9 @@ body {
 .quick-stock-quantity {
   position: relative;
   display: grid;
-  width: 52px;
-  min-width: 52px;
+  width: 76px;
+  min-width: 76px;
+  min-height: 44px;
   place-items: center;
   font-variant-numeric: tabular-nums;
 }
@@ -104,7 +231,7 @@ body {
 
 .quick-stock-delta {
   position: absolute;
-  bottom: calc(100% + 7px);
+  bottom: calc(100% - 2px);
   z-index: 2;
   padding: 2px 7px;
   border-radius: 999px;
@@ -118,6 +245,93 @@ body {
 
 .quick-stock-delta.is-positive { color: var(--green-11); }
 .quick-stock-delta.is-negative { color: var(--red-11); }
+
+@container (min-width: 640px) {
+  .inventory-card-layout {
+    min-height: 208px;
+    display: grid;
+    grid-template-columns: 144px minmax(0, 1fr);
+    grid-template-areas:
+      "image content"
+      "quick quick";
+  }
+
+  .inventory-card-image {
+    grid-area: image;
+    width: 144px;
+    height: auto;
+  }
+
+  .inventory-card-content {
+    grid-area: content;
+  }
+
+  .inventory-card-footer {
+    flex-direction: row;
+    align-items: flex-end;
+  }
+
+  .inventory-card-actions {
+    width: auto;
+    flex-shrink: 0;
+  }
+
+  .inventory-card-actions > a {
+    flex: none;
+  }
+
+  .inventory-card-edit-button {
+    width: auto;
+  }
+
+  .inventory-card-quick {
+    grid-area: quick;
+    display: flex;
+    width: 100%;
+    border-width: 1px 0 0;
+  }
+}
+
+@media (min-width: 1024px) {
+  @container (min-width: 640px) {
+    .inventory-card-layout {
+      grid-template-columns: 144px minmax(0, 1fr) auto;
+      grid-template-areas: "image content quick";
+    }
+
+    .inventory-card-quick {
+      width: auto;
+      align-self: end;
+      padding: 0 12px 16px;
+      border-width: 0;
+      background: transparent !important;
+    }
+
+    .inventory-card-quick .quick-stock-control {
+      width: auto;
+      min-height: 32px;
+      padding: 0;
+      border: 1px solid var(--gray-a5);
+      border-radius: 8px;
+      background: var(--gray-a2);
+      flex-direction: row;
+      justify-content: flex-start;
+    }
+
+    .inventory-card-quick .quick-stock-button {
+      width: 40px !important;
+      min-width: 40px;
+      height: 32px;
+      min-height: 32px;
+    }
+
+    .inventory-card-quick .quick-stock-quantity {
+      width: 48px;
+      min-width: 48px;
+      min-height: 32px;
+    }
+  }
+}
 
 @keyframes quick-stock-hold-progress {
   from { transform: scaleX(0); }

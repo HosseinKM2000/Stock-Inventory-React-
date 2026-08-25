@@ -1,12 +1,12 @@
-import { Button } from "@/shared/ui/button/button";
-import { Pencil1Icon, TrashIcon } from "@radix-ui/react-icons";
-import { Badge, Card, Flex, Text } from "@radix-ui/themes";
 import { Link } from "@tanstack/react-router";
+import { Button } from "@/shared/ui/button/button";
+import { Badge, Card, Flex, Text } from "@radix-ui/themes";
+import { Pencil1Icon, TrashIcon } from "@radix-ui/react-icons";
 
-import { useImage } from "@/shared/lib/infrastructure/media/useImage";
-import productPlaceholder from "@/assets/product-placeholder.svg";
 import type { Product, ProductStatus } from "../types";
 import { QuickStockAdjustment } from "./quick-stock-adjustment";
+import productPlaceholder from "@/assets/product-placeholder.svg";
+import { useImage } from "@/shared/lib/infrastructure/media/useImage";
 
 const STATUS_META: Record<
   ProductStatus,
@@ -48,16 +48,14 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
   return (
     <Card
       size="2"
-      className="
-        h-auto sm:h-47
-        overflow-hidden
-        transition-all
-        duration-200
-      "
+      className="inventory-card h-auto overflow-hidden transition-all duration-200"
     >
-      <Flex className="h-full" direction={{ initial: "column", sm: "row" }}>
+      <Flex
+        className="inventory-card-layout min-w-0"
+        dir="rtl"
+      >
         {/* Image */}
-        <div className="h-40 w-full shrink-0 sm:h-full sm:w-36">
+        <div className="inventory-card-image shrink-0">
           <img
             src={imagePreview}
             alt={product?.catalog_product?.name}
@@ -73,69 +71,70 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
         <Flex
           direction="column"
           justify="between"
-          gap="3"
-          className="min-w-0 flex-1 p-3 sm:p-4"
+          className="inventory-card-content min-w-0 flex-1 p-3 sm:p-4"
         >
           {/* Header */}
-          <Flex justify="between" align="start">
-            <Flex direction="column" gap="1">
-              <Text weight="bold" size="3">
+          <Flex justify="between" align="start" gap="2" className="min-w-0">
+            <Flex direction="column" gap="1" className="min-w-0 flex-1">
+              <Text weight="bold" size="3" className="break-words text-lg!">
                 {product?.custom_label ?? product?.catalog_product?.name}
               </Text>
 
               {product.catalog_product?.brand && (
-                <Text size="1" color="gray">
+                <Text size="1" color="gray" className="break-words">
                   {product.catalog_product?.brand}
                 </Text>
               )}
             </Flex>
 
-            <Badge color={status.color}>{status.label}</Badge>
+            <Badge color={status.color} className="shrink-0">
+              {status.label}
+            </Badge>
           </Flex>
 
           {/* Description */}
-          <Text size="2" color="gray" className="line-clamp-2">
+          <Text size="2" color="gray" className="line-clamp-2 break-words">
             {product?.note ??
               product?.catalog_product?.description ??
               "بدون توضیح"}
           </Text>
 
           <Flex
-            align={{ initial: "stretch", sm: "end" }}
             justify="between"
-            direction={{ initial: "column", sm: "row" }}
             gap="3"
+            className="inventory-card-footer min-w-0"
           >
-            {/* Price & Quantity */}
+            {/* Price */}
             <Flex
-              width={"fit-content"}
-              gapX={"3"}
-              justify="between"
+              mt={"4"}
+              gapX={"2"}
               align="center"
+              justify="between"
+              className="max-w-full"
             >
-              <Badge color="indigo" size={"3"} radius="full">
+              <Badge
+                size="3"
+                color="green"
+                className="inventory-card-price max-w-full overflow-hidden"
+              >
                 {product.price.toLocaleString("fa-IR")} تومان
               </Badge>
-
-              <QuickStockAdjustment product={product} />
             </Flex>
-
             {/* Actions */}
-
             <Flex
               gap="2"
+              mt={"5"}
               justify="end"
-              className="w-full sm:w-auto [&_a]:flex-1 sm:[&_a]:flex-none"
+              className="inventory-card-actions"
             >
               <Link to="/inventory/edit" search={{ id: product.id }}>
                 <Button
                   size="2"
                   variant="soft"
                   color="amber"
-                  className="w-full sm:w-auto"
+                  className="inventory-card-edit-button"
                 >
-                  <Pencil1Icon />
-                  ویرایش
+                  <Pencil1Icon width={20} height={20} />
                 </Button>
               </Link>
 
@@ -152,6 +151,10 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
             </Flex>
           </Flex>
         </Flex>
+        {/* Bottom control on mobile/tablet; compact beside actions on desktop. */}
+        <div className="inventory-card-quick shrink-0 border-[var(--gray-a5)] bg-[var(--gray-a2)]">
+          <QuickStockAdjustment product={product} />
+        </div>
       </Flex>
     </Card>
   );

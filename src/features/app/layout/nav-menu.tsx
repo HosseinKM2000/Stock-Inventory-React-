@@ -11,12 +11,13 @@ const NavMenu = () => {
     <Box
       dir="rtl"
       className="
+        app-bottom-navigation
         z-50
         fixed
         w-full
         bottom-0
+        block!
         overflow-hidden
-        hidden lg:block
       "
       style={{
         paddingBottom: "env(safe-area-inset-bottom)",

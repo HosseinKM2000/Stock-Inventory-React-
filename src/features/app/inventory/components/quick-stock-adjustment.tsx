@@ -31,32 +31,39 @@ export function QuickStockAdjustment({ product }: Props) {
     notificationId.current = null;
   }, []);
 
-  const applyStep = useCallback((amount: -1 | 1) => {
-    const next = pendingDeltaRef.current + amount;
-    if (product.quantity + next < 0) return;
-    pendingDeltaRef.current = next;
-    setPendingDelta(next);
-    if ("vibrate" in navigator) navigator.vibrate?.(6);
-  }, [product.quantity]);
+  const applyStep = useCallback(
+    (amount: -1 | 1) => {
+      const next = pendingDeltaRef.current + amount;
+      if (product.quantity + next < 0) return;
+      pendingDeltaRef.current = next;
+      setPendingDelta(next);
+      if ("vibrate" in navigator) navigator.vibrate?.(6);
+    },
+    [product.quantity],
+  );
 
-  const confirm = useCallback((delta: number) => {
-    setAwaitingDecision(true);
-    mutation.mutate(
-      { id: product.id, delta },
-      {
-        onSuccess: (updated) => {
-          resetPreview();
-          const name = updated.custom_label ?? updated.catalog_product?.name ?? "محصول";
-          toast.success(`موجودی «${name}» با موفقیت تغییر کرد.`);
-          if ("vibrate" in navigator) navigator.vibrate?.([15, 30, 15]);
+  const confirm = useCallback(
+    (delta: number) => {
+      setAwaitingDecision(true);
+      mutation.mutate(
+        { id: product.id, delta },
+        {
+          onSuccess: (updated) => {
+            resetPreview();
+            const name =
+              updated.custom_label ?? updated.catalog_product?.name ?? "محصول";
+            toast.success(`موجودی «${name}» با موفقیت تغییر کرد.`);
+            if ("vibrate" in navigator) navigator.vibrate?.([15, 30, 15]);
+          },
+          onError: (error) => {
+            resetPreview();
+            toast.error(errorMessage(error));
+          },
         },
-        onError: (error) => {
-          resetPreview();
-          toast.error(errorMessage(error));
-        },
-      },
-    );
-  }, [mutation, product.id, resetPreview]);
+      );
+    },
+    [mutation, product.id, resetPreview],
+  );
 
   const requestConfirmation = useCallback(() => {
     const delta = pendingDeltaRef.current;
@@ -109,45 +116,18 @@ export function QuickStockAdjustment({ product }: Props) {
 
   return (
     <Flex
-      align="center"
       gap="1"
       dir="ltr"
-      className="quick-stock-control"
+      align="center"
+      justify={"center"}
       aria-label="تنظیم سریع موجودی"
+      className="quick-stock-control"
     >
       <Button
+        size="3"
         type="button"
-        size="2"
-        variant="soft"
-        color="red"
-        disabled={busy}
-        aria-label="برای کاهش یکی کلیک کنید یا برای کاهش سریع نگه دارید"
-        {...decrement.holdProps}
-        className={`quick-stock-button ${decrement.pressing ? "is-pressing" : ""} ${decrement.repeating ? "is-repeating" : ""}`}
-        style={{ touchAction: "pan-y" }}
-      >
-        <MinusIcon width="17" height="17" />
-      </Button>
-
-      <div className="quick-stock-quantity" aria-live="polite" aria-atomic="true">
-        {pendingDelta !== 0 && (
-          <span
-            key={pendingDelta}
-            className={`quick-stock-delta ${pendingDelta > 0 ? "is-positive" : "is-negative"}`}
-          >
-            {pendingDelta > 0 ? "+" : ""}{pendingDelta.toLocaleString("fa-IR")}
-          </span>
-        )}
-        <Text as="span" size="3" weight="bold" className={changing ? "quick-stock-count is-changing" : "quick-stock-count"}>
-          {previewQuantity.toLocaleString("fa-IR")}
-        </Text>
-      </div>
-
-      <Button
-        type="button"
-        size="2"
-        variant="soft"
         color="green"
+        variant="soft"
         disabled={busy}
         aria-label="برای افزایش یکی کلیک کنید یا برای افزایش سریع نگه دارید"
         {...increment.holdProps}
@@ -155,6 +135,46 @@ export function QuickStockAdjustment({ product }: Props) {
         style={{ touchAction: "pan-y" }}
       >
         <PlusIcon width="17" height="17" />
+      </Button>
+
+      <div
+        aria-live="polite"
+        aria-atomic="true"
+        className="quick-stock-quantity"
+      >
+        {pendingDelta !== 0 && (
+          <span
+            key={pendingDelta}
+            className={`quick-stock-delta ${pendingDelta > 0 ? "is-positive" : "is-negative"}`}
+          >
+            {pendingDelta > 0 ? "+" : ""}
+            {pendingDelta.toLocaleString("fa-IR")}
+          </span>
+        )}
+        <Text
+          size="3"
+          as="span"
+          weight="bold"
+          className={
+            changing ? "quick-stock-count is-changing" : "quick-stock-count"
+          }
+        >
+          {previewQuantity.toLocaleString("fa-IR")}
+        </Text>
+      </div>
+
+      <Button
+        size="3"
+        color="red"
+        type="button"
+        variant="soft"
+        disabled={busy}
+        aria-label="برای کاهش یکی کلیک کنید یا برای کاهش سریع نگه دارید"
+        {...decrement.holdProps}
+        className={`quick-stock-button ${decrement.pressing ? "is-pressing" : ""} ${decrement.repeating ? "is-repeating" : ""}`}
+        style={{ touchAction: "pan-y" }}
+      >
+        <MinusIcon width="17" height="17" />
       </Button>
     </Flex>
   );

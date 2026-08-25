@@ -26,13 +26,13 @@ function ProtectedLayout() {
   const hideLayout = pathname === "/industry";
 
   return (
-    <>
+    <div className="flex h-dvh min-h-0 flex-col overflow-hidden">
       {!hideLayout && <Header />}
       {!hideLayout && <NavMenu />}
 
-      <main className="min-w-0 flex-1 overflow-x-hidden">
+      <main className="app-shell-content min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
         <Outlet />
       </main>
-    </>
+    </div>
   );
 }

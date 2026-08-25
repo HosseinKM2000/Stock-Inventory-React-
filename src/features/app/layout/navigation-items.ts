@@ -1,7 +1,7 @@
-import { GearIcon, HomeIcon, MixIcon } from "@radix-ui/react-icons";
+import { DashboardIcon, GearIcon, MixIcon } from "@radix-ui/react-icons";
 
 export const primaryNavigationItems = [
-  { label: "خانه", to: "/dashboard", icon: HomeIcon },
+  { label: "داشبورد", to: "/dashboard", icon: DashboardIcon },
   { label: "محصولات", to: "/inventory/list", icon: MixIcon },
   { label: "تنظیمات", to: "/setting/profile", icon: GearIcon },
 ] as const;
