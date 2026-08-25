@@ -30,7 +30,7 @@ export function useProducts(params: ProductListParams = {}) {
   return useQuery({
     queryKey: productKeys.list(params),
 
-    queryFn: () => inventoryService.getAll(params),
+    queryFn: () => inventoryService.getAll({ ...params, include_hidden: false }),
 
     staleTime: 0,
   });

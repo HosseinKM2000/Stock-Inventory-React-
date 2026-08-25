@@ -3,6 +3,7 @@ import { useAuth } from "@/shared/auth/use-auth";
 import { Button } from "@/shared/ui/button/button";
 import { ConfirmDialog } from "@/shared/ui/dialog/confirm-dialog";
 import { Badge, Box, Callout, Card, Flex, Select, Spinner, Text } from "@radix-ui/themes";
+import { PersonIcon } from "@radix-ui/react-icons";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -101,6 +102,9 @@ export default function UsersSettings() {
               <Flex justify="between" align="start" gap="4" wrap="wrap">
                 <Box className="min-w-0 flex-1">
                   <Flex align="center" gap="2" wrap="wrap">
+                    <Box className="card-title-icon" aria-hidden="true">
+                      <PersonIcon width="20" height="20" />
+                    </Box>
                     <Text size="4" weight="bold">{user.first_name} {user.last_name}</Text>
                     <Badge color={user.is_active ? "green" : "red"}>{user.is_active ? "فعال" : "غیرفعال"}</Badge>
                     <Badge color={user.role === "ADMIN" ? "violet" : "gray"}>{user.role}</Badge>

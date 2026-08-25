@@ -10,8 +10,9 @@ import { Form } from "@/shared/ui/form/form";
 import { SelectInput } from "@/shared/ui/form/input/select-input";
 import { TextAreaInput } from "@/shared/ui/form/input/text-area";
 import { TextInput } from "@/shared/ui/form/input/text-input";
-import { Box, Callout, Card, Grid, Switch, Text } from "@radix-ui/themes";
-import { useRef } from "react";
+import { GearIcon } from "@radix-ui/react-icons";
+import { Box, Callout, Card, Flex, Grid, Switch, Text } from "@radix-ui/themes";
+import { type ChangeEvent, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createProductInitialValues } from "../form/product-form.initial";
 import { productSchema } from "../schema/product.schema";
@@ -19,6 +20,22 @@ import { type Product } from "../types";
 import { useCategories } from "@/features/setting/mutations/use-categories";
 
 type ProductFormMode = "create" | "edit" | "view";
+
+const priceFormatter = new Intl.NumberFormat("en-US", {
+  maximumFractionDigits: 0,
+  useGrouping: true,
+});
+
+function normalizePriceDigits(value: string) {
+  return value
+    .replace(/[۰-۹]/g, (digit) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)))
+    .replace(/[٠-٩]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
+    .replace(/\D/g, "");
+}
+
+function formatPrice(value: number) {
+  return Number.isFinite(value) ? priceFormatter.format(value) : "";
+}
 
 type ProductFormProps = {
   mode: ProductFormMode;
@@ -47,6 +64,9 @@ export function ProductForm({
 }: ProductFormProps) {
   const { data: categories = [] } = useCategories();
   const readOnly = mode === "view";
+  const [displayPrice, setDisplayPrice] = useState(() =>
+    formatPrice(initial?.price ?? 0),
+  );
 
   const statusOptions = [
     { label: "موجود", value: "in_stock" },
@@ -115,6 +135,21 @@ export function ProductForm({
     value: String(category.id),
     label: category.name,
   }));
+
+  const handlePriceChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const digits = normalizePriceDigits(event.target.value);
+
+    if (!digits) {
+      setDisplayPrice("");
+      form.setValue("price", 0);
+      return;
+    }
+
+    const price = Number(digits);
+    setDisplayPrice(formatPrice(price));
+    form.setValue("price", price);
+  };
+
   // const unitOptions = PRODUCT_UNITS.map((u) => ({ value: u, label: u }));
 
   return (
@@ -198,13 +233,15 @@ export function ProductForm({
 
           {/* Price */}
 
-          <FormField id="price" label="قیمت" error={form.errors.price}>
+          <FormField id="price" label="قیمت (تومان)" error={form.errors.price}>
             <TextInput
+              id="price"
               size="3"
-              type="number"
+              type="text"
+              inputMode="numeric"
               name="price"
-              value={form.values.price}
-              onChange={form.handleChange}
+              value={displayPrice}
+              onChange={handlePriceChange}
               disabled={readOnly}
             />
           </FormField>
@@ -226,9 +263,21 @@ export function ProductForm({
           <FormField id="category_id" label="دسته‌بندی">
             <SelectInput
               size="3"
-              value={form.values.category_id == null ? "none" : String(form.values.category_id)}
-              onValueChange={(value) => form.setValue("category_id", value === "none" ? null : Number(value))}
-              options={[{ label: "بدون دسته‌بندی", value: "none" }, ...categoryOptions]}
+              value={
+                form.values.category_id == null
+                  ? "none"
+                  : String(form.values.category_id)
+              }
+              onValueChange={(value) =>
+                form.setValue(
+                  "category_id",
+                  value === "none" ? null : Number(value),
+                )
+              }
+              options={[
+                { label: "بدون دسته‌بندی", value: "none" },
+                ...categoryOptions,
+              ]}
               disabled={readOnly}
             />
           </FormField>
@@ -271,6 +320,12 @@ export function ProductForm({
           bg-violet-1/40
         "
           >
+            <Flex align="center" gap="3" mb="4">
+              <Box className="card-title-icon" aria-hidden="true">
+                <GearIcon width="20" height="20" />
+              </Box>
+              <Text weight="bold">تنظیمات موجودی</Text>
+            </Flex>
             <Grid columns={{ initial: "1", md: "2" }} gap="5">
               <FormField id="low_stock_threshold" label="حد نصاب هشدار">
                 <TextInput

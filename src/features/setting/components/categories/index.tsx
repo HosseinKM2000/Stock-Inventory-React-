@@ -1,5 +1,5 @@
 import { Button } from "@/shared/ui/button/button";
-import { PlusIcon } from "@radix-ui/react-icons";
+import { LayersIcon, PlusIcon } from "@radix-ui/react-icons";
 import { Box, Callout, Card, Flex, Spinner, Text } from "@radix-ui/themes";
 import CategoryFormDialog from "./category-form-dialog";
 import DeleteCategoryDialog from "./delete-category-dialog";
@@ -33,12 +33,22 @@ const CategoriesCards = () => {
         </Text>
 
         <Flex gap="2" wrap="wrap" className="w-full sm:w-auto">
-          <Button variant="soft" disabled={!online} loading={refreshing} onClick={refresh}>
+          <Button
+            variant="soft"
+            disabled={!online}
+            loading={refreshing}
+            onClick={refresh}
+          >
             <ReloadIcon /> تازه‌سازی از سرور
           </Button>
           <CategoryFormDialog
             mode="create"
-            trigger={<Button><PlusIcon />افزودن دسته بندی</Button>}
+            trigger={
+              <Button>
+                <PlusIcon />
+                افزودن دسته بندی
+              </Button>
+            }
           />
         </Flex>
       </Flex>
@@ -66,6 +76,9 @@ const CategoriesCards = () => {
             gap="3"
             py="8"
           >
+            <Box className="card-empty-icon" aria-hidden="true">
+              <LayersIcon width="26" height="26" />
+            </Box>
             <Text size="4" weight="medium">
               هنوز هیچ دسته بندی ثبت نشده است!
             </Text>
@@ -85,9 +98,19 @@ const CategoriesCards = () => {
               className="flex! h-32 w-full flex-col justify-between md:w-[calc(50%-10px)] xl:w-[calc(33.333%-14px)]"
             >
               <Box>
-                <Text as="div" size="2" weight="bold">
-                  {category.name}
-                </Text>
+                <Flex align="center" gap="3">
+                  <Flex
+                    align="center"
+                    justify="center"
+                    aria-hidden="true"
+                    className="card-title-icon"
+                  >
+                    <LayersIcon width="20" height="20" />
+                  </Flex>
+                  <Text as="div" size="2" weight="bold">
+                    {category.name}
+                  </Text>
+                </Flex>
                 <Text
                   as="div"
                   mt={"1"}

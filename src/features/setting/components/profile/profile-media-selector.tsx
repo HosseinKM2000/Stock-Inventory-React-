@@ -125,7 +125,7 @@ export function ProfileMediaSelector() {
                 aria-label={`انتخاب آواتار ${avatar.label}`}
                 aria-pressed={selected}
                 onClick={() => void chooseAvatar(avatar.id)}
-                className={`min-w-0 rounded-xl border p-2 transition-[border-color,background-color,transform] active:scale-95 disabled:opacity-60 ${selected ? "border-violet-500 bg-violet-500/10" : "border-foreground/10 hover:bg-foreground/5"}`}
+                className={`min-w-0 rounded-xl border p-2 py-5 transition-[border-color,background-color,transform] active:scale-95 disabled:opacity-60 ${selected ? "border-violet-500 bg-violet-500/10" : "border-foreground/10 hover:bg-foreground/5"}`}
               >
                 <Avatar src={avatar.src} fallback="" radius="medium" size="4" className="mx-auto" />
                 <Text as="div" size="1" mt="1" className="truncate">{avatar.label}</Text>

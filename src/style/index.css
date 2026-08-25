@@ -22,6 +22,80 @@ body {
 
 .app-bottom-navigation {
   min-height: var(--app-bottom-navigation-height);
+  color: var(--gray-12);
+}
+
+.app-bottom-navigation-surface {
+  border-color: var(--gray-a6);
+  background: color-mix(in srgb, var(--color-panel-solid) 92%, transparent);
+  box-shadow: 0 -12px 35px color-mix(in srgb, var(--gray-12) 12%, transparent);
+}
+
+:root[data-appearance="light"] .app-bottom-navigation-surface,
+.radix-themes.light .app-bottom-navigation-surface {
+  box-shadow: none;
+}
+
+.app-bottom-navigation-item {
+  color: var(--gray-11);
+}
+
+.app-bottom-navigation-item:hover {
+  color: var(--gray-12);
+  background: var(--accent-a3);
+}
+
+.app-bottom-navigation-item[data-active="true"] {
+  color: var(--accent-11);
+  background: var(--accent-a3);
+}
+
+.app-navigation-indicator,
+.app-navigation-glow {
+  background: var(--accent-9);
+}
+
+.themed-navigation-item {
+  color: var(--gray-12);
+}
+
+.themed-navigation-item:hover {
+  color: var(--accent-11);
+  background: var(--accent-a3);
+}
+
+.themed-navigation-item[data-active="true"] {
+  color: var(--accent-11);
+  background: var(--accent-a4);
+}
+
+.card-title-icon,
+.card-empty-icon,
+.card-metric-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  color: var(--violet-11);
+  background: var(--violet-a3);
+  border: 1px solid var(--violet-a5);
+}
+
+.card-title-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+}
+
+.card-empty-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+}
+
+.card-metric-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
 }
 
 /* Theme-aware thin scrollbars for every native scroll container. */

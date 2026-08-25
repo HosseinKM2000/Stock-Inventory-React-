@@ -1,4 +1,4 @@
-import { PlusIcon } from "@radix-ui/react-icons";
+import { BackpackIcon, PlusIcon } from "@radix-ui/react-icons";
 import { Box, Callout, Card, Flex, Spinner, Text } from "@radix-ui/themes";
 import { Button } from "@/shared/ui/button/button";
 import { useIndustries } from "../../mutations/use-industry";
@@ -50,6 +50,9 @@ const Industries = () => {
             gap="3"
             py="8"
           >
+            <Box className="card-empty-icon" aria-hidden="true">
+              <BackpackIcon width="26" height="26" />
+            </Box>
             <Text size="4" weight="medium">
               هنوز هیچ حوزه کاری ثبت نشده است.
             </Text>
@@ -70,9 +73,19 @@ const Industries = () => {
             >
               <Flex direction="column" justify="between" height="100%" gap="4">
                 <Box>
-                  <Text as="div" size="4" weight="bold">
-                    {industry.name}
-                  </Text>
+                  <Flex align="center" gap="3">
+                    <Flex
+                      align="center"
+                      justify="center"
+                      aria-hidden="true"
+                      className="card-title-icon"
+                    >
+                      <BackpackIcon width="20" height="20" />
+                    </Flex>
+                    <Text as="div" size="4" weight="bold">
+                      {industry.name}
+                    </Text>
+                  </Flex>
 
                   <Text mt="3" size="2" color="gray" className="line-clamp-3">
                     {industry.description ?? "بدون توضیحات"}

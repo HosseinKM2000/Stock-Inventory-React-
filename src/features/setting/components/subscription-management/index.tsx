@@ -1,6 +1,6 @@
 import { Button } from "@/shared/ui/button/button";
 import { ConfirmDialog } from "@/shared/ui/dialog/confirm-dialog";
-import { CheckCircledIcon, ClockIcon, PlusIcon, TrashIcon } from "@radix-ui/react-icons";
+import { CheckCircledIcon, ClockIcon, IdCardIcon, PlusIcon, TrashIcon } from "@radix-ui/react-icons";
 import { Badge, Box, Callout, Card, Flex, Grid, Separator, Spinner, Text } from "@radix-ui/themes";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -43,7 +43,10 @@ export default function SubscriptionManagement() {
           const enabled = Object.entries(plan.features).filter(([, value]) => value);
           return <Card key={plan.id} className="flex min-h-80 flex-col">
             <Flex justify="between" align="start" gap="3">
-              <Box className="min-w-0"><Text size="5" weight="bold">{plan.name}</Text><Text as="div" size="1" color="gray">{plan.id}</Text></Box>
+              <Flex align="center" gap="3" className="min-w-0">
+                <Box className="card-title-icon" aria-hidden="true"><IdCardIcon width="20" height="20" /></Box>
+                <Box className="min-w-0"><Text size="5" weight="bold">{plan.name}</Text><Text as="div" size="1" color="gray">{plan.id}</Text></Box>
+              </Flex>
               <Badge color={plan.is_active ? "green" : "gray"}>{plan.is_active ? "فعال" : "غیرفعال"}</Badge>
             </Flex>
             <Text as="div" color="gray" size="2" mt="3" className="min-h-10">{plan.description || "بدون توضیحات"}</Text>

@@ -76,6 +76,7 @@ export type ProductListParams = {
   search?: string;
   sort?: ProductSort;
   category_id?: number;
+  include_hidden?: boolean;
 };
 
 export type ProductInput = {

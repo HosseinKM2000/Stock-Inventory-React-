@@ -53,6 +53,12 @@ class InventoryService {
   async getAll(params: ProductListParams = {}): Promise<Product[]> {
     let products = (await inventoryRepository.getAll()).map(sanitize);
 
+    // Visibility filtering is opt-in so exports and maintenance operations
+    // still work with the complete inventory.
+    if (params.include_hidden === false) {
+      products = products.filter((product) => !product.is_hidden);
+    }
+
     // Search
     if (params.search) {
       const search = params.search.trim().toLowerCase();

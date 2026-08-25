@@ -11,7 +11,7 @@ class DashboardService {
     return image != null && image !== "";
   }
   async getStats(): Promise<DashboardStats> {
-    const products = await inventoryService.getAll();
+    const products = await inventoryService.getAll({ include_hidden: true });
     const now = new Date();
 
     return {
@@ -61,7 +61,8 @@ class DashboardService {
   }
 
   async getProducts(filter: DashboardFilter): Promise<DashboardProductList> {
-    const products = await inventoryService.getAll();
+    const allProducts = await inventoryService.getAll({ include_hidden: true });
+    const products = allProducts.filter((product) => !product.is_hidden);
 
     switch (filter) {
       case DashboardFilters.LOW_STOCK:
@@ -83,7 +84,7 @@ class DashboardService {
       case DashboardFilters.HIDDEN:
         return {
           title: "کالاهای مخفی",
-          products: products.filter((product) => product.is_hidden),
+          products: allProducts.filter((product) => product.is_hidden),
         };
 
       case DashboardFilters.NO_IMAGE:

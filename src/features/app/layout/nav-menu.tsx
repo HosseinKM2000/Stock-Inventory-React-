@@ -27,17 +27,13 @@ const NavMenu = () => {
         align="center"
         justify="center"
         className="
+          app-bottom-navigation-surface
           relative
 
           border
-          border-white/10
-
-          bg-[rgba(15,15,24,0.92)]
 
           px-2
           py-2
-
-          shadow-[0_20px_50px_rgba(0,0,0,.35)]
 
           backdrop-blur-2xl
         "
@@ -51,7 +47,9 @@ const NavMenu = () => {
             <Link
               key={item.to}
               to={item.to}
+              data-active={active}
               className="
+                app-bottom-navigation-item
                 flex
                 px-3
                 py-2
@@ -86,18 +84,14 @@ const NavMenu = () => {
                 {/* Main Line */}
 
                 <Box
-                  className="
-                    h-[3px]
-                    w-15
-                    rounded-full
-                  bg-indigo-600
-                  "
+                  className="app-navigation-indicator h-[3px] w-15 rounded-full"
                 />
 
                 {/* Glow */}
 
                 <Box
                   className="
+                    app-navigation-glow
                     absolute
                     left-1/2
                     top-0
@@ -110,7 +104,6 @@ const NavMenu = () => {
 
                     rounded-full
 
-               bg-indigo-600
                     blur-xl
                   "
                 />
@@ -123,7 +116,7 @@ const NavMenu = () => {
                   transition-all
                   duration-200
 
-                  ${active ? "scale-105 text-primary" : "text-white/60"}
+                  ${active ? "scale-105" : ""}
                 `}
               >
                 <Icon width={20} height={20} />
@@ -133,14 +126,12 @@ const NavMenu = () => {
 
               <Text
                 size="1"
-                className={`
+                className="
                   mt-1
 
                   transition-all
                   duration-200
-
-                  ${active ? "text-primary" : "text-white/60"}
-                `}
+                "
               >
                 {item.label}
               </Text>

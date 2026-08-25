@@ -1,5 +1,6 @@
 import { Button } from "@/shared/ui/button/button";
 import { ConfirmDialog } from "@/shared/ui/dialog/confirm-dialog";
+import { BarChartIcon, InfoCircledIcon, LightningBoltIcon } from "@radix-ui/react-icons";
 import { Box, Card, Checkbox, Dialog, Flex, Grid, Select, Switch, Text, TextArea, TextField } from "@radix-ui/themes";
 import { useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
@@ -107,7 +108,7 @@ export default function PlanDialog({ plan, trigger }: Props) {
         <Dialog.Description color="gray">اطلاعات تجاری و دسترسی‌ها را بدون نیاز به ویرایش JSON تنظیم کنید.</Dialog.Description>
         <Flex direction="column" gap="5" mt="5">
           <Card>
-            <Text as="div" weight="bold" mb="3">اطلاعات پایه</Text>
+            <Flex align="center" gap="3" mb="3"><Box className="card-title-icon" aria-hidden="true"><InfoCircledIcon width="20" height="20" /></Box><Text as="div" weight="bold">اطلاعات پایه</Text></Flex>
             <Grid columns={{ initial: "1", sm: "2" }} gap="3">
               <label><Text size="2">شناسه پایدار</Text><TextField.Root value={id} disabled={Boolean(plan)} onChange={(event) => setId(event.target.value)} /></label>
               <label><Text size="2">نام طرح</Text><TextField.Root value={name} onChange={(event) => setName(event.target.value)} /></label>
@@ -122,7 +123,7 @@ export default function PlanDialog({ plan, trigger }: Props) {
           </Card>
 
           <Card>
-            <Text as="div" weight="bold">قابلیت‌های طرح</Text>
+            <Flex align="center" gap="3"><Box className="card-title-icon" aria-hidden="true"><LightningBoltIcon width="20" height="20" /></Box><Text as="div" weight="bold">قابلیت‌های طرح</Text></Flex>
             <Text as="div" size="2" color="gray" mb="4">قابلیت‌های فعال توسط سرور به مجوزهای حساب تبدیل می‌شوند.</Text>
             <Flex direction="column" gap="5">
               {groups.map((group) => <Box key={group}>
@@ -138,7 +139,7 @@ export default function PlanDialog({ plan, trigger }: Props) {
           </Card>
 
           <Card>
-            <Text as="div" weight="bold" mb="3">محدودیت‌های استفاده</Text>
+            <Flex align="center" gap="3" mb="3"><Box className="card-title-icon" aria-hidden="true"><BarChartIcon width="20" height="20" /></Box><Text as="div" weight="bold">محدودیت‌های استفاده</Text></Flex>
             <Grid columns={{ initial: "1", sm: "2" }} gap="3">
               {PLAN_LIMIT_OPTIONS.map((option) => <label key={option.key}><Text size="2">{option.label}</Text><TextField.Root type="number" min="1" inputMode="numeric" placeholder={option.description} value={limits[option.key] ?? ""} onChange={(event) => setLimits((current) => ({ ...current, [option.key]: event.target.value }))} /></label>)}
             </Grid>

@@ -1,17 +1,18 @@
 import { useEntitlement } from "@/shared/access/use-entitlement";
 import { isAdmin } from "@/shared/access/authorization";
 import { useAuth } from "@/shared/auth/use-auth";
-import { CheckCircledIcon, ClockIcon, ExclamationTriangleIcon, StarIcon } from "@radix-ui/react-icons";
+import { ArchiveIcon, CalendarIcon, CheckCircledIcon, ClockIcon, DesktopIcon, ExclamationTriangleIcon, StarIcon, TimerIcon, TokensIcon } from "@radix-ui/react-icons";
 import { Badge, Box, Callout, Card, Flex, Grid, Separator, Text } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
+import type { ReactNode } from "react";
 import { useAvailablePlans } from "../../mutations/use-admin";
 import { FEATURE_LABELS, formatToman } from "../subscription-management/plan-options";
 
 const date = (value: string | null | undefined) =>
   value ? new Intl.DateTimeFormat("fa-IR", { dateStyle: "medium" }).format(new Date(value)) : "—";
 
-function InfoCard({ label, value, accent }: { label: string; value: string; accent?: "green" | "red" | "violet" }) {
-  return <Card><Text as="div" size="1" color="gray">{label}</Text><Text as="div" size="3" weight="bold" color={accent}>{value}</Text></Card>;
+function InfoCard({ label, value, accent, icon }: { label: string; value: string; accent?: "green" | "red" | "violet"; icon: ReactNode }) {
+  return <Card><Flex align="center" gap="3"><Box className="card-metric-icon" aria-hidden="true">{icon}</Box><Box className="min-w-0"><Text as="div" size="1" color="gray">{label}</Text><Text as="div" size="3" weight="bold" color={accent}>{value}</Text></Box></Flex></Card>;
 }
 
 export default function SubscriptionSettings() {
@@ -54,10 +55,10 @@ export default function SubscriptionSettings() {
         </Flex>
 
         <Grid columns={{ initial: "1", sm: "2", lg: "4" }} gap="3" mt="5">
-          <InfoCard label="تاریخ خرید / شروع" value={date(current?.started_at)} />
-          <InfoCard label="تاریخ انقضا" value={current?.expires_at ? date(current.expires_at) : "بدون انقضا"} accent={expired ? "red" : undefined} />
-          <InfoCard label="زمان باقی‌مانده" value={remaining == null ? "نامحدود" : `${remaining} روز`} accent={expired ? "red" : "green"} />
-          <InfoCard label="قیمت طرح" value={formatToman(plan?.price_minor ?? null)} accent="violet" />
+          <InfoCard icon={<CalendarIcon />} label="تاریخ خرید / شروع" value={date(current?.started_at)} />
+          <InfoCard icon={<CalendarIcon />} label="تاریخ انقضا" value={current?.expires_at ? date(current.expires_at) : "بدون انقضا"} accent={expired ? "red" : undefined} />
+          <InfoCard icon={<TimerIcon />} label="زمان باقی‌مانده" value={remaining == null ? "نامحدود" : `${remaining} روز`} accent={expired ? "red" : "green"} />
+          <InfoCard icon={<TokensIcon />} label="قیمت طرح" value={formatToman(plan?.price_minor ?? null)} accent="violet" />
         </Grid>
 
         <Separator size="4" my="5" />
@@ -72,8 +73,8 @@ export default function SubscriptionSettings() {
           <Box>
             <Text as="div" weight="bold">سقف استفاده</Text>
             <Grid columns="2" gap="3" mt="3">
-              <InfoCard label="تعداد کالا" value={administrator || current?.limits.inventory_items == null ? "نامحدود" : String(current.limits.inventory_items)} />
-              <InfoCard label="دستگاه فعال" value={administrator || current?.limits.devices == null ? "نامحدود" : String(current.limits.devices)} />
+              <InfoCard icon={<ArchiveIcon />} label="تعداد کالا" value={administrator || current?.limits.inventory_items == null ? "نامحدود" : String(current.limits.inventory_items)} />
+              <InfoCard icon={<DesktopIcon />} label="دستگاه فعال" value={administrator || current?.limits.devices == null ? "نامحدود" : String(current.limits.devices)} />
             </Grid>
             <Flex align="center" gap="2" mt="4"><ClockIcon /><Text size="1" color="gray">آخرین بررسی دسترسی: {date(current?.synced_at)}</Text></Flex>
           </Box>

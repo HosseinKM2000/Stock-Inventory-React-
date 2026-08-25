@@ -24,6 +24,7 @@ export function SettingNav() {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
+  const dashboardActive = isPathActive(pathname, "/dashboard");
 
   return (
     <aside
@@ -47,7 +48,7 @@ export function SettingNav() {
       <div className="flex items-center justify-between px-4 py-5">
         {!collapsed && (
           <div>
-            <h1 className="font-bold text-lg text-indigo-600">Tanzim</h1>
+            <h1 className="text-lg font-bold text-[var(--accent-11)]">Tanzim</h1>
           </div>
         )}
         <button
@@ -71,7 +72,8 @@ export function SettingNav() {
         <div className="space-y-1">
           <Link
             to="/dashboard"
-            className="flex items-center rounded-xl px-3 py-3 text-foreground transition-colors duration-200 hover:bg-indigo-300/10"
+            data-active={dashboardActive}
+            className="themed-navigation-item flex items-center rounded-xl px-3 py-3 transition-colors duration-200"
           >
             <DashboardIcon width={18} height={18} />
             {!collapsed && (
@@ -99,8 +101,8 @@ export function SettingNav() {
                   transition-colors
                   ${
                     active
-                      ? "bg-indigo-700 text-white"
-                      : "hover:bg-indigo-300/10 text-foreground"
+                      ? "bg-[var(--accent-a4)] text-[var(--accent-11)]"
+                      : "text-foreground hover:bg-[var(--accent-a3)] hover:text-[var(--accent-11)]"
                   }
                 `}
               >
@@ -115,7 +117,7 @@ export function SettingNav() {
       </nav>
 
       {/* FOOTER */}
-      <div className="border-t p-3">
+      <div className="border-t border-[var(--gray-a6)] p-3">
         <Link
           to="/setting/profile"
           className="mb-1 flex items-center rounded-xl px-3 py-3 transition-colors hover:bg-foreground/5"
@@ -149,7 +151,8 @@ export function SettingNav() {
             py-3
             rounded-xl
             items-center
-            hover:bg-red-500
+            text-[var(--red-11)]
+            hover:bg-[var(--red-a3)]
             cursor-pointer
           `}
         >
