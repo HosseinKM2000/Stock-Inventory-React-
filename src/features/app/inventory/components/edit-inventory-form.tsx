@@ -7,12 +7,16 @@ import {
   useUpdateProduct,
 } from "../mutations/use-products";
 import { ProductForm } from "./inventory-form";
+import { useState } from "react";
+import { toast } from "sonner";
+import { ConfirmDialog } from "@/shared/ui/dialog/confirm-dialog";
 
 type EditProductFormProps = {
   id: number;
 };
 
 const EditProductForm = ({ id }: EditProductFormProps) => {
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   const navigate = useNavigate();
   const { data: product, isLoading, isError } = useProduct(id);
   const updateProduct = useUpdateProduct();
@@ -34,29 +38,50 @@ const EditProductForm = ({ id }: EditProductFormProps) => {
     );
   }
 
+  const name = product.custom_label ?? product.catalog_product?.name ?? "محصول";
+
   return (
-    <ProductForm
-      mode="edit"
-      initial={product}
-      submitting={updateProduct.isPending}
-      deleting={deleteProduct.isPending}
-      errorMessage={
-        updateProduct.error instanceof ApiError
-          ? updateProduct.error.message
-          : null
-      }
-      onSubmit={(input) =>
-        updateProduct.mutate(
-          { id, input },
-          { onSuccess: () => navigate({ to: "/inventory/list" }) },
-        )
-      }
-      onDelete={() =>
-        deleteProduct.mutate(id, {
-          onSuccess: () => navigate({ to: "/inventory/list" }),
-        })
-      }
-    />
+    <>
+      <ProductForm
+        mode="edit"
+        initial={product}
+        submitting={updateProduct.isPending}
+        deleting={deleteProduct.isPending}
+        errorMessage={
+          updateProduct.error instanceof ApiError
+            ? updateProduct.error.message
+            : null
+        }
+        onSubmit={(input) =>
+          updateProduct.mutate(
+            { id, input },
+            { onSuccess: () => navigate({ to: "/inventory/list" }) },
+          )
+        }
+        onDelete={() => setConfirmingDelete(true)}
+      />
+      <ConfirmDialog
+        open={confirmingDelete}
+        onOpenChange={setConfirmingDelete}
+        title="محصول حذف شود؟"
+        description={`آیا از حذف «${name}» مطمئن هستید؟ این تغییر پس از همگام‌سازی روی سرور نیز اعمال می‌شود.`}
+        confirmLabel="حذف محصول"
+        cancelLabel="لغو"
+        variant="danger"
+        loading={deleteProduct.isPending}
+        onConfirm={() =>
+          deleteProduct.mutate(id, {
+            onSuccess: () => {
+              toast.success(`«${name}» حذف شد.`);
+              void navigate({ to: "/inventory/list" });
+            },
+            onError: (error) => {
+              toast.error(error instanceof Error ? error.message : "حذف محصول ناموفق بود");
+            },
+          })
+        }
+      />
+    </>
   );
 };
 

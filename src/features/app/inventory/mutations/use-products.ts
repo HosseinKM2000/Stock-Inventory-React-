@@ -71,6 +71,19 @@ export function useUpdateProduct() {
   });
 }
 
+export function useAdjustProductQuantity() {
+  const invalidate = useInvalidateProducts();
+
+  return useMutation({
+    mutationFn: ({ id, delta }: { id: number; delta: number }) =>
+      inventoryService.adjustQuantity(id, delta),
+
+    onSuccess() {
+      invalidate();
+    },
+  });
+}
+
 export function useDeleteProduct() {
   const invalidate = useInvalidateProducts();
 

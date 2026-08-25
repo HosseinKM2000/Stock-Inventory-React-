@@ -1,15 +1,20 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AddButton from "./add-button";
 import FilterPanel from "./filter-panel";
-import type { ProductSort } from "../types";
+import type { Product, ProductSort } from "../types";
 import { ProductCard } from "./inventory-card";
 import { Box, Callout, Flex, Spinner, Text } from "@radix-ui/themes";
 import { useInventoryVirtual } from "../mutations/useInventoryVirtual";
 import { useDeleteProduct, useProducts } from "../mutations/use-products";
+import { toast } from "sonner";
+import { ConfirmDialog } from "@/shared/ui/dialog/confirm-dialog";
+
+const QUICK_STOCK_HINT_KEY = "inventory-quick-stock-hint-v3";
 
 const InventoryList = () => {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<ProductSort>("newest");
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
   const { data, isLoading, isError } = useProducts({
     search: search || undefined,
@@ -21,6 +26,38 @@ const InventoryList = () => {
   const { parentRef, virtualizer } = useInventoryVirtual(products.length);
 
   const deleteProduct = useDeleteProduct();
+
+  const confirmDelete = () => {
+    if (!productToDelete) return;
+
+    const name =
+      productToDelete.custom_label ??
+      productToDelete.catalog_product?.name ??
+      "محصول";
+
+    deleteProduct.mutate(productToDelete.id, {
+      onSuccess: () => {
+        setProductToDelete(null);
+        toast.success(`«${name}» حذف شد.`);
+      },
+      onError: (error) => {
+        toast.error(
+          error instanceof Error ? error.message : "حذف محصول ناموفق بود",
+        );
+      },
+    });
+  };
+
+  useEffect(() => {
+    try {
+      if (products.length > 0 && localStorage.getItem(QUICK_STOCK_HINT_KEY) !== "shown") {
+        toast.info("برای یک تغییر کلیک کنید؛ برای تغییر سریع دکمه مثبت یا منفی را نگه دارید.");
+        localStorage.setItem(QUICK_STOCK_HINT_KEY, "shown");
+      }
+    } catch {
+      // Storage may be unavailable in strict privacy modes; the feature still works.
+    }
+  }, [products.length]);
 
   return (
     <Flex
@@ -143,7 +180,7 @@ const InventoryList = () => {
                       >
                         <ProductCard
                           product={product}
-                          onDelete={(id) => deleteProduct.mutate(id)}
+                          onDelete={() => setProductToDelete(product)}
                           deleting={
                             deleteProduct.isPending &&
                             deleteProduct.variables === product.id
@@ -160,6 +197,24 @@ const InventoryList = () => {
       </Flex>
 
       <AddButton />
+
+      <ConfirmDialog
+        open={productToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setProductToDelete(null);
+        }}
+        title="محصول حذف شود؟"
+        description={
+          productToDelete
+            ? `آیا از حذف «${productToDelete.custom_label ?? productToDelete.catalog_product?.name ?? "این محصول"}» مطمئن هستید؟ این تغییر پس از همگام‌سازی روی سرور نیز اعمال می‌شود.`
+            : ""
+        }
+        confirmLabel="حذف محصول"
+        cancelLabel="لغو"
+        variant="danger"
+        loading={deleteProduct.isPending}
+        onConfirm={confirmDelete}
+      />
     </Flex>
   );
 };

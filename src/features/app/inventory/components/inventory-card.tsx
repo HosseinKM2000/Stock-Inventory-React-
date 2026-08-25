@@ -6,6 +6,7 @@ import { Link } from "@tanstack/react-router";
 import { useImage } from "@/shared/lib/infrastructure/media/useImage";
 import productPlaceholder from "@/assets/product-placeholder.svg";
 import type { Product, ProductStatus } from "../types";
+import { QuickStockAdjustment } from "./quick-stock-adjustment";
 
 const STATUS_META: Record<
   ProductStatus,
@@ -116,9 +117,7 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
                 {product.price.toLocaleString("fa-IR")} تومان
               </Badge>
 
-              <Badge variant="soft" color="gray" size={"3"}>
-                تعداد: {product.quantity}
-              </Badge>
+              <QuickStockAdjustment product={product} />
             </Flex>
 
             {/* Actions */}

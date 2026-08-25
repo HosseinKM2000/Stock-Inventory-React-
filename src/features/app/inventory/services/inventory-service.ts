@@ -162,6 +162,36 @@ class InventoryService {
     return saved;
   }
 
+  async adjustQuantity(id: number, delta: number): Promise<Product> {
+    accessState.requireWrite();
+
+    if (!Number.isSafeInteger(delta) || delta === 0) {
+      throw new Error("تغییر موجودی باید یک عدد صحیح و غیر صفر باشد");
+    }
+
+    const current = await inventoryRepository.get(id);
+
+    if (!current || current.deleted_at) {
+      throw new Error("محصول برای تغییر موجودی در دسترس نیست");
+    }
+
+    const currentQuantity = Number(current.quantity);
+
+    if (!Number.isSafeInteger(currentQuantity) || currentQuantity < 0) {
+      throw new Error("موجودی فعلی محصول معتبر نیست");
+    }
+
+    const quantity = currentQuantity + delta;
+
+    if (!Number.isSafeInteger(quantity) || quantity < 0) {
+      throw new Error("موجودی نهایی محصول معتبر نیست");
+    }
+
+    // Apply the confirmed delta to the latest local record. This preserves a
+    // newer local quantity instead of overwriting it with a stale preview.
+    return this.update(id, { quantity });
+  }
+
   async remove(id: number): Promise<void> {
     accessState.requireWrite();
     const current = await inventoryRepository.get(id);

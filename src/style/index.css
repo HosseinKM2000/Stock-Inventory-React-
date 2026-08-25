@@ -41,8 +41,100 @@ body {
 .menu-toggle-icon.is-open > span:nth-child(2) { opacity: 0; transform: scaleX(.5); }
 .menu-toggle-icon.is-open > span:nth-child(3) { top: 8px; transform: rotate(-45deg); }
 
+.quick-stock-control {
+  position: relative;
+  min-height: 40px;
+  padding: 2px;
+  border: 1px solid var(--gray-5);
+  border-radius: 12px;
+  background: var(--gray-2);
+}
+
+.quick-stock-button {
+  position: relative;
+  width: 38px;
+  height: 36px;
+  min-width: 38px;
+  padding: 0 !important;
+  overflow: hidden;
+  -webkit-touch-callout: none;
+  user-select: none;
+  transition: transform 120ms ease, filter 120ms ease;
+}
+
+.quick-stock-button.is-pressing {
+  transform: scale(.96);
+  filter: saturate(1.12);
+}
+
+.quick-stock-button.is-pressing::after {
+  content: "";
+  position: absolute;
+  right: 3px;
+  bottom: 2px;
+  left: 3px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  transform-origin: left;
+  animation: quick-stock-hold-progress 350ms linear forwards;
+}
+
+.quick-stock-button.is-repeating {
+  transform: scale(.94);
+}
+
+.quick-stock-quantity {
+  position: relative;
+  display: grid;
+  width: 52px;
+  min-width: 52px;
+  place-items: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.quick-stock-count {
+  transition: transform 100ms ease, color 100ms ease;
+}
+
+.quick-stock-count.is-changing {
+  color: var(--accent-11);
+  transform: scale(1.08);
+}
+
+.quick-stock-delta {
+  position: absolute;
+  bottom: calc(100% + 7px);
+  z-index: 2;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--color-panel-solid);
+  box-shadow: var(--shadow-2);
+  font-size: 12px;
+  font-weight: 700;
+  pointer-events: none;
+  animation: quick-stock-delta-pop 180ms ease-out both;
+}
+
+.quick-stock-delta.is-positive { color: var(--green-11); }
+.quick-stock-delta.is-negative { color: var(--red-11); }
+
+@keyframes quick-stock-hold-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes quick-stock-delta-pop {
+  from { opacity: 0; transform: translateY(5px) scale(.92); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mobile-drawer-overlay,
   .mobile-drawer { animation-duration: 1ms !important; }
   .menu-toggle-icon > span { transition-duration: 1ms !important; }
+  .quick-stock-button,
+  .quick-stock-count { transition-duration: 1ms !important; }
+  .quick-stock-button.is-pressing::after,
+  .quick-stock-delta { animation-duration: 1ms !important; }
 }
