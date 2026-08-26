@@ -40,16 +40,6 @@ body {
   color: var(--gray-11);
 }
 
-.app-bottom-navigation-item:hover {
-  color: var(--gray-12);
-  background: var(--accent-a3);
-}
-
-.app-bottom-navigation-item[data-active="true"] {
-  color: var(--accent-11);
-  background: var(--accent-a3);
-}
-
 .app-navigation-indicator,
 .app-navigation-glow {
   background: var(--accent-9);
