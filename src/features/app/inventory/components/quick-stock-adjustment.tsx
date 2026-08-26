@@ -1,6 +1,6 @@
 import { MinusIcon, PlusIcon } from "@radix-ui/react-icons";
 import { Flex, Text } from "@radix-ui/themes";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { accessState } from "@/shared/access/access-state";
@@ -11,6 +11,8 @@ import type { Product } from "../types";
 
 type Props = { product: Product };
 
+const CONFIRMATION_DEBOUNCE_MS = 1_000;
+
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "تغییر موجودی ناموفق بود";
 }
@@ -20,16 +22,25 @@ export function QuickStockAdjustment({ product }: Props) {
   const [awaitingDecision, setAwaitingDecision] = useState(false);
   const pendingDeltaRef = useRef(0);
   const notificationId = useRef<string | number | null>(null);
+  const confirmationTimer = useRef<number | null>(null);
   const mutation = useAdjustProductQuantity();
   const canWrite = accessState.canAccess() && accessState.canWrite();
   const previewQuantity = Math.max(0, product.quantity + pendingDelta);
 
+  const clearConfirmationTimer = useCallback(() => {
+    if (confirmationTimer.current !== null) {
+      window.clearTimeout(confirmationTimer.current);
+      confirmationTimer.current = null;
+    }
+  }, []);
+
   const resetPreview = useCallback(() => {
+    clearConfirmationTimer();
     pendingDeltaRef.current = 0;
     setPendingDelta(0);
     setAwaitingDecision(false);
     notificationId.current = null;
-  }, []);
+  }, [clearConfirmationTimer]);
 
   const applyStep = useCallback(
     (amount: -1 | 1) => {
@@ -102,13 +113,37 @@ export function QuickStockAdjustment({ product }: Props) {
     });
   }, [confirm, product.quantity, resetPreview]);
 
+  const scheduleConfirmation = useCallback(() => {
+    clearConfirmationTimer();
+
+    if (pendingDeltaRef.current === 0) {
+      resetPreview();
+      return;
+    }
+
+    confirmationTimer.current = window.setTimeout(() => {
+      confirmationTimer.current = null;
+      requestConfirmation();
+    }, CONFIRMATION_DEBOUNCE_MS);
+  }, [clearConfirmationTimer, requestConfirmation, resetPreview]);
+
+  useEffect(
+    () => () => {
+      clearConfirmationTimer();
+      if (notificationId.current !== null) {
+        toast.dismiss(notificationId.current);
+      }
+    },
+    [clearConfirmationTimer],
+  );
+
   const decrement = useQuickStockAdjustment({
     onRepeat: () => applyStep(-1),
-    onFinish: requestConfirmation,
+    onFinish: scheduleConfirmation,
   });
   const increment = useQuickStockAdjustment({
     onRepeat: () => applyStep(1),
-    onFinish: requestConfirmation,
+    onFinish: scheduleConfirmation,
   });
 
   const busy = !canWrite || awaitingDecision || mutation.isPending;
