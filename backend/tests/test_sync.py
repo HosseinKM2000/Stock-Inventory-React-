@@ -10,10 +10,11 @@ os.environ["DATABASE_URL"] = f"sqlite:///{_database_path.as_posix()}"
 os.environ["SYSTEM_ADMIN_PASSWORD"] = "Test-only-system-admin-password-123!"
 
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 from app.database import SessionLocal, engine
 from app.main import app
-from app.models import Industry, User, UserSession
+from app.models import Industry, InventoryItem, User, UserSession
 
 
 class SyncApiTest(unittest.TestCase):
@@ -41,6 +42,7 @@ class SyncApiTest(unittest.TestCase):
         assert signup.status_code == 201, signup.text
         assert signup.json()["user"]["is_active"] is True
         assert signup.json()["user"]["is_admin"] is False
+        cls.user_id = signup.json()["user"]["id"]
         cls.headers = {
             "Authorization": f"Bearer {signup.json()['access_token']}",
             "X-Device-Fingerprint": "sync-test-device",
@@ -304,6 +306,96 @@ class SyncApiTest(unittest.TestCase):
 
         users = self.client.get("/api/admin/users", headers=self.headers)
         self.assertEqual(users.status_code, 403, users.text)
+
+    def test_catalog_crud_search_validation_and_protected_delete(self) -> None:
+        forbidden = self.client.post(
+            "/api/catalog-products",
+            headers=self.headers,
+            json={"industry_id": self.industry_id, "name": "Forbidden"},
+        )
+        self.assertEqual(forbidden.status_code, 403, forbidden.text)
+
+        invalid_industry = self.client.post(
+            "/api/catalog-products",
+            headers=self.admin_headers,
+            json={"industry_id": 999_999, "name": "Invalid industry"},
+        )
+        self.assertEqual(invalid_industry.status_code, 400, invalid_industry.text)
+        self.assertEqual(invalid_industry.json()["detail"], "CATALOG_INDUSTRY_NOT_FOUND")
+
+        invalid_name = self.client.post(
+            "/api/catalog-products",
+            headers=self.admin_headers,
+            json={"industry_id": self.industry_id, "name": "   "},
+        )
+        self.assertEqual(invalid_name.status_code, 422, invalid_name.text)
+
+        created = self.client.post(
+            "/api/catalog-products",
+            headers=self.admin_headers,
+            json={
+                "industry_id": self.industry_id,
+                "name": "  Searchable catalog item  ",
+                "description": "  Catalog description  ",
+                "brand": "  UniqueBrand  ",
+                "image_url": None,
+            },
+        )
+        self.assertEqual(created.status_code, 201, created.text)
+        product = created.json()
+        self.assertEqual(product["name"], "Searchable catalog item")
+        self.assertEqual(product["industry"]["id"], self.industry_id)
+
+        found = self.client.get(
+            f"/api/catalog-products?search=UniqueBrand&industry_id={self.industry_id}",
+            headers=self.headers,
+        )
+        self.assertEqual(found.status_code, 200, found.text)
+        self.assertIn(product["id"], [item["id"] for item in found.json()])
+
+        updated = self.client.patch(
+            f"/api/catalog-products/{product['id']}",
+            headers=self.admin_headers,
+            json={"name": "Updated catalog item", "description": None},
+        )
+        self.assertEqual(updated.status_code, 200, updated.text)
+        self.assertEqual(updated.json()["id"], product["id"])
+        self.assertEqual(updated.json()["name"], "Updated catalog item")
+
+        with SessionLocal() as db:
+            db.add(
+                InventoryItem(
+                    user_id=self.user_id,
+                    catalog_product_id=product["id"],
+                    quantity=1,
+                )
+            )
+            db.commit()
+
+        blocked = self.client.delete(
+            f"/api/catalog-products/{product['id']}", headers=self.admin_headers
+        )
+        self.assertEqual(blocked.status_code, 409, blocked.text)
+        self.assertEqual(blocked.json()["detail"], "CATALOG_PRODUCT_IN_USE")
+
+        single = self.client.get(
+            f"/api/catalog-products/{product['id']}", headers=self.headers
+        )
+        self.assertEqual(single.status_code, 200, single.text)
+
+        with SessionLocal() as db:
+            item = db.scalar(
+                select(InventoryItem).where(
+                    InventoryItem.catalog_product_id == product["id"]
+                )
+            )
+            db.delete(item)
+            db.commit()
+
+        deleted = self.client.delete(
+            f"/api/catalog-products/{product['id']}", headers=self.admin_headers
+        )
+        self.assertEqual(deleted.status_code, 204, deleted.text)
 
     def test_permanent_admin_rbac_subscription_and_audit(self) -> None:
         # SQLite reloads persisted timestamps without timezone information,

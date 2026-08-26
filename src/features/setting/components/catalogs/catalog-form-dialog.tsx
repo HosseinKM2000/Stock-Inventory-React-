@@ -9,11 +9,12 @@ import { TextInput } from "@/shared/ui/form/input/text-input";
 import { useAppForm } from "@/shared/lib/form/use-app-form";
 
 import { ApiError } from "@/shared/api/api-error";
+import { resolveAssetUrl } from "@/shared/api/client";
 
 import type { CatalogProduct } from "../../types";
 
 import { SelectInput } from "@/shared/ui/form/input/select-input";
-import { Callout, Dialog, Flex } from "@radix-ui/themes";
+import { Box, Callout, Dialog, Flex, Text } from "@radix-ui/themes";
 import {
   useCreateCatalog,
   useUpdateCatalog,
@@ -68,8 +69,16 @@ export default function CatalogFormDialog({
     initialValues: emptyValues,
 
     onSubmit(values) {
+      const payload = {
+        industry_id: values.industry_id,
+        name: values.name.trim(),
+        description: values.description.trim() || null,
+        brand: values.brand.trim() || null,
+        image_url: values.image_url.trim() || null,
+      };
+
       if (mode === "create") {
-        createMutation.mutate(values, {
+        createMutation.mutate(payload, {
           onSuccess() {
             form.reset();
             setOpen(false);
@@ -84,7 +93,7 @@ export default function CatalogFormDialog({
       updateMutation.mutate(
         {
           id: catalogProduct.id,
-          data: values,
+          data: payload,
         },
         {
           onSuccess() {
@@ -128,6 +137,10 @@ export default function CatalogFormDialog({
         ? "خطا در دریافت حوزه‌های کاری"
         : null;
 
+  const imagePreviewUrl = resolveAssetUrl(
+    form.values.image_url.trim() || undefined,
+  );
+
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
       <Dialog.Trigger>{trigger}</Dialog.Trigger>
@@ -150,9 +163,11 @@ export default function CatalogFormDialog({
         )}
 
         <Flex direction="column" gap="4">
-          <FormField label="عنوان" id="industry-name" error={form.errors.name}>
+          <FormField label="عنوان" id="catalog-name" error={form.errors.name}>
             <TextInput
+              id="catalog-name"
               name="name"
+              maxLength={200}
               value={form.values.name}
               onChange={form.handleChange}
             />
@@ -164,14 +179,18 @@ export default function CatalogFormDialog({
             error={form.errors.description}
           >
             <TextAreaInput
+              id="catalog-description"
               name="description"
+              maxLength={5000}
               value={form.values.description}
               onChange={form.handleChange}
             />
           </FormField>
           <FormField label="برند" id="catalog-brand" error={form.errors.brand}>
             <TextInput
+              id="catalog-brand"
               name="brand"
+              maxLength={120}
               value={form.values.brand}
               onChange={form.handleChange}
             />
@@ -182,10 +201,41 @@ export default function CatalogFormDialog({
             error={form.errors.image_url}
           >
             <TextInput
+              id="catalog-image"
               name="image_url"
+              maxLength={500}
+              dir="ltr"
+              placeholder="https://example.com/image.webp"
               value={form.values.image_url}
               onChange={form.handleChange}
             />
+            <Text as="div" size="1" color="gray" mt="1">
+              آدرس تصویر را وارد کنید؛ با خالی کردن این فیلد تصویر حذف می‌شود.
+            </Text>
+            {imagePreviewUrl && (
+              <Flex
+                mt="2"
+                gap="3"
+                align="center"
+                className="rounded-xl border border-[var(--gray-a5)] p-2"
+              >
+                <Box className="h-16 w-20 shrink-0 overflow-hidden rounded-lg bg-[var(--gray-a3)]">
+                  <img
+                    src={imagePreviewUrl}
+                    alt={`پیش‌نمایش ${form.values.name || "محصول"}`}
+                    className="h-full w-full object-cover"
+                  />
+                </Box>
+                <Button
+                  size="1"
+                  color="red"
+                  variant="soft"
+                  onClick={() => form.setValue("image_url", "")}
+                >
+                  حذف تصویر
+                </Button>
+              </Flex>
+            )}
           </FormField>
           <FormField
             label="حوزه کاری"
@@ -193,8 +243,9 @@ export default function CatalogFormDialog({
             error={form.errors.industry_id}
           >
             <SelectInput
-              disabled={industriesLoading}
+              disabled={industriesLoading || industryItems.length === 0}
               name="industry_id"
+              placeholder="انتخاب حوزه کاری"
               options={industryItems}
               value={String(form.values.industry_id)}
               onValueChange={(value) =>
@@ -211,7 +262,11 @@ export default function CatalogFormDialog({
             </Button>
           </Dialog.Close>
 
-          <Button loading={mutation.isPending} onClick={form.submit}>
+          <Button
+            disabled={industriesLoading || industryItems.length === 0}
+            loading={mutation.isPending}
+            onClick={form.submit}
+          >
             {mode === "create" ? "ایجاد" : "ذخیره"}
           </Button>
         </Flex>

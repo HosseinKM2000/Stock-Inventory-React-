@@ -2,20 +2,21 @@ import { apiFetch } from "@/shared/api/client";
 import type {
   CatalogProduct,
   CatalogProductInput,
+  CatalogProductListParams,
   CatalogProductUpdate,
 } from "../types";
 
-export function getCatalogProducts(params?: {
-  search?: string;
-  industry_id?: number;
-}) {
+export function getCatalogProducts(params?: CatalogProductListParams) {
   const query = new URLSearchParams();
 
   if (params?.search) query.set("search", params.search);
 
   if (params?.industry_id) query.set("industry_id", String(params.industry_id));
 
-  return apiFetch<CatalogProduct[]>(`/catalog-products?${query.toString()}`);
+  const queryString = query.toString();
+  return apiFetch<CatalogProduct[]>(
+    `/catalog-products${queryString ? `?${queryString}` : ""}`,
+  );
 }
 
 export function getCatalogProduct(id: number) {

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Query, status
 
 from ..deps import CurrentCatalogManager, CurrentUser, DbSession
 
@@ -8,13 +8,7 @@ from ..schemas import (
     CatalogProductOut,
 )
 
-from ..repositories.catalog_products import (
-    get_catalog_products,
-    get_catalog_product,
-    create_catalog_product,
-    update_catalog_product,
-    delete_catalog_product,
-)
+from ..services import catalog_product_service
 
 router = APIRouter(
     prefix="/catalog-products",
@@ -32,10 +26,10 @@ router = APIRouter(
 def list_catalog_products(
     _: CurrentUser,
     db: DbSession,
-    search: str | None = None,
-    industry_id: int | None = None,
+    search: str | None = Query(default=None, max_length=200),
+    industry_id: int | None = Query(default=None, gt=0),
 ):
-    return get_catalog_products(
+    return catalog_product_service.list_catalog_products(
         db=db,
         search=search,
         industry_id=industry_id,
@@ -54,18 +48,7 @@ def get_catalog(
     _: CurrentUser,
     db: DbSession,
 ):
-    product = get_catalog_product(
-        db,
-        catalog_id,
-    )
-
-    if not product:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Catalog product not found",
-        )
-
-    return product
+    return catalog_product_service.get_catalog_product_or_404(db, catalog_id)
 
 
 # =========================================================
@@ -81,7 +64,7 @@ def create_catalog(
     _: CurrentCatalogManager,
     db: DbSession,
 ):
-    return create_catalog_product(
+    return catalog_product_service.create_catalog_product(
         db,
         payload,
     )
@@ -100,20 +83,9 @@ def update_catalog(
     _: CurrentCatalogManager,
     db: DbSession,
 ):
-    product = get_catalog_product(
+    return catalog_product_service.update_catalog_product(
         db,
         catalog_id,
-    )
-
-    if not product:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Catalog product not found",
-        )
-
-    return update_catalog_product(
-        db,
-        product,
         payload,
     )
 
@@ -130,20 +102,6 @@ def delete_catalog(
     _: CurrentCatalogManager,
     db: DbSession,
 ):
-    product = get_catalog_product(
-        db,
-        catalog_id,
-    )
-
-    if not product:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Catalog product not found",
-        )
-
-    delete_catalog_product(
-        db,
-        product,
-    )
+    catalog_product_service.delete_catalog_product(db, catalog_id)
 
     return

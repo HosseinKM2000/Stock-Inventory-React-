@@ -39,6 +39,8 @@ export type CatalogProduct = {
   image_url: string | null;
 
   created_at: string;
+
+  industry: Pick<Industry, "id" | "name">;
 };
 
 export type CatalogProductInput = {
@@ -46,14 +48,19 @@ export type CatalogProductInput = {
 
   name: string;
 
-  description: string;
+  description: string | null;
 
-  brand: string;
+  brand: string | null;
 
-  image_url: string;
+  image_url: string | null;
 };
 
 export type CatalogProductUpdate = Partial<CatalogProductInput>;
+
+export type CatalogProductListParams = {
+  search?: string;
+  industry_id?: number;
+};
 
 export type SubscriptionPlan = {
   id: string;

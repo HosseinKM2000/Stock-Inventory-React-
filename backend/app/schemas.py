@@ -122,33 +122,74 @@ class CategoryWithStats(CategoryOut):
 # CATALOG
 # =========================================================
 class CatalogProductBase(BaseModel):
-    name: str
-    description: str | None = None
-    brand: str | None = None
-    image_url: str | None = None
+    name: str = Field(min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=5000)
+    brand: str | None = Field(default=None, max_length=120)
+    image_url: str | None = Field(default=None, max_length=500)
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("CATALOG_NAME_REQUIRED")
+        return value
+
+    @field_validator("description", "brand", "image_url")
+    @classmethod
+    def normalize_optional_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        if not value:
+            return None
+        return value
+
+    @field_validator("image_url")
+    @classmethod
+    def validate_image_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if value.startswith("/uploads/") or value.startswith(("http://", "https://")):
+            return value
+        raise ValueError("CATALOG_IMAGE_URL_INVALID")
 
 class CatalogProductCreate(CatalogProductBase):
-    industry_id: int
-
-    name: str
-
-    description: str | None = None
-
-    brand: str | None = None
-
-    image_url: str | None = None
+    industry_id: int = Field(gt=0)
 
 
 class CatalogProductUpdate(BaseModel):
-    industry_id: int | None = None
+    industry_id: int | None = Field(default=None, gt=0)
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    description: str | None = Field(default=None, max_length=5000)
+    brand: str | None = Field(default=None, max_length=120)
+    image_url: str | None = Field(default=None, max_length=500)
 
-    name: str | None = None
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        if not value:
+            raise ValueError("CATALOG_NAME_REQUIRED")
+        return value
 
-    description: str | None = None
+    @field_validator("description", "brand", "image_url")
+    @classmethod
+    def normalize_optional_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip() or None
 
-    brand: str | None = None
-
-    image_url: str | None = None
+    @field_validator("image_url")
+    @classmethod
+    def validate_image_url(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if value.startswith("/uploads/") or value.startswith(("http://", "https://")):
+            return value
+        raise ValueError("CATALOG_IMAGE_URL_INVALID")
 
 
 class CatalogProductOut(BaseModel):
@@ -165,6 +206,8 @@ class CatalogProductOut(BaseModel):
     image_url: str | None
 
     created_at: datetime
+
+    industry: IndustrySimpleOut
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -428,6 +471,7 @@ class PlanDefinitionOut(BaseModel):
     features: dict[str, bool]
     limits: dict[str, int | None]
     created_at: datetime
+
     updated_at: datetime
 
 

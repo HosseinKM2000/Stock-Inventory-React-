@@ -1,5 +1,5 @@
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy import or_, select
+from sqlalchemy.orm import Session, joinedload
 
 from ..models import CatalogProduct
 from ..schemas import (
@@ -13,16 +13,21 @@ def get_catalog_products(
     search: str | None = None,
     industry_id: int | None = None,
 ):
-    stmt = select(CatalogProduct)
+    stmt = select(CatalogProduct).options(joinedload(CatalogProduct.industry))
 
     if industry_id:
         stmt = stmt.where(
             CatalogProduct.industry_id == industry_id
         )
 
-    if search:
+    if search and search.strip():
+        term = f"%{search.strip()}%"
         stmt = stmt.where(
-            CatalogProduct.name.ilike(f"%{search}%")
+            or_(
+                CatalogProduct.name.ilike(term),
+                CatalogProduct.brand.ilike(term),
+                CatalogProduct.description.ilike(term),
+            )
         )
 
     stmt = stmt.order_by(
@@ -36,7 +41,11 @@ def get_catalog_product(
     db: Session,
     catalog_id: int,
 ):
-    return db.get(CatalogProduct, catalog_id)
+    return db.scalar(
+        select(CatalogProduct)
+        .options(joinedload(CatalogProduct.industry))
+        .where(CatalogProduct.id == catalog_id)
+    )
 
 
 def create_catalog_product(

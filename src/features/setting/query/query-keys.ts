@@ -20,8 +20,12 @@ export const planKeys = {
 export const catalogProductKeys = {
   all: ["catalog-products"] as const,
 
-  list: (search?: string, industryId?: number) =>
-    [...catalogProductKeys.all, search, industryId] as const,
+  lists: () => [...catalogProductKeys.all, "list"] as const,
 
-  detail: (id: number) => [...catalogProductKeys.all, id] as const,
+  list: (params?: { search?: string; industry_id?: number }) =>
+    [...catalogProductKeys.lists(), params ?? {}] as const,
+
+  details: () => [...catalogProductKeys.all, "detail"] as const,
+
+  detail: (id: number) => [...catalogProductKeys.details(), id] as const,
 };

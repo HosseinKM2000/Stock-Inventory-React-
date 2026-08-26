@@ -38,7 +38,11 @@ export default function DeleteCatalogDialog({
 
   const errorMessage =
     deleteMutation.error instanceof ApiError
-      ? deleteMutation.error.message
+      ? deleteMutation.error.message === "CATALOG_PRODUCT_IN_USE"
+        ? "این محصول در موجودی کاربران استفاده شده است و تا زمانی که وابستگی‌های آن وجود دارد قابل حذف نیست."
+        : deleteMutation.error.message === "CATALOG_PRODUCT_NOT_FOUND"
+          ? "این محصول قبلاً حذف شده یا دیگر وجود ندارد."
+          : deleteMutation.error.message
       : deleteMutation.isError
         ? "خطا در حذف محصول کاتالوگ"
         : null;
