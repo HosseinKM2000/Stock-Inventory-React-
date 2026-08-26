@@ -1,13 +1,16 @@
 import json
+from pathlib import Path
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
+from ..config import settings
 from ..models import CatalogProduct, Industry, InventoryItem, SyncChange, User
 from ..repositories import catalog_products as repository
 from ..schemas import CatalogProductCreate, CatalogProductUpdate, InventoryOut
+from .audit_service import record_admin_action
 
 
 def _record_inventory_change(db: Session, item: InventoryItem) -> None:
@@ -20,6 +23,18 @@ def _record_inventory_change(db: Session, item: InventoryItem) -> None:
             payload=json.dumps(
                 InventoryOut.model_validate(item).model_dump(mode="json")
             ),
+        )
+    )
+
+
+def _record_inventory_delete(db: Session, item: InventoryItem) -> None:
+    db.add(
+        SyncChange(
+            user_id=item.user_id,
+            entity="product",
+            entity_id=item.id,
+            operation="DELETE",
+            payload=None,
         )
     )
 
@@ -65,7 +80,7 @@ def _reconcile_catalog_assignments(db: Session, product: CatalogProduct) -> None
     db.flush()
     for item in changed:
         _record_inventory_change(db, item)
-    db.commit()
+    db.flush()
 
 
 def list_catalog_products(
@@ -73,11 +88,32 @@ def list_catalog_products(
     search: str | None = None,
     industry_id: int | None = None,
 ):
-    return repository.get_catalog_products(db, search, industry_id)
+    return repository.get_catalog_products(db, search, industry_id, is_active=True)
+
+
+def list_archived_catalog_products(
+    db: Session,
+    search: str | None = None,
+    industry_id: int | None = None,
+):
+    return repository.get_catalog_products(db, search, industry_id, is_active=False)
 
 
 def get_catalog_product_or_404(db: Session, catalog_id: int) -> CatalogProduct:
     product = repository.get_catalog_product(db, catalog_id)
+    if product is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="CATALOG_PRODUCT_NOT_FOUND",
+        )
+    return product
+
+
+def get_catalog_product_any_state_or_404(
+    db: Session,
+    catalog_id: int,
+) -> CatalogProduct:
+    product = repository.get_catalog_product_any_state(db, catalog_id)
     if product is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -100,7 +136,8 @@ def create_catalog_product(db: Session, payload: CatalogProductCreate):
         product = repository.create_catalog_product(db, payload)
         product = repository.get_catalog_product(db, product.id)
         _reconcile_catalog_assignments(db, product)
-        return repository.get_catalog_product(db, product.id)
+        db.commit()
+        return repository.get_catalog_product_any_state(db, product.id)
     except IntegrityError as error:
         db.rollback()
         raise HTTPException(
@@ -114,7 +151,7 @@ def update_catalog_product(
     catalog_id: int,
     payload: CatalogProductUpdate,
 ):
-    product = get_catalog_product_or_404(db, catalog_id)
+    product = get_catalog_product_any_state_or_404(db, catalog_id)
     if "name" in payload.model_fields_set and payload.name is None:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
@@ -130,9 +167,10 @@ def update_catalog_product(
 
     try:
         product = repository.update_catalog_product(db, product, payload)
-        product = repository.get_catalog_product(db, product.id)
-        _reconcile_catalog_assignments(db, product)
-        return repository.get_catalog_product(db, product.id)
+        if product.is_active:
+            _reconcile_catalog_assignments(db, product)
+        db.commit()
+        return repository.get_catalog_product_any_state(db, product.id)
     except IntegrityError as error:
         db.rollback()
         raise HTTPException(
@@ -141,17 +179,108 @@ def update_catalog_product(
         ) from error
 
 
-def delete_catalog_product(db: Session, catalog_id: int) -> None:
-    product = repository.get_catalog_product_any_state(db, catalog_id)
-    if product is None:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="CATALOG_PRODUCT_NOT_FOUND",
-        )
-
-    # Idempotent archive: user inventory rows retain the same foreign key and
-    # all operational values. No InventoryItem is updated or deleted here.
+def archive_catalog_product(
+    db: Session,
+    catalog_id: int,
+    actor: User,
+) -> CatalogProduct:
+    product = get_catalog_product_any_state_or_404(db, catalog_id)
     if not product.is_active:
-        return
+        return product
 
-    repository.archive_catalog_product(db, product)
+    try:
+        repository.archive_catalog_product(db, product)
+        record_admin_action(
+            db,
+            actor,
+            "catalog.archived",
+            metadata={"catalog_product_id": product.id, "name": product.name},
+        )
+        db.commit()
+        return repository.get_catalog_product_any_state(db, catalog_id)
+    except Exception:
+        db.rollback()
+        raise
+
+
+def restore_catalog_product(
+    db: Session,
+    catalog_id: int,
+    actor: User,
+) -> CatalogProduct:
+    product = get_catalog_product_any_state_or_404(db, catalog_id)
+    if product.is_active:
+        return product
+
+    try:
+        repository.restore_catalog_product(db, product)
+        # Provision users who joined the industry while this product was
+        # archived. Existing assignments are keyed by catalog_product_id and
+        # therefore cannot be duplicated.
+        _reconcile_catalog_assignments(db, product)
+        record_admin_action(
+            db,
+            actor,
+            "catalog.restored",
+            metadata={"catalog_product_id": product.id, "name": product.name},
+        )
+        db.commit()
+        return repository.get_catalog_product_any_state(db, catalog_id)
+    except Exception:
+        db.rollback()
+        raise
+
+
+def permanently_delete_catalog_product(
+    db: Session,
+    catalog_id: int,
+    actor: User,
+) -> None:
+    product = get_catalog_product_any_state_or_404(db, catalog_id)
+    inventory_items = list(
+        db.scalars(
+            select(InventoryItem).where(
+                InventoryItem.catalog_product_id == product.id
+            )
+        )
+    )
+    uploaded_images = {
+        value
+        for value in [product.image_url, *(item.image_url for item in inventory_items)]
+        if value and value.startswith("/uploads/")
+    }
+
+    try:
+        # Explicit deletes are intentional: InventoryItem.transactions uses
+        # its existing ORM delete-orphan cascade, while one durable sync
+        # tombstone is recorded for every affected user inventory row.
+        for item in inventory_items:
+            _record_inventory_delete(db, item)
+            db.delete(item)
+
+        db.flush()
+        record_admin_action(
+            db,
+            actor,
+            "catalog.deleted",
+            metadata={
+                "catalog_product_id": product.id,
+                "name": product.name,
+                "inventory_items_deleted": len(inventory_items),
+            },
+        )
+        repository.permanently_delete_catalog_product(db, product)
+        db.commit()
+    except Exception:
+        # Catalog, inventory rows, transaction rows, tombstones and audit entry
+        # all share this transaction. No partial database delete can commit.
+        db.rollback()
+        raise
+
+    # Filesystem cleanup happens only after the atomic database commit. A
+    # missing file is harmless and must not turn a committed delete into 500.
+    for image_url in uploaded_images:
+        try:
+            (settings.UPLOAD_DIR / Path(image_url).name).unlink(missing_ok=True)
+        except OSError:
+            pass

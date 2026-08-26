@@ -202,6 +202,11 @@ async def push_batch(
                 )
             else:
                 payload = operation.payload or {}
+                if operation.operation == "UPDATE" and item is None:
+                    # The server is authoritative for an item that previously
+                    # existed but was permanently removed by an administrator.
+                    # Return a terminal domain result instead of recreating it.
+                    raise ValueError("PRODUCT_NOT_FOUND")
                 if item is not None and operation.base_version is not None and item.version != operation.base_version:
                     result = SyncOperationResult(
                         operation_id=operation.operation_id,

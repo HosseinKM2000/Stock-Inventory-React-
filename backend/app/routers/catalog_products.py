@@ -37,6 +37,26 @@ def list_catalog_products(
 
 
 # =========================================================
+# ARCHIVED LIST (ADMIN)
+# =========================================================
+@router.get(
+    "/archived",
+    response_model=list[CatalogProductOut],
+)
+def list_archived_catalog_products(
+    _: CurrentCatalogManager,
+    db: DbSession,
+    search: str | None = Query(default=None, max_length=200),
+    industry_id: int | None = Query(default=None, gt=0),
+):
+    return catalog_product_service.list_archived_catalog_products(
+        db=db,
+        search=search,
+        industry_id=industry_id,
+    )
+
+
+# =========================================================
 # GET ONE
 # =========================================================
 @router.get(
@@ -91,7 +111,34 @@ def update_catalog(
 
 
 # =========================================================
-# DELETE
+# ARCHIVE / RESTORE
+# =========================================================
+@router.patch(
+    "/{catalog_id}/archive",
+    response_model=CatalogProductOut,
+)
+def archive_catalog(
+    catalog_id: int,
+    admin: CurrentCatalogManager,
+    db: DbSession,
+):
+    return catalog_product_service.archive_catalog_product(db, catalog_id, admin)
+
+
+@router.patch(
+    "/{catalog_id}/restore",
+    response_model=CatalogProductOut,
+)
+def restore_catalog(
+    catalog_id: int,
+    admin: CurrentCatalogManager,
+    db: DbSession,
+):
+    return catalog_product_service.restore_catalog_product(db, catalog_id, admin)
+
+
+# =========================================================
+# PERMANENT DELETE
 # =========================================================
 @router.delete(
     "/{catalog_id}",
@@ -99,9 +146,13 @@ def update_catalog(
 )
 def delete_catalog(
     catalog_id: int,
-    _: CurrentCatalogManager,
+    admin: CurrentCatalogManager,
     db: DbSession,
 ):
-    catalog_product_service.delete_catalog_product(db, catalog_id)
+    catalog_product_service.permanently_delete_catalog_product(
+        db,
+        catalog_id,
+        admin,
+    )
 
     return

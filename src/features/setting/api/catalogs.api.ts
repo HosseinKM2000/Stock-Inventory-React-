@@ -27,6 +27,19 @@ export function getCatalogProducts(params?: CatalogProductListParams) {
   );
 }
 
+export function getArchivedCatalogProducts(params?: CatalogProductListParams) {
+  requireOnline();
+  const query = new URLSearchParams();
+
+  if (params?.search) query.set("search", params.search);
+  if (params?.industry_id) query.set("industry_id", String(params.industry_id));
+
+  const queryString = query.toString();
+  return apiFetch<CatalogProduct[]>(
+    `/catalog-products/archived${queryString ? `?${queryString}` : ""}`,
+  );
+}
+
 export function getCatalogProduct(id: number) {
   requireOnline();
   return apiFetch<CatalogProduct>(`/catalog-products/${id}`);
@@ -52,5 +65,19 @@ export function deleteCatalogProduct(id: number) {
   requireOnline();
   return apiFetch<void>(`/catalog-products/${id}`, {
     method: "DELETE",
+  });
+}
+
+export function archiveCatalogProduct(id: number) {
+  requireOnline();
+  return apiFetch<CatalogProduct>(`/catalog-products/${id}/archive`, {
+    method: "PATCH",
+  });
+}
+
+export function restoreCatalogProduct(id: number) {
+  requireOnline();
+  return apiFetch<CatalogProduct>(`/catalog-products/${id}/restore`, {
+    method: "PATCH",
   });
 }

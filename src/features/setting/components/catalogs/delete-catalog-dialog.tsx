@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { Dialog, Flex, Callout } from "@radix-ui/themes";
-import { ArchiveIcon } from "@radix-ui/react-icons";
+import { TrashIcon } from "@radix-ui/react-icons";
 
 import { Button } from "@/shared/ui/button/button";
 
@@ -42,7 +42,7 @@ export default function DeleteCatalogDialog({
           ? "این محصول قبلاً حذف شده یا دیگر وجود ندارد."
           : deleteMutation.error.message
       : deleteMutation.isError
-        ? "خطا در بایگانی محصول کاتالوگ"
+        ? "خطا در حذف دائمی محصول کاتالوگ"
         : null;
 
   return (
@@ -55,19 +55,19 @@ export default function DeleteCatalogDialog({
           color="red"
           size={{ initial: "2", lg: "1" }}
         >
-          <ArchiveIcon />
+          <TrashIcon />
         </Button>
       </Dialog.Trigger>
 
       <Dialog.Content maxWidth="420px">
         <Dialog.Title color="red">
-          بایگانی محصول کاتالوگ
+          حذف دائمی محصول کاتالوگ
         </Dialog.Title>
 
         <Dialog.Description mt="3">
-          محصول <strong>«{catalog.name}»</strong> از کاتالوگ فعال حذف می‌شود و
-          دیگر برای کاربران جدید اضافه نخواهد شد. محصولات موجود کاربران حذف
-          نخواهند شد.
+          با حذف دائمی محصول <strong>«{catalog.name}»</strong>، این محصول از
+          کاتالوگ حذف شده و تمام نسخه‌های آن در لیست محصولات کاربران نیز حذف
+          خواهد شد. این عملیات قابل بازگشت نیست.
         </Dialog.Description>
 
         {errorMessage && (
@@ -100,7 +100,7 @@ export default function DeleteCatalogDialog({
             loading={deleteMutation.isPending}
             onClick={handleDelete}
           >
-            بایگانی
+            حذف دائمی
           </Button>
         </Flex>
       </Dialog.Content>

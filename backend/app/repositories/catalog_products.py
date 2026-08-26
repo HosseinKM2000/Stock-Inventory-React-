@@ -12,13 +12,14 @@ def get_catalog_products(
     db: Session,
     search: str | None = None,
     industry_id: int | None = None,
+    is_active: bool = True,
 ):
     stmt = (
         select(CatalogProduct)
         .options(joinedload(CatalogProduct.industry))
         .where(
             CatalogProduct.is_shared.is_(True),
-            CatalogProduct.is_active.is_(True),
+            CatalogProduct.is_active.is_(is_active),
         )
     )
 
@@ -116,4 +117,20 @@ def archive_catalog_product(
     product: CatalogProduct,
 ):
     product.is_active = False
-    db.commit()
+    db.flush()
+
+
+def restore_catalog_product(
+    db: Session,
+    product: CatalogProduct,
+):
+    product.is_active = True
+    db.flush()
+
+
+def permanently_delete_catalog_product(
+    db: Session,
+    product: CatalogProduct,
+) -> None:
+    db.delete(product)
+    db.flush()

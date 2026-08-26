@@ -31,6 +31,8 @@ export type CatalogProduct = {
 
   industry_id: number;
 
+  is_active: boolean;
+
   name: string;
 
   description: string | null;

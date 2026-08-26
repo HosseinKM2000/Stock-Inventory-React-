@@ -23,7 +23,10 @@ export const catalogProductKeys = {
   lists: () => [...catalogProductKeys.all, "list"] as const,
 
   list: (params?: { search?: string; industry_id?: number }) =>
-    [...catalogProductKeys.lists(), params ?? {}] as const,
+    [...catalogProductKeys.lists(), "active", params ?? {}] as const,
+
+  archivedList: (params?: { search?: string; industry_id?: number }) =>
+    [...catalogProductKeys.lists(), "archived", params ?? {}] as const,
 
   details: () => [...catalogProductKeys.all, "detail"] as const,
 

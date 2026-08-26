@@ -178,6 +178,8 @@ class CatalogProductOut(BaseModel):
 
     industry_id: int
 
+    is_active: bool
+
     name: str
 
     description: str | None
