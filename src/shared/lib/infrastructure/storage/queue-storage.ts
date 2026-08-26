@@ -1,28 +1,54 @@
 import { db } from "@/shared/lib/infrastructure/storage/db";
 import type { SyncQueueItem } from "@/shared/lib/infrastructure/storage/types";
+import { accessState } from "@/shared/access/access-state";
+
+const ownerId = () => accessState.user()?.id;
+
+function scopedId(id: string) {
+  const owner = ownerId();
+  if (!owner || id.startsWith(`${owner}:`)) return id;
+  return `${owner}:${id}`;
+}
 
 export const queueStorage = {
   async upsert(item: SyncQueueItem) {
-    return db.syncQueue.put(item);
+    const owner = ownerId();
+    if (!owner) throw new Error("برای همگام‌سازی باید وارد حساب شوید");
+    return db.syncQueue.put({
+      ...item,
+      id: scopedId(item.id),
+      ownerUserId: owner,
+    });
   },
 
   async get(id: string) {
-    return db.syncQueue.get(id);
+    const owner = ownerId();
+    if (!owner) return undefined;
+    const current = await db.syncQueue.get(scopedId(id));
+    if (current?.ownerUserId === owner) return current;
+    const legacy = await db.syncQueue.get(id);
+    return legacy?.ownerUserId === owner ? legacy : undefined;
   },
 
   async getAll() {
-    return db.syncQueue.orderBy("createdAt").toArray();
+    const owner = ownerId();
+    if (!owner) return [];
+    return db.syncQueue.where("ownerUserId").equals(owner).sortBy("createdAt");
   },
 
   async count() {
-    return db.syncQueue.count();
+    const owner = ownerId();
+    if (!owner) return 0;
+    return db.syncQueue.where("ownerUserId").equals(owner).count();
   },
 
   async remove(id: string) {
-    return db.syncQueue.delete(id);
+    const item = await this.get(id);
+    if (item) return db.syncQueue.delete(item.id);
   },
 
   async clear() {
-    return db.syncQueue.clear();
+    const items = await this.getAll();
+    return db.syncQueue.bulkDelete(items.map((item) => item.id));
   },
 };

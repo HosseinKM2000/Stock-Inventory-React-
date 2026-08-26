@@ -43,7 +43,8 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
   // const image =
   //   resolveAssetUrl(product.catalog_product?.image_url) ?? PLACEHOLDER;
 
-  const imagePreview = useImage(product?.image_url) ?? PLACEHOLDER;
+  const imagePreview =
+    useImage(product.image_url ?? product.catalog_product?.image_url) ?? PLACEHOLDER;
 
   return (
     <Card
@@ -59,6 +60,10 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
           <img
             src={imagePreview}
             alt={product?.catalog_product?.name}
+            onError={(event) => {
+              event.currentTarget.onerror = null;
+              event.currentTarget.src = PLACEHOLDER;
+            }}
             className="
               w-full
               h-full
@@ -143,6 +148,12 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
                 color="red"
                 variant="soft"
                 loading={deleting}
+                disabled={product.is_catalog_backed}
+                title={
+                  product.is_catalog_backed
+                    ? "محصولات کاتالوگی قابل حذف نیستند؛ می‌توانید آن‌ها را مخفی کنید."
+                    : undefined
+                }
                 onClick={() => onDelete(product.id)}
                 aria-label={`حذف ${product.custom_label ?? product.catalog_product?.name ?? "محصول"}`}
               >

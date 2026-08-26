@@ -14,6 +14,11 @@ export function createProductInitialValues(initial?: Product) {
   return {
     id: initial?.id ?? generateLocalId(),
 
+    catalog_product_id:
+      initial?.catalog_product_id ?? initial?.catalog_product?.id ?? 0,
+
+    is_catalog_backed: initial?.is_catalog_backed ?? false,
+
     category_id: initial?.category_id ?? null,
 
     quantity: initial?.quantity ?? 0,

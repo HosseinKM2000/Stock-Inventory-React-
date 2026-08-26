@@ -54,7 +54,7 @@ def list_categories(
     stmt = (
         select(Category)
         .where(Category.user_id == current_user.id)
-        .order_by(Category.created_at.desc())
+        .order_by(Category.created_at.desc(), Category.id.desc())
     )
 
     return list(db.scalars(stmt))
@@ -171,7 +171,7 @@ def category_stats(
         .outerjoin(InventoryItem, InventoryItem.category_id == Category.id)
         .where(Category.user_id == current_user.id)
         .group_by(Category.id)
-        .order_by(Category.created_at.desc())
+        .order_by(Category.created_at.desc(), Category.id.desc())
     ).all()
 
     result = []

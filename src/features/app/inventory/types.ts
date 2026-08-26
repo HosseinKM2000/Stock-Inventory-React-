@@ -19,6 +19,12 @@ export type CatalogProduct = {
 export type Product = {
   id: number;
 
+  local_user_id?: number;
+
+  catalog_product_id: number;
+
+  is_catalog_backed: boolean;
+
   category_id: number | null;
 
   version?: number;
@@ -77,6 +83,7 @@ export type ProductListParams = {
   sort?: ProductSort;
   category_id?: number;
   include_hidden?: boolean;
+  hide_catalog_products?: boolean;
 };
 
 export type ProductInput = {

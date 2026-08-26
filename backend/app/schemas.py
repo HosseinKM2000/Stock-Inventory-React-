@@ -145,15 +145,6 @@ class CatalogProductBase(BaseModel):
             return None
         return value
 
-    @field_validator("image_url")
-    @classmethod
-    def validate_image_url(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        if value.startswith("/uploads/") or value.startswith(("http://", "https://")):
-            return value
-        raise ValueError("CATALOG_IMAGE_URL_INVALID")
-
 class CatalogProductCreate(CatalogProductBase):
     industry_id: int = Field(gt=0)
 
@@ -181,16 +172,6 @@ class CatalogProductUpdate(BaseModel):
         if value is None:
             return None
         return value.strip() or None
-
-    @field_validator("image_url")
-    @classmethod
-    def validate_image_url(cls, value: str | None) -> str | None:
-        if value is None:
-            return None
-        if value.startswith("/uploads/") or value.startswith(("http://", "https://")):
-            return value
-        raise ValueError("CATALOG_IMAGE_URL_INVALID")
-
 
 class CatalogProductOut(BaseModel):
     id: int
@@ -237,6 +218,8 @@ class InventoryOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    catalog_product_id: int
+    is_catalog_backed: bool = False
     category_id: int | None = None
     quantity: int
     price: int

@@ -82,7 +82,7 @@ export function useDeleteCatalog() {
     mutationFn: deleteCatalogProduct,
 
     onSuccess: (_, id) => {
-      toast.success("محصول کاتالوگ حذف شد.");
+      toast.success("محصول از کاتالوگ فعال بایگانی شد؛ موجودی کاربران حفظ شده است.");
 
       queryClient.removeQueries({ queryKey: catalogProductKeys.detail(id) });
       queryClient.invalidateQueries({ queryKey: catalogProductKeys.lists() });
@@ -90,9 +90,9 @@ export function useDeleteCatalog() {
 
     onError: (error) => {
       toast.error(
-        error instanceof ApiError && error.message === "CATALOG_PRODUCT_IN_USE"
-          ? "این محصول کاتالوگی قابل حذف نیست؛ زیرا به محصولات موجود کاربران مرتبط است."
-          : "حذف محصول کاتالوگ ناموفق بود.",
+        error instanceof ApiError && error.message === "CATALOG_PRODUCT_NOT_FOUND"
+          ? "محصول کاتالوگ پیدا نشد."
+          : "بایگانی محصول کاتالوگ ناموفق بود.",
       );
     },
   });

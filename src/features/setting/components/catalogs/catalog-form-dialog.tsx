@@ -224,6 +224,9 @@ export default function CatalogFormDialog({
                     src={imagePreviewUrl}
                     alt={`پیش‌نمایش ${form.values.name || "محصول"}`}
                     className="h-full w-full object-cover"
+                    onError={(event) => {
+                      event.currentTarget.style.display = "none";
+                    }}
                   />
                 </Box>
                 <Button

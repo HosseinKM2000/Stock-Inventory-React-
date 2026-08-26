@@ -5,6 +5,7 @@ import {
   type DashboardProductList,
   type DashboardStats,
 } from "../types";
+import { catalogVisibilityService } from "@/features/app/inventory/services/catalog-visibility.service";
 
 class DashboardService {
   private hasImage(image?: string | null) {
@@ -62,7 +63,12 @@ class DashboardService {
 
   async getProducts(filter: DashboardFilter): Promise<DashboardProductList> {
     const allProducts = await inventoryService.getAll({ include_hidden: true });
-    const products = allProducts.filter((product) => !product.is_hidden);
+    const hideCatalogProducts = catalogVisibilityService.isHidden();
+    const products = allProducts.filter(
+      (product) =>
+        !product.is_hidden &&
+        !(hideCatalogProducts && product.is_catalog_backed),
+    );
 
     switch (filter) {
       case DashboardFilters.LOW_STOCK:

@@ -21,7 +21,7 @@ def get_backup(
             InventoryItem.user_id == current_user.id,
             InventoryItem.deleted_at.is_(None),
         )
-        .order_by(InventoryItem.created_at.desc())
+        .order_by(InventoryItem.created_at.desc(), InventoryItem.id.desc())
     )
 
     return list(db.scalars(stmt))

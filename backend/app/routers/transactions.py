@@ -91,7 +91,10 @@ def product_transactions(
             InventoryTransaction.inventory_item_id == product_id,
             InventoryTransaction.user_id == current_user.id,
         )
-        .order_by(InventoryTransaction.created_at.desc())
+        .order_by(
+            InventoryTransaction.created_at.desc(),
+            InventoryTransaction.id.desc(),
+        )
     )
 
     return list(db.scalars(stmt))
@@ -106,7 +109,10 @@ def all_transactions(
     stmt = (
         select(InventoryTransaction)
         .where(InventoryTransaction.user_id == current_user.id)
-        .order_by(InventoryTransaction.created_at.desc())
+        .order_by(
+            InventoryTransaction.created_at.desc(),
+            InventoryTransaction.id.desc(),
+        )
     )
 
     return list(db.scalars(stmt))

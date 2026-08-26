@@ -39,7 +39,7 @@ def list_custom_products(
     stmt = (
         select(CustomProduct)
         .where(CustomProduct.user_id == current_user.id)
-        .order_by(CustomProduct.created_at.desc())
+        .order_by(CustomProduct.created_at.desc(), CustomProduct.id.desc())
     )
 
     return list(db.scalars(stmt))

@@ -43,6 +43,11 @@ function sanitize(product: Product): Product {
 
     is_hidden: Boolean(product.is_hidden),
 
+    is_catalog_backed: Boolean(product.is_catalog_backed),
+
+    catalog_product_id:
+      Number(product.catalog_product_id) || product.catalog_product?.id || 0,
+
     image_url: typeof product.image_url === "string" ? product.image_url : null,
 
     status,
@@ -57,6 +62,10 @@ class InventoryService {
     // still work with the complete inventory.
     if (params.include_hidden === false) {
       products = products.filter((product) => !product.is_hidden);
+    }
+
+    if (params.hide_catalog_products) {
+      products = products.filter((product) => !product.is_catalog_backed);
     }
 
     // Search
@@ -76,39 +85,41 @@ class InventoryService {
       products = products.filter((product) => product.category_id === params.category_id);
     }
 
-    // Sort
-    if (params.sort) {
-      products = [...products].sort((a, b) => {
-        switch (params.sort) {
-          case "newest":
-            return (
-              new Date(b.created_at).getTime() -
-              new Date(a.created_at).getTime()
-            );
+    // Every inventory consumer gets deterministic newest-first ordering unless
+    // it explicitly requests a different user-selected sort.
+    const sort = params.sort ?? "newest";
+    products = [...products].sort((a, b) => {
+      switch (sort) {
+        case "newest":
+          return (
+            new Date(b.created_at).getTime() -
+              new Date(a.created_at).getTime() ||
+            b.id - a.id
+          );
 
-          case "oldest":
-            return (
-              new Date(a.created_at).getTime() -
-              new Date(b.created_at).getTime()
-            );
+        case "oldest":
+          return (
+            new Date(a.created_at).getTime() -
+              new Date(b.created_at).getTime() ||
+            a.id - b.id
+          );
 
-          case "price_high":
-            return b.price - a.price;
+        case "price_high":
+          return b.price - a.price;
 
-          case "price_low":
-            return a.price - b.price;
+        case "price_low":
+          return a.price - b.price;
 
-          case "quantity_high":
-            return b.quantity - a.quantity;
+        case "quantity_high":
+          return b.quantity - a.quantity;
 
-          case "quantity_low":
-            return a.quantity - b.quantity;
+        case "quantity_low":
+          return a.quantity - b.quantity;
 
-          default:
-            return 0;
-        }
-      });
-    }
+        default:
+          return 0;
+      }
+    });
 
     return products;
   }
@@ -201,6 +212,16 @@ class InventoryService {
   async remove(id: number): Promise<void> {
     accessState.requireWrite();
     const current = await inventoryRepository.get(id);
+
+    if (!current) {
+      throw new Error("محصول یافت نشد");
+    }
+
+    if (current.is_catalog_backed) {
+      throw new Error(
+        "محصولات کاتالوگی قابل حذف نیستند. می‌توانید آن‌ها را مخفی کنید.",
+      );
+    }
 
     await inventoryRepository.remove(id);
 

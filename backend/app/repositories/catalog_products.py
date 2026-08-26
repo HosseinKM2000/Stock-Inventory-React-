@@ -13,7 +13,14 @@ def get_catalog_products(
     search: str | None = None,
     industry_id: int | None = None,
 ):
-    stmt = select(CatalogProduct).options(joinedload(CatalogProduct.industry))
+    stmt = (
+        select(CatalogProduct)
+        .options(joinedload(CatalogProduct.industry))
+        .where(
+            CatalogProduct.is_shared.is_(True),
+            CatalogProduct.is_active.is_(True),
+        )
+    )
 
     if industry_id:
         stmt = stmt.where(
@@ -31,7 +38,8 @@ def get_catalog_products(
         )
 
     stmt = stmt.order_by(
-        CatalogProduct.name.asc()
+        CatalogProduct.created_at.desc(),
+        CatalogProduct.id.desc(),
     )
 
     return list(db.scalars(stmt))
@@ -44,7 +52,25 @@ def get_catalog_product(
     return db.scalar(
         select(CatalogProduct)
         .options(joinedload(CatalogProduct.industry))
-        .where(CatalogProduct.id == catalog_id)
+        .where(
+            CatalogProduct.id == catalog_id,
+            CatalogProduct.is_shared.is_(True),
+            CatalogProduct.is_active.is_(True),
+        )
+    )
+
+
+def get_catalog_product_any_state(
+    db: Session,
+    catalog_id: int,
+):
+    return db.scalar(
+        select(CatalogProduct)
+        .options(joinedload(CatalogProduct.industry))
+        .where(
+            CatalogProduct.id == catalog_id,
+            CatalogProduct.is_shared.is_(True),
+        )
     )
 
 
@@ -58,10 +84,12 @@ def create_catalog_product(
         description=payload.description,
         brand=payload.brand,
         image_url=payload.image_url,
+        is_shared=True,
+        is_active=True,
     )
 
     db.add(product)
-    db.commit()
+    db.flush()
     db.refresh(product)
 
     return product
@@ -77,15 +105,15 @@ def update_catalog_product(
     for key, value in data.items():
         setattr(product, key, value)
 
-    db.commit()
+    db.flush()
     db.refresh(product)
 
     return product
 
 
-def delete_catalog_product(
+def archive_catalog_product(
     db: Session,
     product: CatalogProduct,
 ):
-    db.delete(product)
+    product.is_active = False
     db.commit()

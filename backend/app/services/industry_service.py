@@ -7,7 +7,9 @@ from ..schemas import IndustryCreate, IndustryUpdate
 
 
 def get_industries(db: Session):
-    return list(db.scalars(select(Industry).order_by(Industry.name)))
+    # Industries predate created_at tracking; the monotonic primary key is the
+    # reliable creation-order source for both legacy and new records.
+    return list(db.scalars(select(Industry).order_by(Industry.id.desc())))
 
 
 def create_industry(

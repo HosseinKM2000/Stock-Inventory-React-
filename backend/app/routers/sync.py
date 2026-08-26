@@ -52,8 +52,14 @@ def _catalog_for_operation(
 
     if isinstance(catalog_id, int) and catalog_id > 0:
         catalog = db.get(CatalogProduct, catalog_id)
-        if catalog is not None:
+        if (
+            catalog is not None
+            and catalog.is_shared
+            and catalog.is_active
+            and catalog.industry_id == user.industry_id
+        ):
             return catalog
+        raise ValueError("CATALOG_PRODUCT_NOT_AVAILABLE")
 
     if user.industry_id is None:
         raise ValueError("An industry is required before creating a product")
@@ -67,6 +73,7 @@ def _catalog_for_operation(
         name=name.strip(),
         description=catalog_payload.get("description"),
         brand=catalog_payload.get("brand"),
+        is_shared=False,
     )
     db.add(catalog)
     db.flush()
@@ -173,10 +180,20 @@ async def push_batch(
 
             if operation.operation == "DELETE":
                 if item is not None:
+                    if item.is_catalog_backed:
+                        raise ValueError("CATALOG_BACKED_PRODUCT_DELETE_FORBIDDEN")
+                    private_catalog = (
+                        item.catalog_product
+                        if not item.catalog_product.is_shared
+                        else None
+                    )
                     if item.image_url and item.image_url.startswith("/uploads/"):
                         (settings.UPLOAD_DIR / Path(item.image_url).name).unlink(missing_ok=True)
                     db.delete(item)
                     db.flush()
+                    if private_catalog is not None:
+                        db.delete(private_catalog)
+                        db.flush()
                 _record_change(db, current_user.id, operation.entity_id, "DELETE", None)
                 result = SyncOperationResult(
                     operation_id=operation.operation_id,
@@ -209,6 +226,7 @@ async def push_batch(
                             id=operation.entity_id,
                             user_id=current_user.id,
                             catalog_product_id=catalog.id,
+                            is_catalog_backed=catalog.is_shared,
                         )
                         db.add(item)
                     _apply_fields(item, payload)

@@ -7,6 +7,7 @@ import {
   ClipboardIcon,
   LockClosedIcon,
   StarIcon,
+  ReloadIcon,
 } from "@radix-ui/react-icons";
 
 export const settingsNavItems = [
@@ -39,6 +40,11 @@ export const settingsNavItems = [
     label: "کاتالوگ",
     to: "/setting/catalogs",
     icon: ClipboardIcon,
+  },
+  {
+    label: "محصولات",
+    to: "/setting/products",
+    icon: ReloadIcon,
   },
   {
     label: "اشتراک",

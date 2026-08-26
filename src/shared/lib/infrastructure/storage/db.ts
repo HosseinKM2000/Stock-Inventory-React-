@@ -106,6 +106,45 @@ class AppDatabase extends Dexie {
       syncMetadata: "key, updatedAt",
       categories: "id, name, updated_at",
     });
+
+    this.version(5)
+      .stores({
+        inventoryItems: "id, local_user_id, catalog_product_id, category_id, updated_at",
+        syncQueue:
+          "id, ownerUserId, operationId, entity, entityId, status, nextAttemptAt, createdAt, updatedAt",
+        syncMetadata: "key, updatedAt",
+        categories: "id, local_user_id, name, updated_at",
+      })
+      .upgrade(async (transaction) => {
+        let lastUserId: number | undefined;
+        try {
+          const stored = JSON.parse(localStorage.getItem("inventory-last-user") ?? "null") as { id?: number } | null;
+          lastUserId = stored?.id;
+        } catch {
+          lastUserId = undefined;
+        }
+
+        if (!lastUserId) return;
+
+        await transaction
+          .table<LocalInventoryItem>("inventoryItems")
+          .toCollection()
+          .modify((item) => {
+            item.local_user_id ??= lastUserId;
+          });
+        await transaction
+          .table<SyncQueueItem>("syncQueue")
+          .toCollection()
+          .modify((item) => {
+            item.ownerUserId ??= lastUserId;
+          });
+        await transaction
+          .table<Category>("categories")
+          .toCollection()
+          .modify((item) => {
+            item.local_user_id ??= lastUserId;
+          });
+      });
   }
 }
 

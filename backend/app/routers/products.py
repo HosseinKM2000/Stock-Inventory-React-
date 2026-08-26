@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Annotated, Literal
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from ..config import settings
 from ..deps import CurrentUser, CurrentWritableUser, DbSession
@@ -155,6 +155,7 @@ async def create_product(
         industry_id=current_user.industry_id,
         name=name,
         description=description,
+        is_shared=False,
     )
     db.add(catalog)
     db.flush()
@@ -169,6 +170,7 @@ async def create_product(
         category_id=category_id,
         image_url=image_url,
         user_id=current_user.id,
+        is_catalog_backed=False,
     )
     db.add(product)
     db.commit()
@@ -227,8 +229,19 @@ def delete_product(
     product_id: int, current_user: CurrentWritableUser, db: DbSession
 ) -> None:
     product = _get_owned_product(db, product_id, current_user.id)
+    if product.is_catalog_backed:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="CATALOG_BACKED_PRODUCT_DELETE_FORBIDDEN",
+        )
+    private_catalog = (
+        product.catalog_product if not product.catalog_product.is_shared else None
+    )
     _delete_image(product.image_url)
     db.delete(product)
+    db.flush()
+    if private_catalog is not None:
+        db.delete(private_catalog)
     db.commit()
 
 

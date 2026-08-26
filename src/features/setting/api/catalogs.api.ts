@@ -1,4 +1,5 @@
 import { apiFetch } from "@/shared/api/client";
+import { networkService } from "@/shared/lib/infrastructure/network/network-service";
 import type {
   CatalogProduct,
   CatalogProductInput,
@@ -6,7 +7,14 @@ import type {
   CatalogProductUpdate,
 } from "../types";
 
+function requireOnline() {
+  if (networkService.isOffline()) {
+    throw new Error("مدیریت کاتالوگ به اتصال اینترنت نیاز دارد.");
+  }
+}
+
 export function getCatalogProducts(params?: CatalogProductListParams) {
+  requireOnline();
   const query = new URLSearchParams();
 
   if (params?.search) query.set("search", params.search);
@@ -20,10 +28,12 @@ export function getCatalogProducts(params?: CatalogProductListParams) {
 }
 
 export function getCatalogProduct(id: number) {
+  requireOnline();
   return apiFetch<CatalogProduct>(`/catalog-products/${id}`);
 }
 
 export function createCatalogProduct(data: CatalogProductInput) {
+  requireOnline();
   return apiFetch<CatalogProduct>("/catalog-products", {
     method: "POST",
     json: data,
@@ -31,6 +41,7 @@ export function createCatalogProduct(data: CatalogProductInput) {
 }
 
 export function updateCatalogProduct(id: number, data: CatalogProductUpdate) {
+  requireOnline();
   return apiFetch<CatalogProduct>(`/catalog-products/${id}`, {
     method: "PATCH",
     json: data,
@@ -38,6 +49,7 @@ export function updateCatalogProduct(id: number, data: CatalogProductUpdate) {
 }
 
 export function deleteCatalogProduct(id: number) {
+  requireOnline();
   return apiFetch<void>(`/catalog-products/${id}`, {
     method: "DELETE",
   });

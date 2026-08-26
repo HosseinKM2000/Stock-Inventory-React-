@@ -13,7 +13,7 @@ def get_active_sessions(
     stmt = select(UserSession).where(
         UserSession.user_id == user_id,
         UserSession.is_active.is_(True),
-    )
+    ).order_by(UserSession.created_at.desc(), UserSession.id.desc())
 
     return list(db.scalars(stmt))
 

@@ -15,14 +15,7 @@ export const catalogSchema = z.object({
     .max(120, "نام برند نمی‌تواند بیشتر از ۱۲۰ نویسه باشد"),
   image_url: z
     .string()
-    .max(500, "آدرس تصویر بیش از حد طولانی است")
-    .refine(
-      (value) =>
-        !value.trim() ||
-        value.trim().startsWith("/uploads/") ||
-        /^https?:\/\//i.test(value.trim()),
-      "آدرس تصویر باید یک نشانی معتبر باشد",
-    ),
+    .max(500, "آدرس تصویر بیش از حد طولانی است"),
 });
 
 export type CatalogFormValues = z.infer<typeof catalogSchema>;

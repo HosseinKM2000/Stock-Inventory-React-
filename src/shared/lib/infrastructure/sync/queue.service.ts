@@ -1,5 +1,6 @@
 import { queueStorage } from "../storage/queue-storage";
 import type { QueueAction, SyncQueueItem } from "../storage/types";
+import { accessState } from "@/shared/access/access-state";
 
 export const MAX_RETRIES = 5;
 
@@ -8,7 +9,9 @@ const BASE_BACKOFF_MS = 5_000;
 const MAX_BACKOFF_MS = 5 * 60_000;
 
 function queueId(entity: string, entityId: number) {
-  return `${entity}-${entityId}`;
+  const owner = accessState.user()?.id;
+  if (!owner) throw new Error("برای همگام‌سازی باید وارد حساب شوید");
+  return `${owner}:${entity}-${entityId}`;
 }
 
 function mergePayload(previous: unknown, next: unknown) {
@@ -87,6 +90,8 @@ export const queueService = {
 
     await queueStorage.upsert({
       id,
+
+      ownerUserId: accessState.user()?.id,
 
       operationId:
         pending?.status === "pending" || pending?.status === "retryable_error"

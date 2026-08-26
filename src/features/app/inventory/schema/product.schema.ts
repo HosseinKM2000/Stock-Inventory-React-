@@ -19,6 +19,10 @@ const catalogProductSchema = z.object({
 export const productSchema = z.object({
   id: z.number(),
 
+  catalog_product_id: z.number(),
+
+  is_catalog_backed: z.boolean(),
+
   category_id: z.number().nullable(),
 
   quantity: z.coerce.number().min(0, "تعداد نامعتبر است"),

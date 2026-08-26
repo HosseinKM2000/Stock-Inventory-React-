@@ -25,7 +25,7 @@ def export_inventory_json(
             InventoryItem.user_id == current_user.id,
             InventoryItem.deleted_at.is_(None),
             InventoryItem.is_hidden == False,
-        )
+        ).order_by(InventoryItem.created_at.desc(), InventoryItem.id.desc())
     ).all()
 
     return items
@@ -45,7 +45,7 @@ def export_inventory_csv(
             InventoryItem.user_id == current_user.id,
             InventoryItem.deleted_at.is_(None),
             InventoryItem.is_hidden == False,
-        )
+        ).order_by(InventoryItem.created_at.desc(), InventoryItem.id.desc())
     ).all()
 
     output = io.StringIO()
@@ -93,6 +93,9 @@ def export_transactions_csv(
     transactions = db.scalars(
         select(InventoryTransaction).where(
             InventoryTransaction.user_id == current_user.id
+        ).order_by(
+            InventoryTransaction.created_at.desc(),
+            InventoryTransaction.id.desc(),
         )
     ).all()
 

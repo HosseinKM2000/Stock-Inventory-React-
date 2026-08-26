@@ -78,7 +78,9 @@ def _admin_user_payload(db: DbSession, user: User) -> dict:
 
 @router.get("/users", response_model=list[AdminUserOut])
 def list_users(_: CurrentAdmin, db: DbSession):
-    users = list(db.scalars(select(User).order_by(User.created_at.desc())))
+    users = list(
+        db.scalars(select(User).order_by(User.created_at.desc(), User.id.desc()))
+    )
     return [_admin_user_payload(db, user) for user in users]
 
 
@@ -183,7 +185,13 @@ def admin_list_plans(_: CurrentPlanManager, db: DbSession):
 def plan_subscribers(plan_id: str, _: CurrentPlanManager, db: DbSession):
     if db.get(SubscriptionPlan, plan_id) is None:
         raise HTTPException(status_code=404, detail="PLAN_NOT_FOUND")
-    users = list(db.scalars(select(User).where(User.plan == plan_id)))
+    users = list(
+        db.scalars(
+            select(User)
+            .where(User.plan == plan_id)
+            .order_by(User.created_at.desc(), User.id.desc())
+        )
+    )
     return [_admin_user_payload(db, user) for user in users]
 
 
@@ -259,7 +267,7 @@ def audit_log(_: CurrentAdmin, db: DbSession, limit: int = 100):
     records = list(
         db.scalars(
             select(AdminAuditLog)
-            .order_by(AdminAuditLog.created_at.desc())
+            .order_by(AdminAuditLog.created_at.desc(), AdminAuditLog.id.desc())
             .limit(min(max(limit, 1), 500))
         )
     )

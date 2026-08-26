@@ -21,6 +21,7 @@ import { useCatalogProduct } from "../../mutations/use-catalog";
 
 type Props = {
   catalogId: number;
+  fallbackIndustryName?: string;
   trigger?: ReactNode;
 };
 
@@ -29,7 +30,11 @@ const dateFormatter = new Intl.DateTimeFormat("fa-IR", {
   timeStyle: "short",
 });
 
-export default function CatalogDetailsDialog({ catalogId, trigger }: Props) {
+export default function CatalogDetailsDialog({
+  catalogId,
+  fallbackIndustryName,
+  trigger,
+}: Props) {
   const [open, setOpen] = useState(false);
   const { data: product, isLoading, isError, error } = useCatalogProduct(
     catalogId,
@@ -40,6 +45,8 @@ export default function CatalogDetailsDialog({ catalogId, trigger }: Props) {
   const createdAt = product
     ? dateFormatter.format(new Date(product.created_at))
     : "—";
+  const industryName =
+    product?.industry?.name ?? fallbackIndustryName ?? "حوزه نامشخص";
 
   return (
     <Dialog.Root open={open} onOpenChange={setOpen}>
@@ -86,6 +93,9 @@ export default function CatalogDetailsDialog({ catalogId, trigger }: Props) {
                   src={imageUrl}
                   alt={product.name}
                   className="h-full w-full object-cover"
+                  onError={(event) => {
+                    event.currentTarget.style.display = "none";
+                  }}
                 />
               ) : (
                 <Flex height="100%" align="center" justify="center" direction="column" gap="2">
@@ -107,7 +117,7 @@ export default function CatalogDetailsDialog({ catalogId, trigger }: Props) {
                 <Box className="card-metric-icon"><CubeIcon /></Box>
                 <Box>
                   <Text as="div" size="1" color="gray">حوزه کاری</Text>
-                  <Text as="div" size="2" weight="medium">{product.industry.name}</Text>
+                  <Text as="div" size="2" weight="medium">{industryName}</Text>
                 </Box>
               </Flex>
               <Flex gap="3" align="center" className="rounded-xl border border-[var(--gray-a5)] p-3">

@@ -58,7 +58,10 @@ def plan_payload(plan: SubscriptionPlan) -> dict[str, Any]:
 
 
 def list_plans(db: Session, active_only: bool = False) -> list[SubscriptionPlan]:
-    statement = select(SubscriptionPlan).order_by(SubscriptionPlan.created_at)
+    statement = select(SubscriptionPlan).order_by(
+        SubscriptionPlan.created_at.desc(),
+        SubscriptionPlan.id.desc(),
+    )
     if active_only:
         statement = statement.where(SubscriptionPlan.is_active.is_(True))
     return list(db.scalars(statement))

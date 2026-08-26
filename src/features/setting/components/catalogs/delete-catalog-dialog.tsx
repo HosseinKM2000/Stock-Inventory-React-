@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { Dialog, Flex, Callout } from "@radix-ui/themes";
-import { TrashIcon } from "@radix-ui/react-icons";
+import { ArchiveIcon } from "@radix-ui/react-icons";
 
 import { Button } from "@/shared/ui/button/button";
 
@@ -38,13 +38,11 @@ export default function DeleteCatalogDialog({
 
   const errorMessage =
     deleteMutation.error instanceof ApiError
-      ? deleteMutation.error.message === "CATALOG_PRODUCT_IN_USE"
-        ? "این محصول در موجودی کاربران استفاده شده است و تا زمانی که وابستگی‌های آن وجود دارد قابل حذف نیست."
-        : deleteMutation.error.message === "CATALOG_PRODUCT_NOT_FOUND"
+      ? deleteMutation.error.message === "CATALOG_PRODUCT_NOT_FOUND"
           ? "این محصول قبلاً حذف شده یا دیگر وجود ندارد."
           : deleteMutation.error.message
       : deleteMutation.isError
-        ? "خطا در حذف محصول کاتالوگ"
+        ? "خطا در بایگانی محصول کاتالوگ"
         : null;
 
   return (
@@ -55,25 +53,21 @@ export default function DeleteCatalogDialog({
       <Dialog.Trigger>
         <Button
           color="red"
-          size="2"
+          size={{ initial: "2", lg: "1" }}
         >
-          <TrashIcon />
+          <ArchiveIcon />
         </Button>
       </Dialog.Trigger>
 
       <Dialog.Content maxWidth="420px">
         <Dialog.Title color="red">
-          حذف محصول کاتالوگ
+          بایگانی محصول کاتالوگ
         </Dialog.Title>
 
         <Dialog.Description mt="3">
-          آیا از حذف
-          <strong>
-            {" "}
-            {catalog.name}
-            {" "}
-          </strong>
-          اطمینان دارید؟
+          محصول <strong>«{catalog.name}»</strong> از کاتالوگ فعال حذف می‌شود و
+          دیگر برای کاربران جدید اضافه نخواهد شد. محصولات موجود کاربران حذف
+          نخواهند شد.
         </Dialog.Description>
 
         {errorMessage && (
@@ -106,7 +100,7 @@ export default function DeleteCatalogDialog({
             loading={deleteMutation.isPending}
             onClick={handleDelete}
           >
-            حذف
+            بایگانی
           </Button>
         </Flex>
       </Dialog.Content>

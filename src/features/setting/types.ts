@@ -13,6 +13,7 @@ export type IndustryInput = {
 
 export type Category = {
   id: number;
+  local_user_id?: number;
   name: string;
   description: string;
   created_at: string;
@@ -40,7 +41,9 @@ export type CatalogProduct = {
 
   created_at: string;
 
-  industry: Pick<Industry, "id" | "name">;
+  // Keep industry_id as the stable source of truth. Legacy API responses may
+  // not contain the expanded relation, so consumers must handle its absence.
+  industry?: Pick<Industry, "id" | "name"> | null;
 };
 
 export type CatalogProductInput = {

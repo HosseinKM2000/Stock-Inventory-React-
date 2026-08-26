@@ -88,7 +88,10 @@ export function ProductForm({
     },
   });
 
-  const imagePath = form.values.image_url ?? null;
+  const imagePath =
+    form.values.image_url ??
+    (initial?.is_catalog_backed ? initial.catalog_product?.image_url : null) ??
+    null;
 
   const imagePreview = useImage(imagePath);
 
@@ -173,6 +176,16 @@ export function ProductForm({
           </Callout.Root>
         )}
 
+        {initial?.is_catalog_backed && mode !== "create" && (
+          <Callout.Root color="violet" dir="rtl" mt="4">
+            <Callout.Text>
+              نام، توضیحات و برند این محصول از کاتالوگ دریافت می‌شود و فقط مدیر
+              کاتالوگ می‌تواند آن‌ها را تغییر دهد. اطلاعات موجودی و نمایش محصول
+              همچنان قابل ویرایش است.
+            </Callout.Text>
+          </Callout.Root>
+        )}
+
         <Grid columns={{ initial: "1", md: "3" }} gap="5" mt="5">
           <Box className="md:col-span-3">
             <ProductImageUpload
@@ -182,11 +195,44 @@ export function ProductForm({
             />
           </Box>
 
+          {initial?.is_catalog_backed && (
+            <Card className="md:col-span-3" size="2">
+              <Text as="div" weight="bold" mb="3">
+                اطلاعات کاتالوگ (فقط خواندنی)
+              </Text>
+              <Grid columns={{ initial: "1", md: "2" }} gap="4">
+                <FormField id="catalog_name" label="نام کاتالوگ">
+                  <TextInput
+                    size="3"
+                    value={form.values.catalog_product?.name ?? ""}
+                    disabled
+                  />
+                </FormField>
+                <FormField id="brand" label="برند">
+                  <TextInput
+                    size="3"
+                    value={form.values.catalog_product?.brand ?? ""}
+                    disabled
+                  />
+                </FormField>
+                <Box className="md:col-span-2">
+                  <FormField id="catalog_description" label="توضیحات کاتالوگ">
+                    <TextAreaInput
+                      size="3"
+                      value={form.values.catalog_product?.description ?? ""}
+                      disabled
+                    />
+                  </FormField>
+                </Box>
+              </Grid>
+            </Card>
+          )}
+
           {/* Custom Label */}
 
           <FormField
             id="custom_label"
-            label="لیبل محصول"
+            label={initial?.is_catalog_backed ? "لیبل سفارشی" : "نام محصول"}
             error={form.errors.custom_label}
           >
             <TextInput
@@ -195,26 +241,6 @@ export function ProductForm({
               value={form.values.custom_label ?? ""}
               onChange={form.handleChange}
               disabled={readOnly}
-            />
-          </FormField>
-
-          {/* Catalog Name */}
-
-          <FormField id="catalog_name" label="نام کاتالوگ">
-            <TextInput
-              size="3"
-              value={form.values?.catalog_product?.name ?? ""}
-              disabled
-            />
-          </FormField>
-
-          {/* Brand */}
-
-          <FormField id="brand" label="برند">
-            <TextInput
-              size="3"
-              value={form.values?.catalog_product?.brand ?? ""}
-              disabled
             />
           </FormField>
 
@@ -281,18 +307,6 @@ export function ProductForm({
               disabled={readOnly}
             />
           </FormField>
-
-          {/* Catalog Description */}
-
-          <Box className="md:col-span-3">
-            <FormField id="catalog_description" label="توضیحات کاتالوگ">
-              <TextAreaInput
-                size="3"
-                value={form.values?.catalog_product?.description ?? ""}
-                disabled
-              />
-            </FormField>
-          </Box>
 
           {/* Note */}
 
@@ -387,9 +401,15 @@ export function ProductForm({
                 color="red"
                 type="button"
                 loading={deleting}
+                disabled={initial?.is_catalog_backed}
+                title={
+                  initial?.is_catalog_backed
+                    ? "محصولات کاتالوگی قابل حذف نیستند؛ از گزینه مخفی کردن استفاده کنید."
+                    : undefined
+                }
                 onClick={onDelete}
               >
-                حذف
+                {initial?.is_catalog_backed ? "محصول کاتالوگی قابل حذف نیست" : "حذف"}
               </Button>
             )}
           </Grid>

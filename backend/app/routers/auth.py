@@ -3,7 +3,7 @@ from sqlalchemy import select
 from fastapi import Header
 
 from ..deps import CurrentUser, DbSession, DeviceFingerprint
-from ..models import User, Industry, CatalogProduct, InventoryItem
+from ..models import User
 from ..schemas import (
     IndustrySelect,
     LoginRequest,
@@ -22,6 +22,7 @@ from ..services.auth_service import (
     update_user,
     update_password as update_password_service,
 )
+from ..services.catalog_provisioning_service import provision_industry_inventory
 
 router = APIRouter(
     prefix="/auth",
@@ -179,57 +180,11 @@ def set_industry(
     current_user: CurrentUser,
     db: DbSession,
 ):
-    industry = db.get(
-        Industry,
-        payload.industry_id,
+    return provision_industry_inventory(
+        db=db,
+        user=current_user,
+        industry_id=payload.industry_id,
     )
-
-    if industry is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Industry not found",
-        )
-
-    # -----------------------------
-    # Update user's industry
-    # -----------------------------
-    current_user.industry_id = industry.id
-
-    # -----------------------------
-    # Remove previous inventory
-    # -----------------------------
-    db.query(InventoryItem).filter(
-        InventoryItem.user_id == current_user.id
-    ).delete()
-
-    # -----------------------------
-    # Load catalog of selected industry
-    # -----------------------------
-    catalog_products = list(
-        db.scalars(
-            select(CatalogProduct).where(
-                CatalogProduct.industry_id  == industry.id
-            )
-        )
-    )
-
-    # -----------------------------
-    # Create user's inventory
-    # -----------------------------
-    inventory_items = [
-        InventoryItem(
-            user_id=current_user.id,
-            catalog_product_id=product.id,
-        )
-        for product in catalog_products
-    ]
-
-    db.bulk_save_objects(inventory_items)
-
-    db.commit()
-    db.refresh(current_user)
-
-    return current_user
 
 @router.post("/logout")
 def logout_endpoint(

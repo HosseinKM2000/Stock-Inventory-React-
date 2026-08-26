@@ -128,32 +128,39 @@ const Catalogs = () => {
       )}
 
       {!catalogLoading && !catalogError && catalogs.length > 0 && (
-        <Box className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <Box className="grid! grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-3">
           {catalogs.map((product) => {
             const imageUrl = resolveAssetUrl(product.image_url);
             const industryName = product.industry?.name ?? industryNames.get(product.industry_id) ?? "حوزه نامشخص";
 
             return (
               <Card key={product.id} className="min-w-0 overflow-hidden p-0!">
-                <Box className="aspect-[16/7] bg-[var(--gray-a3)]">
+                <Box className="aspect-[16/7] bg-[var(--gray-a3)] lg:aspect-[16/6]">
                   {imageUrl ? (
-                    <img src={imageUrl} alt={product.name} className="h-full w-full object-cover" />
+                    <img
+                      src={imageUrl}
+                      alt={product.name}
+                      className="h-full w-full object-cover"
+                      onError={(event) => {
+                        event.currentTarget.style.display = "none";
+                      }}
+                    />
                   ) : (
                     <Flex height="100%" align="center" justify="center"><CubeIcon width="30" height="30" /></Flex>
                   )}
                 </Box>
 
-                <Flex direction="column" justify="between" gap="4" className="min-h-56 p-4">
+                <Flex direction="column" justify="between" gap={{ initial: "4", lg: "3" }} className="min-h-56 p-4 lg:min-h-44 lg:p-3">
                   <Box className="min-w-0">
                     <Flex justify="between" align="start" gap="2">
                       <Text as="div" size="4" weight="bold" className="min-w-0 break-words">{product.name}</Text>
                       <Badge color="violet" variant="soft" className="shrink-0">{industryName}</Badge>
                     </Flex>
-                    <Text as="div" mt="2" size="2" color="gray" className="line-clamp-3 whitespace-pre-wrap">
+                    <Text as="div" mt="2" size="2" color="gray" className="line-clamp-3 whitespace-pre-wrap lg:line-clamp-2">
                       {product.description || "بدون توضیحات"}
                     </Text>
                     {product.brand && <Text as="div" mt="2" size="2">برند: {product.brand}</Text>}
-                    <Flex align="center" gap="1" mt="3">
+                    <Flex align="center" gap="1" mt={{ initial: "3", lg: "2" }}>
                       <CalendarIcon />
                       <Text size="1" color="gray">{dateFormatter.format(new Date(product.created_at))}</Text>
                     </Flex>
@@ -162,12 +169,13 @@ const Catalogs = () => {
                   <Flex justify="end" gap="2" wrap="wrap">
                     <CatalogDetailsDialog
                       catalogId={product.id}
-                      trigger={<Button size="2" variant="soft"><EyeOpenIcon />مشاهده</Button>}
+                      fallbackIndustryName={industryName}
+                      trigger={<Button size={{ initial: "2", lg: "1" }} variant="soft"><EyeOpenIcon />مشاهده</Button>}
                     />
                     <CatalogFormDialog
                       mode="edit"
                       catalogProduct={product}
-                      trigger={<Button size="2" color="amber" variant="soft"><Pencil1Icon />ویرایش</Button>}
+                      trigger={<Button size={{ initial: "2", lg: "1" }} color="amber" variant="soft"><Pencil1Icon />ویرایش</Button>}
                     />
                     <DeleteCatalogDialog catalog={product} />
                   </Flex>

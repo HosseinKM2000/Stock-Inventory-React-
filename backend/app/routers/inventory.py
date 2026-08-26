@@ -35,7 +35,7 @@ def trash_inventory(
             InventoryItem.user_id == current_user.id,
             InventoryItem.deleted_at.is_not(None),
         )
-        .order_by(InventoryItem.created_at.desc())
+        .order_by(InventoryItem.created_at.desc(), InventoryItem.id.desc())
     )
 
     return list(db.scalars(stmt))
@@ -70,7 +70,7 @@ def list_inventory(
             .options(
                 joinedload(InventoryItem.catalog_product)
             )
-            .order_by(InventoryItem.created_at.desc())
+            .order_by(InventoryItem.created_at.desc(), InventoryItem.id.desc())
             .offset((page - 1) * limit)
             .limit(limit)
         )
@@ -133,6 +133,12 @@ def delete_inventory_item(
         item_id,
         current_user.id,
     )
+
+    if item.is_catalog_backed:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="CATALOG_BACKED_PRODUCT_DELETE_FORBIDDEN",
+        )
 
     item.deleted_at = datetime.now(timezone.utc)
 
@@ -202,7 +208,10 @@ def list_transactions(
         .where(
             InventoryTransaction.inventory_item_id == item_id
         )
-        .order_by(InventoryTransaction.created_at.desc())
+        .order_by(
+            InventoryTransaction.created_at.desc(),
+            InventoryTransaction.id.desc(),
+        )
     )
 
     return list(db.scalars(stmt))
@@ -260,6 +269,12 @@ def force_delete_inventory_item(
         item_id,
         current_user.id,
     )
+
+    if item.is_catalog_backed:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="CATALOG_BACKED_PRODUCT_DELETE_FORBIDDEN",
+        )
 
     db.delete(item)
     db.commit()

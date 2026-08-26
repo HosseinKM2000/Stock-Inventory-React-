@@ -14,6 +14,8 @@ export interface SyncQueueItem {
 
   id: string;
 
+  ownerUserId?: number;
+
   operationId: string;
 
   entity: string;

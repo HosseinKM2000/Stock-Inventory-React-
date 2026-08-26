@@ -8,6 +8,9 @@ import { useInventoryVirtual } from "../mutations/useInventoryVirtual";
 import { useDeleteProduct, useProducts } from "../mutations/use-products";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/shared/ui/dialog/confirm-dialog";
+import { Button } from "@/shared/ui/button/button";
+import { EyeNoneIcon, EyeOpenIcon } from "@radix-ui/react-icons";
+import { catalogVisibilityService } from "../services/catalog-visibility.service";
 
 const QUICK_STOCK_HINT_KEY = "inventory-quick-stock-hint-v3";
 
@@ -15,10 +18,14 @@ const InventoryList = () => {
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<ProductSort>("newest");
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [catalogProductsHidden, setCatalogProductsHidden] = useState(() =>
+    catalogVisibilityService.isHidden(),
+  );
 
   const { data, isLoading, isError } = useProducts({
     search: search || undefined,
     sort,
+    hide_catalog_products: catalogProductsHidden,
   });
 
   const products = data ?? [];
@@ -69,6 +76,30 @@ const InventoryList = () => {
         gap-4
       "
     >
+      <Flex justify="end">
+        <Button
+          type="button"
+          size="2"
+          variant="soft"
+          color={catalogProductsHidden ? "gray" : "violet"}
+          onClick={() => {
+            const next = !catalogProductsHidden;
+            catalogVisibilityService.setHidden(next);
+            setCatalogProductsHidden(next);
+            toast.success(
+              next
+                ? "محصولات کاتالوگی از فهرست عملیاتی مخفی شدند."
+                : "محصولات کاتالوگی دوباره نمایش داده می‌شوند.",
+            );
+          }}
+        >
+          {catalogProductsHidden ? <EyeOpenIcon /> : <EyeNoneIcon />}
+          {catalogProductsHidden
+            ? "نمایش محصولات کاتالوگی"
+            : "مخفی کردن محصولات کاتالوگی"}
+        </Button>
+      </Flex>
+
       {/* FILTERS MOBILE + TABLET */}
 
       <Box

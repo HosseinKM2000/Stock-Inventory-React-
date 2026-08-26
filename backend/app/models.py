@@ -197,6 +197,15 @@ class CatalogProduct(Base):
         nullable=True,
     )
 
+    # Legacy user-created products are represented by a private catalog row
+    # because inventory_items.catalog_product_id is currently non-nullable.
+    # Only shared rows belong to the administrator-managed catalog.
+    is_shared: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+
+    # Catalog removal is archival. Inventory rows keep this record as their
+    # historical metadata source and are never cascaded or rewritten.
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
+
     created_at: Mapped[datetime] = mapped_column(
         DateTime,
         default=_now,
@@ -230,6 +239,12 @@ class InventoryItem(Base):
     price: Mapped[int] = mapped_column(Integer, default=0)
 
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
+    is_catalog_backed: Mapped[bool] = mapped_column(
+        Boolean,
+        default=False,
+        index=True,
+    )
 
     version: Mapped[int] = mapped_column(Integer, default=1)
 
@@ -441,8 +456,7 @@ class Industry(Base):
     )
 
     catalog_products: Mapped[list["CatalogProduct"]] = relationship(
-    back_populates="industry",
-    cascade="all, delete-orphan"
+        back_populates="industry",
     )
 
     users: Mapped[list["User"]] = relationship(
