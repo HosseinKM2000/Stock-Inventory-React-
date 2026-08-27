@@ -37,7 +37,7 @@ const DashboardProducts = ({ filter }: DashboardProductsProps) => {
   };
 
   return (
-    <Flex direction="column" gap="4" className="p-4" dir="rtl">
+    <Flex direction="column" gap="4" className="app-responsive-page p-4" dir="rtl">
       <Text size="6" weight="bold">
         {data?.title ?? ""}
       </Text>

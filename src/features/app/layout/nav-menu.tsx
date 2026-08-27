@@ -113,6 +113,7 @@ const NavMenu = () => {
 
               <Box
                 className={`
+                  app-navigation-icon
                   transition-all
                   duration-200
 
@@ -127,6 +128,7 @@ const NavMenu = () => {
               <Text
                 size="1"
                 className="
+                  app-bottom-navigation-label
                   mt-1
 
                   transition-all

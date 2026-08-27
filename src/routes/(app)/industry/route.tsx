@@ -21,7 +21,7 @@ function ProtectedLayout() {
     <>
       <Header />
       <NavMenu />
-      <main className="min-w-0 flex-1 overflow-x-hidden p-4 md:p-10">
+      <main className="app-responsive-page min-w-0 flex-1 overflow-x-hidden p-4 md:p-10">
         <Outlet />
       </main>
     </>

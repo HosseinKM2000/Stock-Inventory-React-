@@ -37,7 +37,7 @@ function SettingLayout() {
         {/* Content */}
         <main
           className="
-            flex-1
+            app-responsive-page flex-1
             min-w-0
             overflow-y-auto
             overflow-x-hidden

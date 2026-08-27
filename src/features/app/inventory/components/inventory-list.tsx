@@ -70,18 +70,19 @@ const InventoryList = () => {
     <Flex
       direction="column"
       className="
-        h-full min-h-0
+        inventory-list-shell h-full min-h-0
         overflow-hidden
         p-4
         gap-4
       "
     >
-      <Flex justify="end">
+      <Flex justify="end" className="inventory-visibility-row">
         <Button
           type="button"
           size="2"
           variant="soft"
           color={catalogProductsHidden ? "gray" : "violet"}
+          className="inventory-visibility-button"
           onClick={() => {
             const next = !catalogProductsHidden;
             catalogVisibilityService.setHidden(next);

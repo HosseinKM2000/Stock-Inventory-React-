@@ -21,7 +21,7 @@ const DashboardComponent = () => {
   const { data: stats, isLoading, isError } = useDashboardStats();
 
   return (
-    <main className="container mx-auto p-4 md:p-6">
+    <main className="app-responsive-page container mx-auto p-4 md:p-6">
       <Flex direction="column" gap="2">
         <Text size="7" weight="bold">
           داشبورد

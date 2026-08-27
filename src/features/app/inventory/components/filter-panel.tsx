@@ -62,7 +62,7 @@ export default function FilterPanel({
           </Button>
         </Popover.Trigger>
 
-        <Popover.Content width="280px">
+        <Popover.Content width="280px" className="inventory-sort-popover">
           <RadioGroup.Root
             value={sort}
             onValueChange={(value) => setSort(value as ProductSort)}
