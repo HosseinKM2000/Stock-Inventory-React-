@@ -2,6 +2,7 @@ import json
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -14,7 +15,16 @@ from sqlalchemy import select
 
 from app.database import SessionLocal, engine
 from app.main import app
-from app.models import CatalogProduct, Industry, InventoryItem, User, UserSession
+from app.models import (
+    CatalogProduct,
+    Industry,
+    InventoryItem,
+    InventoryTransaction,
+    SyncChange,
+    User,
+    UserSession,
+)
+from app.services import catalog_product_service
 
 
 class SyncApiTest(unittest.TestCase):
@@ -331,11 +341,11 @@ class SyncApiTest(unittest.TestCase):
         )
         self.assertEqual(catalog.status_code, 201, catalog.text)
 
-        archived = self.client.delete(
-            f"/api/catalog-products/{catalog.json()['id']}",
+        archived = self.client.patch(
+            f"/api/catalog-products/{catalog.json()['id']}/archive",
             headers=self.admin_headers,
         )
-        self.assertEqual(archived.status_code, 204, archived.text)
+        self.assertEqual(archived.status_code, 200, archived.text)
         with SessionLocal() as db:
             row = db.get(CatalogProduct, catalog.json()["id"])
             self.assertIsNotNone(row)
@@ -350,6 +360,101 @@ class SyncApiTest(unittest.TestCase):
                 )
             )
             self.assertEqual(dependent_count, 0)
+
+        restored = self.client.patch(
+            f"/api/catalog-products/{catalog.json()['id']}/restore",
+            headers=self.admin_headers,
+        )
+        self.assertEqual(restored.status_code, 200, restored.text)
+        self.assertTrue(restored.json()["is_active"])
+
+        deleted = self.client.delete(
+            f"/api/catalog-products/{catalog.json()['id']}",
+            headers=self.admin_headers,
+        )
+        self.assertEqual(deleted.status_code, 204, deleted.text)
+        with SessionLocal() as db:
+            self.assertIsNone(db.get(CatalogProduct, catalog.json()["id"]))
+
+    def test_catalog_lifecycle_with_100_dependent_inventory_rows(self) -> None:
+        with SessionLocal() as db:
+            isolated_industry = Industry(
+                name="Lifecycle hundred industry",
+                description="No assigned users",
+                is_active=True,
+            )
+            db.add(isolated_industry)
+            db.flush()
+            catalog = CatalogProduct(
+                industry_id=isolated_industry.id,
+                name="Lifecycle hundred",
+                is_shared=True,
+                is_active=True,
+            )
+            db.add(catalog)
+            db.flush()
+            db.add_all(
+                InventoryItem(
+                    user_id=self.user_id,
+                    catalog_product_id=catalog.id,
+                    is_catalog_backed=True,
+                    quantity=index,
+                )
+                for index in range(100)
+            )
+            db.commit()
+            catalog_id = catalog.id
+
+        archived = self.client.patch(
+            f"/api/catalog-products/{catalog_id}/archive",
+            headers=self.admin_headers,
+        )
+        self.assertEqual(archived.status_code, 200, archived.text)
+        with SessionLocal() as db:
+            self.assertFalse(db.get(CatalogProduct, catalog_id).is_active)
+            item_ids = list(
+                db.scalars(
+                    select(InventoryItem.id).where(
+                        InventoryItem.catalog_product_id == catalog_id
+                    )
+                )
+            )
+            self.assertEqual(len(item_ids), 100)
+
+        restored = self.client.patch(
+            f"/api/catalog-products/{catalog_id}/restore",
+            headers=self.admin_headers,
+        )
+        self.assertEqual(restored.status_code, 200, restored.text)
+        with SessionLocal() as db:
+            restored_ids = list(
+                db.scalars(
+                    select(InventoryItem.id).where(
+                        InventoryItem.catalog_product_id == catalog_id
+                    )
+                )
+            )
+            self.assertEqual(set(restored_ids), set(item_ids))
+
+        deleted = self.client.delete(
+            f"/api/catalog-products/{catalog_id}",
+            headers=self.admin_headers,
+        )
+        self.assertEqual(deleted.status_code, 204, deleted.text)
+        with SessionLocal() as db:
+            self.assertIsNone(db.get(CatalogProduct, catalog_id))
+            self.assertEqual(
+                len(
+                    list(
+                        db.scalars(
+                            select(InventoryItem.id).where(
+                                InventoryItem.catalog_product_id == catalog_id
+                            )
+                        )
+                    )
+                ),
+                0,
+            )
 
     def test_catalog_crud_search_validation_and_protected_delete(self) -> None:
         forbidden = self.client.post(
@@ -523,15 +628,27 @@ class SyncApiTest(unittest.TestCase):
             "CATALOG_BACKED_PRODUCT_DELETE_FORBIDDEN",
         )
 
-        unauthorized_archive = self.client.delete(
-            f"/api/catalog-products/{product['id']}", headers=self.headers
+        unauthorized_archive = self.client.patch(
+            f"/api/catalog-products/{product['id']}/archive", headers=self.headers
         )
         self.assertEqual(unauthorized_archive.status_code, 403, unauthorized_archive.text)
 
-        archived = self.client.delete(
-            f"/api/catalog-products/{product['id']}", headers=self.admin_headers
+        unauthorized_restore = self.client.patch(
+            f"/api/catalog-products/{product['id']}/restore", headers=self.headers
         )
-        self.assertEqual(archived.status_code, 204, archived.text)
+        self.assertEqual(unauthorized_restore.status_code, 403, unauthorized_restore.text)
+
+        unauthorized_delete = self.client.delete(
+            f"/api/catalog-products/{product['id']}", headers=self.headers
+        )
+        self.assertEqual(unauthorized_delete.status_code, 403, unauthorized_delete.text)
+
+        archived = self.client.patch(
+            f"/api/catalog-products/{product['id']}/archive",
+            headers=self.admin_headers,
+        )
+        self.assertEqual(archived.status_code, 200, archived.text)
+        self.assertFalse(archived.json()["is_active"])
 
         with SessionLocal() as db:
             catalog_row = db.get(CatalogProduct, product["id"])
@@ -560,6 +677,20 @@ class SyncApiTest(unittest.TestCase):
         self.assertEqual(active_list.status_code, 200, active_list.text)
         self.assertNotIn(product["id"], [item["id"] for item in active_list.json()])
 
+        unauthorized_archived_list = self.client.get(
+            "/api/catalog-products/archived", headers=self.headers
+        )
+        self.assertEqual(
+            unauthorized_archived_list.status_code,
+            403,
+            unauthorized_archived_list.text,
+        )
+        archived_list = self.client.get(
+            "/api/catalog-products/archived", headers=self.admin_headers
+        )
+        self.assertEqual(archived_list.status_code, 200, archived_list.text)
+        self.assertIn(product["id"], [item["id"] for item in archived_list.json()])
+
         refreshed_snapshot = self.client.get(
             "/api/sync/changes?cursor=0", headers=self.headers
         )
@@ -572,10 +703,11 @@ class SyncApiTest(unittest.TestCase):
             )
         )
 
-        repeated_archive = self.client.delete(
-            f"/api/catalog-products/{product['id']}", headers=self.admin_headers
+        repeated_archive = self.client.patch(
+            f"/api/catalog-products/{product['id']}/archive",
+            headers=self.admin_headers,
         )
-        self.assertEqual(repeated_archive.status_code, 204, repeated_archive.text)
+        self.assertEqual(repeated_archive.status_code, 200, repeated_archive.text)
 
         missing = self.client.delete(
             "/api/catalog-products/999999", headers=self.admin_headers
@@ -652,6 +784,169 @@ class SyncApiTest(unittest.TestCase):
                 )
             )
             self.assertIsNone(archived_provision)
+
+            pre_restore_items = list(
+                db.scalars(
+                    select(InventoryItem).where(
+                        InventoryItem.catalog_product_id == product["id"]
+                    )
+                )
+            )
+            pre_restore_snapshots = {
+                item.id: {field: getattr(item, field) for field in protected_fields}
+                for item in pre_restore_items
+            }
+
+        restored = self.client.patch(
+            f"/api/catalog-products/{product['id']}/restore",
+            headers=self.admin_headers,
+        )
+        self.assertEqual(restored.status_code, 200, restored.text)
+        self.assertTrue(restored.json()["is_active"])
+
+        # Restore provisions the user who joined while archived, but preserves
+        # and never duplicates the two existing assignments.
+        with SessionLocal() as db:
+            restored_items = list(
+                db.scalars(
+                    select(InventoryItem).where(
+                        InventoryItem.catalog_product_id == product["id"]
+                    )
+                )
+            )
+            self.assertEqual(
+                {item.user_id for item in restored_items},
+                {self.user_id, second_user_id, new_user_id},
+            )
+            for item in restored_items:
+                if item.id in pre_restore_snapshots:
+                    self.assertEqual(
+                        {field: getattr(item, field) for field in protected_fields},
+                        pre_restore_snapshots[item.id],
+                    )
+            new_user_item = next(
+                item for item in restored_items if item.user_id == new_user_id
+            )
+            new_user_item_id = new_user_item.id
+            unrelated_item = db.scalar(
+                select(InventoryItem).where(
+                    InventoryItem.catalog_product_id != product["id"]
+                )
+            )
+            unrelated_item_id = unrelated_item.id if unrelated_item else None
+
+        for headers in (self.headers, second_headers, new_headers):
+            selected_after_restore = self.client.patch(
+                "/api/auth/industry",
+                headers=headers,
+                json={"industry_id": self.industry_id},
+            )
+            self.assertEqual(
+                selected_after_restore.status_code,
+                200,
+                selected_after_restore.text,
+            )
+
+        with SessionLocal() as db:
+            counts_by_user = {
+                user_id: len(
+                    list(
+                        db.scalars(
+                            select(InventoryItem).where(
+                                InventoryItem.user_id == user_id,
+                                InventoryItem.catalog_product_id == product["id"],
+                            )
+                        )
+                    )
+                )
+                for user_id in (self.user_id, second_user_id, new_user_id)
+            }
+            self.assertEqual(set(counts_by_user.values()), {1})
+
+        delete_cursor = self.client.get(
+            "/api/sync/changes?cursor=0", headers=self.headers
+        ).json()["cursor"]
+        permanent_delete = self.client.delete(
+            f"/api/catalog-products/{product['id']}",
+            headers=self.admin_headers,
+        )
+        self.assertEqual(permanent_delete.status_code, 204, permanent_delete.text)
+
+        with SessionLocal() as db:
+            self.assertIsNone(db.get(CatalogProduct, product["id"]))
+            self.assertEqual(
+                len(
+                    list(
+                        db.scalars(
+                            select(InventoryItem).where(
+                                InventoryItem.catalog_product_id == product["id"]
+                            )
+                        )
+                    )
+                ),
+                0,
+            )
+            if unrelated_item_id is not None:
+                self.assertIsNotNone(db.get(InventoryItem, unrelated_item_id))
+
+        deletion_delta = self.client.get(
+            f"/api/sync/changes?cursor={delete_cursor}", headers=self.headers
+        )
+        self.assertEqual(deletion_delta.status_code, 200, deletion_delta.text)
+        self.assertTrue(
+            any(
+                change["entity_id"] == provisioned_id
+                and change["operation"] == "DELETE"
+                for change in deletion_delta.json()["changes"]
+            )
+        )
+
+        offline_update_after_delete = self.push(
+            [
+                {
+                    "operation_id": "offline-update-after-permanent-delete",
+                    "entity": "product",
+                    "entity_id": provisioned_id,
+                    "operation": "UPDATE",
+                    "payload": {"quantity": 99},
+                }
+            ]
+        )
+        self.assertEqual(
+            offline_update_after_delete.status_code,
+            200,
+            offline_update_after_delete.text,
+        )
+        self.assertEqual(
+            offline_update_after_delete.json()["results"][0]["status"],
+            "fatal_error",
+        )
+        self.assertEqual(
+            offline_update_after_delete.json()["results"][0]["error"],
+            "PRODUCT_NOT_FOUND",
+        )
+
+        new_user_snapshot = self.client.get(
+            "/api/sync/changes?cursor=0", headers=new_headers
+        )
+        self.assertEqual(new_user_snapshot.status_code, 200, new_user_snapshot.text)
+        self.assertNotIn(
+            new_user_item_id,
+            [change["entity_id"] for change in new_user_snapshot.json()["changes"]],
+        )
+
+        audit = self.client.get("/api/admin/audit", headers=self.admin_headers)
+        self.assertEqual(audit.status_code, 200, audit.text)
+        lifecycle_actions = {
+            entry["action"]
+            for entry in audit.json()
+            if (entry.get("metadata") or {}).get("catalog_product_id")
+            == product["id"]
+        }
+        self.assertTrue(
+            {"catalog.archived", "catalog.restored", "catalog.deleted"}
+            <= lifecycle_actions
+        )
 
     def test_permanent_admin_rbac_subscription_and_audit(self) -> None:
         # SQLite reloads persisted timestamps without timezone information,
@@ -772,7 +1067,7 @@ class SyncApiTest(unittest.TestCase):
         )
         self.assertEqual(deleted_plan.status_code, 204, deleted_plan.text)
 
-    def test_delete_catalog_product_6_archives_without_inventory_loss(self) -> None:
+    def test_delete_catalog_product_6_permanently_removes_dependencies(self) -> None:
         with SessionLocal() as db:
             catalog = CatalogProduct(
                 id=6,
@@ -795,9 +1090,20 @@ class SyncApiTest(unittest.TestCase):
                 low_stock_alert=True,
             )
             db.add(item)
+            db.flush()
+            transaction = InventoryTransaction(
+                user_id=self.user_id,
+                inventory_item_id=item.id,
+                type="stock_in",
+                quantity=2,
+                before_quantity=10,
+                after_quantity=12,
+            )
+            db.add(transaction)
             db.commit()
             db.refresh(item)
             item_id = item.id
+            transaction_id = transaction.id
 
         response = self.client.delete(
             "/api/catalog-products/6", headers=self.admin_headers
@@ -807,14 +1113,57 @@ class SyncApiTest(unittest.TestCase):
         with SessionLocal() as db:
             catalog = db.get(CatalogProduct, 6)
             item = db.get(InventoryItem, item_id)
-            self.assertIsNotNone(catalog)
-            self.assertFalse(catalog.is_active)
-            self.assertIsNotNone(item)
-            self.assertEqual(item.catalog_product_id, 6)
-            self.assertEqual(item.quantity, 12)
-            self.assertEqual(item.price, 345)
-            self.assertEqual(item.custom_label, "Preserved six")
-            self.assertEqual(item.note, "must survive")
+            self.assertIsNone(catalog)
+            self.assertIsNone(item)
+            self.assertIsNone(db.get(InventoryTransaction, transaction_id))
+            tombstone = db.scalar(
+                select(SyncChange).where(
+                    SyncChange.user_id == self.user_id,
+                    SyncChange.entity_id == item_id,
+                    SyncChange.operation == "DELETE",
+                )
+            )
+            self.assertIsNotNone(tombstone)
+
+    def test_permanent_catalog_delete_rolls_back_every_dependency(self) -> None:
+        with SessionLocal() as db:
+            catalog = CatalogProduct(
+                industry_id=self.industry_id,
+                name="Atomic rollback catalog",
+                is_shared=True,
+                is_active=True,
+            )
+            db.add(catalog)
+            db.flush()
+            item = InventoryItem(
+                user_id=self.user_id,
+                catalog_product_id=catalog.id,
+                is_catalog_backed=True,
+                quantity=8,
+            )
+            db.add(item)
+            db.commit()
+            catalog_id = catalog.id
+            item_id = item.id
+
+        with SessionLocal() as db:
+            actor = db.get(User, self.admin_user_id)
+            with patch(
+                "app.repositories.catalog_products.permanently_delete_catalog_product",
+                side_effect=RuntimeError("injected delete failure"),
+            ):
+                with self.assertRaisesRegex(RuntimeError, "injected delete failure"):
+                    catalog_product_service.permanently_delete_catalog_product(
+                        db,
+                        catalog_id,
+                        actor,
+                    )
+
+        with SessionLocal() as db:
+            self.assertIsNotNone(db.get(CatalogProduct, catalog_id))
+            restored_item = db.get(InventoryItem, item_id)
+            self.assertIsNotNone(restored_item)
+            self.assertEqual(restored_item.quantity, 8)
 
     def test_resource_ownership_blocks_cross_user_access(self) -> None:
         signup = self.client.post(

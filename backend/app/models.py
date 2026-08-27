@@ -202,8 +202,8 @@ class CatalogProduct(Base):
     # Only shared rows belong to the administrator-managed catalog.
     is_shared: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
 
-    # Catalog removal is archival. Inventory rows keep this record as their
-    # historical metadata source and are never cascaded or rewritten.
+    # Archive/restore toggles this flag. Permanent deletion is an explicit,
+    # transactional service operation that deletes dependent inventory first.
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
 
     created_at: Mapped[datetime] = mapped_column(

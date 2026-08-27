@@ -92,7 +92,7 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
               )}
             </Flex>
 
-            <Badge color={status.color} className="shrink-0">
+            <Badge color={status.color} className="inventory-card-mobile-status shrink-0">
               {status.label}
             </Badge>
           </Flex>
@@ -111,10 +111,8 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
           >
             {/* Price */}
             <Flex
-              mt={"4"}
               gapX={"2"}
               align="center"
-              justify="between"
               className="max-w-full"
             >
               <Badge
@@ -128,9 +126,8 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
             {/* Actions */}
             <Flex
               gap="2"
-              mt={"5"}
               justify="end"
-              className="inventory-card-actions"
+              className="inventory-card-actions inventory-card-mobile-actions"
             >
               <Link to="/inventory/edit" search={{ id: product.id }}>
                 <Button
@@ -162,9 +159,37 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
             </Flex>
           </Flex>
         </Flex>
-        {/* Bottom control on mobile/tablet; compact beside actions on desktop. */}
-        <div className="inventory-card-quick shrink-0 border-[var(--gray-a5)] bg-[var(--gray-a2)]">
-          <QuickStockAdjustment product={product} />
+        {/* Full-width on mobile; one compact horizontal action row on desktop. */}
+        <div className="inventory-card-controls">
+          <div className="inventory-card-quick shrink-0 border-[var(--gray-a5)] bg-[var(--gray-a2)]">
+            <QuickStockAdjustment product={product} />
+          </div>
+
+          <Flex align="center" gap="3" className="inventory-card-desktop-end">
+            <Badge color={status.color} className="inventory-card-desktop-status shrink-0">
+              {status.label}
+            </Badge>
+
+            <Flex gap="2" className="inventory-card-actions">
+              <Link to="/inventory/edit" search={{ id: product.id }}>
+                <Button size="2" variant="soft" color="amber" aria-label="ویرایش محصول">
+                  <Pencil1Icon width={20} height={20} />
+                </Button>
+              </Link>
+
+              <Button
+                size="2"
+                color="red"
+                variant="soft"
+                loading={deleting}
+                disabled={product.is_catalog_backed}
+                onClick={() => onDelete(product.id)}
+                aria-label="حذف محصول"
+              >
+                <TrashIcon width={23} height={23} />
+              </Button>
+            </Flex>
+          </Flex>
         </div>
       </Flex>
     </Card>

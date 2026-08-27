@@ -271,6 +271,12 @@ def permanently_delete_catalog_product(
         )
         repository.permanently_delete_catalog_product(db, product)
         db.commit()
+    except IntegrityError as error:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="CATALOG_PERMANENT_DELETE_CONFLICT",
+        ) from error
     except Exception:
         # Catalog, inventory rows, transaction rows, tombstones and audit entry
         # all share this transaction. No partial database delete can commit.

@@ -40,7 +40,9 @@ export default function DeleteCatalogDialog({
     deleteMutation.error instanceof ApiError
       ? deleteMutation.error.message === "CATALOG_PRODUCT_NOT_FOUND"
           ? "این محصول قبلاً حذف شده یا دیگر وجود ندارد."
-          : deleteMutation.error.message
+          : deleteMutation.error.message === "CATALOG_PERMANENT_DELETE_CONFLICT"
+            ? "به‌دلیل وجود وابستگی ناسازگار، حذف انجام نشد و هیچ داده‌ای تغییر نکرد."
+            : "حذف دائمی محصول کاتالوگ ناموفق بود."
       : deleteMutation.isError
         ? "خطا در حذف دائمی محصول کاتالوگ"
         : null;
@@ -54,12 +56,13 @@ export default function DeleteCatalogDialog({
         <Button
           color="red"
           size={{ initial: "2", lg: "1" }}
+          aria-label={`حذف دائمی ${catalog.name}`}
         >
           <TrashIcon />
         </Button>
       </Dialog.Trigger>
 
-      <Dialog.Content maxWidth="420px">
+      <Dialog.Content dir="rtl" maxWidth="420px">
         <Dialog.Title color="red">
           حذف دائمی محصول کاتالوگ
         </Dialog.Title>

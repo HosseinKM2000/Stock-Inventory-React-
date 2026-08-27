@@ -27,11 +27,16 @@ import type {
   CatalogProductUpdate,
 } from "../types";
 
-export function useCatalogProducts(params?: CatalogProductListParams) {
+export function useCatalogProducts(
+  params?: CatalogProductListParams,
+  enabled = true,
+) {
   return useQuery({
     queryKey: catalogProductKeys.list(params),
 
     queryFn: () => getCatalogProducts(params),
+
+    enabled,
 
     // Catalog membership is server-authoritative. Refresh on every visit so
     // records cached before an archive or backend migration cannot reappear.
