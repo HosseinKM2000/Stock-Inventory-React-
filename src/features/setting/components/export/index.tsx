@@ -5,7 +5,8 @@ import { DownloadIcon, FaceIcon } from "@radix-ui/react-icons";
 import { Box, Callout, Flex, Separator, Text } from "@radix-ui/themes";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useEntitlement } from "@/shared/access/use-entitlement";
+import { useEntitlementAccess } from "@/shared/access/use-entitlement";
+import { accessState } from "@/shared/access/access-state";
 import { useAuth } from "@/shared/auth/use-auth";
 import { isAdmin } from "@/shared/access/authorization";
 
@@ -19,9 +20,10 @@ import FormatCads from "./file-format";
 
 const ExportTools = () => {
   const online = useOnline();
-  const entitlement = useEntitlement();
+  useEntitlementAccess();
   const { user } = useAuth();
-  const serverAllowed = isAdmin(user) || Boolean(entitlement?.capabilities["export.server"]);
+  const localAllowed = isAdmin(user) || accessState.canUse("export.local");
+  const serverAllowed = isAdmin(user) || accessState.canUse("export.server");
 
   const { pending } = useSyncStatus();
 
@@ -95,7 +97,7 @@ const ExportTools = () => {
 
       <Flex mt={"5"} direction={"column"} gapY={"3"}>
         <Button
-          disabled={!selectionValid}
+          disabled={!localAllowed || !selectionValid}
           loading={busy === "local"}
           onClick={() => run("local")}
         >
@@ -119,8 +121,8 @@ const ExportTools = () => {
           {online
             ? serverAllowed
               ? "خروجی محلی از داده های ذخیره شده روی این دستگاه و خروجی سرور از پایگاه داده تهیه می شود."
-              : "خروجی سرور در طرح فعلی فعال نیست؛ خروجی محلی همچنان در دسترس است."
-            : "در حالت آفلاین فقط خروجی داده های محلی در دسترس است."}
+              : localAllowed ? "خروجی سرور در طرح فعلی فعال نیست؛ خروجی محلی همچنان در دسترس است." : "قابلیت خروجی در طرح فعلی فعال نیست."
+            : localAllowed ? "در حالت آفلاین فقط خروجی داده های محلی در دسترس است." : "قابلیت خروجی در طرح فعلی فعال نیست."}
         </Text>
       </Flex>
     </Box>

@@ -54,6 +54,15 @@ Normal inventory work does not require a live request. Local changes are queued
 and synchronized on startup, reconnection, focus, visibility changes, and—when
 the browser supports it—Background Sync.
 
+Subscription permissions are cached as a user-bound offline entitlement after
+successful server verification. Absolute expiration is evaluated locally from
+the server-time baseline, and reconnecting verifies the account and entitlement
+before synchronization resumes. Expiration or account disablement changes
+access only: IndexedDB data, OPFS images, and queued operations are not deleted.
+The backend remains the ultimate authority; browser-side clock checks provide
+reasonable offline enforcement, not DRM-grade protection on a user-controlled
+device.
+
 ## Verification
 
 ```bash

@@ -1,13 +1,9 @@
-import { STORAGE_KEYS } from "./keys";
-
-type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];
-
 function isBrowser() {
   return typeof window !== "undefined";
 }
 
 export const storage = {
-  get<T>(key: StorageKey): T | null {
+  get<T>(key: string): T | null {
     if (!isBrowser()) return null;
 
     const value = localStorage.getItem(key);
@@ -21,13 +17,13 @@ export const storage = {
     }
   },
 
-  set<T>(key: StorageKey, value: T) {
+  set<T>(key: string, value: T) {
     if (!isBrowser()) return;
 
     localStorage.setItem(key, JSON.stringify(value));
   },
 
-  remove(key: StorageKey) {
+  remove(key: string) {
     if (!isBrowser()) return;
 
     localStorage.removeItem(key);

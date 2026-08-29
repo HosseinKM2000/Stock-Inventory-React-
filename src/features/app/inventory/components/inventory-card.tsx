@@ -7,6 +7,8 @@ import type { Product, ProductStatus } from "../types";
 import { QuickStockAdjustment } from "./quick-stock-adjustment";
 import productPlaceholder from "@/assets/product-placeholder.svg";
 import { useImage } from "@/shared/lib/infrastructure/media/useImage";
+import { accessState } from "@/shared/access/access-state";
+import { useEntitlementAccess } from "@/shared/access/use-entitlement";
 
 const STATUS_META: Record<
   ProductStatus,
@@ -38,6 +40,8 @@ type Props = {
 };
 
 export function ProductCard({ product, deleting, onDelete }: Props) {
+  useEntitlementAccess();
+  const canWrite = accessState.canWrite();
   const status = STATUS_META[product.status];
 
   // const image =
@@ -145,7 +149,7 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
                 color="red"
                 variant="soft"
                 loading={deleting}
-                disabled={product.is_catalog_backed}
+                disabled={!canWrite || product.is_catalog_backed}
                 title={
                   product.is_catalog_backed
                     ? "محصولات کاتالوگی قابل حذف نیستند؛ می‌توانید آن‌ها را مخفی کنید."
@@ -182,7 +186,7 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
                 color="red"
                 variant="soft"
                 loading={deleting}
-                disabled={product.is_catalog_backed}
+                disabled={!canWrite || product.is_catalog_backed}
                 onClick={() => onDelete(product.id)}
                 aria-label="حذف محصول"
               >

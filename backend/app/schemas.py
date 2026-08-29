@@ -444,11 +444,14 @@ class ErrorResponse(BaseModel):
 # PLAN
 # =========================================================
 class EntitlementOut(BaseModel):
+    user_id: int
     plan: str
     label: str
     status: Literal["active", "expired"]
+    account_status: Literal["active"]
     started_at: datetime | None = None
     expires_at: datetime | None = None
+    server_time: datetime
     synced_at: datetime
     capabilities: dict[str, bool]
     limits: dict[str, int | None]

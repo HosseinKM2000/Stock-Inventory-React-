@@ -132,6 +132,7 @@ class InventoryService {
 
   async create(product: Product): Promise<Product> {
     accessState.requireWrite();
+    accessState.requireInventoryCapacity((await inventoryRepository.getAll()).length);
     const record = sanitize(product);
 
     await inventoryRepository.save(record);

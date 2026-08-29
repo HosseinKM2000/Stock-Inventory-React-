@@ -18,6 +18,7 @@ import {
 import type { AuthResponse } from "../types";
 import { authKeys } from "../query/query-keys";
 import { accessState } from "@/shared/access/access-state";
+import { entitlementService } from "@/shared/access/entitlement-service";
 
 
 
@@ -40,6 +41,8 @@ export function useLogin() {
     onSuccess: async (data: AuthResponse) => {
       setToken(data.access_token);
       accessState.saveUser(data.user);
+
+      await entitlementService.verify();
 
       await syncMetadataStorage.set("product-sync-cursor", 0);
 
@@ -72,6 +75,8 @@ export function useRegister() {
     onSuccess: async (data: AuthResponse) => {
       setToken(data.access_token);
       accessState.saveUser(data.user);
+
+      await entitlementService.verify();
 
       await syncMetadataStorage.set("product-sync-cursor", 0);
 

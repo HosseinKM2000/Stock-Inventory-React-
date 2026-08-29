@@ -1,4 +1,4 @@
-import { useEntitlement } from "@/shared/access/use-entitlement";
+import { useEntitlementAccess } from "@/shared/access/use-entitlement";
 import { isAdmin } from "@/shared/access/authorization";
 import { useAuth } from "@/shared/auth/use-auth";
 import {
@@ -22,7 +22,6 @@ import {
   Separator,
   Text,
 } from "@radix-ui/themes";
-import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import { useAvailablePlans } from "../../mutations/use-admin";
 import {
@@ -70,21 +69,17 @@ function InfoCard({
 export default function SubscriptionSettings() {
   const { user } = useAuth();
   const administrator = isAdmin(user);
-  const [now, setNow] = useState(Date.now);
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
-    return () => window.clearInterval(timer);
-  }, []);
-  const current = useEntitlement();
+  const access = useEntitlementAccess();
+  const current = access.entitlement;
   const plans = useAvailablePlans();
   const plan = plans.data?.find((item) => item.id === current?.plan);
-  const expired = current?.status === "expired";
-  const remaining = current?.expires_at
-    ? Math.max(
-        0,
-        Math.ceil((new Date(current.expires_at).getTime() - now) / 86_400_000),
-      )
-    : null;
+  const expired = access.status === "expired";
+  const verifying = access.requiresOnlineVerification;
+  const remaining = access.remainingMs == null
+    ? null
+    : access.remainingMs >= 86_400_000
+      ? `${Math.ceil(access.remainingMs / 86_400_000)} روز`
+      : `${Math.floor(access.remainingMs / 3_600_000)} ساعت و ${Math.ceil((access.remainingMs % 3_600_000) / 60_000)} دقیقه`;
   const enabled = Object.entries(current?.capabilities ?? {}).filter(
     ([, value]) => administrator || value,
   );
@@ -108,6 +103,13 @@ export default function SubscriptionSettings() {
             نوشتن و قابلیت‌های آنلاین تا تمدید اشتراک محدود هستند. برای تمدید با
             مدیر سامانه تماس بگیرید.
           </Callout.Text>
+        </Callout.Root>
+      )}
+
+      {verifying && (
+        <Callout.Root color="blue" mt="5" dir="rtl">
+          <Callout.Icon><ClockIcon /></Callout.Icon>
+          <Callout.Text>برای استفاده از امکانات اشتراکی، وضعیت حساب باید به‌صورت آنلاین با سرور تأیید شود.</Callout.Text>
         </Callout.Root>
       )}
 
@@ -139,8 +141,8 @@ export default function SubscriptionSettings() {
                 مدیر — دسترسی کامل
               </Badge>
             )}
-            <Badge color={expired ? "red" : "green"} size="2">
-              {expired ? "منقضی" : "فعال"}
+            <Badge color={expired ? "red" : verifying ? "blue" : access.status === "expiring" ? "amber" : "green"} size="2">
+              {expired ? "منقضی" : verifying ? "نیازمند تأیید آنلاین" : access.status === "expiring" ? "نزدیک انقضا" : "فعال"}
             </Badge>
           </Flex>
         </Flex>
@@ -174,7 +176,7 @@ export default function SubscriptionSettings() {
               </Flex>
             }
             label="زمان باقی‌مانده"
-            value={remaining == null ? "نامحدود" : `${remaining} روز`}
+            value={remaining ?? "نامحدود"}
             accent={expired ? "red" : "green"}
           />
           <InfoCard
@@ -244,7 +246,7 @@ export default function SubscriptionSettings() {
             <Flex align="center" gap="2" mt="4">
               <ClockIcon />
               <Text size="1" color="gray">
-                آخرین بررسی دسترسی: {date(current?.synced_at)}
+                آخرین تأیید سرور: {date(current?.verified_at)}
               </Text>
             </Flex>
           </Box>

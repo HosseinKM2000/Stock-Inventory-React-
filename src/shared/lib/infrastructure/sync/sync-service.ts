@@ -6,6 +6,7 @@ import type { SyncQueueItem } from "../storage/types";
 import { queueService } from "./queue.service";
 import { syncStatusStore } from "./sync-status";
 import { accessState } from "@/shared/access/access-state";
+import { entitlementService } from "@/shared/access/entitlement-service";
 
 export type SyncHandlerResult = {
   itemId: string;
@@ -109,6 +110,17 @@ async function runSync() {
       state: "failed",
       pending: await queueService.count(),
       error: "ACCOUNT_DISABLED",
+    });
+    return;
+  }
+
+  try {
+    await entitlementService.ensureVerified();
+  } catch (error) {
+    syncStatusStore.set({
+      state: "failed",
+      pending: await queueService.count(),
+      error: error instanceof Error ? error.message : String(error),
     });
     return;
   }

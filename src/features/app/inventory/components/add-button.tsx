@@ -1,8 +1,12 @@
 import { PlusIcon } from "@radix-ui/react-icons";
 import { Button } from "@radix-ui/themes";
 import { Link } from "@tanstack/react-router";
+import { accessState } from "@/shared/access/access-state";
+import { useEntitlementAccess } from "@/shared/access/use-entitlement";
 
 const AddButton = () => {
+  useEntitlementAccess();
+  if (!accessState.canWrite()) return null;
   return (
     <Link to="/inventory/add">
       <Button

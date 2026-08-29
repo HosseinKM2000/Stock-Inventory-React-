@@ -85,11 +85,14 @@ def entitlement_for_user(db: Session, user: User) -> dict[str, Any]:
         }
     now = datetime.now(timezone.utc)
     return {
+        "user_id": user.id,
         "plan": plan.id,
         "label": plan.name,
         "status": "expired" if expired else "active",
+        "account_status": "active",
         "started_at": user.subscription_started_at,
         "expires_at": user.subscription_expires_at,
+        "server_time": now,
         "synced_at": now,
         "capabilities": capabilities,
         "limits": parse_json_object(plan.limits_json),

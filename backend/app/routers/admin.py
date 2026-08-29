@@ -152,7 +152,19 @@ def update_user_subscription(
     db: DbSession,
 ):
     user = _user_or_404(db, user_id)
-    previous = user.plan
+    previous = {
+        "plan": user.plan,
+        "started_at": (
+            user.subscription_started_at.isoformat()
+            if user.subscription_started_at
+            else None
+        ),
+        "expires_at": (
+            user.subscription_expires_at.isoformat()
+            if user.subscription_expires_at
+            else None
+        ),
+    }
     assign_subscription(
         db,
         user,
@@ -165,7 +177,24 @@ def update_user_subscription(
         admin,
         "subscription.changed",
         user,
-        {"previous_plan": previous, "plan": payload.plan},
+        {
+            "previous_plan": previous["plan"],
+            "plan": user.plan,
+            "previous": previous,
+            "current": {
+                "plan": user.plan,
+                "started_at": (
+                    user.subscription_started_at.isoformat()
+                    if user.subscription_started_at
+                    else None
+                ),
+                "expires_at": (
+                    user.subscription_expires_at.isoformat()
+                    if user.subscription_expires_at
+                    else None
+                ),
+            },
+        },
     )
     db.commit()
     db.refresh(user)

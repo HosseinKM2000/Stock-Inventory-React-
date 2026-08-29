@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { accessState } from "@/shared/access/access-state";
+import { useEntitlementAccess } from "@/shared/access/use-entitlement";
 import { Button } from "@/shared/ui/button/button";
 import { useQuickStockAdjustment } from "../hooks/use-quick-stock-adjustment";
 import { useAdjustProductQuantity } from "../mutations/use-products";
@@ -18,6 +19,7 @@ function errorMessage(error: unknown) {
 }
 
 export function QuickStockAdjustment({ product }: Props) {
+  useEntitlementAccess();
   const [pendingDelta, setPendingDelta] = useState(0);
   const [awaitingDecision, setAwaitingDecision] = useState(false);
   const pendingDeltaRef = useRef(0);

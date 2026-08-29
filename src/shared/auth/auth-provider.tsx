@@ -24,7 +24,7 @@ export function AuthProvider({
   } = useMe(hasToken);
 
   const cachedUser = hasToken ? accessState.user() : null;
-  const effectiveUser = cachedUser?.is_active === false ? cachedUser : user ?? cachedUser;
+  const effectiveUser = user ?? cachedUser;
 
   useEffect(() => {
     if (user) accessState.saveUser(user);
@@ -32,8 +32,7 @@ export function AuthProvider({
 
   useEffect(() => {
     const refresh = () => refreshAccountState((value) => value + 1);
-    window.addEventListener("account-state-change", refresh);
-    return () => window.removeEventListener("account-state-change", refresh);
+    return accessState.subscribe(refresh);
   }, []);
 
   const refetchUser = useCallback(async () => {
