@@ -5,6 +5,7 @@ import { Button } from "@/shared/ui/button/button";
 import { FormField } from "@/shared/ui/form/field/form-field";
 import { TextAreaInput } from "@/shared/ui/form/input/text-area";
 import { TextInput } from "@/shared/ui/form/input/text-input";
+import { SwitchInput } from "@/shared/ui/button/toggle-button";
 
 import { useAppForm } from "@/shared/lib/form/use-app-form";
 
@@ -38,6 +39,8 @@ const emptyValues: CatalogFormValues = {
   brand: "",
   image_url: "",
   industry_id: 0,
+  is_packaged: false,
+  pack_size: null,
 };
 
 export default function CatalogFormDialog({
@@ -76,6 +79,8 @@ export default function CatalogFormDialog({
         description: values.description.trim() || null,
         brand: values.brand.trim() || null,
         image_url: values.image_url.trim() || null,
+        is_packaged: values.is_packaged,
+        pack_size: values.is_packaged ? values.pack_size : null,
       };
 
       if (mode === "create") {
@@ -115,6 +120,8 @@ export default function CatalogFormDialog({
           brand: catalogProduct.brand ?? "",
           image_url: catalogProduct.image_url ?? "",
           industry_id: catalogProduct.industry_id,
+          is_packaged: catalogProduct.is_packaged,
+          pack_size: catalogProduct.pack_size,
         });
       } else {
         form.reset();
@@ -254,6 +261,37 @@ export default function CatalogFormDialog({
               }
             />
           </FormField>
+          <FormField label="محصول به‌صورت بسته‌ای عرضه می‌شود؟" id="catalog-is-packaged">
+            <Box pt="1">
+              <SwitchInput
+                checked={form.values.is_packaged}
+                onCheckedChange={(checked) => {
+                  form.setValue("is_packaged", checked);
+                  if (!checked) form.setValue("pack_size", null);
+                }}
+              />
+            </Box>
+          </FormField>
+          {form.values.is_packaged && (
+            <FormField
+              label="تعداد در هر بسته"
+              id="catalog-pack-size"
+              error={form.errors.pack_size}
+            >
+              <TextInput
+                id="catalog-pack-size"
+                type="number"
+                min="1"
+                step="1"
+                inputMode="numeric"
+                value={form.values.pack_size ?? ""}
+                onChange={(event) => form.setValue(
+                  "pack_size",
+                  event.target.value === "" ? null : Number(event.target.value),
+                )}
+              />
+            </FormField>
+          )}
         </Flex>
 
         <Flex justify="end" gap="3" mt="6">

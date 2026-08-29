@@ -135,6 +135,14 @@ export default function CatalogDetailsDialog({
                 {product.brand || "ثبت نشده"}
               </Text>
             </Box>
+            <Box>
+              <Text as="div" size="1" color="gray">بسته‌بندی</Text>
+              <Text as="div" size="2" weight="medium" mt="1">
+                {product.is_packaged && product.pack_size
+                  ? `هر بسته ${product.pack_size.toLocaleString("fa-IR")} عدد`
+                  : "غیرفعال"}
+              </Text>
+            </Box>
           </Flex>
         )}
 

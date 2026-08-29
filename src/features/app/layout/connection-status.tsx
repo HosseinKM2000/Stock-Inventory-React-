@@ -11,6 +11,13 @@ type Indicator = {
   tooltip: string;
 };
 
+function syncErrorMessage(error: string | null) {
+  if (error === "PACK_SIZE_REQUIRED" || error === "PACKAGING_FLAG_INVALID") {
+    return "تنظیمات بسته‌بندی یکی از محصولات نامعتبر است";
+  }
+  return error ?? "برای تلاش مجدد کلیک کنید";
+}
+
 const ConnectionStatus = () => {
   const online = useOnline();
 
@@ -39,7 +46,7 @@ const ConnectionStatus = () => {
       return {
         label: "خطای همگام سازی",
         color: "red",
-        tooltip: status.error ?? "برای تلاش مجدد کلیک کنید",
+        tooltip: syncErrorMessage(status.error),
       };
     }
 

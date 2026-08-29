@@ -10,7 +10,7 @@ import { Form } from "@/shared/ui/form/form";
 import { SelectInput } from "@/shared/ui/form/input/select-input";
 import { TextAreaInput } from "@/shared/ui/form/input/text-area";
 import { TextInput } from "@/shared/ui/form/input/text-input";
-import { GearIcon } from "@radix-ui/react-icons";
+import { CubeIcon, GearIcon } from "@radix-ui/react-icons";
 import { Box, Callout, Card, Flex, Grid, Switch, Text } from "@radix-ui/themes";
 import { type ChangeEvent, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -18,6 +18,7 @@ import { createProductInitialValues } from "../form/product-form.initial";
 import { productSchema } from "../schema/product.schema";
 import { type Product } from "../types";
 import { useCategories } from "@/features/setting/mutations/use-categories";
+import { getPackagingBreakdown, validPackSize } from "../domain/packaging";
 
 type ProductFormMode = "create" | "edit" | "view";
 
@@ -74,8 +75,13 @@ export function ProductForm({
     initialValues: createProductInitialValues(initial),
 
     onSubmit(values) {
+      const catalogProduct = values.catalog_product.is_packaged
+        ? values.catalog_product
+        : { ...values.catalog_product, pack_size: null };
       onSubmit?.({
         ...values,
+
+        catalog_product: catalogProduct,
 
         image_url: values.image_url ?? null,
       });
@@ -139,6 +145,29 @@ export function ProductForm({
     value: String(category.id),
     label: category.name,
   }));
+
+  const packaging = form.values.catalog_product;
+  const packageBreakdown =
+    packaging.is_packaged && validPackSize(packaging.pack_size)
+    ? getPackagingBreakdown(Number(form.values.quantity), packaging.pack_size)
+    : null;
+  const packagingReadOnly = readOnly || Boolean(initial?.is_catalog_backed);
+
+  const setPackagingEnabled = (checked: boolean) => {
+    form.setValue("catalog_product", {
+      ...form.values.catalog_product,
+      is_packaged: checked,
+      pack_size: checked ? form.values.catalog_product.pack_size : null,
+    });
+  };
+
+  const setPackSize = (event: ChangeEvent<HTMLInputElement>) => {
+    const value = event.target.value === "" ? null : Number(event.target.value);
+    form.setValue("catalog_product", {
+      ...form.values.catalog_product,
+      pack_size: value,
+    });
+  };
 
   const handlePriceChange = (event: ChangeEvent<HTMLInputElement>) => {
     const digits = normalizePriceDigits(event.target.value);
@@ -270,6 +299,56 @@ export function ProductForm({
               disabled={readOnly}
             />
           </FormField>
+
+          <Card size="3" className="md:col-span-3 rounded-3xl border border-violet-1 bg-violet-1/40">
+            <Flex align="center" gap="3" mb="4">
+              <Box className="card-title-icon" aria-hidden="true">
+                <CubeIcon width="20" height="20" />
+              </Box>
+              <Text weight="bold">بسته‌بندی محصول</Text>
+            </Flex>
+            <Grid columns={{ initial: "1", sm: "2" }} gap="4">
+              <FormField id="is_packaged" label="محصول به‌صورت بسته‌ای عرضه می‌شود؟">
+                <Box pt="2">
+                  <SwitchInput
+                    checked={packaging.is_packaged}
+                    disabled={packagingReadOnly}
+                    onCheckedChange={setPackagingEnabled}
+                  />
+                </Box>
+              </FormField>
+
+              {packaging.is_packaged && (
+                <FormField
+                  id="pack_size"
+                  label="تعداد در هر بسته"
+                  error={!validPackSize(packaging.pack_size) ? "یک عدد صحیح بزرگ‌تر از صفر وارد کنید" : undefined}
+                >
+                  <TextInput
+                    id="pack_size"
+                    type="number"
+                    min="1"
+                    step="1"
+                    inputMode="numeric"
+                    value={packaging.pack_size ?? ""}
+                    onChange={setPackSize}
+                    disabled={packagingReadOnly}
+                  />
+                </FormField>
+              )}
+            </Grid>
+
+            {packageBreakdown && (
+              <Grid columns={{ initial: "1", sm: "3" }} gap="3" mt="4">
+                <Text as="div" size="2"><Text color="gray">بسته کامل: </Text>{packageBreakdown.completePackages.toLocaleString("fa-IR")}</Text>
+                <Text as="div" size="2"><Text color="gray">هر بسته: </Text>{packaging.pack_size?.toLocaleString("fa-IR")} عدد</Text>
+                <Text as="div" size="2"><Text color="gray">تعداد کل: </Text>{Number(form.values.quantity).toLocaleString("fa-IR")}</Text>
+                {packageBreakdown.remainingUnits > 0 && (
+                  <Text as="div" size="2" color="amber">واحد باقی‌مانده: {packageBreakdown.remainingUnits.toLocaleString("fa-IR")}</Text>
+                )}
+              </Grid>
+            )}
+          </Card>
 
           <FormField id="category_id" label="دسته‌بندی">
             <SelectInput

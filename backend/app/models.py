@@ -197,6 +197,9 @@ class CatalogProduct(Base):
         nullable=True,
     )
 
+    is_packaged: Mapped[bool] = mapped_column(Boolean, default=False)
+    pack_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
     # Legacy user-created products are represented by a private catalog row
     # because inventory_items.catalog_product_id is currently non-nullable.
     # Only shared rows belong to the administrator-managed catalog.

@@ -284,6 +284,10 @@ body {
   justify-content: flex-start;
 }
 
+.quick-stock-mode {
+  padding: 8px 12px 0;
+}
+
 .quick-stock-button {
   width: 100px !important;
   height: 45px;
@@ -477,6 +481,14 @@ body {
       background: var(--gray-a2);
       flex-direction: row;
       justify-content: flex-start;
+    }
+
+    .inventory-card-quick .quick-stock-wrapper {
+      width: 128px !important;
+    }
+
+    .inventory-card-quick .quick-stock-mode {
+      padding: 0;
     }
 
     .inventory-card-quick .quick-stock-button {

@@ -5,6 +5,7 @@ import { accessState } from "@/shared/access/access-state";
 import { inventoryRepository } from "./inventory.repository";
 
 import type { Product, ProductInput, ProductListParams } from "../types";
+import { validPackSize } from "../domain/packaging";
 
 export const PRODUCT_ENTITY = "product";
 
@@ -20,6 +21,9 @@ function sanitize(product: Product): Product {
   const safeQuantity = Number.isFinite(quantity) ? Math.max(0, quantity) : 0;
 
   const safeThreshold = Number.isFinite(threshold) ? Math.max(0, threshold) : 0;
+  const packaged =
+    product.catalog_product?.is_packaged === true &&
+    validPackSize(product.catalog_product.pack_size);
 
   const status =
     safeQuantity <= 0
@@ -47,6 +51,14 @@ function sanitize(product: Product): Product {
 
     catalog_product_id:
       Number(product.catalog_product_id) || product.catalog_product?.id || 0,
+
+    catalog_product: product.catalog_product
+      ? {
+          ...product.catalog_product,
+          is_packaged: packaged,
+          pack_size: packaged ? product.catalog_product.pack_size : null,
+        }
+      : undefined,
 
     image_url: typeof product.image_url === "string" ? product.image_url : null,
 

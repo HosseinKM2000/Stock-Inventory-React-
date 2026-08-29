@@ -44,6 +44,12 @@ def _apply_compatibility_migrations() -> None:
             connection.execute(
                 text("ALTER TABLE catalog_products ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT 1")
             )
+        if "is_packaged" not in catalog_columns:
+            connection.execute(
+                text("ALTER TABLE catalog_products ADD COLUMN is_packaged BOOLEAN NOT NULL DEFAULT 0")
+            )
+        if "pack_size" not in catalog_columns:
+            connection.execute(text("ALTER TABLE catalog_products ADD COLUMN pack_size INTEGER"))
         if catalog_shared_added:
             # Older user-created products generated a private catalog row. This
             # conservative backfill recognizes rows used only as that product's

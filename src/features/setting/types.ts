@@ -41,6 +41,10 @@ export type CatalogProduct = {
 
   image_url: string | null;
 
+  is_packaged: boolean;
+
+  pack_size: number | null;
+
   created_at: string;
 
   // Keep industry_id as the stable source of truth. Legacy API responses may
@@ -58,6 +62,10 @@ export type CatalogProductInput = {
   brand: string | null;
 
   image_url: string | null;
+
+  is_packaged: boolean;
+
+  pack_size: number | null;
 };
 
 export type CatalogProductUpdate = Partial<CatalogProductInput>;

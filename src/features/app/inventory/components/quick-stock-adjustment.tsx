@@ -1,6 +1,6 @@
 import { MinusIcon, PlusIcon } from "@radix-ui/react-icons";
 import { Flex, Text } from "@radix-ui/themes";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { accessState } from "@/shared/access/access-state";
@@ -9,6 +9,12 @@ import { Button } from "@/shared/ui/button/button";
 import { useQuickStockAdjustment } from "../hooks/use-quick-stock-adjustment";
 import { useAdjustProductQuantity } from "../mutations/use-products";
 import type { Product } from "../types";
+import { SelectInput } from "@/shared/ui/form/input/select-input";
+import {
+  getUnitsForOperation,
+  packagingOf,
+  type QuantityOperationMode,
+} from "../domain/packaging";
 
 type Props = { product: Product };
 
@@ -20,6 +26,8 @@ function errorMessage(error: unknown) {
 
 export function QuickStockAdjustment({ product }: Props) {
   useEntitlementAccess();
+  const packaging = packagingOf(product.catalog_product);
+  const [operationMode, setOperationMode] = useState<QuantityOperationMode>("unit");
   const [pendingDelta, setPendingDelta] = useState(0);
   const [awaitingDecision, setAwaitingDecision] = useState(false);
   const pendingDeltaRef = useRef(0);
@@ -28,35 +36,47 @@ export function QuickStockAdjustment({ product }: Props) {
   const mutation = useAdjustProductQuantity();
   const canWrite = accessState.canAccess() && accessState.canWrite();
   const previewQuantity = Math.max(0, product.quantity + pendingDelta);
+  const effectiveMode: QuantityOperationMode = packaging.isPackaged
+    ? operationMode
+    : "unit";
+  const operationStep = getUnitsForOperation(
+    1,
+    effectiveMode,
+    packaging.packSize,
+  );
 
-  const clearConfirmationTimer = useCallback(() => {
+  const clearConfirmationTimer = () => {
     if (confirmationTimer.current !== null) {
       window.clearTimeout(confirmationTimer.current);
       confirmationTimer.current = null;
     }
-  }, []);
+  };
 
-  const resetPreview = useCallback(() => {
+  const resetPreview = () => {
     clearConfirmationTimer();
     pendingDeltaRef.current = 0;
     setPendingDelta(0);
     setAwaitingDecision(false);
     notificationId.current = null;
-  }, [clearConfirmationTimer]);
+  };
 
-  const applyStep = useCallback(
-    (amount: -1 | 1) => {
-      const next = pendingDeltaRef.current + amount;
-      if (product.quantity + next < 0) return;
+  const applyStep = (amount: -1 | 1) => {
+      const unitDelta = amount * operationStep;
+      const next = pendingDeltaRef.current + unitDelta;
+      if (product.quantity + next < 0) {
+        if (effectiveMode === "pack") {
+          toast.warning("موجودی برای کم کردن یک بسته کامل کافی نیست", {
+            id: `pack-stock-${product.id}`,
+          });
+        }
+        return;
+      }
       pendingDeltaRef.current = next;
       setPendingDelta(next);
       if ("vibrate" in navigator) navigator.vibrate?.(6);
-    },
-    [product.quantity],
-  );
+  };
 
-  const confirm = useCallback(
-    (delta: number) => {
+  const confirm = (delta: number) => {
       setAwaitingDecision(true);
       mutation.mutate(
         { id: product.id, delta },
@@ -74,11 +94,9 @@ export function QuickStockAdjustment({ product }: Props) {
           },
         },
       );
-    },
-    [mutation, product.id, resetPreview],
-  );
+  };
 
-  const requestConfirmation = useCallback(() => {
+  const requestConfirmation = () => {
     const delta = pendingDeltaRef.current;
     if (delta === 0 || notificationId.current !== null) {
       if (delta === 0) resetPreview();
@@ -90,7 +108,7 @@ export function QuickStockAdjustment({ product }: Props) {
     setAwaitingDecision(true);
 
     notificationId.current = toast("تغییر موجودی تأیید شود؟", {
-      description: `${product.quantity.toLocaleString("fa-IR")} → ${finalQuantity.toLocaleString("fa-IR")} (${delta > 0 ? "+" : ""}${delta.toLocaleString("fa-IR")})`,
+      description: `${product.quantity.toLocaleString("fa-IR")} → ${finalQuantity.toLocaleString("fa-IR")} (${delta > 0 ? "+" : ""}${delta.toLocaleString("fa-IR")}${effectiveMode === "pack" ? `، ${(Math.abs(delta) / operationStep).toLocaleString("fa-IR")} بسته` : ""})`,
       duration: Infinity,
       dismissible: true,
       closeButton: false,
@@ -113,9 +131,9 @@ export function QuickStockAdjustment({ product }: Props) {
         if (!decisionMade) resetPreview();
       },
     });
-  }, [confirm, product.quantity, resetPreview]);
+  };
 
-  const scheduleConfirmation = useCallback(() => {
+  const scheduleConfirmation = () => {
     clearConfirmationTimer();
 
     if (pendingDeltaRef.current === 0) {
@@ -127,17 +145,18 @@ export function QuickStockAdjustment({ product }: Props) {
       confirmationTimer.current = null;
       requestConfirmation();
     }, CONFIRMATION_DEBOUNCE_MS);
-  }, [clearConfirmationTimer, requestConfirmation, resetPreview]);
+  };
 
-  useEffect(
-    () => () => {
-      clearConfirmationTimer();
+  useEffect(() => {
+    return () => {
+      if (confirmationTimer.current !== null) {
+        window.clearTimeout(confirmationTimer.current);
+      }
       if (notificationId.current !== null) {
         toast.dismiss(notificationId.current);
       }
-    },
-    [clearConfirmationTimer],
-  );
+    };
+  }, []);
 
   const decrement = useQuickStockAdjustment({
     onRepeat: () => applyStep(-1),
@@ -152,7 +171,25 @@ export function QuickStockAdjustment({ product }: Props) {
   const changing = decrement.repeating || increment.repeating;
 
   return (
-    <Flex
+    <Flex direction="column" gap="2" width="100%" className="quick-stock-wrapper">
+      {packaging.isPackaged && (
+        <Flex align="center" gap="2" width="100%" className="quick-stock-mode">
+          <Text size="1" color="gray" className="shrink-0">نوع تغییر</Text>
+          <SelectInput
+            size="1"
+            value={operationMode}
+            onValueChange={(value) => {
+              resetPreview();
+              setOperationMode(value as QuantityOperationMode);
+            }}
+            options={[
+              { label: "تعداد", value: "unit" },
+              { label: "بسته", value: "pack" },
+            ]}
+          />
+        </Flex>
+      )}
+      <Flex
       gap="1"
       dir="ltr"
       align="center"
@@ -166,7 +203,7 @@ export function QuickStockAdjustment({ product }: Props) {
         color="green"
         variant="soft"
         disabled={busy}
-        aria-label="برای افزایش یکی کلیک کنید یا برای افزایش سریع نگه دارید"
+        aria-label={effectiveMode === "pack" ? "افزایش یک بسته" : "افزایش یک واحد"}
         {...increment.holdProps}
         className={`quick-stock-button ${increment.pressing ? "is-pressing" : ""} ${increment.repeating ? "is-repeating" : ""}`}
         style={{ touchAction: "pan-y" }}
@@ -206,13 +243,14 @@ export function QuickStockAdjustment({ product }: Props) {
         type="button"
         variant="soft"
         disabled={busy}
-        aria-label="برای کاهش یکی کلیک کنید یا برای کاهش سریع نگه دارید"
+        aria-label={effectiveMode === "pack" ? "کاهش یک بسته" : "کاهش یک واحد"}
         {...decrement.holdProps}
         className={`quick-stock-button ${decrement.pressing ? "is-pressing" : ""} ${decrement.repeating ? "is-repeating" : ""}`}
         style={{ touchAction: "pan-y" }}
       >
         <MinusIcon width="17" height="17" />
       </Button>
+      </Flex>
     </Flex>
   );
 }

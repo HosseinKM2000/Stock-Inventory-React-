@@ -85,6 +85,8 @@ def create_catalog_product(
         description=payload.description,
         brand=payload.brand,
         image_url=payload.image_url,
+        is_packaged=payload.is_packaged,
+        pack_size=payload.pack_size,
         is_shared=True,
         is_active=True,
     )

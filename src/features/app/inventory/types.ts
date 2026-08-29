@@ -13,6 +13,10 @@ export type CatalogProduct = {
 
   image_url: string | null;
 
+  is_packaged: boolean;
+
+  pack_size: number | null;
+
   created_at: string;
 };
 
@@ -97,6 +101,8 @@ export type ProductInput = {
   description?: string | null;
   category_id?: number | null;
   low_stock_threshold?: number;
+  is_packaged?: boolean;
+  pack_size?: number | null;
 };
 
 export const PRODUCT_UNITS = [

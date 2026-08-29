@@ -9,6 +9,7 @@ import productPlaceholder from "@/assets/product-placeholder.svg";
 import { useImage } from "@/shared/lib/infrastructure/media/useImage";
 import { accessState } from "@/shared/access/access-state";
 import { useEntitlementAccess } from "@/shared/access/use-entitlement";
+import { getPackagingBreakdown, packagingOf } from "../domain/packaging";
 
 const STATUS_META: Record<
   ProductStatus,
@@ -43,6 +44,10 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
   useEntitlementAccess();
   const canWrite = accessState.canWrite();
   const status = STATUS_META[product.status];
+  const packaging = packagingOf(product.catalog_product);
+  const packageBreakdown = packaging.isPackaged
+    ? getPackagingBreakdown(product.quantity, packaging.packSize)
+    : null;
 
   // const image =
   //   resolveAssetUrl(product.catalog_product?.image_url) ?? PLACEHOLDER;
@@ -108,6 +113,13 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
               "بدون توضیح"}
           </Text>
 
+          {packageBreakdown && (
+            <Flex gap="3" wrap="wrap">
+              <Text size="2"><Text color="gray">بسته: </Text>{packageBreakdown.completePackages.toLocaleString("fa-IR")}</Text>
+              <Text size="2"><Text color="gray">تعداد کل: </Text>{product.quantity.toLocaleString("fa-IR")}</Text>
+            </Flex>
+          )}
+
           <Flex
             justify="between"
             gap="3"
@@ -166,7 +178,10 @@ export function ProductCard({ product, deleting, onDelete }: Props) {
         {/* Full-width on mobile; one compact horizontal action row on desktop. */}
         <div className="inventory-card-controls">
           <div className="inventory-card-quick shrink-0 border-[var(--gray-a5)] bg-[var(--gray-a2)]">
-            <QuickStockAdjustment product={product} />
+            <QuickStockAdjustment
+              key={`${product.id}-${product.catalog_product?.is_packaged}-${product.catalog_product?.pack_size ?? "none"}`}
+              product={product}
+            />
           </div>
 
           <Flex align="center" gap="3" className="inventory-card-desktop-end">

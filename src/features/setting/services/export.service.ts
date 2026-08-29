@@ -26,6 +26,8 @@ const COLUMNS: { key: string; label: string; value(product: Product): string }[]
       value: (p) => p.custom_label ?? p.catalog_product?.name ?? "",
     },
     { key: "quantity", label: "تعداد", value: (p) => String(p.quantity) },
+    { key: "is_packaged", label: "بسته‌بندی", value: (p) => p.catalog_product?.is_packaged ? "بله" : "خیر" },
+    { key: "pack_size", label: "تعداد در هر بسته", value: (p) => p.catalog_product?.pack_size == null ? "" : String(p.catalog_product.pack_size) },
     { key: "price", label: "قیمت", value: (p) => String(p.price) },
     { key: "status", label: "وضعیت", value: (p) => p.status },
     { key: "note", label: "یادداشت", value: (p) => p.note ?? "" },

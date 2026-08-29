@@ -49,6 +49,22 @@ def _result_from_json(value: str) -> SyncOperationResult:
     return SyncOperationResult.model_validate_json(value)
 
 
+def _packaging_values(
+    payload: dict,
+    current_packaged: bool = False,
+    current_pack_size: int | None = None,
+) -> tuple[bool, int | None]:
+    is_packaged = payload.get("is_packaged", current_packaged)
+    pack_size = payload.get("pack_size", current_pack_size)
+    if not isinstance(is_packaged, bool):
+        raise ValueError("PACKAGING_FLAG_INVALID")
+    if not is_packaged:
+        return False, None
+    if isinstance(pack_size, bool) or not isinstance(pack_size, int) or pack_size < 1:
+        raise ValueError("PACK_SIZE_REQUIRED")
+    return True, pack_size
+
+
 def _catalog_for_operation(
     db: DbSession,
     user: CurrentUser,
@@ -76,11 +92,14 @@ def _catalog_for_operation(
     if not isinstance(name, str) or not name.strip():
         raise ValueError("Product name is required")
 
+    is_packaged, pack_size = _packaging_values(catalog_payload)
     catalog = CatalogProduct(
         industry_id=user.industry_id,
         name=name.strip(),
         description=catalog_payload.get("description"),
         brand=catalog_payload.get("brand"),
+        is_packaged=is_packaged,
+        pack_size=pack_size,
         is_shared=False,
     )
     db.add(catalog)
@@ -94,6 +113,21 @@ def _apply_fields(
     item: InventoryItem,
     payload: dict,
 ) -> None:
+    catalog_payload = payload.get("catalog_product") or {}
+    if not isinstance(catalog_payload, dict):
+        raise ValueError("CATALOG_PRODUCT_INVALID")
+    if (
+        not item.catalog_product.is_shared
+        and ("is_packaged" in catalog_payload or "pack_size" in catalog_payload)
+    ):
+        is_packaged, pack_size = _packaging_values(
+            catalog_payload,
+            item.catalog_product.is_packaged,
+            item.catalog_product.pack_size,
+        )
+        item.catalog_product.is_packaged = is_packaged
+        item.catalog_product.pack_size = pack_size
+
     for field in ("quantity", "price", "low_stock_threshold"):
         if field in payload:
             value = payload[field]
@@ -275,6 +309,7 @@ async def push_batch(
                             id=operation.entity_id,
                             user_id=current_user.id,
                             catalog_product_id=catalog.id,
+                            catalog_product=catalog,
                             is_catalog_backed=catalog.is_shared,
                         )
                         db.add(item)

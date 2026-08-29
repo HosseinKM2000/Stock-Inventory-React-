@@ -186,6 +186,26 @@ def update_catalog_product(
     if payload.industry_id is not None:
         _ensure_industry_exists(db, payload.industry_id)
 
+    effective_packaged = (
+        payload.is_packaged
+        if "is_packaged" in payload.model_fields_set
+        else product.is_packaged
+    )
+    effective_pack_size = (
+        payload.pack_size
+        if "pack_size" in payload.model_fields_set
+        else product.pack_size
+    )
+    if effective_packaged and effective_pack_size is None:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="PACK_SIZE_REQUIRED",
+        )
+    if not effective_packaged:
+        product.pack_size = None
+        if "pack_size" in payload.model_fields_set:
+            payload.pack_size = None
+
     _ensure_catalog_name_available(
         db,
         payload.industry_id or product.industry_id,

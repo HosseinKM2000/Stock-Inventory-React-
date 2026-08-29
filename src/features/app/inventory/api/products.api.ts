@@ -25,6 +25,9 @@ function toFormData(input: ProductInput): FormData {
   appendField("low_stock_threshold", input.low_stock_threshold);
   if (input.low_stock_alert !== undefined)
     fd.append("low_stock_alert", String(input.low_stock_alert));
+  if (input.is_packaged !== undefined)
+    fd.append("is_packaged", String(input.is_packaged));
+  appendField("pack_size", input.pack_size);
   appendField("category_id", input.category_id);
   if (input.image) fd.append("image", input.image);
   if (input.remove_image) fd.append("remove_image", "true");

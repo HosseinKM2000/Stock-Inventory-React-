@@ -73,6 +73,17 @@ def _delete_image(image_url: str | None) -> None:
     path.unlink(missing_ok=True)
 
 
+def _validated_packaging(
+    is_packaged: bool,
+    pack_size: int | None,
+) -> tuple[bool, int | None]:
+    if not is_packaged:
+        return False, None
+    if pack_size is None or isinstance(pack_size, bool) or pack_size < 1:
+        raise HTTPException(status_code=422, detail="PACK_SIZE_REQUIRED")
+    return True, pack_size
+
+
 @router.get("", response_model=PaginatedInventory)
 def list_products(
     current_user: CurrentUser,
@@ -91,7 +102,6 @@ def list_products(
             (CatalogProduct.name.ilike(f"%{search}%")) |
             (InventoryItem.custom_label.ilike(f"%{search}%"))
         )
-
     if category_id is not None:
         stmt = stmt.where(InventoryItem.category_id == category_id)
 
@@ -139,9 +149,12 @@ async def create_product(
     category_id: Annotated[int | None, Form()] = None,
     low_stock_threshold: Annotated[int, Form(ge=0)] = 0,
     low_stock_alert: Annotated[bool, Form()] = False,
+    is_packaged: Annotated[bool, Form()] = False,
+    pack_size: Annotated[int | None, Form(ge=1)] = None,
     image: Annotated[UploadFile | None, File()] = None,
 ) -> InventoryItem:
     _validate_category(db, category_id, current_user.id)
+    is_packaged, pack_size = _validated_packaging(is_packaged, pack_size)
 
     limit = None if is_admin(current_user) else entitlement_for_user(db, current_user)["limits"]["inventory_items"]
     count = db.scalar(select(func.count(InventoryItem.id)).where(InventoryItem.user_id == current_user.id)) or 0
@@ -156,6 +169,8 @@ async def create_product(
         industry_id=current_user.industry_id,
         name=name,
         description=description,
+        is_packaged=is_packaged,
+        pack_size=pack_size,
         is_shared=False,
     )
     db.add(catalog)
@@ -192,10 +207,28 @@ async def update_product(
     category_id: Annotated[int | None, Form()] = None,
     low_stock_threshold: Annotated[int | None, Form(ge=0)] = None,
     low_stock_alert: Annotated[bool | None, Form()] = None,
+    is_packaged: Annotated[bool | None, Form()] = None,
+    pack_size: Annotated[int | None, Form(ge=1)] = None,
     image: Annotated[UploadFile | None, File()] = None,
     remove_image: Annotated[bool, Form()] = False,
 ) -> InventoryItem:
     product = _get_owned_product(db, product_id, current_user.id)
+
+    if is_packaged is not None or pack_size is not None:
+        if product.catalog_product.is_shared:
+            raise HTTPException(status_code=409, detail="CATALOG_PACKAGING_ADMIN_CONTROLLED")
+        effective_packaged = (
+            is_packaged if is_packaged is not None else product.catalog_product.is_packaged
+        )
+        effective_pack_size = (
+            pack_size if pack_size is not None else product.catalog_product.pack_size
+        )
+        effective_packaged, effective_pack_size = _validated_packaging(
+            effective_packaged,
+            effective_pack_size,
+        )
+        product.catalog_product.is_packaged = effective_packaged
+        product.catalog_product.pack_size = effective_pack_size
 
     if category_id is not None:
         _validate_category(db, category_id, current_user.id)

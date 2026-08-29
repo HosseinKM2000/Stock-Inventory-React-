@@ -63,6 +63,12 @@ The backend remains the ultimate authority; browser-side clock checks provide
 reasonable offline enforcement, not DRM-grade protection on a user-controlled
 device.
 
+Optional product packaging is catalog metadata (`is_packaged` and `pack_size`).
+Stock `quantity`, price calculations, thresholds, transactions, and dashboard
+statistics always remain individual-unit based. Package counts and remainders
+are derived in the client, and pack-mode stock actions are converted back to
+unit deltas before entering the existing local outbox.
+
 ## Verification
 
 ```bash

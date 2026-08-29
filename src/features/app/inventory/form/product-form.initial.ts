@@ -51,6 +51,10 @@ export function createProductInitialValues(initial?: Product) {
 
       image_url: initial?.catalog_product?.image_url ?? null,
 
+      is_packaged: initial?.catalog_product?.is_packaged ?? false,
+
+      pack_size: initial?.catalog_product?.pack_size ?? null,
+
       created_at: initial?.catalog_product?.created_at ?? now,
     },
 

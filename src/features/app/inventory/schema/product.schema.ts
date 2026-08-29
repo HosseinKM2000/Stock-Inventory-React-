@@ -13,7 +13,19 @@ const catalogProductSchema = z.object({
 
   image_url: z.string().nullable(),
 
+  is_packaged: z.boolean(),
+
+  pack_size: z.number().int("تعداد هر بسته باید عدد صحیح باشد").positive("تعداد هر بسته باید حداقل یک باشد").nullable(),
+
   created_at: z.string(),
+}).superRefine((value, context) => {
+  if (value.is_packaged && value.pack_size == null) {
+    context.addIssue({
+      code: "custom",
+      path: ["pack_size"],
+      message: "تعداد واحد در هر بسته الزامی است",
+    });
+  }
 });
 
 export const productSchema = z.object({

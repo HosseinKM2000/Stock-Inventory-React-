@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, StrictInt, field_validator, model_validator
 
 
 # =========================================================
@@ -136,6 +136,16 @@ class CatalogProductBase(BaseModel):
     description: str | None = Field(default=None, max_length=5000)
     brand: str | None = Field(default=None, max_length=120)
     image_url: str | None = Field(default=None, max_length=500)
+    is_packaged: bool = False
+    pack_size: StrictInt | None = Field(default=None, ge=1)
+
+    @model_validator(mode="after")
+    def validate_packaging(self):
+        if not self.is_packaged:
+            self.pack_size = None
+        elif self.pack_size is None:
+            raise ValueError("PACK_SIZE_REQUIRED")
+        return self
 
     @field_validator("name")
     @classmethod
@@ -165,6 +175,8 @@ class CatalogProductUpdate(BaseModel):
     description: str | None = Field(default=None, max_length=5000)
     brand: str | None = Field(default=None, max_length=120)
     image_url: str | None = Field(default=None, max_length=500)
+    is_packaged: bool | None = None
+    pack_size: StrictInt | None = Field(default=None, ge=1)
 
     @field_validator("name")
     @classmethod
@@ -197,6 +209,10 @@ class CatalogProductOut(BaseModel):
     brand: str | None
 
     image_url: str | None
+
+    is_packaged: bool
+
+    pack_size: int | None
 
     created_at: datetime
 
