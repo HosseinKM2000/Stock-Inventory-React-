@@ -48,6 +48,7 @@ def signup(
         first_name=payload.first_name,
         last_name=payload.last_name,
         username=payload.username,
+        email=payload.email,
         phone=payload.phone,
         hashed_password=hash_password(payload.password),
         plan="free",

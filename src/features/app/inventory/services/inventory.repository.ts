@@ -6,6 +6,10 @@ export const inventoryRepository = {
     return inventoryStorage.getAll();
   },
 
+  getAllStored(): Promise<Product[]> {
+    return inventoryStorage.getAllStored();
+  },
+
   get(id: number): Promise<Product | undefined> {
     return inventoryStorage.get(id);
   },
@@ -16,6 +20,10 @@ export const inventoryRepository = {
 
   saveMany(products: Product[]) {
     return inventoryStorage.saveMany(products);
+  },
+
+  replaceAll(products: Product[]) {
+    return inventoryStorage.replaceAll(products);
   },
 
   remove(id: number) {

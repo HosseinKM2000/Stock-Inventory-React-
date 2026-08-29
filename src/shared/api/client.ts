@@ -79,7 +79,14 @@ export async function apiFetch<T>(
   }
 
   const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
+  let data: unknown = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      data = { detail: response.ok ? "Invalid server response" : text };
+    }
+  }
 
   if (!response.ok) {
     const message = extractMessage(data) ?? response.statusText;
@@ -102,7 +109,7 @@ export async function apiFetch<T>(
       }
     }
 
-    throw new ApiError(response.status, message);
+    throw new ApiError(response.status, message, data);
   }
 
   return data as T;

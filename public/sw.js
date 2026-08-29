@@ -1,5 +1,12 @@
-const CACHE_NAME = "tanzim-shell-v5";
-const APP_SHELL = ["/", "/index.html", "/favicon.svg", "/manifest.webmanifest"];
+const CACHE_NAME = "tanzim-shell-v6";
+const APP_SHELL = [
+  "/",
+  "/index.html",
+  "/favicon.svg",
+  "/pwa-icon-192.png",
+  "/pwa-icon-512.png",
+  "/manifest.webmanifest",
+];
 
 async function precacheApplication() {
   const cache = await caches.open(CACHE_NAME);
@@ -87,5 +94,22 @@ self.addEventListener("fetch", (event) => {
 
       return response;
     }),
+  );
+});
+
+self.addEventListener("sync", (event) => {
+  if (event.tag !== "inventory-sync") return;
+
+  // Authentication and the durable outbox live in the page context. Ask every
+  // open client to run the same single-flight sync service used by foreground
+  // connectivity/focus triggers.
+  event.waitUntil(
+    self.clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clients) => {
+        for (const client of clients) {
+          client.postMessage({ type: "inventory-sync" });
+        }
+      }),
   );
 });

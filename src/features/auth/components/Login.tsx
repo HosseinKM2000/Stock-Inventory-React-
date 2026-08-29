@@ -12,7 +12,7 @@ import { useAppForm } from "@/shared/lib/form/use-app-form";
 import { PasswordInput } from "@/shared/ui/form/input/password-input";
 import { useLogin } from "../mutations/use-register";
 import { loginSchema } from "../validators/login.schema";
-import { ApiError } from "@/shared/api/api-error";
+import { authErrorMessage } from "../auth-error";
 
 function LoginComponent() {
   const loginMutation = useLogin();
@@ -32,11 +32,9 @@ function LoginComponent() {
   });
 
   const serverError =
-    loginMutation.error instanceof ApiError
-      ? loginMutation.error.message
-      : loginMutation.isError
-        ? "خطا در ارتباط با سرور"
-        : null;
+    loginMutation.isError
+      ? authErrorMessage(loginMutation.error, "ورود ناموفق بود. دوباره تلاش کنید.")
+      : null;
 
   return (
     <Form

@@ -20,6 +20,7 @@ _ALLOWED_IMAGE_TYPES = {
     "image/jpeg": ".jpg",
     "image/jpg": ".jpg",
     "image/webp": ".webp",
+    "image/avif": ".avif",
     "image/gif": ".gif",
 }
 MAX_FILE_SIZE = 5 * 1024 * 1024

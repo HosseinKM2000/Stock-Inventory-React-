@@ -2,7 +2,9 @@ import { networkService } from "@/shared/lib/infrastructure/network/network-serv
 import { syncMetadataStorage } from "@/shared/lib/infrastructure/storage/sync-metadata-storage";
 import { queueService } from "@/shared/lib/infrastructure/sync/queue.service";
 import { syncService } from "@/shared/lib/infrastructure/sync/sync-service";
-import { syncStatusStore } from "@/shared/lib/infrastructure/sync/sync-status";
+import { pullProductChanges } from "../api/sync.api";
+import { inventoryRepository } from "./inventory.repository";
+import { inventoryService } from "./inventory-service";
 
 const CURSOR_KEY = "product-sync-cursor";
 const INITIALIZED_KEY = "product-sync-initialized";
@@ -23,17 +25,26 @@ export const inventoryRefreshService = {
       );
     }
 
-    await syncMetadataStorage.set(CURSOR_KEY, 0);
-    await syncMetadataStorage.set(INITIALIZED_KEY, 0);
-    await syncService.sync();
+    const response = await pullProductChanges(0);
+    const localById = new Map(
+      (await inventoryRepository.getAll()).map((product) => [product.id, product]),
+    );
+    const snapshot = response.changes.flatMap((change) => {
+      if (change.operation !== "UPSERT" || !change.record) return [];
+      const local = localById.get(change.entity_id);
+      const localImage = local?.image_url?.startsWith("local://")
+        ? local.image_url
+        : null;
+      return [{
+        ...change.record,
+        image_url: localImage ?? change.record.image_url ?? null,
+        server_image_url: change.record.image_url ?? null,
+      }];
+    });
 
-    const status = syncStatusStore.get();
-    if (
-      status.state === "failed" &&
-      status.error &&
-      status.error !== "SUBSCRIPTION_EXPIRED"
-    ) {
-      throw new Error("دریافت محصولات از سرور ناموفق بود. دوباره تلاش کنید.");
-    }
+    await inventoryRepository.replaceAll(snapshot);
+    await syncMetadataStorage.set(CURSOR_KEY, response.cursor);
+    await syncMetadataStorage.set(INITIALIZED_KEY, 1);
+    await inventoryService.cleanupImages();
   },
 };

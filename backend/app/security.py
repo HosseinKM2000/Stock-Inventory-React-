@@ -10,12 +10,16 @@ _BCRYPT_MAX_BYTES = 72
 
 
 def hash_password(password: str) -> str:
-    pw = password.encode("utf-8")[:_BCRYPT_MAX_BYTES]
+    pw = password.encode("utf-8")
+    if len(pw) > _BCRYPT_MAX_BYTES:
+        raise ValueError("PASSWORD_TOO_LONG")
     return bcrypt.hashpw(pw, bcrypt.gensalt()).decode("utf-8")
 
 
 def verify_password(password: str, hashed: str) -> bool:
-    pw = password.encode("utf-8")[:_BCRYPT_MAX_BYTES]
+    pw = password.encode("utf-8")
+    if len(pw) > _BCRYPT_MAX_BYTES:
+        return False
     try:
         return bcrypt.checkpw(pw, hashed.encode("utf-8"))
     except ValueError:

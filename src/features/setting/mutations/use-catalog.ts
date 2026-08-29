@@ -72,10 +72,14 @@ export function useCreateCatalog() {
   return useMutation({
     mutationFn: createCatalogProduct,
 
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("محصول کاتالوگ با موفقیت ایجاد شد.");
-
-      queryClient.invalidateQueries({ queryKey: catalogProductKeys.lists() });
+      await syncService.sync();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: catalogProductKeys.lists() }),
+        queryClient.invalidateQueries({ queryKey: productKeys.all }),
+        queryClient.invalidateQueries({ queryKey: dashboardKeys.all }),
+      ]);
     },
   });
 }
@@ -92,11 +96,16 @@ export function useUpdateCatalog() {
       data: CatalogProductUpdate;
     }) => updateCatalogProduct(id, data),
 
-    onSuccess: (product) => {
+    onSuccess: async (product) => {
       toast.success("محصول کاتالوگ با موفقیت ویرایش شد.");
 
       queryClient.setQueryData(catalogProductKeys.detail(product.id), product);
-      queryClient.invalidateQueries({ queryKey: catalogProductKeys.lists() });
+      await syncService.sync();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: catalogProductKeys.lists() }),
+        queryClient.invalidateQueries({ queryKey: productKeys.all }),
+        queryClient.invalidateQueries({ queryKey: dashboardKeys.all }),
+      ]);
     },
   });
 }

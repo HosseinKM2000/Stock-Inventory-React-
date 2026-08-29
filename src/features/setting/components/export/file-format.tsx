@@ -23,9 +23,9 @@ const FormatCads = ({ value, onChange }: FormatCadsProps) => {
             <FileIcon width={"40"} height={"40"} />
             <Flex direction={"column"} align={"center"} mt={"3"}>
               <Text weight="bold" size={"4"}>
-                Excel
+                Excel سازگار
               </Text>
-              <Text>.xlsx</Text>
+              <Text>.xls</Text>
             </Flex>
           </Flex>
         </RadioCards.Item>
@@ -45,9 +45,9 @@ const FormatCads = ({ value, onChange }: FormatCadsProps) => {
             <FileIcon width={"40"} height={"40"} />
             <Flex direction={"column"} align={"center"} mt={"3"}>
               <Text weight="bold" size={"4"}>
-                PDF
+                چاپ / PDF
               </Text>
-              <Text>.pdf</Text>
+              <Text>ذخیره از پنجره چاپ</Text>
             </Flex>
           </Flex>
         </RadioCards.Item>

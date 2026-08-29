@@ -9,7 +9,14 @@ from sqlalchemy.orm import joinedload
 
 from ..config import settings
 from ..deps import CurrentUser, CurrentWritableUser, DbSession
-from ..models import CatalogProduct, InventoryItem, SyncChange, SyncOperation
+from ..models import (
+    CatalogProduct,
+    Category,
+    InventoryItem,
+    InventoryTransaction,
+    SyncChange,
+    SyncOperation,
+)
 from ..services.subscription_service import entitlement_for_user
 from ..services.authorization_service import is_admin
 from ..schemas import (
@@ -28,6 +35,7 @@ _IMAGE_EXTENSIONS = {
     "image/png": ".png",
     "image/jpeg": ".jpg",
     "image/webp": ".webp",
+    "image/avif": ".avif",
     "image/gif": ".gif",
 }
 _MAX_IMAGE_BYTES = 10 * 1024 * 1024
@@ -80,7 +88,12 @@ def _catalog_for_operation(
     return catalog
 
 
-def _apply_fields(item: InventoryItem, payload: dict) -> None:
+def _apply_fields(
+    db: DbSession,
+    user_id: int,
+    item: InventoryItem,
+    payload: dict,
+) -> None:
     for field in ("quantity", "price", "low_stock_threshold"):
         if field in payload:
             value = payload[field]
@@ -106,7 +119,38 @@ def _apply_fields(item: InventoryItem, payload: dict) -> None:
         value = payload["category_id"]
         if value is not None and (isinstance(value, bool) or not isinstance(value, int)):
             raise ValueError("category_id must be an integer or null")
+        if value is not None:
+            category = db.scalar(
+                select(Category).where(
+                    Category.id == value,
+                    Category.user_id == user_id,
+                )
+            )
+            if category is None:
+                raise ValueError("CATEGORY_NOT_AVAILABLE")
         item.category_id = value
+
+
+def _record_quantity_change(
+    db: DbSession,
+    user_id: int,
+    item: InventoryItem,
+    before_quantity: int,
+) -> None:
+    delta = item.quantity - before_quantity
+    if delta == 0:
+        return
+    db.add(
+        InventoryTransaction(
+            user_id=user_id,
+            inventory_item_id=item.id,
+            type="stock_in" if delta > 0 else "stock_out",
+            quantity=abs(delta),
+            before_quantity=before_quantity,
+            after_quantity=item.quantity,
+            note="Recorded by offline synchronization",
+        )
+    )
 
 
 async def _save_image(file: UploadFile, previous: str | None) -> str:
@@ -234,7 +278,14 @@ async def push_batch(
                             is_catalog_backed=catalog.is_shared,
                         )
                         db.add(item)
-                    _apply_fields(item, payload)
+                    before_quantity = item.quantity or 0
+                    _apply_fields(db, current_user.id, item, payload)
+                    _record_quantity_change(
+                        db,
+                        current_user.id,
+                        item,
+                        before_quantity,
+                    )
                     if (
                         operation.operation == "UPDATE"
                         and "image_url" in payload

@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Button } from "@/shared/ui/button/button";
 
@@ -24,6 +24,7 @@ import {
   catalogSchema,
   type CatalogFormValues,
 } from "../../validators/catalog.schema";
+import { adminErrorMessage } from "../admin-error";
 
 type Props = {
   mode: "create" | "edit";
@@ -104,31 +105,28 @@ export default function CatalogFormDialog({
     },
   });
 
-  useEffect(() => {
-    if (!open) return;
-
-    mutation.reset();
-
-    if (mode === "edit" && catalogProduct) {
-      form.load({
-        name: catalogProduct.name,
-        description: catalogProduct.description ?? "",
-        brand: catalogProduct.brand ?? "",
-        image_url: catalogProduct.image_url ?? "",
-        industry_id: catalogProduct.industry_id,
-      });
-    } else {
-      form.reset();
+  const handleOpenChange = (next: boolean) => {
+    if (next) {
+      mutation.reset();
+      if (mode === "edit" && catalogProduct) {
+        form.load({
+          name: catalogProduct.name,
+          description: catalogProduct.description ?? "",
+          brand: catalogProduct.brand ?? "",
+          image_url: catalogProduct.image_url ?? "",
+          industry_id: catalogProduct.industry_id,
+        });
+      } else {
+        form.reset();
+      }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, mode, catalogProduct]);
+    setOpen(next);
+  };
 
   const errorMessage =
-    mutation.error instanceof ApiError
-      ? mutation.error.message
-      : mutation.isError
-        ? "خطا در ارتباط با سرور"
-        : null;
+    mutation.isError
+      ? adminErrorMessage(mutation.error, "ذخیره محصول کاتالوگ ناموفق بود")
+      : null;
 
   const industryErrorMessage =
     error instanceof ApiError
@@ -142,7 +140,7 @@ export default function CatalogFormDialog({
   );
 
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
+    <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Trigger>{trigger}</Dialog.Trigger>
 
       <Dialog.Content maxWidth="500px">

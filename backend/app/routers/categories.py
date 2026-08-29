@@ -1,13 +1,16 @@
+import json
+
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select, func
 
 from ..deps import CurrentCategoryWriter, CurrentUser, DbSession
-from ..models import Category, InventoryItem
+from ..models import Category, InventoryItem, SyncChange
 from ..schemas import (
     CategoryCreate,
     CategoryOut,
     CategoryUpdate,
     CategoryWithStats,
+    InventoryOut,
 )
 
 router = APIRouter(prefix="/categories", tags=["categories"])
@@ -139,16 +142,34 @@ def delete_category(
     current_user: CurrentCategoryWriter,
     db: DbSession,
 ) -> None:
-    category = _get_owned_category(
-        db,
-        category_id,
-        current_user.id,
-    )
+    category = db.get(Category, category_id)
+    if category is None:
+        # DELETE is idempotent for a resource that no longer exists.
+        return
+    if category.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="دسته بندی یافت نشد",
+        )
 
-    db.query(InventoryItem).filter(
+    affected_items = list(db.scalars(select(InventoryItem).where(
         InventoryItem.user_id == current_user.id,
         InventoryItem.category_id == category.id,
-    ).update({InventoryItem.category_id: None})
+    )))
+    for item in affected_items:
+        item.category_id = None
+
+    db.flush()
+    for item in affected_items:
+        db.add(SyncChange(
+            user_id=current_user.id,
+            entity="product",
+            entity_id=item.id,
+            operation="UPSERT",
+            payload=json.dumps(
+                InventoryOut.model_validate(item).model_dump(mode="json")
+            ),
+        ))
 
     db.delete(category)
     db.commit()

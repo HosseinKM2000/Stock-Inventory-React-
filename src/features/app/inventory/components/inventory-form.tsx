@@ -68,12 +68,6 @@ export function ProductForm({
     formatPrice(initial?.price ?? 0),
   );
 
-  const statusOptions = [
-    { label: "موجود", value: "in_stock" },
-    { label: "کمبود موجودی", value: "low_stock" },
-    { label: "ناموجود", value: "out_of_stock" },
-  ];
-
   const form = useAppForm({
     schema: productSchema,
 
@@ -99,8 +93,10 @@ export function ProductForm({
   // be removed immediately; the image referenced by the persisted product is
   // only removed by InventoryService after the metadata update succeeds.
   const stagedImages = useRef(new Set<string>());
+  const imageRequest = useRef(0);
 
   const handleImageChange = async (file: File | null) => {
+    const request = ++imageRequest.current;
     const previousPath = form.values.image_url;
 
     if (!file) {
@@ -115,6 +111,11 @@ export function ProductForm({
 
     try {
       const path = await imageService.save(file, { purpose: "product" });
+
+      if (request !== imageRequest.current) {
+        await imageService.remove(path);
+        return;
+      }
 
       stagedImages.current.add(path);
 
@@ -152,8 +153,6 @@ export function ProductForm({
     setDisplayPrice(formatPrice(price));
     form.setValue("price", price);
   };
-
-  // const unitOptions = PRODUCT_UNITS.map((u) => ({ value: u, label: u }));
 
   return (
     <Form isSubmitting={submitting} onSubmit={preventEventHandler(form.submit)}>
@@ -268,20 +267,6 @@ export function ProductForm({
               name="price"
               value={displayPrice}
               onChange={handlePriceChange}
-              disabled={readOnly}
-            />
-          </FormField>
-
-          {/* Status */}
-
-          <FormField id="status" label="وضعیت">
-            <SelectInput
-              size="3"
-              value={form.values.status}
-              onValueChange={(value) =>
-                form.setValue("status", value as Product["status"])
-              }
-              options={statusOptions}
               disabled={readOnly}
             />
           </FormField>

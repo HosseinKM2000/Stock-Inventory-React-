@@ -125,6 +125,14 @@ function printAsPdf(blob: Blob) {
 }
 
 function applyScope(products: Product[], options: ExportOptions) {
+  if (options.scope === "category" && options.categoryId == null) {
+    throw new Error("برای خروجی دسته‌بندی، ابتدا یک دسته را انتخاب کنید.");
+  }
+
+  if (options.scope === "selected" && (options.selectedIds?.length ?? 0) === 0) {
+    throw new Error("حداقل یک محصول را برای خروجی انتخاب کنید.");
+  }
+
   if (options.scope === "low_stock") {
     return products.filter(
       (product) =>
@@ -155,7 +163,8 @@ function buildFile(products: Product[], options: ExportOptions, title: string) {
       };
 
     case "xlsx":
-      // Excel opens an HTML table natively; avoids adding a spreadsheet dependency.
+      // Excel-compatible HTML table. The UI labels this honestly as .xls;
+      // generating OOXML would require a spreadsheet dependency.
       return {
         blob: new Blob([toHtmlTable(products, title)], {
           type: "application/vnd.ms-excel;charset=utf-8",

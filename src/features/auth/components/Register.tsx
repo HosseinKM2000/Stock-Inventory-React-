@@ -10,7 +10,7 @@ import { Box, Callout, Flex, Link, Text } from "@radix-ui/themes";
 import { Link as RouterLink } from "@tanstack/react-router";
 import { useRegister } from "../mutations/use-register";
 import { registerSchema } from "../validators/register.schema";
-import { ApiError } from "@/shared/api/api-error";
+import { authErrorMessage } from "../auth-error";
 
 function RegisterComponent() {
   const registerMutation = useRegister();
@@ -34,16 +34,15 @@ function RegisterComponent() {
         username: values.username,
         password: values.password,
         phone: values.phone,
+        email: values.email || undefined,
       });
     },
   });
 
   const serverError =
-    registerMutation.error instanceof ApiError
-      ? registerMutation.error.message
-      : registerMutation.isError
-        ? "خطا در ارتباط با سرور"
-        : null;
+    registerMutation.isError
+      ? authErrorMessage(registerMutation.error, "ثبت‌نام ناموفق بود. دوباره تلاش کنید.")
+      : null;
 
   return (
     <Form

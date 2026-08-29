@@ -1,6 +1,7 @@
 import { queueStorage } from "../storage/queue-storage";
 import type { QueueAction, SyncQueueItem } from "../storage/types";
 import { accessState } from "@/shared/access/access-state";
+import { requestBackgroundSync } from "./background-sync";
 
 export const MAX_RETRIES = 5;
 
@@ -116,6 +117,7 @@ export const queueService = {
 
       nextAttemptAt: now,
     });
+    void requestBackgroundSync();
   },
 
   async getAll() {

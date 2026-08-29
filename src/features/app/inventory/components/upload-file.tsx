@@ -3,6 +3,7 @@ import { Cross2Icon, ImageIcon, Pencil1Icon } from "@radix-ui/react-icons";
 import { Box, Button, Card, Flex, IconButton, Text } from "@radix-ui/themes";
 
 import { useRef } from "react";
+import productPlaceholder from "@/assets/product-placeholder.svg";
 
 type ProductImageUploadProps = {
   value?: string;
@@ -84,7 +85,12 @@ export function ProductImageUpload({
           <Box className="relative">
             <img
               src={value}
-              alt="product"
+              alt="تصویر محصول"
+              onError={(event) => {
+                if (!event.currentTarget.src.endsWith(productPlaceholder)) {
+                  event.currentTarget.src = productPlaceholder;
+                }
+              }}
               className="
                   h-64
                   w-full

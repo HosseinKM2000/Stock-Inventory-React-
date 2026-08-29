@@ -4,9 +4,11 @@ import io
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
+from sqlalchemy.orm import joinedload
 
 from ..deps import CurrentUser, DbSession, require_capability
-from ..models import InventoryItem, InventoryTransaction, CatalogProduct
+from ..models import InventoryItem, InventoryTransaction
+from ..schemas import InventoryOut
 
 router = APIRouter(prefix="/export", tags=["export"])
 
@@ -14,17 +16,16 @@ router = APIRouter(prefix="/export", tags=["export"])
 # =========================
 # EXPORT INVENTORY (JSON)
 # =========================
-@router.get("/inventory/json")
+@router.get("/inventory/json", response_model=list[InventoryOut])
 def export_inventory_json(
     current_user: CurrentUser,
     db: DbSession,
 ):
     require_capability(db, current_user, "export.server")
     items = db.scalars(
-        select(InventoryItem).where(
+        select(InventoryItem).options(joinedload(InventoryItem.catalog_product)).where(
             InventoryItem.user_id == current_user.id,
             InventoryItem.deleted_at.is_(None),
-            InventoryItem.is_hidden == False,
         ).order_by(InventoryItem.created_at.desc(), InventoryItem.id.desc())
     ).all()
 
@@ -44,11 +45,11 @@ def export_inventory_csv(
         select(InventoryItem).where(
             InventoryItem.user_id == current_user.id,
             InventoryItem.deleted_at.is_(None),
-            InventoryItem.is_hidden == False,
         ).order_by(InventoryItem.created_at.desc(), InventoryItem.id.desc())
     ).all()
 
     output = io.StringIO()
+    output.write("\ufeff")
     writer = csv.writer(output)
 
     writer.writerow([
@@ -76,7 +77,7 @@ def export_inventory_csv(
 
     return StreamingResponse(
         output,
-        media_type="text/csv",
+        media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": "attachment; filename=inventory.csv"},
     )
 

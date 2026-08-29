@@ -47,6 +47,7 @@ Set via environment variables or a `.env` file (see `.env.example`):
 
 | Variable | Default | Description |
 | --- | --- | --- |
+| `ENVIRONMENT` | `development` | Set to `production` for production; startup then rejects the development signing key |
 | `SECRET_KEY` | `dev-secret-change-me` | JWT signing key — **change in production** |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `10080` (7 days) | Access-token lifetime |
 | `DATABASE_URL` | `sqlite:///./stock_inventory.db` | SQLAlchemy database URL |
@@ -83,6 +84,9 @@ All routes are under `/api`. Authenticated routes require an
 | GET | `/api/auth/me` | ✓ | Current user |
 | PATCH | `/api/auth/me` | ✓ | Update profile |
 | PATCH | `/api/auth/me/password` | ✓ | Change password |
+| GET | `/api/plans/current` | ✓ | Current timestamp-based entitlement |
+| POST | `/api/sync/batch` | ✓ | Idempotent local product change batch |
+| GET | `/api/sync/changes` | ✓ | Incremental product changes/tombstones |
 | GET | `/api/categories` | ✓ | List categories |
 | POST | `/api/categories` | ✓ | Create category |
 | PATCH | `/api/categories/{id}` | ✓ | Update category |
@@ -93,6 +97,11 @@ All routes are under `/api`. Authenticated routes require an
 | PATCH | `/api/products/{id}` | ✓ | Update (multipart) |
 | DELETE | `/api/products/{id}` | ✓ | Delete |
 | GET | `/api/dashboard/stats` | ✓ | Totals, low/out-of-stock counts, value, breakdown |
+| GET | `/api/catalog-products` | ✓ | Active shared catalog |
+| PATCH | `/api/catalog-products/{id}/archive` | Admin | Archive catalog product |
+| PATCH | `/api/catalog-products/{id}/restore` | Admin | Restore catalog product |
+| DELETE | `/api/catalog-products/{id}` | Admin | Transactional permanent deletion |
+| GET/PATCH/DELETE | `/api/admin/*` | Admin | Users, plans, subscriptions, and audit |
 
 Product `status` (`in_stock` / `low_stock` / `out_of_stock`) is derived
 server-side from `quantity` and `low_stock_threshold`.

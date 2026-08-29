@@ -73,6 +73,8 @@ export function useDeleteIndustry() {
       toast.error(
         error instanceof ApiError && error.message === "INDUSTRY_HAS_CATALOG_PRODUCTS"
           ? "حذف این حوزه کاری امکان‌پذیر نیست؛ محصولات کاتالوگ به آن وابسته هستند."
+          : error instanceof ApiError && error.message === "INDUSTRY_HAS_USERS"
+            ? "حذف این حوزه کاری امکان‌پذیر نیست؛ حساب‌های کاربری به آن وابسته هستند."
           : "حذف حوزه کاری ناموفق بود.",
       );
     },

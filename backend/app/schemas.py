@@ -14,9 +14,17 @@ class UserBase(BaseModel):
 
 
 class SignupRequest(UserBase):
-    phone: str | None = None
+    email: EmailStr | None = None
+    phone: str | None = Field(default=None, max_length=40)
     device_fingerprint: str
     password: str = Field(min_length=8, max_length=128)
+
+    @field_validator("password")
+    @classmethod
+    def validate_password_bytes(cls, value: str) -> str:
+        if len(value.encode("utf-8")) > 72:
+            raise ValueError("PASSWORD_TOO_LONG")
+        return value
 
 
 class LoginRequest(BaseModel):
@@ -40,6 +48,8 @@ class PasswordUpdate(BaseModel):
     @field_validator("new_password")
     @classmethod
     def validate_new_password(cls, value: str) -> str:
+        if len(value.encode("utf-8")) > 72:
+            raise ValueError("PASSWORD_TOO_LONG")
         if not any(character.isupper() for character in value):
             raise ValueError("PASSWORD_UPPERCASE_REQUIRED")
         if not any(character.islower() for character in value):
@@ -509,8 +519,16 @@ class DeviceInfo(BaseModel):
     device_fingerprint: str
 
 class IndustryBase(BaseModel):
-    name: str
-    description: str | None = None
+    name: str = Field(min_length=1, max_length=120)
+    description: str | None = Field(default=None, max_length=5000)
+
+    @field_validator("name")
+    @classmethod
+    def normalize_industry_name(cls, value: str) -> str:
+        value = value.strip()
+        if not value:
+            raise ValueError("INDUSTRY_NAME_REQUIRED")
+        return value
 
 
 class IndustryCreate(IndustryBase):
@@ -519,9 +537,19 @@ class IndustryCreate(IndustryBase):
 
 
 class IndustryUpdate(BaseModel):
-    name: str | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=120)
     is_active: bool | None = None
-    description: str | None = None
+    description: str | None = Field(default=None, max_length=5000)
+
+    @field_validator("name")
+    @classmethod
+    def normalize_industry_update_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        if not value:
+            raise ValueError("INDUSTRY_NAME_REQUIRED")
+        return value
 
 
 class IndustryOut(IndustryBase):

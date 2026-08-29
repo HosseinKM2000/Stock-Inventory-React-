@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ZodType } from "zod";
 
 type Options<TValues extends Record<string, unknown>> = {
@@ -28,10 +28,10 @@ export function useAppForm<TValues extends Record<string, unknown>>({
     setValues(initialValues);
   }, [initialValues]);
 
-  function load(values: TValues) {
+  const load = useCallback((values: TValues) => {
     setValues(values);
     setErrors({});
-  }
+  }, []);
 
   function patch(values: Partial<TValues>) {
     setValues((prev) => ({
@@ -40,10 +40,10 @@ export function useAppForm<TValues extends Record<string, unknown>>({
     }));
   }
 
-  function reset() {
+  const reset = useCallback(() => {
     setValues(initialValues);
     setErrors({});
-  }
+  }, [initialValues]);
 
   function clearErrors() {
     setErrors({});

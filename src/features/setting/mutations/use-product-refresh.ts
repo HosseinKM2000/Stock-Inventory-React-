@@ -3,6 +3,7 @@ import { productKeys } from "@/features/app/inventory/query/query-keys";
 import { inventoryRefreshService } from "@/features/app/inventory/services/inventory-refresh.service";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { exportKeys } from "../query/query-keys";
 
 export function useRefreshProductsFromServer() {
   const queryClient = useQueryClient();
@@ -13,6 +14,7 @@ export function useRefreshProductsFromServer() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: productKeys.all }),
         queryClient.invalidateQueries({ queryKey: dashboardKeys.all }),
+        queryClient.invalidateQueries({ queryKey: exportKeys.all }),
       ]);
       toast.success("محصولات با آخرین اطلاعات سرور به‌روزرسانی شدند.");
     },

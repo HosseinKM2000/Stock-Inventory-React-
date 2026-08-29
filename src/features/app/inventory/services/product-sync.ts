@@ -80,48 +80,61 @@ async function push(items: SyncQueueItem[]): Promise<SyncHandlerResult[]> {
 async function pull() {
   const cursor = await syncMetadataStorage.getNumber(CURSOR_KEY);
   const initialized = await syncMetadataStorage.getNumber(INITIALIZED_KEY);
-  const requestCursor = initialized && cursor === 0 ? -1 : cursor;
-  const response = await pullProductChanges(requestCursor);
+  let requestCursor = initialized && cursor === 0 ? -1 : cursor;
+  let firstPage = true;
 
-  if (!initialized) {
-    const serverIds = new Set(
-      response.changes
-        .filter((change) => change.operation === "UPSERT")
-        .map((change) => change.entity_id),
-    );
+  // The server caps incremental pages at 500 changes. Drain every available
+  // page in this run so a busy account does not remain partially reconciled
+  // until another focus/connectivity event happens.
+  while (true) {
+    const response = await pullProductChanges(requestCursor);
 
-    for (const local of await inventoryRepository.getAll()) {
-      const pending = await queueStorage.get(`${PRODUCT_ENTITY}-${local.id}`);
+    if (!initialized && firstPage) {
+      const serverIds = new Set(
+        response.changes
+          .filter((change) => change.operation === "UPSERT")
+          .map((change) => change.entity_id),
+      );
 
-      if (!serverIds.has(local.id) && (!pending || pending.action === "UPDATE")) {
-        if (pending) await queueStorage.remove(pending.id);
-        await removeLocalProduct(local.id);
+      for (const local of await inventoryRepository.getAll()) {
+        const pending = await queueStorage.get(`${PRODUCT_ENTITY}-${local.id}`);
+
+        if (!serverIds.has(local.id) && (!pending || pending.action === "UPDATE")) {
+          if (pending) await queueStorage.remove(pending.id);
+          await removeLocalProduct(local.id);
+        }
       }
     }
-  }
 
-  for (const change of response.changes) {
-    const pending = await queueStorage.get(
-      `${PRODUCT_ENTITY}-${change.entity_id}`,
-    );
+    for (const change of response.changes) {
+      const pending = await queueStorage.get(
+        `${PRODUCT_ENTITY}-${change.entity_id}`,
+      );
 
-    if (change.operation === "DELETE") {
-      // A server tombstone represents an authoritative permanent deletion and
-      // must win over stale queued edits for the same inventory item.
-      if (pending) await queueStorage.remove(pending.id);
-      await removeLocalProduct(change.entity_id);
-      continue;
+      if (change.operation === "DELETE") {
+        // A server tombstone represents an authoritative permanent deletion and
+        // must win over stale queued edits for the same inventory item.
+        if (pending) await queueStorage.remove(pending.id);
+        await removeLocalProduct(change.entity_id);
+        continue;
+      }
+
+      if (pending) continue;
+
+      if (change.record) {
+        const local = await inventoryRepository.get(change.entity_id);
+        await inventoryRepository.save(localRepresentation(change.record, local));
+      }
     }
 
-    if (pending) continue;
+    await syncMetadataStorage.set(CURSOR_KEY, response.cursor);
 
-    if (change.record) {
-      const local = await inventoryRepository.get(change.entity_id);
-      await inventoryRepository.save(localRepresentation(change.record, local));
-    }
+    const cursorAdvanced = response.cursor > requestCursor;
+    if (response.changes.length < 500 || !cursorAdvanced) break;
+    requestCursor = response.cursor;
+    firstPage = false;
   }
 
-  await syncMetadataStorage.set(CURSOR_KEY, response.cursor);
   await syncMetadataStorage.set(INITIALIZED_KEY, 1);
 }
 

@@ -8,7 +8,10 @@ export const registerSchema = z
     lastName: z.string().min(2, "وارد کردن نام خانوادگی الزامی است!"),
     username: z.string().min(5, "وارد کردن نام کاربری الزامی است!"),
     phone: phoneNumberSchema,
-    email: z.email("آدرس ایمیل صحیح نیست!").optional(),
+    email: z.union([
+      z.literal(""),
+      z.email("آدرس ایمیل صحیح نیست!"),
+    ]).optional(),
     password: passwordSchema,
     repeatPassword: z.string(),
   })

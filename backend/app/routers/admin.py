@@ -1,11 +1,20 @@
 import json
 from datetime import datetime, timezone
+from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import delete, select, update
 
 from ..deps import CurrentAdmin, CurrentPlanManager, CurrentUserManager, DbSession
-from ..models import AdminAuditLog, SubscriptionPlan, User
+from ..config import settings
+from ..models import (
+    AdminAuditLog,
+    CatalogProduct,
+    SubscriptionPlan,
+    SyncChange,
+    SyncOperation,
+    User,
+)
 from ..schemas import (
     AdminSubscriptionUpdate,
     AdminUserOut,
@@ -170,10 +179,48 @@ def delete_user(user_id: int, admin: CurrentUserManager, db: DbSession) -> None:
         raise HTTPException(status_code=409, detail="SYSTEM_ADMIN_IMMUTABLE")
     if user.id == admin.id:
         raise HTTPException(status_code=400, detail="CANNOT_DELETE_SELF")
-    record_admin_action(db, admin, "user.deleted", user, {"username": user.username})
-    db.flush()
-    db.delete(user)
-    db.commit()
+    inventory_items = list(user.inventory_items)
+    private_catalogs = {
+        item.catalog_product
+        for item in inventory_items
+        if not item.catalog_product.is_shared
+    }
+    uploaded_images = {
+        path
+        for path in [
+            *(item.image_url for item in inventory_items),
+            *(catalog.image_url for catalog in private_catalogs),
+        ]
+        if path and path.startswith("/uploads/")
+    }
+
+    try:
+        # These historical sync rows intentionally have no ORM relationship;
+        # remove them explicitly before deleting the user with SQLite FK checks on.
+        db.execute(delete(SyncOperation).where(SyncOperation.user_id == user.id))
+        db.execute(delete(SyncChange).where(SyncChange.user_id == user.id))
+        # Audit history survives, but a deleted actor can no longer remain an FK.
+        db.execute(
+            update(AdminAuditLog)
+            .where(AdminAuditLog.actor_user_id == user.id)
+            .values(actor_user_id=None)
+        )
+        record_admin_action(db, admin, "user.deleted", user, {"username": user.username})
+        db.flush()
+        db.delete(user)
+        db.flush()
+        for catalog in private_catalogs:
+            db.delete(catalog)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    for image_url in uploaded_images:
+        try:
+            (settings.UPLOAD_DIR / Path(image_url).name).unlink(missing_ok=True)
+        except OSError:
+            pass
 
 
 @router.get("/plans", response_model=list[PlanDefinitionOut])

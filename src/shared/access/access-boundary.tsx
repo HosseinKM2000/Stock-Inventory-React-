@@ -1,13 +1,26 @@
 import { useAuth } from "@/shared/auth/use-auth";
 import { Button } from "@/shared/ui/button/button";
-import { Box, Callout, Card, Flex, Text } from "@radix-ui/themes";
-import { type PropsWithChildren } from "react";
+import { Callout, Card, Flex, Text } from "@radix-ui/themes";
+import { type PropsWithChildren, useEffect, useRef } from "react";
 import { useEntitlement } from "./use-entitlement";
 import { isAdmin } from "./authorization";
+import { toast } from "sonner";
 
 export function AccessBoundary({ children }: PropsWithChildren) {
   const { user, logout } = useAuth();
   const entitlement = useEntitlement();
+  const expirationNotified = useRef(false);
+  const expired = !isAdmin(user) && entitlement?.status === "expired";
+  useEffect(() => {
+    if (expired && !expirationNotified.current) {
+      expirationNotified.current = true;
+      toast.warning(
+        "اشتراک شما منقضی شده است. برای تمدید و تأیید دسترسی‌ها دوباره آنلاین شوید.",
+      );
+    } else if (!expired) {
+      expirationNotified.current = false;
+    }
+  }, [expired]);
 
   if (user?.is_active === false) {
     return (
@@ -21,7 +34,6 @@ export function AccessBoundary({ children }: PropsWithChildren) {
     );
   }
 
-  const expired = !isAdmin(user) && entitlement?.status === "expired";
   return (
     <>
       {expired && (
@@ -29,7 +41,7 @@ export function AccessBoundary({ children }: PropsWithChildren) {
           <Callout.Text>اشتراک منقضی شده است؛ اطلاعات قابل مشاهده‌اند اما تغییرات جدید تا تمدید اشتراک غیرفعال هستند.</Callout.Text>
         </Callout.Root>
       )}
-      {expired ? <Box asChild><fieldset disabled className="contents">{children}</fieldset></Box> : children}
+      {children}
     </>
   );
 }

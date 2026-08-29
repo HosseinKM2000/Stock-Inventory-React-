@@ -8,11 +8,17 @@ import {
 import { catalogVisibilityService } from "@/features/app/inventory/services/catalog-visibility.service";
 
 class DashboardService {
-  private hasImage(image?: string | null) {
-    return image != null && image !== "";
+  private hasImage(product: Awaited<ReturnType<typeof inventoryService.getAll>>[number]) {
+    return Boolean(product.image_url?.trim() || product.catalog_product?.image_url?.trim());
   }
   async getStats(): Promise<DashboardStats> {
-    const products = await inventoryService.getAll({ include_hidden: true });
+    const allProducts = await inventoryService.getAll({ include_hidden: true });
+    const hideCatalogProducts = catalogVisibilityService.isHidden();
+    const products = allProducts.filter(
+      (product) =>
+        !product.is_hidden &&
+        !(hideCatalogProducts && product.is_catalog_backed),
+    );
     const now = new Date();
 
     return {
@@ -31,10 +37,10 @@ class DashboardService {
         (product) => product.status === "out_of_stock",
       ).length,
 
-      hiddenCount: products.filter((product) => product.is_hidden).length,
+      hiddenCount: allProducts.filter((product) => product.is_hidden).length,
 
       noImageCount: products.filter(
-        (product) => !this.hasImage(product.image_url),
+        (product) => !this.hasImage(product),
       ).length,
 
       noPriceCount: products.filter((product) => product.price <= 0).length,
@@ -97,7 +103,7 @@ class DashboardService {
         return {
           title: "کالاهای بدون تصویر",
           products: products.filter(
-            (product) => !this.hasImage(product.image_url),
+            (product) => !this.hasImage(product),
           ),
         };
 

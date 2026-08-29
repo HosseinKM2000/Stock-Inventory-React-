@@ -3,6 +3,7 @@ import { productKeys } from "@/features/app/inventory/query/query-keys";
 import { registerProductSync } from "@/features/app/inventory/services/product-sync";
 import { registerCategorySync } from "@/features/setting/services/category-sync";
 import { categoryKeys } from "@/features/setting/query/query-keys";
+import { exportKeys } from "@/features/setting/query/query-keys";
 import { queryClient } from "@/shared/api/query-client";
 
 import { startSyncListeners } from "./sync-listener";
@@ -24,6 +25,7 @@ export function startSync() {
 
     queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
     queryClient.invalidateQueries({ queryKey: categoryKeys.all });
+    queryClient.invalidateQueries({ queryKey: exportKeys.all });
   });
 
   startSyncListeners();

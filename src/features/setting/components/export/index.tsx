@@ -36,6 +36,9 @@ const ExportTools = () => {
   const [busy, setBusy] = useState<"local" | "server" | null>(null);
 
   const options = { format, scope, categoryId, selectedIds };
+  const selectionValid =
+    (scope !== "category" || categoryId != null) &&
+    (scope !== "selected" || selectedIds.length > 0);
 
   const run = async (source: "local" | "server") => {
     setBusy(source);
@@ -91,14 +94,18 @@ const ExportTools = () => {
       )}
 
       <Flex mt={"5"} direction={"column"} gapY={"3"}>
-        <Button loading={busy === "local"} onClick={() => run("local")}>
+        <Button
+          disabled={!selectionValid}
+          loading={busy === "local"}
+          onClick={() => run("local")}
+        >
           <DownloadIcon />
           خروجی داده های محلی
         </Button>
 
         <Button
           variant="soft"
-          disabled={!online || !serverAllowed}
+          disabled={!online || !serverAllowed || !selectionValid}
           loading={busy === "server"}
           onClick={() => run("server")}
         >
@@ -107,6 +114,8 @@ const ExportTools = () => {
         </Button>
 
         <Text size={"1"} color="gray" className="text-right">
+          {scope === "selected" &&
+            `${selectedIds.length.toLocaleString("fa-IR")} محصول انتخاب شده است. `}
           {online
             ? serverAllowed
               ? "خروجی محلی از داده های ذخیره شده روی این دستگاه و خروجی سرور از پایگاه داده تهیه می شود."

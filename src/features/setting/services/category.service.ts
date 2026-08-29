@@ -3,6 +3,7 @@ import { queueService } from "@/shared/lib/infrastructure/sync/queue.service";
 import type { Category, CategoryInput } from "../types";
 import { inventoryService } from "@/features/app/inventory/services/inventory-service";
 import { accessState } from "@/shared/access/access-state";
+import { createLocalEntityId } from "@/shared/lib/infrastructure/storage/local-entity-id";
 
 export const CATEGORY_ENTITY = "category";
 
@@ -13,7 +14,7 @@ export const categoryService = {
     accessState.requireCapability("categories.write");
     const now = new Date().toISOString();
     const category: Category = {
-      id: input.id ?? Date.now(),
+      id: input.id ?? createLocalEntityId(),
       name: input.name.trim(),
       description: input.description ?? "",
       created_at: now,

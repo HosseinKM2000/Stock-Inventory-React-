@@ -38,6 +38,8 @@ def get_current_user(
         raise HTTPException(status_code=status.HTTP_423_LOCKED, detail="ACCOUNT_DISABLED")
 
     validate_session(db=db, user_id=user.id, fingerprint=device_fingerprint, token=token)
+    # Persist last_seen even for otherwise read-only requests.
+    db.commit()
     return user
 
 

@@ -2,7 +2,7 @@ import json
 from pathlib import Path
 
 from fastapi import HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
@@ -130,8 +130,29 @@ def _ensure_industry_exists(db: Session, industry_id: int) -> None:
         )
 
 
+def _ensure_catalog_name_available(
+    db: Session,
+    industry_id: int,
+    name: str,
+    exclude_id: int | None = None,
+) -> None:
+    statement = select(CatalogProduct.id).where(
+        CatalogProduct.industry_id == industry_id,
+        CatalogProduct.is_shared.is_(True),
+        func.lower(CatalogProduct.name) == name.lower(),
+    )
+    if exclude_id is not None:
+        statement = statement.where(CatalogProduct.id != exclude_id)
+    if db.scalar(statement.limit(1)) is not None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="CATALOG_PRODUCT_EXISTS",
+        )
+
+
 def create_catalog_product(db: Session, payload: CatalogProductCreate):
     _ensure_industry_exists(db, payload.industry_id)
+    _ensure_catalog_name_available(db, payload.industry_id, payload.name)
     try:
         product = repository.create_catalog_product(db, payload)
         product = repository.get_catalog_product(db, product.id)
@@ -164,6 +185,13 @@ def update_catalog_product(
         )
     if payload.industry_id is not None:
         _ensure_industry_exists(db, payload.industry_id)
+
+    _ensure_catalog_name_available(
+        db,
+        payload.industry_id or product.industry_id,
+        payload.name or product.name,
+        exclude_id=product.id,
+    )
 
     try:
         product = repository.update_catalog_product(db, product, payload)

@@ -41,18 +41,19 @@ const PersonalInformationFields = () => {
       updateProfile.mutate(values);
     },
   });
+  const loadForm = form.load;
 
   useEffect(() => {
     if (!me) return;
 
-    form.load({
+    loadForm({
       first_name: me.first_name,
       last_name: me.last_name,
       username: me.username,
       email: me.email ?? "",
       phone: me.phone ?? "",
     });
-  }, [me]);
+  }, [me, loadForm]);
 
   const errorMessage =
     updateProfile.error instanceof ApiError

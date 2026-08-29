@@ -3,25 +3,33 @@ import { LayersIcon, PlusIcon } from "@radix-ui/react-icons";
 import { Box, Callout, Card, Flex, Spinner, Text } from "@radix-ui/themes";
 import CategoryFormDialog from "./category-form-dialog";
 import DeleteCategoryDialog from "./delete-category-dialog";
-import { useCategories } from "../../mutations/use-categories";
-import { syncService } from "@/shared/lib/infrastructure/sync/sync-service";
+import {
+  useCategories,
+  useRefreshCategoriesFromServer,
+} from "../../mutations/use-categories";
 import { useOnline } from "@/shared/lib/infrastructure/sync/use-sync-status";
 import { ReloadIcon } from "@radix-ui/react-icons";
 import { useState } from "react";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/shared/ui/dialog/confirm-dialog";
 
 const CategoriesCards = () => {
   const { data: categories = [], isLoading, isError, error } = useCategories();
   const online = useOnline();
-  const [refreshing, setRefreshing] = useState(false);
+  const [refreshOpen, setRefreshOpen] = useState(false);
+  const refreshMutation = useRefreshCategoriesFromServer();
 
   const refresh = async () => {
-    setRefreshing(true);
     try {
-      await syncService.sync();
-      toast.success("دسته‌بندی‌ها با سرور همگام شدند");
-    } finally {
-      setRefreshing(false);
+      await refreshMutation.mutateAsync();
+      setRefreshOpen(false);
+      toast.success("دسته‌بندی‌های محلی از سرور تازه‌سازی شدند");
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "تازه‌سازی دسته‌بندی‌ها ناموفق بود",
+      );
     }
   };
 
@@ -36,8 +44,8 @@ const CategoriesCards = () => {
           <Button
             variant="soft"
             disabled={!online}
-            loading={refreshing}
-            onClick={refresh}
+            loading={refreshMutation.isPending}
+            onClick={() => setRefreshOpen(true)}
           >
             <ReloadIcon /> تازه‌سازی از سرور
           </Button>
@@ -137,6 +145,16 @@ const CategoriesCards = () => {
           ))}
         </Flex>
       )}
+      <ConfirmDialog
+        open={refreshOpen}
+        onOpenChange={setRefreshOpen}
+        title="تازه‌سازی دسته‌بندی‌ها از سرور"
+        description="ابتدا تغییرات محلی همگام می‌شوند؛ سپس نسخه معتبر دسته‌بندی‌های سرور به‌صورت یکجا جایگزین نسخه محلی می‌شود."
+        confirmLabel="تازه‌سازی از سرور"
+        variant="warning"
+        loading={refreshMutation.isPending}
+        onConfirm={() => { void refresh(); }}
+      />
     </Box>
   );
 };

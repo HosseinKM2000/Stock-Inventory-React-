@@ -21,6 +21,7 @@ _load_dotenv()
 
 
 class Settings:
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development").strip().lower()
     SECRET_KEY: str = os.getenv("SECRET_KEY", "dev-secret-change-me")
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(
@@ -43,4 +44,6 @@ class Settings:
 
 
 settings = Settings()
+if settings.ENVIRONMENT in {"production", "prod"} and settings.SECRET_KEY == "dev-secret-change-me":
+    raise RuntimeError("SECRET_KEY must be configured before production startup")
 settings.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)

@@ -45,6 +45,7 @@ function isFatalRequest(error: unknown) {
     error instanceof ApiError &&
     error.status >= 400 &&
     error.status < 500 &&
+    error.status !== 423 &&
     error.status !== 408 &&
     error.status !== 409 &&
     error.status !== 429 &&

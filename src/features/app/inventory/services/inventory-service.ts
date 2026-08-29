@@ -232,7 +232,7 @@ class InventoryService {
 
   /** Removes OPFS files that no product references any more. */
   async cleanupImages(): Promise<string[]> {
-    const products = await inventoryRepository.getAll();
+    const products = await inventoryRepository.getAllStored();
 
     return imageService.removeOrphans(
       products.map((product) => product.image_url),

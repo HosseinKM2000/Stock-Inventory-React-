@@ -32,6 +32,20 @@ export const categoryStorage = {
     if (!owner) throw new Error("برای دسترسی به دسته‌ها باید وارد حساب شوید");
     return db.categories.bulkPut(categories.map((item) => ({ ...item, local_user_id: owner })));
   },
+  replaceAll: async (categories: Category[]) => {
+    const owner = userId();
+    if (!owner) throw new Error("برای دسترسی به دسته‌ها باید وارد حساب شوید");
+    await db.transaction("rw", db.categories, async () => {
+      const existing = await db.categories
+        .where("local_user_id")
+        .equals(owner)
+        .primaryKeys();
+      await db.categories.bulkDelete(existing);
+      await db.categories.bulkPut(
+        categories.map((item) => ({ ...item, local_user_id: owner })),
+      );
+    });
+  },
   remove: async (id: number) => {
     const category = await db.categories.get(id);
     if (category?.local_user_id === userId()) await db.categories.delete(id);

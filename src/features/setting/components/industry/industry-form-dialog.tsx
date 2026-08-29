@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Button } from "@/shared/ui/button/button";
 import { SwitchInput } from "@/shared/ui/button/toggle-button";
@@ -8,8 +8,6 @@ import { TextAreaInput } from "@/shared/ui/form/input/text-area";
 import { TextInput } from "@/shared/ui/form/input/text-input";
 
 import { useAppForm } from "@/shared/lib/form/use-app-form";
-
-import { ApiError } from "@/shared/api/api-error";
 
 import {
   useCreateIndustry,
@@ -23,6 +21,7 @@ import {
   industrySchema,
   type IndustryFormValues,
 } from "../../validators/industry.schema";
+import { adminErrorMessage } from "../admin-error";
 
 type Props = {
   mode: "create" | "edit";
@@ -76,31 +75,29 @@ export default function IndustryFormDialog({ mode, industry, trigger }: Props) {
     },
   });
 
-  useEffect(() => {
-    if (!open) return;
-
-    mutation.reset();
-
-    if (mode === "edit" && industry) {
-      form.load({
-        name: industry.name,
-        description: industry.description ?? "",
-        is_active: industry.is_active,
-      });
-    } else {
-      form.reset();
+  const handleOpenChange = (next: boolean) => {
+    if (next) {
+      mutation.reset();
+      if (mode === "edit" && industry) {
+        form.load({
+          name: industry.name,
+          description: industry.description ?? "",
+          is_active: industry.is_active,
+        });
+      } else {
+        form.reset();
+      }
     }
-  }, [open, mode, industry]);
+    setOpen(next);
+  };
 
   const errorMessage =
-    mutation.error instanceof ApiError
-      ? mutation.error.message
-      : mutation.isError
-        ? "خطا در ارتباط با سرور"
-        : null;
+    mutation.isError
+      ? adminErrorMessage(mutation.error, "ذخیره حوزه کاری ناموفق بود")
+      : null;
 
   return (
-    <Dialog.Root open={open} onOpenChange={setOpen}>
+    <Dialog.Root open={open} onOpenChange={handleOpenChange}>
       <Dialog.Trigger>{trigger}</Dialog.Trigger>
 
       <Dialog.Content maxWidth="500px">

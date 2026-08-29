@@ -1,32 +1,11 @@
 import { networkService } from "../network/network-service";
+import { BACKGROUND_SYNC_TAG, requestBackgroundSync } from "./background-sync";
 import { syncService } from "./sync-service";
-
-const BACKGROUND_SYNC_TAG = "inventory-sync";
 
 let started = false;
 
 function syncIfOnline() {
-  if (networkService.isOnline()) {
-    void syncService.sync();
-  }
-}
-
-async function registerBackgroundSync() {
-  if (!("serviceWorker" in navigator)) return;
-
-  try {
-    const registration = await navigator.serviceWorker.ready;
-
-    const sync = (
-      registration as ServiceWorkerRegistration & {
-        sync?: { register(tag: string): Promise<void> };
-      }
-    ).sync;
-
-    await sync?.register(BACKGROUND_SYNC_TAG);
-  } catch {
-    // Background Sync is an enhancement — the foreground triggers still apply.
-  }
+  if (networkService.isOnline()) void syncService.sync();
 }
 
 /**
@@ -35,20 +14,18 @@ async function registerBackgroundSync() {
  */
 export function startSyncListeners() {
   if (started) return;
-
   started = true;
 
   void syncService.refreshPending();
-
   networkService.subscribe(syncIfOnline);
-
   window.addEventListener("focus", syncIfOnline);
-
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "visible") syncIfOnline();
   });
+  navigator.serviceWorker?.addEventListener("message", (event) => {
+    if (event.data?.type === BACKGROUND_SYNC_TAG) syncIfOnline();
+  });
 
   syncIfOnline();
-
-  void registerBackgroundSync();
+  void requestBackgroundSync();
 }

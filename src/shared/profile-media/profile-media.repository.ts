@@ -1,17 +1,23 @@
 import { isLocalImage } from "@/shared/lib/infrastructure/media/image.service";
 import { isProfileAvatarId, type ProfileAvatarId } from "./profile-avatar-registry";
+import { accessState } from "@/shared/access/access-state";
 
 export type ProfileMediaSelection =
   | { kind: "initials" }
   | { kind: "avatar"; avatarId: ProfileAvatarId }
   | { kind: "custom"; path: string };
 
-const KEY = "inventory-profile-media-v1";
+const LEGACY_MEDIA_KEY = "inventory-profile-media-v1";
 const LEGACY_AVATAR_KEY = "inventory-avatar";
 const CHANGE_EVENT = "profile-media-change";
 const DEFAULT_SELECTION: ProfileMediaSelection = { kind: "initials" };
 let cachedRaw: string | null | undefined;
+let cachedKey: string | undefined;
 let cachedSelection: ProfileMediaSelection = DEFAULT_SELECTION;
+
+function storageKey() {
+  return `inventory:${accessState.user()?.id ?? "anonymous"}:profile-media-v1`;
+}
 
 function parse(value: string | null): ProfileMediaSelection {
   if (!value) return DEFAULT_SELECTION;
@@ -31,8 +37,18 @@ function parse(value: string | null): ProfileMediaSelection {
 
 export const profileMediaRepository = {
   get(): ProfileMediaSelection {
-    const raw = localStorage.getItem(KEY);
-    if (raw !== cachedRaw) {
+    const key = storageKey();
+    let raw = localStorage.getItem(key);
+    if (!raw) {
+      const legacy = localStorage.getItem(LEGACY_MEDIA_KEY);
+      if (legacy) {
+        localStorage.setItem(key, legacy);
+        localStorage.removeItem(LEGACY_MEDIA_KEY);
+        raw = legacy;
+      }
+    }
+    if (key !== cachedKey || raw !== cachedRaw) {
+      cachedKey = key;
       cachedRaw = raw;
       cachedSelection = parse(raw);
     }
@@ -44,8 +60,10 @@ export const profileMediaRepository = {
   },
 
   set(selection: ProfileMediaSelection) {
+    const key = storageKey();
     const raw = JSON.stringify(selection);
-    localStorage.setItem(KEY, raw);
+    localStorage.setItem(key, raw);
+    cachedKey = key;
     cachedRaw = raw;
     cachedSelection = selection;
     window.dispatchEvent(new CustomEvent(CHANGE_EVENT));
@@ -53,7 +71,7 @@ export const profileMediaRepository = {
 
   subscribe(listener: () => void) {
     const onStorage = (event: StorageEvent) => {
-      if (event.key === KEY) listener();
+      if (event.key === storageKey()) listener();
     };
     window.addEventListener(CHANGE_EVENT, listener);
     window.addEventListener("storage", onStorage);

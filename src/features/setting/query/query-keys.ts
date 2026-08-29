@@ -5,6 +5,11 @@ export const categoryKeys = {
   all: ["categories"] as const,
 };
 
+export const exportKeys = {
+  all: ["export"] as const,
+  localProducts: ["export", "local-products"] as const,
+};
+
 export const adminKeys = {
   all: ["admin"] as const,
   users: ["admin", "users"] as const,

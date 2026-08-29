@@ -7,6 +7,7 @@ import {
 import { Box, Checkbox, Flex, RadioCards, Select, Text } from "@radix-ui/themes";
 import { useQuery } from "@tanstack/react-query";
 import { inventoryService } from "@/features/app/inventory/services/inventory-service";
+import { exportKeys } from "@/features/setting/query/query-keys";
 
 import { useCategories } from "@/features/setting/mutations/use-categories";
 
@@ -36,7 +37,7 @@ const DataScope = ({
   // user can still export every product locally.
   const { data: categories = [] } = useCategories();
   const { data: products = [] } = useQuery({
-    queryKey: ["export", "local-products"],
+    queryKey: exportKeys.localProducts,
     queryFn: () => inventoryService.getAll(),
   });
 
@@ -95,6 +96,9 @@ const DataScope = ({
 
       {scope === "selected" && (
         <Flex mt="5" direction="column" gap="2" className="max-h-64 overflow-y-auto rounded-xl border p-3">
+          {products.length === 0 && (
+            <Text color="gray">محصولی برای انتخاب وجود ندارد.</Text>
+          )}
           {products.map((product) => {
             const checked = selectedIds.includes(product.id);
             return (

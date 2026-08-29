@@ -3,10 +3,13 @@ import { useOnline } from "@/shared/lib/infrastructure/sync/use-sync-status";
 import { Button } from "@/shared/ui/button/button";
 import { ReloadIcon } from "@radix-ui/react-icons";
 import { Box, Callout, Card, Flex, Text } from "@radix-ui/themes";
+import { useState } from "react";
+import { ConfirmDialog } from "@/shared/ui/dialog/confirm-dialog";
 
 export default function ProductSettings() {
   const online = useOnline();
   const refresh = useRefreshProductsFromServer();
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   return (
     <Box className="space-y-5" dir="rtl">
@@ -43,13 +46,25 @@ export default function ProductSettings() {
             className="min-h-11 shrink-0"
             disabled={!online}
             loading={refresh.isPending}
-            onClick={() => refresh.mutate()}
+            onClick={() => setConfirmOpen(true)}
           >
             <ReloadIcon />
             دریافت از سرور
           </Button>
         </Flex>
       </Card>
+      <ConfirmDialog
+        open={confirmOpen}
+        onOpenChange={setConfirmOpen}
+        title="دریافت محصولات از سرور"
+        description="ابتدا تغییرات محلی ارسال می‌شوند و سپس نسخه معتبر محصولات و کاتالوگ سرور با داده محلی تطبیق داده می‌شود. این عملیات فقط در حالت آنلاین انجام می‌شود."
+        confirmLabel="دریافت از سرور"
+        variant="warning"
+        loading={refresh.isPending}
+        onConfirm={() =>
+          refresh.mutate(undefined, { onSuccess: () => setConfirmOpen(false) })
+        }
+      />
     </Box>
   );
 }

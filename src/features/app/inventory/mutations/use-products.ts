@@ -9,6 +9,7 @@ import { productKeys } from "../query/query-keys";
 import { inventoryService } from "../services/inventory-service";
 
 import type { Product, ProductInput, ProductListParams } from "../types";
+import { exportKeys } from "@/features/setting/query/query-keys";
 
 function useInvalidateProducts() {
   const queryClient = useQueryClient();
@@ -17,6 +18,7 @@ function useInvalidateProducts() {
     queryClient.invalidateQueries({ queryKey: productKeys.all });
 
     queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
+    queryClient.invalidateQueries({ queryKey: exportKeys.all });
 
     if (networkService.isOnline()) {
       void syncService.sync();

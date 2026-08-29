@@ -2,8 +2,20 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..models import CatalogProduct, Industry
+from ..models import CatalogProduct, Industry, User
 from ..schemas import IndustryCreate, IndustryUpdate
+
+
+def _ensure_name_available(
+    db: Session,
+    name: str,
+    exclude_id: int | None = None,
+) -> None:
+    statement = select(Industry.id).where(func.lower(Industry.name) == name.lower())
+    if exclude_id is not None:
+        statement = statement.where(Industry.id != exclude_id)
+    if db.scalar(statement.limit(1)) is not None:
+        raise HTTPException(status_code=409, detail="INDUSTRY_EXISTS")
 
 
 def get_industries(db: Session):
@@ -16,6 +28,7 @@ def create_industry(
     db: Session,
     payload: IndustryCreate,
 ):
+    _ensure_name_available(db, payload.name)
     industry = Industry(
         name=payload.name,
         is_active=payload.is_active,
@@ -35,6 +48,9 @@ def update_industry(
     payload: IndustryUpdate,
 ):
     data = payload.model_dump(exclude_unset=True)
+
+    if payload.name is not None:
+        _ensure_name_available(db, payload.name, exclude_id=industry.id)
 
     for key, value in data.items():
         setattr(industry, key, value)
@@ -56,6 +72,12 @@ def delete_industry(
     )
     if dependent_products:
         raise HTTPException(status_code=409, detail="INDUSTRY_HAS_CATALOG_PRODUCTS")
+
+    dependent_users = db.scalar(
+        select(func.count(User.id)).where(User.industry_id == industry.id)
+    )
+    if dependent_users:
+        raise HTTPException(status_code=409, detail="INDUSTRY_HAS_USERS")
 
     db.delete(industry)
     db.commit()
