@@ -225,7 +225,7 @@ def delete_user(user_id: int, admin: CurrentUserManager, db: DbSession) -> None:
 
     try:
         # These historical sync rows intentionally have no ORM relationship;
-        # remove them explicitly before deleting the user with SQLite FK checks on.
+        # remove them explicitly before deleting the user with FK checks enabled.
         db.execute(delete(SyncOperation).where(SyncOperation.user_id == user.id))
         db.execute(delete(SyncChange).where(SyncChange.user_id == user.id))
         # Audit history survives, but a deleted actor can no longer remain an FK.

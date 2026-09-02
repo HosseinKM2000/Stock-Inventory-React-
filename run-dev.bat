@@ -16,9 +16,9 @@ if not defined PYTHON_EXE (
     exit /b 1
 )
 
-"%PYTHON_EXE%" -c "import uvicorn" >nul 2>&1
+"%PYTHON_EXE%" -c "import alembic, psycopg, uvicorn" >nul 2>&1
 if errorlevel 1 (
-    echo [ERROR] Uvicorn is not installed in: "%PYTHON_EXE%"
+    echo [ERROR] Backend dependencies are missing from: "%PYTHON_EXE%"
     echo Install it with: "%PYTHON_EXE%" -m pip install -r backend\requirements.txt
     pause
     exit /b 1
@@ -38,10 +38,57 @@ if not exist "node_modules" (
     exit /b 1
 )
 
+if not exist ".env" (
+    echo [ERROR] Root .env is missing.
+    echo Copy .env.example to .env and replace every change-me value.
+    pause
+    exit /b 1
+)
+
+where docker.exe >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] Docker was not found. Install or start Docker Desktop.
+    pause
+    exit /b 1
+)
+
+docker info >nul 2>&1
+if errorlevel 1 (
+    echo [ERROR] Docker Desktop is not running.
+    pause
+    exit /b 1
+)
+
+docker compose config --quiet
+if errorlevel 1 (
+    echo [ERROR] Docker Compose configuration is invalid. Check .env.
+    pause
+    exit /b 1
+)
+
 if /I "%~1"=="--check" (
-    echo [OK] Frontend and backend prerequisites are available.
+    echo [OK] Frontend, backend, PostgreSQL, and Docker prerequisites are available.
     exit /b 0
 )
+
+echo Starting PostgreSQL 18.6...
+docker compose up -d --wait --wait-timeout 60 postgres
+if errorlevel 1 (
+    echo [ERROR] PostgreSQL did not become healthy.
+    pause
+    exit /b 1
+)
+
+echo Applying database migrations...
+pushd "%~dp0backend"
+"%PYTHON_EXE%" -m alembic upgrade head
+if errorlevel 1 (
+    popd
+    echo [ERROR] Database migration failed.
+    pause
+    exit /b 1
+)
+popd
 
 echo Starting Tanzim development services...
 echo Backend:  http://localhost:8000

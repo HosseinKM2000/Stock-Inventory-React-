@@ -2,19 +2,20 @@ import os
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+PROJECT_DIR = BASE_DIR.parent
 
 
 def _load_dotenv() -> None:
     """Minimal .env loader so we don't add a dependency just for this."""
-    env_path = BASE_DIR / ".env"
-    if not env_path.exists():
-        return
-    for line in env_path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line or line.startswith("#") or "=" not in line:
+    for env_path in (PROJECT_DIR / ".env", BASE_DIR / ".env"):
+        if not env_path.exists():
             continue
-        key, _, value = line.partition("=")
-        os.environ.setdefault(key.strip(), value.strip())
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, value = line.partition("=")
+            os.environ.setdefault(key.strip(), value.strip())
 
 
 _load_dotenv()
@@ -27,9 +28,7 @@ class Settings:
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(
         os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "10080")  # 7 days
     )
-    DATABASE_URL: str = os.getenv(
-        "DATABASE_URL", f"sqlite:///{BASE_DIR / 'stock_inventory.db'}"
-    )
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "").strip()
     CORS_ORIGINS: list[str] = [
         origin.strip()
         for origin in os.getenv(
@@ -44,6 +43,12 @@ class Settings:
 
 
 settings = Settings()
+if not settings.DATABASE_URL:
+    raise RuntimeError(
+        "DATABASE_URL is required; configure the PostgreSQL connection explicitly"
+    )
+if settings.DATABASE_URL.startswith("sqlite") and settings.ENVIRONMENT != "test":
+    raise RuntimeError("SQLite is supported only when ENVIRONMENT=test")
 if settings.ENVIRONMENT in {"production", "prod"} and settings.SECRET_KEY == "dev-secret-change-me":
     raise RuntimeError("SECRET_KEY must be configured before production startup")
 settings.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)

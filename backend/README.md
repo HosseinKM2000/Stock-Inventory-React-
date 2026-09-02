@@ -1,35 +1,37 @@
-# Tanzim — Backend (FastAPI + SQLite)
+# Tanzim — Backend (FastAPI + PostgreSQL)
 
-REST API for Tanzim: JWT auth, product/category CRUD with
-image upload, and dashboard statistics. Data is stored in a local SQLite file.
+REST API for Tanzim: JWT auth, product/category CRUD with image upload,
+dashboard statistics, subscriptions, administration, and offline synchronization.
+Server persistence uses PostgreSQL 18.6; client IndexedDB and OPFS remain local.
 
 ## Requirements
 
 - Python 3.10+
+- Docker Desktop with Docker Compose
 
-## Setup & run
+## Setup and run
 
-From the `backend/` directory:
+From the repository root:
 
-```bash
-# 1. Create and activate a virtual environment
-python -m venv .venv
+```powershell
+Copy-Item .env.example .env
+# Edit .env and replace every change-me placeholder.
 
-# Windows (PowerShell)
-.venv\Scripts\Activate.ps1
-# Windows (Git Bash)
-source .venv/Scripts/activate
-# macOS / Linux
-source .venv/bin/activate
+py -m venv backend\.venv
+backend\.venv\Scripts\python.exe -m pip install -r backend\requirements.txt
 
-# 2. Install dependencies
-pip install -r requirements.txt
+docker compose up -d --wait postgres
 
-# 3. (optional) configure environment
-cp .env.example .env   # then edit values; sensible dev defaults are used otherwise
+Set-Location backend
+.venv\Scripts\python.exe -m alembic upgrade head
 
-# 4. Run the dev server (auto-reload)
-uvicorn app.main:app --reload --port 8000
+# Supply the established permanent administrator password without writing it
+# to a file. Re-running this command never changes an existing admin password.
+$env:SYSTEM_ADMIN_PASSWORD = Read-Host "Administrator password"
+.venv\Scripts\python.exe -m app.bootstrap_admin
+Remove-Item Env:SYSTEM_ADMIN_PASSWORD
+
+.venv\Scripts\python.exe -m uvicorn app.main:app --reload --port 8000
 ```
 
 The API is served at `http://localhost:8000`.
@@ -38,8 +40,9 @@ The API is served at `http://localhost:8000`.
 - Health check: `http://localhost:8000/api/health`
 - Uploaded product images are served from `http://localhost:8000/uploads/...`
 
-The SQLite database (`stock_inventory.db`) and the `uploads/` folder are created
-automatically on first run. Tables are created on startup — no migration step.
+The backend intentionally fails when `DATABASE_URL` is absent or PostgreSQL is
+unavailable. Schema changes are explicit Alembic migrations; application startup
+never creates, alters, drops, or seeds database objects.
 
 ## Configuration
 
@@ -50,9 +53,9 @@ Set via environment variables or a `.env` file (see `.env.example`):
 | `ENVIRONMENT` | `development` | Set to `production` for production; startup then rejects the development signing key |
 | `SECRET_KEY` | `dev-secret-change-me` | JWT signing key — **change in production** |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | `10080` (7 days) | Access-token lifetime |
-| `DATABASE_URL` | `sqlite:///./stock_inventory.db` | SQLAlchemy database URL |
+| `DATABASE_URL` | required | `postgresql+psycopg://...` SQLAlchemy URL; credentials must be environment supplied |
 | `CORS_ORIGINS` | localhost 5173/5174 | Comma-separated allowed frontend origins |
-| `SYSTEM_ADMIN_PASSWORD` | unset | Bootstrap secret for the immutable system administrator; use a secret manager and remove it after the first successful startup |
+| `SYSTEM_ADMIN_PASSWORD` | unset | One-time seed secret for the immutable system administrator; remove it after running the seed |
 
 ## Account, RBAC, and subscription controls
 
@@ -61,8 +64,9 @@ Set via environment variables or a `.env` file (see `.env.example`):
 - Subscription plans, capabilities, pricing metadata, durations, and limits are persisted and exposed by `GET /api/plans/current`.
 - Paid-plan expiration is server enforced. Expired accounts retain reads while inventory/category writes are rejected.
 - Admin user, role, subscription, plan, subscriber, and audit operations live under `/api/admin` and require the `ADMIN` role.
-- The permanent system administrator is identified by a stable system key and cannot be disabled, deleted, or demoted. On a fresh database an inaccessible credential is generated; set `SYSTEM_ADMIN_PASSWORD` (minimum 12 characters) and restart once to establish the login password securely.
-- SQLite installations receive additive compatibility columns at startup. Use Alembic before adopting non-additive production migrations.
+- The permanent system administrator is identified by a stable system key and cannot be disabled, deleted, or demoted. `SYSTEM_ADMIN_PASSWORD` must contain at least 12 characters when the account is first seeded.
+- Re-running the seed preserves the existing password and ensures exactly one protected system administrator.
+- Built-in subscription plans are idempotent reference data created by the same explicit seed command.
 
 For an explicit one-time bootstrap from `backend/` in PowerShell:
 
@@ -106,18 +110,38 @@ All routes are under `/api`. Authenticated routes require an
 Product `status` (`in_stock` / `low_stock` / `out_of_stock`) is derived
 server-side from `quantity` and `low_stock_threshold`.
 
+## Database operations
+
+Run these commands from the repository root unless noted:
+
+```powershell
+docker compose up -d --wait postgres
+docker compose stop postgres
+docker compose down
+
+Set-Location backend
+.venv\Scripts\python.exe -m alembic upgrade head
+.venv\Scripts\python.exe -m alembic current
+.venv\Scripts\python.exe -m alembic heads
+```
+
+`docker compose down` preserves the named database volume. Do not add `--volumes`
+unless intentional permanent deletion of the local PostgreSQL data is required.
+
 ## Project structure
 
 ```
 backend/
 ├── app/
-│   ├── main.py          # FastAPI app, CORS, static uploads, routers
+│   ├── main.py          # FastAPI app, database readiness, CORS, routers
 │   ├── config.py        # settings + minimal .env loader
-│   ├── database.py      # SQLAlchemy engine/session
+│   ├── database.py      # PostgreSQL SQLAlchemy engine/session
 │   ├── models.py        # User, Category, Product
 │   ├── schemas.py       # Pydantic request/response models
 │   ├── security.py      # bcrypt hashing + JWT
 │   ├── deps.py          # auth dependency (current user)
 │   └── routers/         # auth, categories, products, dashboard
+├── alembic/             # Versioned database schema
+├── alembic.ini
 └── requirements.txt
 ```

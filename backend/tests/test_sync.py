@@ -8,12 +8,13 @@ from pathlib import Path
 
 _database_path = Path(tempfile.mktemp(suffix="-inventory-test.db"))
 os.environ["DATABASE_URL"] = f"sqlite:///{_database_path.as_posix()}"
+os.environ["ENVIRONMENT"] = "test"
 os.environ["SYSTEM_ADMIN_PASSWORD"] = "Test-only-system-admin-password-123!"
 
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 
-from app.database import SessionLocal, engine
+from app.database import Base, SessionLocal, engine
 from app.main import app
 from app.models import (
     CatalogProduct,
@@ -25,11 +26,20 @@ from app.models import (
     UserSession,
 )
 from app.services import catalog_product_service
+from app.services.bootstrap_service import ensure_system_admin
+from app.services.subscription_service import seed_default_plans
 
 
 class SyncApiTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
+        # SQLite remains an isolated test backend only. Production schema
+        # management is exclusively Alembic/PostgreSQL.
+        Base.metadata.create_all(bind=engine)
+        with SessionLocal() as db:
+            seed_default_plans(db)
+            ensure_system_admin(db)
+
         cls.client = TestClient(app)
 
         with SessionLocal() as db:
