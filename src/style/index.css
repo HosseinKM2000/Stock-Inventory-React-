@@ -98,6 +98,33 @@ body {
   line-height: 0;
 }
 
+.pwa-install-menu-button {
+  max-width: 100%;
+}
+
+.inventory-visibility-row {
+  width: 100%;
+  min-width: 0;
+  flex-wrap: nowrap !important;
+}
+
+.inventory-visibility-button {
+  min-width: 0;
+  max-width: 100%;
+  flex: 0 1 auto;
+}
+
+.inventory-visibility-button > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.inventory-sync-status {
+  flex: 0 0 auto;
+}
+
 .rt-Button > svg,
 .rt-SelectTrigger > svg,
 .themed-navigation-item > svg,
@@ -585,7 +612,7 @@ body {
   }
 
   .app-header-title {
-    max-width: 54px;
+    max-width: none;
     font-size: 15px;
   }
 
@@ -603,12 +630,13 @@ body {
     gap: 10px !important;
   }
 
-  .inventory-visibility-row,
-  .inventory-visibility-button {
+  .inventory-visibility-row {
     width: 100%;
   }
 
   .inventory-visibility-button {
+    width: auto;
+    flex: 1 1 auto;
     min-height: 40px;
     padding: 7px 9px !important;
     line-height: 1.45;

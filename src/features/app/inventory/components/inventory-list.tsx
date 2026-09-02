@@ -11,6 +11,7 @@ import { ConfirmDialog } from "@/shared/ui/dialog/confirm-dialog";
 import { Button } from "@/shared/ui/button/button";
 import { EyeNoneIcon, EyeOpenIcon } from "@radix-ui/react-icons";
 import { catalogVisibilityService } from "../services/catalog-visibility.service";
+import ConnectionStatus from "../../layout/connection-status";
 
 const QUICK_STOCK_HINT_KEY = "inventory-quick-stock-hint-v3";
 
@@ -76,13 +77,23 @@ const InventoryList = () => {
         gap-4
       "
     >
-      <Flex justify="end" className="inventory-visibility-row">
+      <Flex
+        align="center"
+        justify="between"
+        gap="2"
+        className="inventory-visibility-row"
+      >
         <Button
           type="button"
           size="2"
           variant="soft"
           color={catalogProductsHidden ? "gray" : "violet"}
           className="inventory-visibility-button"
+          aria-label={
+            catalogProductsHidden
+              ? "نمایش محصولات کاتالوگی"
+              : "مخفی کردن محصولات کاتالوگی"
+          }
           onClick={() => {
             const next = !catalogProductsHidden;
             catalogVisibilityService.setHidden(next);
@@ -95,10 +106,18 @@ const InventoryList = () => {
           }}
         >
           {catalogProductsHidden ? <EyeOpenIcon /> : <EyeNoneIcon />}
-          {catalogProductsHidden
-            ? "نمایش محصولات کاتالوگی"
-            : "مخفی کردن محصولات کاتالوگی"}
+          <span className="hidden sm:inline">
+            {catalogProductsHidden
+              ? "نمایش محصولات کاتالوگی"
+              : "مخفی کردن محصولات کاتالوگی"}
+          </span>
+          <span className="sm:hidden">
+            {catalogProductsHidden ? "نمایش کاتالوگ" : "مخفی کردن کاتالوگ"}
+          </span>
         </Button>
+        <Box className="inventory-sync-status shrink-0">
+          <ConnectionStatus />
+        </Box>
       </Flex>
 
       {/* FILTERS MOBILE + TABLET */}

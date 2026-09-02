@@ -16,9 +16,14 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { Dialog as DialogPrimitive } from "radix-ui";
 import { useState } from "react";
 import { primaryNavigationItems } from "./navigation-items";
+import {
+  PwaInstallButton,
+  usePwaInstallPrompt,
+} from "@/shared/lib/infrastructure/pwa/pwa-install-button";
 
 export function MobileNavigationDrawer() {
   const [open, setOpen] = useState(false);
+  const pwaInstall = usePwaInstallPrompt();
   const { user } = useAuth();
   const profileMedia = useProfileMedia();
   const pathname = useRouterState({
@@ -145,6 +150,7 @@ export function MobileNavigationDrawer() {
             <Flex direction="column" gap="1">
               {settingItems.map(navigationLink)}
             </Flex>
+            <PwaInstallButton presentation="menu" controller={pwaInstall} />
           </Box>
           <Box className="border-t border-foreground/10 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
             <Text size="1" color="gray">

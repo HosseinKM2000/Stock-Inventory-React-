@@ -1,10 +1,8 @@
 import { useRouter } from "@tanstack/react-router";
-import ConnectionStatus from "./connection-status";
 import { ArrowLeftIcon } from "@radix-ui/react-icons";
-import { Box, Flex, IconButton, Text } from "@radix-ui/themes";
+import { Flex, IconButton, Text } from "@radix-ui/themes";
 import { MobileNavigationDrawer } from "./mobile-navigation-drawer";
 import { NotificationPanel } from "@/features/notifications/components/notification-panel";
-import { PwaInstallButton } from "@/shared/lib/infrastructure/pwa/pwa-install-button";
 
 const Header = () => {
   const router = useRouter();
@@ -24,21 +22,17 @@ const Header = () => {
         >
           <ArrowLeftIcon width="22" height="22" />
         </IconButton>
-        <Box className="hidden md:block">
-          <ConnectionStatus />
-        </Box>
       </Flex>
 
       <Text
         size="3"
         weight="bold"
-        className="app-header-title max-w-24 truncate text-center sm:max-w-none"
+        className="app-header-title whitespace-nowrap text-center"
       >
         Tanzim
       </Text>
 
       <Flex align="center" justify="end" gap="5" className="app-header-right min-w-0">
-        <PwaInstallButton />
         <NotificationPanel />
         <MobileNavigationDrawer />
       </Flex>

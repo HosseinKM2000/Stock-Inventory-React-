@@ -17,7 +17,7 @@ function isIosBrowser() {
   return /iPad|iPhone|iPod/.test(navigator.userAgent);
 }
 
-export function PwaInstallButton() {
+export function usePwaInstallPrompt() {
   const [promptEvent, setPromptEvent] = useState<InstallPromptEvent | null>(null);
   const [instructionsOpen, setInstructionsOpen] = useState(false);
   const [installed, setInstalled] = useState(isStandalone);
@@ -40,7 +40,6 @@ export function PwaInstallButton() {
   }, []);
 
   const iosInstructionsAvailable = isIosBrowser() && !installed;
-  if (installed || (!promptEvent && !iosInstructionsAvailable)) return null;
 
   const install = async () => {
     if (!promptEvent) {
@@ -52,19 +51,56 @@ export function PwaInstallButton() {
     setPromptEvent(null);
   };
 
+  return {
+    available: !installed && Boolean(promptEvent || iosInstructionsAvailable),
+    instructionsOpen,
+    setInstructionsOpen,
+    install,
+  };
+}
+
+type PwaInstallController = ReturnType<typeof usePwaInstallPrompt>;
+
+type Props = {
+  presentation?: "icon" | "menu";
+  controller: PwaInstallController;
+};
+
+export function PwaInstallButton({
+  presentation = "icon",
+  controller,
+}: Props) {
+  if (!controller.available) return null;
+
+  const { instructionsOpen, setInstructionsOpen, install } = controller;
+
   return (
     <Dialog.Root open={instructionsOpen} onOpenChange={setInstructionsOpen}>
-      <Tooltip content="افزودن تنظیم به دستگاه">
-        <IconButton
+      {presentation === "menu" ? (
+        <Button
           size="3"
           color="violet"
           variant="soft"
+          className="pwa-install-menu-button mt-3 min-h-12 w-full! justify-start!"
           aria-label="افزودن برنامه به دستگاه"
           onClick={() => { void install(); }}
         >
-          <DownloadIcon />
-        </IconButton>
-      </Tooltip>
+          <DownloadIcon width="20" height="20" />
+          افزودن برنامه به دستگاه
+        </Button>
+      ) : (
+        <Tooltip content="افزودن تنظیم به دستگاه">
+          <IconButton
+            size="3"
+            color="violet"
+            variant="soft"
+            aria-label="افزودن برنامه به دستگاه"
+            onClick={() => { void install(); }}
+          >
+            <DownloadIcon />
+          </IconButton>
+        </Tooltip>
+      )}
       <Dialog.Content maxWidth="420px" dir="rtl">
         <Dialog.Title>افزودن به صفحه اصلی</Dialog.Title>
         <Dialog.Description>
