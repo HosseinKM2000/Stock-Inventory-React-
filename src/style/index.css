@@ -288,6 +288,29 @@ body {
   padding: 8px 12px 0;
 }
 
+/* Keep the quick controls inside the card without changing their placement. */
+.inventory-card-layout,
+.inventory-card-controls,
+.inventory-card-quick,
+.quick-stock-wrapper,
+.quick-stock-control,
+.quick-stock-mode {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.quick-stock-mode {
+  overflow: hidden;
+}
+
+.quick-stock-mode .rt-SelectTrigger {
+  width: auto !important;
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 0;
+}
+
 .quick-stock-button {
   width: 100px !important;
   height: 45px;
@@ -358,6 +381,21 @@ body {
 
 .quick-stock-delta.is-positive { color: var(--green-11); }
 .quick-stock-delta.is-negative { color: var(--red-11); }
+
+@container (max-width: 639px) {
+  .quick-stock-button {
+    width: auto !important;
+    min-width: 0;
+    max-width: 100px;
+    flex: 1 1 0;
+  }
+
+  .quick-stock-quantity {
+    width: clamp(40px, 24%, 76px);
+    min-width: 40px;
+    flex: 0 1 76px;
+  }
+}
 
 @container (min-width: 640px) {
   .inventory-card-layout {
@@ -484,7 +522,7 @@ body {
     }
 
     .inventory-card-quick .quick-stock-wrapper {
-      width: 128px !important;
+      width: 138px !important;
     }
 
     .inventory-card-quick .quick-stock-mode {
