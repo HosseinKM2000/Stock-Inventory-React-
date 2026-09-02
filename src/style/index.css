@@ -121,10 +121,6 @@ body {
   white-space: nowrap;
 }
 
-.inventory-sync-status {
-  flex: 0 0 auto;
-}
-
 .rt-Button > svg,
 .rt-SelectTrigger > svg,
 .themed-navigation-item > svg,

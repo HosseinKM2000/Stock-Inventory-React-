@@ -7,7 +7,17 @@
     "dev": "vite",
     "lint": "eslint .",
     "preview": "vite preview",
-    "build": "tsc -b && vite build"
+    "build": "tsc -b && vite build",
+    "test": "vitest run --project unit --project component",
+    "test:unit": "vitest run --project unit",
+    "test:component": "vitest run --project component",
+    "test:typecheck": "tsc --noEmit -p tsconfig.test.json",
+    "test:watch": "vitest --project unit --project component",
+    "test:coverage": "vitest run --coverage --project unit --project component",
+    "test:backend": "backend\\.venv\\Scripts\\python.exe -m pytest -c backend\\pytest.ini backend\\tests --ignore=backend\\tests\\test_postgresql.py",
+    "test:backend:postgres": "backend\\.venv\\Scripts\\python.exe -m pytest -c backend\\pytest.ini backend\\tests\\test_postgresql.py",
+    "test:e2e": "playwright test",
+    "test:regression": "npm run test && npm run test:typecheck && npm run test:backend && npm run build && npm run lint"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
@@ -35,23 +45,32 @@
   "devDependencies": {
     "@babel/core": "^7.29.0",
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.62.1",
     "@rolldown/plugin-babel": "^0.2.3",
     "@tailwindcss/postcss": "^4.2.4",
+    "@testing-library/dom": "^10.4.1",
+    "@testing-library/jest-dom": "^7.0.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.7",
     "@types/babel__core": "^7.20.5",
-    "@types/node": "^24.12.2",
+    "@types/node": "^24.13.3",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.1",
+    "@vitest/coverage-v8": "^4.1.11",
     "autoprefixer": "^10.5.0",
     "babel-plugin-react-compiler": "^1.0.0",
     "eslint": "^10.2.1",
     "eslint-plugin-react-hooks": "^7.1.1",
     "eslint-plugin-react-refresh": "^0.5.2",
+    "fake-indexeddb": "^6.2.5",
     "globals": "^17.5.0",
+    "happy-dom": "^20.13.1",
     "postcss": "^8.5.13",
     "tailwindcss": "^4.3.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.58.2",
-    "vite": "^8.0.10"
+    "vite": "^8.0.10",
+    "vitest": "^4.1.11"
   }
 }

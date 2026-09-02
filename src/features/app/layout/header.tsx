@@ -3,6 +3,7 @@ import { ArrowLeftIcon } from "@radix-ui/react-icons";
 import { Flex, IconButton, Text } from "@radix-ui/themes";
 import { MobileNavigationDrawer } from "./mobile-navigation-drawer";
 import { NotificationPanel } from "@/features/notifications/components/notification-panel";
+import ConnectionStatus from "./connection-status";
 
 const Header = () => {
   const router = useRouter();
@@ -22,6 +23,9 @@ const Header = () => {
         >
           <ArrowLeftIcon width="22" height="22" />
         </IconButton>
+        <div className="app-header-sync-status min-w-0">
+          <ConnectionStatus />
+        </div>
       </Flex>
 
       <Text

@@ -11,7 +11,6 @@ import { ConfirmDialog } from "@/shared/ui/dialog/confirm-dialog";
 import { Button } from "@/shared/ui/button/button";
 import { EyeNoneIcon, EyeOpenIcon } from "@radix-ui/react-icons";
 import { catalogVisibilityService } from "../services/catalog-visibility.service";
-import ConnectionStatus from "../../layout/connection-status";
 
 const QUICK_STOCK_HINT_KEY = "inventory-quick-stock-hint-v3";
 
@@ -115,9 +114,6 @@ const InventoryList = () => {
             {catalogProductsHidden ? "نمایش کاتالوگ" : "مخفی کردن کاتالوگ"}
           </span>
         </Button>
-        <Box className="inventory-sync-status shrink-0">
-          <ConnectionStatus />
-        </Box>
       </Flex>
 
       {/* FILTERS MOBILE + TABLET */}

@@ -77,8 +77,13 @@ unit deltas before entering the existing local outbox.
 ## Verification
 
 ```bash
+npm test
 npm run lint
 npm run build
 cd backend
-python -m unittest discover -s tests -v
+python -m pytest tests --ignore=tests/test_postgresql.py
 ```
+
+The isolated PostgreSQL integration suite, coverage commands, and Playwright
+setup are documented in [`TESTING.md`](TESTING.md). The audited risk matrix is
+in [`TESTING_MATRIX.md`](TESTING_MATRIX.md).

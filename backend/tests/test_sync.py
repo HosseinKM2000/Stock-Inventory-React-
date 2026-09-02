@@ -403,14 +403,28 @@ class SyncApiTest(unittest.TestCase):
             )
             db.add(catalog)
             db.flush()
+            source_user = db.get(User, self.user_id)
+            dependent_users = [source_user]
+            for index in range(99):
+                dependent = User(
+                    first_name="Lifecycle",
+                    last_name=f"User {index}",
+                    username=f"catalog-lifecycle-user-{index}",
+                    hashed_password=source_user.hashed_password,
+                    plan="free",
+                    is_active=True,
+                )
+                db.add(dependent)
+                dependent_users.append(dependent)
+            db.flush()
             db.add_all(
                 InventoryItem(
-                    user_id=self.user_id,
+                    user_id=user.id,
                     catalog_product_id=catalog.id,
                     is_catalog_backed=True,
                     quantity=index,
                 )
-                for index in range(100)
+                for index, user in enumerate(dependent_users)
             )
             db.commit()
             catalog_id = catalog.id
