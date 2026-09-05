@@ -8,13 +8,7 @@ type Option = {
 
 type SelectInputProps = Omit<ComponentProps<typeof Select.Root>, "children"> & {
   options: Option[];
-  value?: string;
-  defaultValue?: string;
   placeholder?: string;
-  props?: SelectInputProps;
-  onValueChange?: (value: string) => void;
-  size?: "1" | "2" | "3";
-  variant?: "classic" | "surface" | "soft";
 };
 
 export function SelectInput({

@@ -1,31 +1,45 @@
-import { ArrowLeftIcon, BellIcon, HomeIcon } from "@radix-ui/react-icons";
-import { Avatar, Box, Flex } from "@radix-ui/themes";
-import { Link, useRouter, useRouterState } from "@tanstack/react-router";
+import { useRouter } from "@tanstack/react-router";
+import { ArrowLeftIcon } from "@radix-ui/react-icons";
+import { Flex, IconButton, Text } from "@radix-ui/themes";
+import { MobileNavigationDrawer } from "./mobile-navigation-drawer";
+import { NotificationPanel } from "@/features/notifications/components/notification-panel";
+import ConnectionStatus from "./connection-status";
 
 const Header = () => {
   const router = useRouter();
-  const pathname = useRouterState({
-    select: (state) => state.location.pathname,
-  });
-  const showHomeIcon = pathname.includes("setting");
 
   return (
-    <header className="flex justify-between items-center px-5 py-3 border-b border-b-foreground/10">
-      <Flex align={"center"} gapX={"5"}>
-        <Avatar radius="full" fallback="A" />
-        <Box className="relative">
-          <BellIcon width={"25"} height={"25"} />
-          <Box className="w-2.5 h-2.5 bg-red-500 rounded-full absolute top-0" />
-        </Box>
-        {showHomeIcon && (
-          <Link to="/">
-            <HomeIcon width={"25"} height={"25"} />
-          </Link>
-        )}
+    <header
+      dir="ltr"
+      className="app-header grid min-h-16 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-b-foreground/10 px-2 sm:px-5"
+    >
+      <Flex align="center" justify="start" gap="3" className="app-header-left min-w-0">
+        <IconButton
+          size="3"
+          color="gray"
+          variant="ghost"
+          aria-label="بازگشت"
+          onClick={() => router.history.back()}
+        >
+          <ArrowLeftIcon width="22" height="22" />
+        </IconButton>
+        <div className="app-header-sync-status min-w-0">
+          <ConnectionStatus />
+        </div>
       </Flex>
-      <Box onClick={() => router.history.back()}>
-        <ArrowLeftIcon width={"25"} height={"25"} />
-      </Box>
+
+      <Text
+        size="3"
+        weight="bold"
+        className="app-header-title whitespace-nowrap text-center"
+      >
+        Tanzim
+      </Text>
+
+      <Flex align="center" justify="end" gap="5" className="app-header-right min-w-0">
+        <NotificationPanel />
+        <MobileNavigationDrawer />
+      </Flex>
     </header>
   );
 };

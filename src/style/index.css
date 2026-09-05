@@ -4,4 +4,778 @@
 body {
   margin: 0;
   padding: 0;
+  overflow-x: hidden;
+}
+
+:root {
+  --app-bottom-navigation-height: 73px;
+}
+
+.app-shell-content {
+  padding-bottom: calc(
+    var(--app-bottom-navigation-height) + env(safe-area-inset-bottom, 0px)
+  );
+  scroll-padding-bottom: calc(
+    var(--app-bottom-navigation-height) + env(safe-area-inset-bottom, 0px)
+  );
+}
+
+.app-bottom-navigation {
+  min-height: var(--app-bottom-navigation-height);
+  color: var(--gray-12);
+}
+
+.app-bottom-navigation-surface {
+  border-color: var(--gray-a6);
+  background: color-mix(in srgb, var(--color-panel-solid) 92%, transparent);
+  box-shadow: 0 -12px 35px color-mix(in srgb, var(--gray-12) 12%, transparent);
+}
+
+:root[data-appearance="light"] .app-bottom-navigation-surface,
+.radix-themes.light .app-bottom-navigation-surface {
+  box-shadow: none;
+}
+
+.app-bottom-navigation-item {
+  color: var(--gray-11);
+}
+
+.app-navigation-indicator,
+.app-navigation-glow {
+  background: var(--accent-9);
+}
+
+.themed-navigation-item {
+  color: var(--gray-12);
+}
+
+.themed-navigation-item:hover {
+  color: var(--accent-11);
+  background: var(--accent-a3);
+}
+
+.themed-navigation-item[data-active="true"] {
+  color: var(--accent-11);
+  background: var(--accent-a4);
+}
+
+.card-title-icon,
+.card-empty-icon,
+.card-metric-icon {
+  display: inline-flex !important;
+  flex: 0 0 auto;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--violet-11);
+  background: var(--violet-a3);
+  border: 1px solid var(--violet-a5);
+}
+
+.card-title-icon > svg,
+.card-empty-icon > svg,
+.card-metric-icon > svg,
+.app-navigation-icon > svg,
+.rt-IconButton > svg,
+.rt-AvatarFallback > svg {
+  display: block;
+  flex: 0 0 auto;
+  margin: auto;
+}
+
+.rt-IconButton,
+.rt-AvatarFallback,
+.app-navigation-icon {
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.rt-IconButton {
+  display: inline-flex !important;
+}
+
+.app-navigation-icon {
+  display: flex !important;
+  line-height: 0;
+}
+
+.pwa-install-menu-button {
+  max-width: 100%;
+}
+
+.inventory-visibility-row {
+  width: 100%;
+  min-width: 0;
+  flex-wrap: nowrap !important;
+}
+
+.inventory-visibility-button {
+  min-width: 0;
+  max-width: 100%;
+  flex: 0 1 auto;
+}
+
+.inventory-visibility-button > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rt-Button > svg,
+.rt-SelectTrigger > svg,
+.themed-navigation-item > svg,
+.mobile-drawer a > svg {
+  display: block;
+  flex: 0 0 auto;
+  align-self: center;
+}
+
+.card-title-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+}
+
+.card-empty-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+}
+
+.card-metric-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+}
+
+/* Theme-aware thin scrollbars for every native scroll container. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color:
+    color-mix(in srgb, var(--app-foreground) 32%, transparent)
+    color-mix(in srgb, var(--app-foreground) 5%, transparent);
+}
+
+*::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+*::-webkit-scrollbar-track {
+  background: color-mix(in srgb, var(--app-foreground) 5%, transparent);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  min-height: 32px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background:
+    color-mix(in srgb, var(--app-foreground) 32%, transparent)
+    padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background:
+    color-mix(in srgb, var(--accent-9, var(--app-foreground)) 68%, transparent)
+    padding-box;
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* Match Radix ScrollArea's rendered scrollbars to native containers. */
+.radix-themes .rt-ScrollAreaScrollbar[data-orientation="vertical"] {
+  width: 6px;
+}
+
+.radix-themes .rt-ScrollAreaScrollbar[data-orientation="horizontal"] {
+  height: 6px;
+}
+
+.radix-themes .rt-ScrollAreaScrollbar {
+  background-color: color-mix(in srgb, var(--app-foreground) 5%, transparent);
+}
+
+.radix-themes .rt-ScrollAreaThumb {
+  background-color: color-mix(in srgb, var(--app-foreground) 32%, transparent);
+}
+
+@media (hover: hover) {
+  .radix-themes .rt-ScrollAreaThumb:hover {
+    background-color: color-mix(
+      in srgb,
+      var(--accent-9, var(--app-foreground)) 68%,
+      transparent
+    );
+  }
+}
+
+@keyframes drawer-overlay-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes drawer-overlay-out { from { opacity: 1; } to { opacity: 0; } }
+@keyframes drawer-in { from { transform: translateX(100%); } to { transform: translateX(0); } }
+@keyframes drawer-out { from { transform: translateX(0); } to { transform: translateX(100%); } }
+
+.mobile-drawer-overlay[data-state="open"] { animation: drawer-overlay-in 140ms cubic-bezier(.2,.75,.25,1); }
+.mobile-drawer-overlay[data-state="closed"] { animation: drawer-overlay-out 120ms cubic-bezier(.4,0,1,1); }
+.mobile-drawer[data-state="open"] { animation: drawer-in 180ms cubic-bezier(.16,1,.3,1); }
+.mobile-drawer[data-state="closed"] { animation: drawer-out 150ms cubic-bezier(.4,0,.7,.2); }
+
+.menu-toggle-icon {
+  position: relative;
+  display: inline-block;
+  width: 22px;
+  height: 18px;
+}
+
+.menu-toggle-icon > span {
+  position: absolute;
+  right: 1px;
+  width: 20px;
+  height: 2px;
+  border-radius: 999px;
+  background: currentColor;
+  transition: transform 150ms cubic-bezier(.2,.8,.2,1), opacity 100ms ease, top 150ms cubic-bezier(.2,.8,.2,1);
+}
+
+.menu-toggle-icon > span:nth-child(1) { top: 2px; }
+.menu-toggle-icon > span:nth-child(2) { top: 8px; }
+.menu-toggle-icon > span:nth-child(3) { top: 14px; }
+.menu-toggle-icon.is-open > span:nth-child(1) { top: 8px; transform: rotate(45deg); }
+.menu-toggle-icon.is-open > span:nth-child(2) { opacity: 0; transform: scaleX(.5); }
+.menu-toggle-icon.is-open > span:nth-child(3) { top: 8px; transform: rotate(-45deg); }
+
+.inventory-card {
+  container-type: inline-size;
+}
+
+.inventory-card-layout {
+  flex-direction: column;
+}
+
+.inventory-card-image {
+  width: 100%;
+  height: 160px;
+}
+
+.inventory-card-footer {
+  flex-direction: row;
+  align-items: flex-end;
+}
+
+.inventory-card-actions {
+  width: auto;
+  flex-shrink: 0;
+}
+
+.inventory-card-actions > a {
+  flex: none;
+}
+
+.inventory-card-edit-button {
+  width: auto;
+}
+
+.inventory-card-price {
+  height: 32px;
+  min-height: 32px;
+  align-items: center;
+}
+
+.inventory-card-quick {
+  width: 100%;
+  border-width: 1px 0 0;
+  border-style: solid;
+}
+
+.inventory-card-controls {
+  width: 100%;
+}
+
+.inventory-card-desktop-end {
+  display: none !important;
+}
+
+.quick-stock-control {
+  position: relative;
+  width: 100%;
+  min-height: 60px;
+  padding: 8px 12px;
+  background: transparent;
+  flex-direction: row;
+  justify-content: flex-start;
+}
+
+.quick-stock-mode {
+  padding: 8px 12px 0;
+}
+
+/* Keep the quick controls inside the card without changing their placement. */
+.inventory-card-layout,
+.inventory-card-controls,
+.inventory-card-quick,
+.quick-stock-wrapper,
+.quick-stock-control,
+.quick-stock-mode {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.quick-stock-mode {
+  overflow: hidden;
+}
+
+.quick-stock-mode .rt-SelectTrigger {
+  width: auto !important;
+  min-width: 0;
+  max-width: 100%;
+  flex: 1 1 0;
+}
+
+.quick-stock-button {
+  width: 100px !important;
+  height: 45px;
+  min-width: 100px;
+  min-height: 45px;
+  overflow: hidden;
+  user-select: none;
+  position: relative;
+  padding: 0 !important;
+  -webkit-touch-callout: none;
+  transition: transform 120ms ease, filter 120ms ease;
+}
+
+.quick-stock-button.is-pressing {
+  transform: scale(.96);
+  filter: saturate(1.12);
+}
+
+.quick-stock-button.is-pressing::after {
+  content: "";
+  left: 3px;
+  right: 3px;
+  bottom: 2px;
+  height: 2px;
+  position: absolute;
+  border-radius: 999px;
+  transform-origin: left;
+  background: currentColor;
+  animation: quick-stock-hold-progress 350ms linear forwards;
+}
+
+.quick-stock-button.is-repeating {
+  transform: scale(.94);
+}
+
+.quick-stock-quantity {
+  position: relative;
+  display: grid;
+  width: 76px;
+  min-width: 76px;
+  min-height: 44px;
+  place-items: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.quick-stock-count {
+  transition: transform 100ms ease, color 100ms ease;
+}
+
+.quick-stock-count.is-changing {
+  color: var(--accent-11);
+  transform: scale(1.08);
+}
+
+.quick-stock-delta {
+  position: absolute;
+  bottom: calc(100% - 2px);
+  z-index: 2;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: var(--color-panel-solid);
+  box-shadow: var(--shadow-2);
+  font-size: 12px;
+  font-weight: 700;
+  pointer-events: none;
+  animation: quick-stock-delta-pop 180ms ease-out both;
+}
+
+.quick-stock-delta.is-positive { color: var(--green-11); }
+.quick-stock-delta.is-negative { color: var(--red-11); }
+
+@container (max-width: 639px) {
+  .quick-stock-button {
+    width: auto !important;
+    min-width: 0;
+    max-width: 100px;
+    flex: 1 1 0;
+  }
+
+  .quick-stock-quantity {
+    width: clamp(40px, 24%, 76px);
+    min-width: 40px;
+    flex: 0 1 76px;
+  }
+}
+
+@container (min-width: 640px) {
+  .inventory-card-layout {
+    min-height: 208px;
+    display: grid !important;
+    grid-template-columns: 144px minmax(0, 1fr);
+    grid-template-areas:
+      "image content"
+      "quick quick";
+  }
+
+  .inventory-card-image {
+    grid-area: image;
+    width: 144px;
+    height: auto;
+  }
+
+  .inventory-card-content {
+    grid-area: content;
+  }
+
+  .inventory-card-footer {
+    flex-direction: row;
+    align-items: flex-end;
+  }
+
+  .inventory-card-actions {
+    width: auto;
+    flex-shrink: 0;
+  }
+
+  .inventory-card-actions > a {
+    flex: none;
+  }
+
+  .inventory-card-edit-button {
+    width: auto;
+  }
+
+  .inventory-card-controls {
+    grid-area: quick;
+    display: flex;
+    width: 100%;
+  }
+
+  .inventory-card-quick {
+    display: flex;
+    width: 100%;
+    border-width: 1px 0 0;
+  }
+}
+
+@media (min-width: 1024px) {
+  @container (min-width: 640px) {
+    .inventory-card-layout {
+      min-height: 152px;
+      grid-template-columns: 128px minmax(0, 1fr) 280px;
+      grid-template-areas: "image content quick";
+      align-items: stretch;
+    }
+
+    .inventory-card-image {
+      width: 128px;
+      height: 100%;
+      min-height: 152px;
+    }
+
+    .inventory-card-content {
+      min-height: 152px;
+    }
+
+    .inventory-card-footer {
+      align-items: center;
+      padding-top: 10px;
+    }
+
+    .inventory-card-mobile-status,
+    .inventory-card-mobile-actions {
+      display: none !important;
+    }
+
+    .inventory-card-controls {
+      position: relative;
+      display: block;
+      width: 280px;
+      min-height: 152px;
+    }
+
+    .inventory-card-desktop-end {
+      display: contents !important;
+    }
+
+    .inventory-card-desktop-status {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+    }
+
+    .inventory-card-desktop-end .inventory-card-actions {
+      position: absolute;
+      bottom: 12px;
+      left: 14px;
+    }
+
+    .inventory-card-quick {
+      position: absolute;
+      right: 14px;
+      bottom: 12px;
+      width: auto;
+      padding: 0;
+      border-width: 0;
+      background: transparent !important;
+    }
+
+    .inventory-card-quick .quick-stock-control {
+      width: auto;
+      min-height: 32px;
+      padding: 0;
+      border: 1px solid var(--gray-a5);
+      border-radius: 8px;
+      background: var(--gray-a2);
+      flex-direction: row;
+      justify-content: flex-start;
+    }
+
+    .inventory-card-quick .quick-stock-wrapper {
+      width: 138px !important;
+    }
+
+    .inventory-card-quick .quick-stock-mode {
+      padding: 0;
+    }
+
+    .inventory-card-quick .quick-stock-button {
+      width: 40px !important;
+      min-width: 40px;
+      height: 32px;
+      min-height: 32px;
+    }
+
+    .inventory-card-quick .quick-stock-quantity {
+      width: 48px;
+      min-width: 48px;
+      min-height: 32px;
+    }
+  }
+}
+
+@keyframes quick-stock-hold-progress {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes quick-stock-delta-pop {
+  from { opacity: 0; transform: translateY(5px) scale(.92); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Ultra-narrow devices: isolate every adjustment below 300px. */
+@media (max-width: 399px) {
+  html,
+  body,
+  #root,
+  .radix-themes {
+    width: 100%;
+    min-width: 0;
+    max-width: 100vw;
+  }
+
+  body {
+    overflow-wrap: anywhere;
+  }
+
+  .app-header {
+    min-height: 56px;
+    grid-template-columns: minmax(36px, 1fr) auto minmax(72px, 1fr);
+    gap: 0;
+    padding-inline: 2px;
+  }
+
+  .app-header-left {
+    gap: 0;
+  }
+
+  .app-header-right {
+    gap: 2px;
+  }
+
+  .app-header-title {
+    max-width: none;
+    font-size: 15px;
+  }
+
+  .app-header .rt-IconButton {
+    width: 36px;
+    height: 36px;
+  }
+
+  .app-responsive-page,
+  .inventory-list-shell {
+    padding: 8px !important;
+  }
+
+  .inventory-list-shell {
+    gap: 10px !important;
+  }
+
+  .inventory-visibility-row {
+    width: 100%;
+  }
+
+  .inventory-visibility-button {
+    width: auto;
+    flex: 1 1 auto;
+    min-height: 40px;
+    padding: 7px 9px !important;
+    line-height: 1.45;
+    text-align: center;
+  }
+
+  .inventory-card-image {
+    height: 120px;
+  }
+
+  .inventory-card-content {
+    gap: 8px;
+    padding: 8px !important;
+  }
+
+  .inventory-card-content > :first-child {
+    flex-wrap: wrap;
+  }
+
+  .inventory-card-footer {
+    flex-wrap: wrap;
+    gap: 8px !important;
+  }
+
+  .inventory-card-price {
+    max-width: 100%;
+    padding-inline: 8px;
+    font-size: 12px;
+  }
+
+  .quick-stock-control {
+    width: 100%;
+    min-width: 0;
+    min-height: 54px;
+    padding: 6px 8px;
+  }
+
+  .quick-stock-button {
+    width: 60px !important;
+    min-width: 0;
+    max-width: 88px;
+    height: 42px;
+    min-height: 42px;
+    flex: 1 1 0;
+  }
+
+  .quick-stock-quantity {
+    width: 40px;
+    min-width: 40px;
+    min-height: 40px;
+  }
+
+  .inventory-sort-popover,
+  .rt-PopoverContent,
+  .rt-DialogContent,
+  .rt-AlertDialogContent {
+    width: calc(100vw - 8px) !important;
+    min-width: 0 !important;
+    max-width: calc(100vw - 8px) !important;
+    max-height: calc(100dvh - 8px) !important;
+  }
+
+  .rt-DialogContent,
+  .rt-AlertDialogContent {
+    padding: 12px !important;
+  }
+
+  .rt-Card,
+  .rt-CalloutRoot,
+  .rt-TextFieldRoot,
+  .rt-SelectTrigger {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .rt-Button {
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  .mobile-drawer {
+    width: min(94vw, 23rem);
+  }
+
+  .mobile-drawer .rt-Flex,
+  .mobile-drawer .rt-Box {
+    min-width: 0;
+  }
+
+  .app-bottom-navigation-surface {
+    padding: 5px 2px;
+  }
+
+  .app-bottom-navigation-item {
+    width: auto;
+    min-width: 0;
+    flex: 1 1 0;
+    padding: 6px 2px;
+    border-radius: 10px;
+  }
+
+  .app-bottom-navigation-label {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 10px;
+    line-height: 1.2;
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .app-navigation-indicator {
+    width: 34px;
+  }
+
+  .app-navigation-glow {
+    width: 40px;
+  }
+
+  .inventory-add-button {
+    right: 8px !important;
+    padding: 16px !important;
+  }
+
+  [data-sonner-toaster] {
+    width: calc(100vw - 8px) !important;
+    max-width: calc(100vw - 8px) !important;
+    margin-inline: 4px !important;
+  }
+
+  [data-sonner-toast] {
+    padding: 10px !important;
+    gap: 8px !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mobile-drawer-overlay,
+  .mobile-drawer { animation-duration: 1ms !important; }
+  .menu-toggle-icon > span { transition-duration: 1ms !important; }
+  .quick-stock-button,
+  .quick-stock-count { transition-duration: 1ms !important; }
+  .quick-stock-button.is-pressing::after,
+  .quick-stock-delta { animation-duration: 1ms !important; }
 }

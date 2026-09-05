@@ -1,6 +1,6 @@
-@theme {
-  --color-background: #000;
-  --color-foreground: #ffff;
+@theme inline {
+  --color-background: var(--app-background);
+  --color-foreground: var(--app-foreground);
   /* Primary Scale - Pollet Blue Digital */
   --color-primary-1: #001a42;
   --color-primary-2: #002e6a;
@@ -61,9 +61,27 @@
   --color-violet-10: #f7f6ff;
 }
 
-@media (prefers-color-scheme: light) {
-  root {
-    --background: #ffff;
-    --foreground: #000;
-  }
+:root {
+  --app-background: #ffffff;
+  --app-foreground: #182230;
+}
+
+.radix-themes.light {
+  --app-background: #ffffff;
+  --app-foreground: #182230;
+}
+
+:root[data-appearance="light"] {
+  --app-background: #ffffff;
+  --app-foreground: #182230;
+}
+
+.radix-themes.dark {
+  --app-background: #111113;
+  --app-foreground: #f8fafc;
+}
+
+:root[data-appearance="dark"] {
+  --app-background: #111113;
+  --app-foreground: #f8fafc;
 }
