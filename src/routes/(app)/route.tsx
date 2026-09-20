@@ -3,6 +3,7 @@
 import Header from "@/features/app/layout/header";
 import NavMenu from "@/features/app/layout/nav-menu";
 import ConnectionStatus from "@/features/app/layout/connection-status";
+import { PwaInstallPromotion } from "@/shared/lib/infrastructure/pwa/pwa-install-button";
 
 import { isAuthenticated } from "@/shared/api/token-store";
 import { Outlet, createFileRoute, redirect, useRouterState } from "@tanstack/react-router";
@@ -39,6 +40,7 @@ function ProtectedLayout() {
       <main className="app-shell-content min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto">
         <Outlet />
       </main>
+      <PwaInstallPromotion />
     </div>
   );
 }

@@ -12,5 +12,8 @@ test("PWA manifest and service worker are served", async ({ request }) => {
 
   const worker = await request.get("/sw.js");
   expect(worker.ok()).toBe(true);
-  expect(await worker.text()).toContain("inventory-sync");
+  const source = await worker.text();
+  expect(source).toContain("inventory-sync");
+  expect(source).toContain("Promise.allSettled");
+  expect(source).toContain("precacheApplication().then(() => self.skipWaiting())");
 });

@@ -11,8 +11,7 @@ const AddButton = () => {
     <Link to="/inventory/add">
       <Button
         aria-label="افزودن محصول"
-        className="inventory-add-button fixed! bottom-4! right-4! z-40 p-6! md:right-8! lg:bottom-24!"
-        style={{ marginBottom: "env(safe-area-inset-bottom)" }}
+        className="inventory-add-button fixed! bottom-25! z-60! p-6!"
       >
         <PlusIcon width={"20"} height={"20"} />
       </Button>

@@ -12,10 +12,15 @@ import { inventoryService } from "@/features/app/inventory/services/inventory-se
 import { registerServiceWorker } from "@/shared/lib/infrastructure/pwa/register-service-worker";
 import { AppTheme } from "@/shared/theme/app-theme";
 import { profileMediaRepository } from "@/shared/profile-media/profile-media.repository";
+import { storagePersistenceService } from "@/shared/lib/infrastructure/storage/storage-persistence.service";
 
 const router = createRouter({ routeTree });
 
 registerServiceWorker();
+
+// A successful use of the application is the appropriate time to ask the
+// browser to retain its offline shell and local data more durably.
+void storagePersistenceService.ensure();
 
 profileMediaRepository.cleanupLegacyPreference();
 

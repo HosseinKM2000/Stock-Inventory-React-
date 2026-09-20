@@ -102,6 +102,34 @@ body {
   max-width: 100%;
 }
 
+/* Radix uses fixed desktop widths for dialogs. Clamp the shared primitive to
+   the visual viewport so padding remains inside narrow mobile screens. */
+.rt-DialogContent,
+.rt-AlertDialogContent {
+  box-sizing: border-box;
+  max-inline-size: calc(100dvw - 2rem) !important;
+}
+
+.inventory-add-button {
+  inset-inline-end: 1rem;
+  bottom: calc(
+    var(--app-bottom-navigation-height) + 1rem + env(safe-area-inset-bottom, 0px)
+  );
+}
+
+.pwa-install-promotion {
+  inset-inline-start: 1rem;
+  bottom: calc(
+    var(--app-bottom-navigation-height) + 1rem + env(safe-area-inset-bottom, 0px)
+  );
+}
+
+@media (min-width: 768px) {
+  .inventory-add-button {
+    inset-inline-end: 2rem;
+  }
+}
+
 .inventory-visibility-row {
   width: 100%;
   min-width: 0;
@@ -754,7 +782,7 @@ body {
   }
 
   .inventory-add-button {
-    right: 8px !important;
+    inset-inline-end: 8px;
     padding: 16px !important;
   }
 

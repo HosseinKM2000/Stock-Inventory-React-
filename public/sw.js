@@ -27,7 +27,10 @@ async function precacheApplication() {
       }
     }
 
-    await cache.addAll([...assets]);
+    // A non-critical chunk failing to download must not discard an otherwise
+    // valid app shell. Successfully fetched chunks will still be available
+    // offline, and the next update can fill any gap.
+    await Promise.allSettled([...assets].map((asset) => cache.add(asset)));
   } catch {
     // The shell remains usable even on hosts that do not expose Vite's
     // manifest. Assets used online are still cached by the fetch handler.
@@ -35,8 +38,9 @@ async function precacheApplication() {
 }
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(precacheApplication());
-  self.skipWaiting();
+  // Do not activate a replacement worker until its core shell is cached.
+  // This leaves the previous offline-capable worker in control on failure.
+  event.waitUntil(precacheApplication().then(() => self.skipWaiting()));
 });
 
 self.addEventListener("activate", (event) => {
