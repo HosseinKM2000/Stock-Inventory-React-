@@ -10,6 +10,7 @@ import { inventoryService } from "../services/inventory-service";
 
 import type { Product, ProductInput, ProductListParams } from "../types";
 import { exportKeys } from "@/features/setting/query/query-keys";
+import { notifySubscriptionRestriction } from "@/shared/access/subscription-limit";
 
 function useInvalidateProducts() {
   const queryClient = useQueryClient();
@@ -57,6 +58,9 @@ export function useCreateProduct() {
     onSuccess() {
       invalidate();
     },
+    onError(error) {
+      notifySubscriptionRestriction(error);
+    },
   });
 }
 
@@ -69,6 +73,9 @@ export function useUpdateProduct() {
 
     onSuccess() {
       invalidate();
+    },
+    onError(error) {
+      notifySubscriptionRestriction(error);
     },
   });
 }

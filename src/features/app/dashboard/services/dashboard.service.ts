@@ -77,6 +77,22 @@ class DashboardService {
     );
 
     switch (filter) {
+      case DashboardFilters.ALL:
+        return { title: "مجموع کالاها", products };
+
+      case DashboardFilters.TODAY: {
+        const now = new Date();
+        return {
+          title: "محصولات افزوده‌شده امروز",
+          products: products.filter((product) =>
+            this.isSameLocalDate(product.created_at, now),
+          ),
+        };
+      }
+
+      case DashboardFilters.INVENTORY_VALUE:
+        return { title: "ارزش موجودی", products };
+
       case DashboardFilters.LOW_STOCK:
         return {
           title: "کالاهای کم موجود",

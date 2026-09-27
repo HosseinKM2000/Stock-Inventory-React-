@@ -2,6 +2,7 @@ import { Cross1Icon, DownloadIcon } from "@radix-ui/react-icons";
 import { Callout, Dialog, Flex, IconButton, Tooltip } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import { Button } from "@/shared/ui/button/button";
+import { useAuth } from "@/shared/auth/use-auth";
 
 type InstallPromptEvent = Event & {
   prompt(): Promise<void>;
@@ -18,7 +19,8 @@ function isStandalone() {
 
 function isIosBrowser() {
   if (typeof navigator === "undefined") return false;
-  return /iPad|iPhone|iPod/.test(navigator.userAgent);
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 }
 
 function wasDismissed() {
@@ -147,10 +149,10 @@ export function PwaInstallButton({
 }
 
 /** A compact first-entry promotion; the native browser prompt remains click-driven. */
-export function PwaInstallPromotion() {
+export function PwaInstallPromotion({ visible = true }: { visible?: boolean } = {}) {
   const controller = usePwaInstallPrompt();
 
-  if (!controller.available) return null;
+  if (!visible || !controller.available) return null;
 
   return (
     <Dialog.Root
@@ -160,6 +162,8 @@ export function PwaInstallPromotion() {
       <Callout.Root
         dir="rtl"
         color="violet"
+        role="status"
+        aria-live="polite"
         className="pwa-install-promotion fixed z-[60] w-[min(25rem,calc(100dvw-2rem))]"
       >
         <Callout.Text>
@@ -195,4 +199,10 @@ export function PwaInstallPromotion() {
       </Dialog.Content>
     </Dialog.Root>
   );
+}
+
+/** Keeps the deferred browser event alive across authenticated route-layout changes. */
+export function AuthenticatedPwaInstallPromotion() {
+  const { user } = useAuth();
+  return <PwaInstallPromotion visible={Boolean(user)} />;
 }

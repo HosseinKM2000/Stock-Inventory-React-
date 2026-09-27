@@ -43,11 +43,18 @@ const DashboardComponent = () => {
           <Card
             key={card.label}
             size="2"
+            role={card.filter ? "button" : undefined}
+            tabIndex={card.filter ? 0 : undefined}
             className={`${card.filter ? "cursor-pointer" : ""} transition-all hover:shadow-lg`}
-            onClick={() =>
-              card.filter &&
-              navigate({ to: `/dashboard/products/${card.filter}` })
-            }
+            onClick={() => {
+              if (card.filter) navigate({ to: `/dashboard/products/${card.filter}` });
+            }}
+            onKeyDown={(event) => {
+              if ((event.key === "Enter" || event.key === " ") && card.filter) {
+                event.preventDefault();
+                navigate({ to: `/dashboard/products/${card.filter}` });
+              }
+            }}
           >
             <Flex justify="between" align="start">
               <Avatar

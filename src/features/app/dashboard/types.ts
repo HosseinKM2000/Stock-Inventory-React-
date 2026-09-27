@@ -6,6 +6,9 @@ export type CategoryBreakdown = {
 import type { Product } from "../inventory/types";
 
 export const DashboardFilters = {
+  ALL: "all",
+  TODAY: "today",
+  INVENTORY_VALUE: "inventory-value",
   LOW_STOCK: "low-stock",
   OUT_OF_STOCK: "out-of-stock",
   NO_IMAGE: "no-image",

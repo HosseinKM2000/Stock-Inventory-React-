@@ -13,7 +13,7 @@ export default defineConfig({
       : undefined,
     trace: "retain-on-failure",
     screenshot: "only-on-failure",
-    video: "retain-on-failure",
+    video: process.env.E2E_NO_VIDEO ? "off" : "retain-on-failure",
   },
   projects: [
     { name: "chromium-desktop", use: { ...devices["Desktop Chrome"] } },

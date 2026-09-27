@@ -1,7 +1,7 @@
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useRef } from "react";
 
-export function useInventoryVirtual(count: number) {
+export function useInventoryVirtual(count: number, estimateSize = 250) {
   const parentRef = useRef<HTMLDivElement>(null);
 
   // TanStack Virtual intentionally returns imperative functions. React
@@ -10,7 +10,7 @@ export function useInventoryVirtual(count: number) {
   const virtualizer = useVirtualizer({
     count,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 250,
+    estimateSize: () => estimateSize,
     overscan: 10,
   });
 

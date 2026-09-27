@@ -11,7 +11,7 @@ import {
 
 export const dashboardCards = [
   {
-    filter: null,
+    filter: DashboardFilters.ALL,
 
     label: "مجموع کالاها",
 
@@ -24,7 +24,7 @@ export const dashboardCards = [
   },
 
   {
-    filter: null,
+    filter: DashboardFilters.TODAY,
 
     label: "محصولات افزوده‌شده امروز",
 
@@ -75,7 +75,7 @@ export const dashboardCards = [
   },
 
   {
-    filter: null,
+    filter: DashboardFilters.INVENTORY_VALUE,
 
     label: "ارزش موجودی",
 

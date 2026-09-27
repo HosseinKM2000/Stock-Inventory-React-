@@ -2,6 +2,7 @@ import type { User } from "@/features/auth/types";
 import { normalizeUser } from "@/features/auth/normalize-user";
 import { storage } from "@/shared/lib/infrastructure/storage/local-storage";
 import { isAdmin } from "./authorization";
+import { SubscriptionRestrictionError } from "./subscription-limit";
 
 export type Entitlement = {
   user_id: number;
@@ -188,17 +189,33 @@ export const accessState = {
   },
   requireWrite() {
     if (!this.canAccess()) throw new Error("حساب کاربری غیرفعال است");
-    if (!this.canWrite()) throw new Error("اشتراک فعلی اجازه ایجاد یا تغییر اطلاعات را نمی‌دهد");
+    if (!this.canWrite()) {
+      const entitlement = this.entitlement();
+      throw new SubscriptionRestrictionError(
+        { code: "capability", plan: entitlement?.label ?? entitlement?.plan ?? "فعلی", capability: "inventory.write" },
+        "CAPABILITY_REQUIRED:inventory.write",
+      );
+    }
   },
   requireCapability(capability: string) {
     if (!this.canAccess()) throw new Error("حساب کاربری غیرفعال است");
-    if (!this.canUse(capability)) throw new Error("اشتراک فعلی اجازه انجام این عملیات را نمی‌دهد");
+    if (!this.canUse(capability)) {
+      const entitlement = this.entitlement();
+      throw new SubscriptionRestrictionError(
+        { code: "capability", plan: entitlement?.label ?? entitlement?.plan ?? "فعلی", capability },
+        `CAPABILITY_REQUIRED:${capability}`,
+      );
+    }
   },
   requireInventoryCapacity(currentCount: number) {
     if (isAdmin(this.user())) return;
     const limit = this.entitlement()?.limits.inventory_items;
     if (limit != null && currentCount >= limit) {
-      throw new Error("تعداد کالاهای طرح فعلی به سقف مجاز رسیده است");
+      const entitlement = this.entitlement();
+      throw new SubscriptionRestrictionError(
+        { code: "inventory_limit", plan: entitlement?.label ?? entitlement?.plan ?? "فعلی", limit },
+        "INVENTORY_LIMIT_REACHED",
+      );
     }
   },
   saveUser(user: User) {

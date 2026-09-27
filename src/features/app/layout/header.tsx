@@ -5,7 +5,11 @@ import { MobileNavigationDrawer } from "./mobile-navigation-drawer";
 import { NotificationPanel } from "@/features/notifications/components/notification-panel";
 import ConnectionStatus from "./connection-status";
 
-const Header = () => {
+type Props = {
+  onMenuOpenChange?: (open: boolean) => void;
+};
+
+const Header = ({ onMenuOpenChange }: Props) => {
   const router = useRouter();
 
   return (
@@ -38,7 +42,7 @@ const Header = () => {
 
       <Flex align="center" justify="end" gap="5" className="app-header-right min-w-0">
         <NotificationPanel />
-        <MobileNavigationDrawer />
+        <MobileNavigationDrawer onOpenChange={onMenuOpenChange} />
       </Flex>
     </header>
   );

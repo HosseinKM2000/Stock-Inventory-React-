@@ -18,7 +18,7 @@ export function SelectInput({
 }: SelectInputProps) {
   return (
     <Select.Root {...props}>
-      <Select.Trigger dir="rtl" className="w-full!" placeholder={placeholder} />
+      <Select.Trigger dir="rtl" className="w-full! min-w-0 max-w-full" placeholder={placeholder} />
 
       <Select.Content>
         {options.map((option) => (

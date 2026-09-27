@@ -123,6 +123,7 @@ const CategoryFormDialog = ({ mode, category, trigger }: Props) => {
               name="name"
               size="3"
               value={form.values.name}
+              placeholder="نام دسته‌بندی"
               onChange={form.handleChange}
             />
           </FormField>
@@ -141,7 +142,7 @@ const CategoryFormDialog = ({ mode, category, trigger }: Props) => {
           </FormField>
         </Flex>
 
-        <Flex gap="3" mt="5" justify="end">
+        <Flex gap="3" mt="5" justify="end" wrap="wrap-reverse">
           <Dialog.Close>
             <Button variant="soft" color="gray">
               لغو

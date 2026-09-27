@@ -1,10 +1,13 @@
-const CACHE_NAME = "tanzim-shell-v6";
+const CACHE_NAME = "tanzim-shell-v7";
 const APP_SHELL = [
   "/",
   "/index.html",
   "/favicon.svg",
   "/pwa-icon-192.png",
   "/pwa-icon-512.png",
+  "/pwa-icon-maskable-192.png",
+  "/pwa-icon-maskable-512.png",
+  "/apple-touch-icon.png",
   "/manifest.webmanifest",
 ];
 

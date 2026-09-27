@@ -34,11 +34,14 @@ import { Route as appInventoryEditRouteImport } from './routes/(app)/inventory/e
 import { Route as appInventoryAddRouteImport } from './routes/(app)/inventory/add'
 import { Route as appDashboardProductsRouteRouteImport } from './routes/(app)/dashboard/products/route'
 import { Route as appDashboardProductsUrgentPurchaseIndexRouteImport } from './routes/(app)/dashboard/products/urgent-purchase/index'
+import { Route as appDashboardProductsTodayIndexRouteImport } from './routes/(app)/dashboard/products/today/index'
 import { Route as appDashboardProductsOutOfStockIndexRouteImport } from './routes/(app)/dashboard/products/out-of-stock/index'
 import { Route as appDashboardProductsNoPriceIndexRouteImport } from './routes/(app)/dashboard/products/no-price/index'
 import { Route as appDashboardProductsNoImageIndexRouteImport } from './routes/(app)/dashboard/products/no-image/index'
 import { Route as appDashboardProductsLowStockIndexRouteImport } from './routes/(app)/dashboard/products/low-stock/index'
+import { Route as appDashboardProductsInventoryValueIndexRouteImport } from './routes/(app)/dashboard/products/inventory-value/index'
 import { Route as appDashboardProductsHiddenIndexRouteImport } from './routes/(app)/dashboard/products/hidden/index'
+import { Route as appDashboardProductsAllIndexRouteImport } from './routes/(app)/dashboard/products/all/index'
 
 const SettingRouteRoute = SettingRouteRouteImport.update({
   id: '/setting',
@@ -167,6 +170,12 @@ const appDashboardProductsUrgentPurchaseIndexRoute =
     path: '/urgent-purchase/',
     getParentRoute: () => appDashboardProductsRouteRoute,
   } as any)
+const appDashboardProductsTodayIndexRoute =
+  appDashboardProductsTodayIndexRouteImport.update({
+    id: '/today/',
+    path: '/today/',
+    getParentRoute: () => appDashboardProductsRouteRoute,
+  } as any)
 const appDashboardProductsOutOfStockIndexRoute =
   appDashboardProductsOutOfStockIndexRouteImport.update({
     id: '/out-of-stock/',
@@ -191,10 +200,22 @@ const appDashboardProductsLowStockIndexRoute =
     path: '/low-stock/',
     getParentRoute: () => appDashboardProductsRouteRoute,
   } as any)
+const appDashboardProductsInventoryValueIndexRoute =
+  appDashboardProductsInventoryValueIndexRouteImport.update({
+    id: '/inventory-value/',
+    path: '/inventory-value/',
+    getParentRoute: () => appDashboardProductsRouteRoute,
+  } as any)
 const appDashboardProductsHiddenIndexRoute =
   appDashboardProductsHiddenIndexRouteImport.update({
     id: '/hidden/',
     path: '/hidden/',
+    getParentRoute: () => appDashboardProductsRouteRoute,
+  } as any)
+const appDashboardProductsAllIndexRoute =
+  appDashboardProductsAllIndexRouteImport.update({
+    id: '/all/',
+    path: '/all/',
     getParentRoute: () => appDashboardProductsRouteRoute,
   } as any)
 
@@ -222,11 +243,14 @@ export interface FileRoutesByFullPath {
   '/inventory/list': typeof appInventoryListRoute
   '/dashboard/': typeof appDashboardIndexRoute
   '/industry/': typeof appIndustryIndexRoute
+  '/dashboard/products/all/': typeof appDashboardProductsAllIndexRoute
   '/dashboard/products/hidden/': typeof appDashboardProductsHiddenIndexRoute
+  '/dashboard/products/inventory-value/': typeof appDashboardProductsInventoryValueIndexRoute
   '/dashboard/products/low-stock/': typeof appDashboardProductsLowStockIndexRoute
   '/dashboard/products/no-image/': typeof appDashboardProductsNoImageIndexRoute
   '/dashboard/products/no-price/': typeof appDashboardProductsNoPriceIndexRoute
   '/dashboard/products/out-of-stock/': typeof appDashboardProductsOutOfStockIndexRoute
+  '/dashboard/products/today/': typeof appDashboardProductsTodayIndexRoute
   '/dashboard/products/urgent-purchase/': typeof appDashboardProductsUrgentPurchaseIndexRoute
 }
 export interface FileRoutesByTo {
@@ -251,11 +275,14 @@ export interface FileRoutesByTo {
   '/inventory/list': typeof appInventoryListRoute
   '/dashboard': typeof appDashboardIndexRoute
   '/industry': typeof appIndustryIndexRoute
+  '/dashboard/products/all': typeof appDashboardProductsAllIndexRoute
   '/dashboard/products/hidden': typeof appDashboardProductsHiddenIndexRoute
+  '/dashboard/products/inventory-value': typeof appDashboardProductsInventoryValueIndexRoute
   '/dashboard/products/low-stock': typeof appDashboardProductsLowStockIndexRoute
   '/dashboard/products/no-image': typeof appDashboardProductsNoImageIndexRoute
   '/dashboard/products/no-price': typeof appDashboardProductsNoPriceIndexRoute
   '/dashboard/products/out-of-stock': typeof appDashboardProductsOutOfStockIndexRoute
+  '/dashboard/products/today': typeof appDashboardProductsTodayIndexRoute
   '/dashboard/products/urgent-purchase': typeof appDashboardProductsUrgentPurchaseIndexRoute
 }
 export interface FileRoutesById {
@@ -284,11 +311,14 @@ export interface FileRoutesById {
   '/(app)/inventory/list': typeof appInventoryListRoute
   '/(app)/dashboard/': typeof appDashboardIndexRoute
   '/(app)/industry/': typeof appIndustryIndexRoute
+  '/(app)/dashboard/products/all/': typeof appDashboardProductsAllIndexRoute
   '/(app)/dashboard/products/hidden/': typeof appDashboardProductsHiddenIndexRoute
+  '/(app)/dashboard/products/inventory-value/': typeof appDashboardProductsInventoryValueIndexRoute
   '/(app)/dashboard/products/low-stock/': typeof appDashboardProductsLowStockIndexRoute
   '/(app)/dashboard/products/no-image/': typeof appDashboardProductsNoImageIndexRoute
   '/(app)/dashboard/products/no-price/': typeof appDashboardProductsNoPriceIndexRoute
   '/(app)/dashboard/products/out-of-stock/': typeof appDashboardProductsOutOfStockIndexRoute
+  '/(app)/dashboard/products/today/': typeof appDashboardProductsTodayIndexRoute
   '/(app)/dashboard/products/urgent-purchase/': typeof appDashboardProductsUrgentPurchaseIndexRoute
 }
 export interface FileRouteTypes {
@@ -317,11 +347,14 @@ export interface FileRouteTypes {
     | '/inventory/list'
     | '/dashboard/'
     | '/industry/'
+    | '/dashboard/products/all/'
     | '/dashboard/products/hidden/'
+    | '/dashboard/products/inventory-value/'
     | '/dashboard/products/low-stock/'
     | '/dashboard/products/no-image/'
     | '/dashboard/products/no-price/'
     | '/dashboard/products/out-of-stock/'
+    | '/dashboard/products/today/'
     | '/dashboard/products/urgent-purchase/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -346,11 +379,14 @@ export interface FileRouteTypes {
     | '/inventory/list'
     | '/dashboard'
     | '/industry'
+    | '/dashboard/products/all'
     | '/dashboard/products/hidden'
+    | '/dashboard/products/inventory-value'
     | '/dashboard/products/low-stock'
     | '/dashboard/products/no-image'
     | '/dashboard/products/no-price'
     | '/dashboard/products/out-of-stock'
+    | '/dashboard/products/today'
     | '/dashboard/products/urgent-purchase'
   id:
     | '__root__'
@@ -378,11 +414,14 @@ export interface FileRouteTypes {
     | '/(app)/inventory/list'
     | '/(app)/dashboard/'
     | '/(app)/industry/'
+    | '/(app)/dashboard/products/all/'
     | '/(app)/dashboard/products/hidden/'
+    | '/(app)/dashboard/products/inventory-value/'
     | '/(app)/dashboard/products/low-stock/'
     | '/(app)/dashboard/products/no-image/'
     | '/(app)/dashboard/products/no-price/'
     | '/(app)/dashboard/products/out-of-stock/'
+    | '/(app)/dashboard/products/today/'
     | '/(app)/dashboard/products/urgent-purchase/'
   fileRoutesById: FileRoutesById
 }
@@ -570,6 +609,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appDashboardProductsUrgentPurchaseIndexRouteImport
       parentRoute: typeof appDashboardProductsRouteRoute
     }
+    '/(app)/dashboard/products/today/': {
+      id: '/(app)/dashboard/products/today/'
+      path: '/today'
+      fullPath: '/dashboard/products/today/'
+      preLoaderRoute: typeof appDashboardProductsTodayIndexRouteImport
+      parentRoute: typeof appDashboardProductsRouteRoute
+    }
     '/(app)/dashboard/products/out-of-stock/': {
       id: '/(app)/dashboard/products/out-of-stock/'
       path: '/out-of-stock'
@@ -598,6 +644,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appDashboardProductsLowStockIndexRouteImport
       parentRoute: typeof appDashboardProductsRouteRoute
     }
+    '/(app)/dashboard/products/inventory-value/': {
+      id: '/(app)/dashboard/products/inventory-value/'
+      path: '/inventory-value'
+      fullPath: '/dashboard/products/inventory-value/'
+      preLoaderRoute: typeof appDashboardProductsInventoryValueIndexRouteImport
+      parentRoute: typeof appDashboardProductsRouteRoute
+    }
     '/(app)/dashboard/products/hidden/': {
       id: '/(app)/dashboard/products/hidden/'
       path: '/hidden'
@@ -605,21 +658,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appDashboardProductsHiddenIndexRouteImport
       parentRoute: typeof appDashboardProductsRouteRoute
     }
+    '/(app)/dashboard/products/all/': {
+      id: '/(app)/dashboard/products/all/'
+      path: '/all'
+      fullPath: '/dashboard/products/all/'
+      preLoaderRoute: typeof appDashboardProductsAllIndexRouteImport
+      parentRoute: typeof appDashboardProductsRouteRoute
+    }
   }
 }
 
 interface appDashboardProductsRouteRouteChildren {
+  appDashboardProductsAllIndexRoute: typeof appDashboardProductsAllIndexRoute
   appDashboardProductsHiddenIndexRoute: typeof appDashboardProductsHiddenIndexRoute
+  appDashboardProductsInventoryValueIndexRoute: typeof appDashboardProductsInventoryValueIndexRoute
   appDashboardProductsLowStockIndexRoute: typeof appDashboardProductsLowStockIndexRoute
   appDashboardProductsNoImageIndexRoute: typeof appDashboardProductsNoImageIndexRoute
   appDashboardProductsNoPriceIndexRoute: typeof appDashboardProductsNoPriceIndexRoute
   appDashboardProductsOutOfStockIndexRoute: typeof appDashboardProductsOutOfStockIndexRoute
+  appDashboardProductsTodayIndexRoute: typeof appDashboardProductsTodayIndexRoute
   appDashboardProductsUrgentPurchaseIndexRoute: typeof appDashboardProductsUrgentPurchaseIndexRoute
 }
 
 const appDashboardProductsRouteRouteChildren: appDashboardProductsRouteRouteChildren =
   {
+    appDashboardProductsAllIndexRoute: appDashboardProductsAllIndexRoute,
     appDashboardProductsHiddenIndexRoute: appDashboardProductsHiddenIndexRoute,
+    appDashboardProductsInventoryValueIndexRoute:
+      appDashboardProductsInventoryValueIndexRoute,
     appDashboardProductsLowStockIndexRoute:
       appDashboardProductsLowStockIndexRoute,
     appDashboardProductsNoImageIndexRoute:
@@ -628,6 +694,7 @@ const appDashboardProductsRouteRouteChildren: appDashboardProductsRouteRouteChil
       appDashboardProductsNoPriceIndexRoute,
     appDashboardProductsOutOfStockIndexRoute:
       appDashboardProductsOutOfStockIndexRoute,
+    appDashboardProductsTodayIndexRoute: appDashboardProductsTodayIndexRoute,
     appDashboardProductsUrgentPurchaseIndexRoute:
       appDashboardProductsUrgentPurchaseIndexRoute,
   }

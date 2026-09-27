@@ -66,7 +66,7 @@ export function ProductForm({
   const { data: categories = [] } = useCategories();
   const readOnly = mode === "view";
   const [displayPrice, setDisplayPrice] = useState(() =>
-    formatPrice(initial?.price ?? 0),
+    initial ? formatPrice(initial.price) : "",
   );
 
   const form = useAppForm({
@@ -267,6 +267,7 @@ export function ProductForm({
               size="3"
               name="custom_label"
               value={form.values.custom_label ?? ""}
+              placeholder="نام محصول"
               onChange={form.handleChange}
               disabled={readOnly}
             />
@@ -280,6 +281,8 @@ export function ProductForm({
               type="number"
               name="quantity"
               value={form.values.quantity}
+              placeholder="۰"
+              onFocus={(event) => event.currentTarget.select()}
               onChange={form.handleChange}
               disabled={readOnly}
             />
@@ -295,6 +298,7 @@ export function ProductForm({
               inputMode="numeric"
               name="price"
               value={displayPrice}
+              placeholder="برای نمونه: ۱۰۰٬۰۰۰"
               onChange={handlePriceChange}
               disabled={readOnly}
             />
@@ -331,6 +335,7 @@ export function ProductForm({
                     step="1"
                     inputMode="numeric"
                     value={packaging.pack_size ?? ""}
+                    placeholder="برای نمونه: ۱۲"
                     onChange={setPackSize}
                     disabled={packagingReadOnly}
                   />
@@ -411,6 +416,8 @@ export function ProductForm({
                   type="number"
                   name="low_stock_threshold"
                   value={form.values.low_stock_threshold}
+                  placeholder="۰"
+                  onFocus={(event) => event.currentTarget.select()}
                   onChange={form.handleChange}
                   disabled={readOnly}
                 />

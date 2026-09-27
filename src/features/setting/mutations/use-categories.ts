@@ -4,6 +4,7 @@ import { categoryKeys } from "../query/query-keys";
 import { categoryService } from "../services/category.service";
 import { syncService } from "@/shared/lib/infrastructure/sync/sync-service";
 import { categoryRefreshService } from "../services/category-refresh.service";
+import { notifySubscriptionRestriction } from "@/shared/access/subscription-limit";
 
 export function useCategories() {
   return useQuery({
@@ -20,6 +21,7 @@ export function useCreateCategory() {
       queryClient.invalidateQueries({ queryKey: categoryKeys.all });
       void syncService.sync();
     },
+    onError: notifySubscriptionRestriction,
   });
 }
 
@@ -32,6 +34,7 @@ export function useUpdateCategory() {
       queryClient.invalidateQueries({ queryKey: categoryKeys.all });
       void syncService.sync();
     },
+    onError: notifySubscriptionRestriction,
   });
 }
 

@@ -4,6 +4,8 @@ import {
   useSyncStatus,
 } from "@/shared/lib/infrastructure/sync/use-sync-status";
 import { Badge, Tooltip } from "@radix-ui/themes";
+import { useEffect } from "react";
+import { notifySubscriptionRestriction } from "@/shared/access/subscription-limit";
 
 type Indicator = {
   label: string;
@@ -22,6 +24,12 @@ const ConnectionStatus = () => {
   const online = useOnline();
 
   const status = useSyncStatus();
+
+  useEffect(() => {
+    if (status.state === "failed" && status.error) {
+      notifySubscriptionRestriction(new Error(status.error));
+    }
+  }, [status.error, status.state]);
 
   const indicator = ((): Indicator => {
     if (!online) {

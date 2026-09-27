@@ -3,7 +3,11 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { primaryNavigationItems } from "./navigation-items";
 import { isPathActive } from "@/shared/lib/navigation/is-path-active";
 
-const NavMenu = () => {
+type Props = {
+  hidden?: boolean;
+};
+
+const NavMenu = ({ hidden = false }: Props) => {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
@@ -19,9 +23,8 @@ const NavMenu = () => {
         block!
         overflow-hidden
       "
-      style={{
-        paddingBottom: "env(safe-area-inset-bottom)",
-      }}
+      data-hidden={hidden}
+      aria-hidden={hidden}
     >
       <Flex
         align="center"

@@ -86,4 +86,19 @@ describe("local dashboard calculations", () => {
     expect(stats.totalProducts).toBe(1);
     expect(stats.hiddenCount).toBe(1);
   });
+
+  it("builds all, today, and inventory-value quick views from the same local records", async () => {
+    getAll.mockResolvedValue([
+      product({ id: 1, created_at: "2026-09-02T01:00:00Z", price: 100, quantity: 5 }),
+      product({ id: 2, created_at: "2026-09-01T10:00:00Z", price: 40, quantity: 2 }),
+    ]);
+
+    const all = await dashboardService.getProducts(DashboardFilters.ALL);
+    const today = await dashboardService.getProducts(DashboardFilters.TODAY);
+    const values = await dashboardService.getProducts(DashboardFilters.INVENTORY_VALUE);
+
+    expect(all.products.map((item) => item.id)).toEqual([1, 2]);
+    expect(today.products.map((item) => item.id)).toEqual([1]);
+    expect(values.products.map((item) => item.price * item.quantity)).toEqual([500, 80]);
+  });
 });

@@ -17,7 +17,11 @@ import { Dialog as DialogPrimitive } from "radix-ui";
 import { useState } from "react";
 import { primaryNavigationItems } from "./navigation-items";
 
-export function MobileNavigationDrawer() {
+type Props = {
+  onOpenChange?: (open: boolean) => void;
+};
+
+export function MobileNavigationDrawer({ onOpenChange }: Props) {
   const [open, setOpen] = useState(false);
   const { user } = useAuth();
   const profileMedia = useProfileMedia();
@@ -40,7 +44,10 @@ export function MobileNavigationDrawer() {
       <Link
         key={item.to}
         to={item.to}
-        onClick={() => setOpen(false)}
+        onClick={() => {
+          setOpen(false);
+          onOpenChange?.(false);
+        }}
         className={`flex min-h-12 items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors ${active ? "bg-violet-500/15 text-violet-600" : "hover:bg-foreground/5"}`}
       >
         <Icon width="20" height="20" />
@@ -50,7 +57,13 @@ export function MobileNavigationDrawer() {
   };
 
   return (
-    <DialogPrimitive.Root open={open} onOpenChange={setOpen}>
+    <DialogPrimitive.Root
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        onOpenChange?.(next);
+      }}
+    >
       <DialogPrimitive.Trigger asChild>
         <IconButton
           size="3"

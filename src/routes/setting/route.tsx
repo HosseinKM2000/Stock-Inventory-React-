@@ -3,6 +3,8 @@ import { SettingNavigation } from "@/features/setting/components/layout";
 import { Box, Flex } from "@radix-ui/themes";
 import { Outlet, createFileRoute, redirect } from "@tanstack/react-router";
 import { isAuthenticated } from "@/shared/api/token-store";
+import NavMenu from "@/features/app/layout/nav-menu";
+import { useState } from "react";
 
 export const Route = createFileRoute("/setting")({
   beforeLoad: () => {
@@ -12,12 +14,14 @@ export const Route = createFileRoute("/setting")({
 });
 
 function SettingLayout() {
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
   return (
     <Flex
       direction="column"
       className="h-dvh overflow-hidden"
     >
-      <Header />
+      <Header onMenuOpenChange={setDrawerOpen} />
 
       {/* Remaining viewport height */}
       <Flex className="flex-1 overflow-hidden">
@@ -37,7 +41,7 @@ function SettingLayout() {
         {/* Content */}
         <main
           className="
-            app-responsive-page flex-1
+            app-responsive-page app-shell-content flex-1
             min-w-0
             overflow-y-auto
             overflow-x-hidden
@@ -47,6 +51,7 @@ function SettingLayout() {
           <Outlet />
         </main>
       </Flex>
+      <NavMenu hidden={drawerOpen} />
     </Flex>
   );
 }
