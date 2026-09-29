@@ -32,3 +32,5 @@ backend/coverage/
 *.njsproj
 *.sln
 *.sw?
+# Local Claude Code tooling (contains deployment host details)
+.claude/
