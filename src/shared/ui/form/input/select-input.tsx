@@ -8,13 +8,7 @@ type Option = {
 
 type SelectInputProps = Omit<ComponentProps<typeof Select.Root>, "children"> & {
   options: Option[];
-  value?: string;
-  defaultValue?: string;
   placeholder?: string;
-  props?: SelectInputProps;
-  onValueChange?: (value: string) => void;
-  size?: "1" | "2" | "3";
-  variant?: "classic" | "surface" | "soft";
 };
 
 export function SelectInput({
@@ -24,7 +18,7 @@ export function SelectInput({
 }: SelectInputProps) {
   return (
     <Select.Root {...props}>
-      <Select.Trigger dir="rtl" className="w-full!" placeholder={placeholder} />
+      <Select.Trigger dir="rtl" className="w-full! min-w-0 max-w-full" placeholder={placeholder} />
 
       <Select.Content>
         {options.map((option) => (
