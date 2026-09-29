@@ -179,6 +179,13 @@ export const queueService = {
     });
   },
 
+  /**
+   * Requeue every failed item, including the ones rejected as fatal. A fatal
+   * rejection often reflects server-side setup the account can correct (an
+   * unset industry, a limit since raised), and only an explicit request from
+   * the person reaches this code, so the work is offered again rather than
+   * abandoned. Genuinely invalid payloads simply fail again.
+   */
   async resetFailures() {
     const items = await queueStorage.getAll();
 
@@ -188,7 +195,9 @@ export const queueService = {
       items
         .filter(
           (item) =>
-            item.status === "retryable_error" || item.status === "dead_letter",
+            item.status === "retryable_error" ||
+            item.status === "dead_letter" ||
+            item.status === "fatal_error",
         )
         .map((item) =>
           queueStorage.upsert({
