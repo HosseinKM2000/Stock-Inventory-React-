@@ -5,7 +5,6 @@ import {
   CheckCircle2,
   ChevronLeft,
   Clock3,
-  RotateCcw,
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
@@ -156,7 +155,7 @@ function QuestionOptions({
 }
 
 export function Survey() {
-  const [initialDraft, setInitialDraft] = useState<Draft | null>(readDraft);
+  const [initialDraft] = useState<Draft | null>(readDraft);
   const canResume = isValidRespondent(initialDraft?.respondent);
   const [started, setStarted] = useState(canResume);
   const [respondent, setRespondent] = useState<Respondent>(
@@ -181,11 +180,8 @@ export function Survey() {
   const safeIndex = Math.min(currentIndex, Math.max(visibleQuestions.length - 1, 0));
   const currentQuestion = visibleQuestions[safeIndex];
   const currentAnswer = currentQuestion ? answers[currentQuestion.id] : undefined;
-  const answeredCount = visibleQuestions.filter((question) =>
-    question.optional || hasAnswer(answers[question.id]),
-  ).length;
   const progress = started
-    ? Math.max(4, Math.round(((safeIndex + (completed ? 1 : 0)) / visibleQuestions.length) * 100))
+    ? Math.max(4, Math.round((safeIndex / visibleQuestions.length) * 100))
     : 0;
 
   useEffect(() => {
@@ -283,37 +279,18 @@ export function Survey() {
     setCurrentIndex(safeIndex - 1);
   };
 
-  const restart = () => {
-    try {
-      localStorage.removeItem(DRAFT_KEY);
-      localStorage.removeItem(SUBMISSION_KEY);
-    } catch {
-      // Ignore storage restrictions.
-    }
-    setAnswers({});
-    setOtherAnswers({});
-    setRespondent(EMPTY_RESPONDENT);
-    setIdentityErrors({});
-    setCurrentIndex(0);
-    setCompleted(false);
-    setStarted(false);
-    setInitialDraft(null);
-  };
-
   return (
     <main className="survey-shell" dir="rtl">
       <div className="survey-ambient survey-ambient-one" aria-hidden="true" />
       <div className="survey-ambient survey-ambient-two" aria-hidden="true" />
 
-      {started && (
+      {started && !completed && (
         <header className="survey-progress-header">
           <div className="survey-progress-meta">
-            <span>{completed ? "تکمیل شد" : `${progress.toLocaleString("fa-IR")}٪ پیشرفت`}</span>
-            {!completed && (
-              <span className="survey-step-count">
-                {`${(safeIndex + 1).toLocaleString("fa-IR")} از ${visibleQuestions.length.toLocaleString("fa-IR")}`}
-              </span>
-            )}
+            <span>{`${progress.toLocaleString("fa-IR")}٪ پیشرفت`}</span>
+            <span className="survey-step-count">
+              {`${(safeIndex + 1).toLocaleString("fa-IR")} از ${visibleQuestions.length.toLocaleString("fa-IR")}`}
+            </span>
           </div>
           <div
             className="survey-progress-track"
@@ -321,9 +298,9 @@ export function Survey() {
             aria-label="میزان پیشرفت پرسش‌نامه"
             aria-valuemin={0}
             aria-valuemax={100}
-            aria-valuenow={completed ? 100 : progress}
+            aria-valuenow={progress}
           >
-            <span style={{ width: `${completed ? 100 : progress}%` }} />
+            <span style={{ width: `${progress}%` }} />
           </div>
         </header>
       )}
@@ -477,19 +454,7 @@ export function Survey() {
 
         {started && completed && (
           <section className="survey-complete survey-panel">
-            <div className="survey-success-mark" aria-hidden="true">
-              <Check size={40} strokeWidth={2.6} />
-            </div>
-            <span className="survey-eyebrow">همه‌چیز آماده‌ست</span>
             <h1>ممنون که وقت گذاشتید</h1>
-            <p>پاسخ‌های شما با موفقیت ثبت شد و به شناخت بهتر نیازهای واقعی این حوزه کمک می‌کنه.</p>
-            <div className="survey-completion-stat">
-              <strong>{answeredCount.toLocaleString("fa-IR")}</strong>
-              <span>پاسخ ثبت‌شده</span>
-            </div>
-            <button className="survey-restart-button" onClick={restart}>
-              <RotateCcw size={17} /> ثبت پاسخ جدید
-            </button>
           </section>
         )}
       </div>

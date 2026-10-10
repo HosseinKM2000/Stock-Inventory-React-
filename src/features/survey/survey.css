@@ -79,8 +79,7 @@
   animation: survey-rise 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.survey-intro-icon,
-.survey-success-mark {
+.survey-intro-icon {
   width: 64px;
   height: 64px;
   margin: 0 auto 1.5rem;
@@ -90,15 +89,6 @@
   color: var(--survey-accent);
   background: #f0edff;
   box-shadow: inset 0 0 0 1px rgba(108, 76, 255, 0.12);
-}
-
-.survey-success-mark {
-  width: 76px;
-  height: 76px;
-  border-radius: 50%;
-  color: #fff;
-  background: var(--survey-accent);
-  box-shadow: 0 14px 32px rgba(108, 76, 255, 0.24);
 }
 
 .survey-eyebrow {
@@ -218,8 +208,7 @@
 }
 
 .survey-primary-button,
-.survey-back-button,
-.survey-restart-button {
+.survey-back-button {
   min-height: 50px;
   padding: 0 1.3rem;
   border: 0;
@@ -247,14 +236,12 @@
 }
 
 .survey-primary-button:active,
-.survey-back-button:active,
-.survey-restart-button:active {
+.survey-back-button:active {
   transform: translateY(1px);
 }
 
 .survey-primary-button:focus-visible,
 .survey-back-button:focus-visible,
-.survey-restart-button:focus-visible,
 .survey-option:focus-within,
 .survey-text-field input:focus-visible {
   outline: 3px solid rgba(108, 76, 255, 0.2);
@@ -499,15 +486,13 @@
   gap: 0.75rem;
 }
 
-.survey-back-button,
-.survey-restart-button {
+.survey-back-button {
   color: #625c6c;
   background: transparent;
   box-shadow: none;
 }
 
-.survey-back-button:hover,
-.survey-restart-button:hover {
+.survey-back-button:hover {
   color: var(--survey-accent-dark);
   background: #efecf7;
 }
@@ -519,26 +504,6 @@
   gap: 0.35rem;
   color: #918c99;
   font-size: 0.7rem;
-}
-
-.survey-completion-stat {
-  width: 140px;
-  margin: 1.7rem auto;
-  padding: 0.9rem 1rem;
-  border: 1px solid var(--survey-border);
-  border-radius: 16px;
-  display: grid;
-  background: #fbfaff;
-}
-
-.survey-completion-stat strong {
-  color: var(--survey-accent);
-  font-size: 1.55rem;
-}
-
-.survey-completion-stat span {
-  color: var(--survey-muted);
-  font-size: 0.75rem;
 }
 
 .sr-only {
@@ -604,6 +569,36 @@
     gap: 0.7rem;
   }
 
+  .survey-intro h1 {
+    font-size: 1.45rem;
+    line-height: 1.6;
+    letter-spacing: -0.035em;
+  }
+
+  .survey-question-heading h1 {
+    font-size: 1.08rem;
+    line-height: 1.75;
+    letter-spacing: -0.02em;
+  }
+
+  .survey-question-number {
+    width: 32px;
+    height: 32px;
+    flex-basis: 32px;
+    border-radius: 10px;
+    font-size: 0.8rem;
+  }
+
+  .survey-section-pill {
+    margin-bottom: 0.8rem;
+    font-size: 0.7rem;
+  }
+
+  .survey-complete h1 {
+    font-size: 1.45rem;
+    line-height: 1.6;
+  }
+
   .survey-actions .survey-primary-button {
     flex: 1;
   }
@@ -634,7 +629,6 @@
   .survey-progress-track span,
   .survey-primary-button,
   .survey-back-button,
-  .survey-restart-button,
   .survey-option {
     transition: none;
   }
@@ -690,7 +684,6 @@
   .survey-text-field input,
   .survey-identity-field input,
   .survey-question-number,
-  .survey-completion-stat,
   .survey-intro-details span {
     color: #e6e2ed;
     background: #201e27;
@@ -701,8 +694,7 @@
     border-color: #615b6a;
   }
 
-  .survey-back-button,
-  .survey-restart-button {
+  .survey-back-button {
     color: #bbb5c5;
   }
 }
