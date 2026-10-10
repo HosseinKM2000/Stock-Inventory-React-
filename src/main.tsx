@@ -1,24 +1,9 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { Theme } from "@radix-ui/themes";
-import { routeTree } from "./routeTree.gen";
-import { createRouter, RouterProvider } from "@tanstack/react-router";
-
-import "@radix-ui/themes/styles.css";
-import "@/style/index.css";
-
-const router = createRouter({ routeTree });
-
-declare module "@tanstack/react-router" {
-  interface Register {
-    router: typeof router;
-  }
-}
+import { Survey } from "./features/survey/survey";
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
-    <Theme appearance="dark" accentColor="violet">
-      <RouterProvider router={router} />
-    </Theme>
+    <Survey />
   </React.StrictMode>,
 );
