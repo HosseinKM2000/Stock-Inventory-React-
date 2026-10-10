@@ -4,6 +4,7 @@ import {
   Check,
   CheckCircle2,
   ChevronLeft,
+  Clock3,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -413,6 +414,10 @@ export function Survey() {
                   <small>{identityErrors.mobile}</small>
                 )}
               </label>
+            </div>
+            <div className="survey-duration" aria-label="زمان تقریبی تکمیل پرسش‌نامه">
+              <Clock3 size={17} aria-hidden="true" />
+              <span>حدود ۴ تا ۵ دقیقه</span>
             </div>
             {canResume && (
               <div className="survey-resume-note" role="status">
