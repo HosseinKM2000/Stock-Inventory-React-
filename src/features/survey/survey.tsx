@@ -4,9 +4,6 @@ import {
   Check,
   CheckCircle2,
   ChevronLeft,
-  Clock3,
-  ShieldCheck,
-  Sparkles,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -35,7 +32,11 @@ type Draft = {
   index: number;
 };
 
-const EMPTY_RESPONDENT: Respondent = { firstName: "", lastName: "", mobile: "" };
+const EMPTY_RESPONDENT: Respondent = {
+  firstName: "",
+  lastName: "",
+  mobile: "",
+};
 
 const toEnglishDigits = (value: string) =>
   value
@@ -50,9 +51,9 @@ const normalizeMobile = (value: string) => {
 const isValidRespondent = (respondent: Respondent | undefined) =>
   Boolean(
     respondent &&
-      respondent.firstName.trim().length >= 2 &&
-      respondent.lastName.trim().length >= 2 &&
-      /^09\d{9}$/.test(normalizeMobile(respondent.mobile)),
+    respondent.firstName.trim().length >= 2 &&
+    respondent.lastName.trim().length >= 2 &&
+    /^09\d{9}$/.test(normalizeMobile(respondent.mobile)),
   );
 
 function readDraft(): Draft | null {
@@ -76,7 +77,11 @@ function persistSubmission(answers: SurveyAnswers, respondent: Respondent) {
   try {
     localStorage.setItem(
       SUBMISSION_KEY,
-      JSON.stringify({ respondent, answers, submittedAt: new Date().toISOString() }),
+      JSON.stringify({
+        respondent,
+        answers,
+        submittedAt: new Date().toISOString(),
+      }),
     );
     localStorage.removeItem(DRAFT_KEY);
   } catch {
@@ -119,10 +124,15 @@ function QuestionOptions({
   }
 
   return (
-    <div className="survey-options" role={question.type === "single" ? "radiogroup" : "group"}>
+    <div
+      className="survey-options"
+      role={question.type === "single" ? "radiogroup" : "group"}
+    >
       {question.options?.map((option) => {
         const checked =
-          question.type === "multiple" ? selected.includes(option) : answer === option;
+          question.type === "multiple"
+            ? selected.includes(option)
+            : answer === option;
 
         return (
           <label className="survey-option" data-selected={checked} key={option}>
@@ -161,8 +171,12 @@ export function Survey() {
   const [respondent, setRespondent] = useState<Respondent>(
     initialDraft?.respondent ?? EMPTY_RESPONDENT,
   );
-  const [identityErrors, setIdentityErrors] = useState<Partial<Record<keyof Respondent, string>>>({});
-  const [answers, setAnswers] = useState<SurveyAnswers>(initialDraft?.answers ?? {});
+  const [identityErrors, setIdentityErrors] = useState<
+    Partial<Record<keyof Respondent, string>>
+  >({});
+  const [answers, setAnswers] = useState<SurveyAnswers>(
+    initialDraft?.answers ?? {},
+  );
   const [otherAnswers, setOtherAnswers] = useState<Record<string, string>>(
     initialDraft?.otherAnswers ?? {},
   );
@@ -173,19 +187,28 @@ export function Survey() {
   const contentRef = useRef<HTMLDivElement>(null);
 
   const visibleQuestions = useMemo(
-    () => surveyQuestions.filter((question) => !question.condition || question.condition(answers)),
+    () =>
+      surveyQuestions.filter(
+        (question) => !question.condition || question.condition(answers),
+      ),
     [answers],
   );
 
-  const safeIndex = Math.min(currentIndex, Math.max(visibleQuestions.length - 1, 0));
+  const safeIndex = Math.min(
+    currentIndex,
+    Math.max(visibleQuestions.length - 1, 0),
+  );
   const currentQuestion = visibleQuestions[safeIndex];
-  const currentAnswer = currentQuestion ? answers[currentQuestion.id] : undefined;
+  const currentAnswer = currentQuestion
+    ? answers[currentQuestion.id]
+    : undefined;
   const progress = started
     ? Math.max(4, Math.round((safeIndex / visibleQuestions.length) * 100))
     : 0;
 
   useEffect(() => {
-    const favicon = document.querySelector<HTMLLinkElement>('link[rel~="icon"]');
+    const favicon =
+      document.querySelector<HTMLLinkElement>('link[rel~="icon"]');
     const previousFavicon = favicon?.href;
     document.title = "پرسش‌نامه نیازهای فروشندگان لوازم یدکی";
     document.documentElement.classList.add("survey-page-active");
@@ -216,7 +239,9 @@ export function Survey() {
     setShowError(false);
   };
 
-  const canContinue = Boolean(currentQuestion?.optional || hasAnswer(currentAnswer));
+  const canContinue = Boolean(
+    currentQuestion?.optional || hasAnswer(currentAnswer),
+  );
 
   const startSurvey = () => {
     const normalizedRespondent = {
@@ -226,8 +251,10 @@ export function Survey() {
     };
     const errors: Partial<Record<keyof Respondent, string>> = {};
 
-    if (normalizedRespondent.firstName.length < 2) errors.firstName = "نام را کامل وارد کنید.";
-    if (normalizedRespondent.lastName.length < 2) errors.lastName = "نام خانوادگی را کامل وارد کنید.";
+    if (normalizedRespondent.firstName.length < 2)
+      errors.firstName = "نام را کامل وارد کنید.";
+    if (normalizedRespondent.lastName.length < 2)
+      errors.lastName = "نام خانوادگی را کامل وارد کنید.";
     if (!/^09\d{9}$/.test(normalizedRespondent.mobile)) {
       errors.mobile = "شماره موبایل معتبر، مثل ۰۹۱۲۱۲۳۴۵۶۷ وارد کنید.";
     }
@@ -249,7 +276,10 @@ export function Survey() {
       return;
     }
 
-    if (isOtherSelected(currentAnswer) && !otherAnswers[currentQuestion.id]?.trim()) {
+    if (
+      isOtherSelected(currentAnswer) &&
+      !otherAnswers[currentQuestion.id]?.trim()
+    ) {
       setShowError(true);
       return;
     }
@@ -308,28 +338,34 @@ export function Survey() {
       <div className="survey-container">
         {!started && (
           <section className="survey-intro survey-panel">
-            <div className="survey-intro-icon" aria-hidden="true">
-              <Sparkles size={28} />
-            </div>
-            <span className="survey-eyebrow">نظر شما مهمه</span>
-            <h1>کمک کنید ابزارهای مدیریت کالا کاربردی‌تر بشن</h1>
-            <p>
-              با چند پاسخ کوتاه، کمک می‌کنید نیازهای واقعی فروشندگان لوازم یدکی بهتر شناخته بشه.
-            </p>
-            <div className="survey-identity-form" aria-label="مشخصات پاسخ‌دهنده">
+            <h1>
+              این پرسش‌نامه کوتاه برای بررسی نیازهای واقعی فروشندگان و اطمینان از انطباق آن‌ها با قابلیت‌های اپلیکیشن طراحی شده است.
+            </h1>
+            <div
+              className="survey-identity-form"
+              aria-label="مشخصات پاسخ‌دهنده"
+            >
               <label className="survey-identity-field">
                 <span>نام</span>
                 <input
                   autoComplete="given-name"
                   value={respondent.firstName}
                   onChange={(event) => {
-                    setRespondent((current) => ({ ...current, firstName: event.target.value }));
-                    setIdentityErrors((current) => ({ ...current, firstName: undefined }));
+                    setRespondent((current) => ({
+                      ...current,
+                      firstName: event.target.value,
+                    }));
+                    setIdentityErrors((current) => ({
+                      ...current,
+                      firstName: undefined,
+                    }));
                   }}
                   placeholder="نام شما"
                   aria-invalid={Boolean(identityErrors.firstName)}
                 />
-                {identityErrors.firstName && <small>{identityErrors.firstName}</small>}
+                {identityErrors.firstName && (
+                  <small>{identityErrors.firstName}</small>
+                )}
               </label>
               <label className="survey-identity-field">
                 <span>نام خانوادگی</span>
@@ -337,13 +373,21 @@ export function Survey() {
                   autoComplete="family-name"
                   value={respondent.lastName}
                   onChange={(event) => {
-                    setRespondent((current) => ({ ...current, lastName: event.target.value }));
-                    setIdentityErrors((current) => ({ ...current, lastName: undefined }));
+                    setRespondent((current) => ({
+                      ...current,
+                      lastName: event.target.value,
+                    }));
+                    setIdentityErrors((current) => ({
+                      ...current,
+                      lastName: undefined,
+                    }));
                   }}
                   placeholder="نام خانوادگی شما"
                   aria-invalid={Boolean(identityErrors.lastName)}
                 />
-                {identityErrors.lastName && <small>{identityErrors.lastName}</small>}
+                {identityErrors.lastName && (
+                  <small>{identityErrors.lastName}</small>
+                )}
               </label>
               <label className="survey-identity-field survey-identity-mobile">
                 <span>شماره موبایل</span>
@@ -353,29 +397,35 @@ export function Survey() {
                   dir="ltr"
                   value={respondent.mobile}
                   onChange={(event) => {
-                    setRespondent((current) => ({ ...current, mobile: event.target.value }));
-                    setIdentityErrors((current) => ({ ...current, mobile: undefined }));
+                    setRespondent((current) => ({
+                      ...current,
+                      mobile: event.target.value,
+                    }));
+                    setIdentityErrors((current) => ({
+                      ...current,
+                      mobile: undefined,
+                    }));
                   }}
                   placeholder="09121234567"
                   aria-invalid={Boolean(identityErrors.mobile)}
                 />
-                {identityErrors.mobile && <small>{identityErrors.mobile}</small>}
+                {identityErrors.mobile && (
+                  <small>{identityErrors.mobile}</small>
+                )}
               </label>
-            </div>
-            <div className="survey-intro-details">
-              <span><Clock3 size={18} /> حدود ۴ تا ۵ دقیقه</span>
-              <span><ShieldCheck size={18} /> اطلاعات تماس فقط همین‌جا</span>
             </div>
             {canResume && (
               <div className="survey-resume-note" role="status">
                 پاسخ‌های قبلی‌تون ذخیره شده؛ می‌تونید از همون‌جا ادامه بدید.
               </div>
             )}
-            <button className="survey-primary-button survey-start-button" onClick={startSurvey}>
+            <button
+              className="survey-primary-button survey-start-button"
+              onClick={startSurvey}
+            >
               {canResume ? "ادامه پرسش‌نامه" : "شروع پرسش‌نامه"}
               <ArrowLeft size={20} />
             </button>
-            <span className="survey-intro-footnote">پاسخ درست یا غلطی وجود نداره؛ تجربه خودتون رو بگید.</span>
           </section>
         )}
 
@@ -387,9 +437,7 @@ export function Survey() {
             ref={contentRef}
             tabIndex={-1}
           >
-            <div className="survey-section-pill">
-              {currentQuestion.section}
-            </div>
+            <div className="survey-section-pill">{currentQuestion.section}</div>
             <div className="survey-question-heading">
               {currentQuestion.number && (
                 <span className="survey-question-number" aria-hidden="true">
@@ -398,7 +446,9 @@ export function Survey() {
               )}
               <div>
                 <h1>{currentQuestion.title}</h1>
-                {currentQuestion.description && <p>{currentQuestion.description}</p>}
+                {currentQuestion.description && (
+                  <p>{currentQuestion.description}</p>
+                )}
               </div>
             </div>
 
@@ -439,8 +489,14 @@ export function Survey() {
 
             <div className="survey-actions">
               <button className="survey-primary-button" onClick={goNext}>
-                {safeIndex === visibleQuestions.length - 1 ? "ثبت پاسخ‌ها" : "ادامه"}
-                {safeIndex === visibleQuestions.length - 1 ? <CheckCircle2 size={20} /> : <ChevronLeft size={20} />}
+                {safeIndex === visibleQuestions.length - 1
+                  ? "ثبت پاسخ‌ها"
+                  : "ادامه"}
+                {safeIndex === visibleQuestions.length - 1 ? (
+                  <CheckCircle2 size={20} />
+                ) : (
+                  <ChevronLeft size={20} />
+                )}
               </button>
               <button className="survey-back-button" onClick={goBack}>
                 <ArrowRight size={18} /> قبلی

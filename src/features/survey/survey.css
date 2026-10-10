@@ -79,27 +79,6 @@
   animation: survey-rise 500ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-.survey-intro-icon {
-  width: 64px;
-  height: 64px;
-  margin: 0 auto 1.5rem;
-  display: grid;
-  place-items: center;
-  border-radius: 21px;
-  color: var(--survey-accent);
-  background: #f0edff;
-  box-shadow: inset 0 0 0 1px rgba(108, 76, 255, 0.12);
-}
-
-.survey-eyebrow {
-  display: block;
-  margin-bottom: 0.7rem;
-  color: var(--survey-accent-dark);
-  font-size: 0.82rem;
-  font-weight: 800;
-  letter-spacing: -0.01em;
-}
-
 .survey-intro h1,
 .survey-complete h1 {
   max-width: 580px;
@@ -107,15 +86,6 @@
   font-size: clamp(1.7rem, 4vw, 2.65rem);
   line-height: 1.45;
   letter-spacing: -0.045em;
-}
-
-.survey-intro > p,
-.survey-complete > p {
-  max-width: 540px;
-  margin: 1rem auto 0;
-  color: var(--survey-muted);
-  font-size: 1rem;
-  line-height: 1.95;
 }
 
 .survey-identity-form {
@@ -176,27 +146,6 @@
   font-weight: 500;
 }
 
-.survey-intro-details {
-  margin: 1.65rem auto;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.7rem;
-}
-
-.survey-intro-details span {
-  min-height: 40px;
-  padding: 0 0.9rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  border: 1px solid var(--survey-border);
-  border-radius: 999px;
-  color: #595369;
-  background: #fbfaff;
-  font-size: 0.84rem;
-}
-
 .survey-resume-note {
   margin: 0 auto 1rem;
   padding: 0.8rem 1rem;
@@ -250,13 +199,6 @@
 
 .survey-start-button {
   min-width: min(100%, 220px);
-}
-
-.survey-intro-footnote {
-  margin-top: 1rem;
-  display: block;
-  color: #898493;
-  font-size: 0.75rem;
 }
 
 .survey-progress-header {
@@ -609,13 +551,6 @@
     display: none;
   }
 
-  .survey-intro-details {
-    display: grid;
-  }
-
-  .survey-intro-details span {
-    justify-content: center;
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -673,7 +608,6 @@
   }
 
   .survey-section-pill,
-  .survey-intro-icon,
   .survey-option[data-selected="true"],
   .survey-resume-note {
     background: #2a2443;
@@ -683,8 +617,7 @@
   .survey-option,
   .survey-text-field input,
   .survey-identity-field input,
-  .survey-question-number,
-  .survey-intro-details span {
+  .survey-question-number {
     color: #e6e2ed;
     background: #201e27;
   }
