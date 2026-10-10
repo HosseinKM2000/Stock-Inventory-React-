@@ -1,0 +1,60 @@
+@media (prefers-color-scheme: dark) {
+  .survey-page-active,
+  .survey-page-active body,
+  .survey-page-active #root,
+  .survey-page-active .radix-themes,
+  .survey-page-active #app-theme-portal-root {
+    background: #14131a;
+  }
+
+  .survey-shell {
+    --survey-ink: #f5f3fa;
+    --survey-muted: #aaa5b4;
+    --survey-border: #3b3745;
+    --survey-surface: rgba(29, 27, 35, 0.94);
+    background:
+      radial-gradient(circle at 92% 3%, rgba(108, 76, 255, 0.15), transparent 28rem),
+      #14131a;
+  }
+
+  .survey-progress-header {
+    background: rgba(20, 19, 26, 0.9);
+  }
+
+  .survey-progress-meta,
+  .survey-step-count,
+  .survey-question-heading p,
+  .survey-autosave-note {
+    color: #aaa5b4;
+  }
+
+  .survey-progress-track {
+    background: #35323d;
+  }
+
+  .survey-section-pill,
+  .survey-option[data-selected="true"],
+  .survey-resume-note {
+    background: #2a2443;
+    color: #c8bcff;
+  }
+
+  .survey-option,
+  .survey-text-field input,
+  .survey-identity-field input,
+  .survey-duration,
+  .survey-question-number {
+    color: #e6e2ed;
+    background: #201e27;
+  }
+
+  .survey-option-control {
+    background: #25222c;
+    border-color: #615b6a;
+  }
+
+  .survey-back-button {
+    color: #bbb5c5;
+  }
+}
+

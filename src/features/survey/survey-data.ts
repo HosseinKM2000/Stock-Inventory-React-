@@ -1,17 +1,4 @@
-export type SurveyAnswer = string | string[];
-
-export type SurveyQuestion = {
-  id: string;
-  number?: number;
-  section: string;
-  title: string;
-  description?: string;
-  type: "single" | "multiple" | "text";
-  options?: string[];
-  optional?: boolean;
-  placeholder?: string;
-  condition?: (answers: Record<string, SurveyAnswer>) => boolean;
-};
+import type { SurveyQuestion } from "./types";
 
 const DISTRIBUTOR_TYPES = [
   "پخش و عمده‌فروشی لوازم یدکی",
@@ -275,6 +262,3 @@ export const surveyQuestions: SurveyQuestion[] = [
     options: ["بله، مایلم", "نه، فعلاً تمایلی ندارم"],
   },
 ];
-
-export const hasAnswer = (answer: SurveyAnswer | undefined) =>
-  Array.isArray(answer) ? answer.length > 0 : Boolean(answer?.trim());
