@@ -338,9 +338,9 @@ export function Survey() {
       <div className="survey-container">
         {!started && (
           <section className="survey-intro survey-panel">
-            <h1>
+            <h3 className="survey-intro-description">
               این پرسش‌نامه کوتاه برای بررسی نیازهای واقعی فروشندگان و اطمینان از انطباق آن‌ها با قابلیت‌های اپلیکیشن طراحی شده است.
-            </h1>
+            </h3>
             <div
               className="survey-identity-form"
               aria-label="مشخصات پاسخ‌دهنده"
