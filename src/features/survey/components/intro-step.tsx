@@ -63,65 +63,67 @@ export function IntroStep({
   respondent,
 }: IntroStepProps) {
   return (
-    <section className="survey-intro survey-panel">
+    <section className="survey-intro">
       <h3 className="survey-intro-description">
         این پرسش‌نامه کوتاه برای بررسی نیازهای واقعی فروشندگان و اطمینان از
         انطباق آن‌ها با قابلیت‌های اپلیکیشن طراحی شده است.
       </h3>
 
-      <div className="survey-identity-form" aria-label="مشخصات پاسخ‌دهنده">
-        <IdentityField
-          autoComplete="given-name"
-          error={errors.firstName}
-          field="firstName"
-          label="نام"
-          onChange={onChange}
-          placeholder="نام شما"
-          respondent={respondent}
-        />
-        <IdentityField
-          autoComplete="family-name"
-          error={errors.lastName}
-          field="lastName"
-          label="نام خانوادگی"
-          onChange={onChange}
-          placeholder="نام خانوادگی شما"
-          respondent={respondent}
-        />
-        <IdentityField
-          autoComplete="tel"
-          error={errors.mobile}
-          field="mobile"
-          inputMode="tel"
-          label="شماره موبایل"
-          onChange={onChange}
-          placeholder="09121234567"
-          respondent={respondent}
-        />
-      </div>
-
-      <div
-        aria-label="زمان تقریبی تکمیل پرسش‌نامه"
-        className="survey-duration"
-      >
-        <Clock3 aria-hidden="true" size={17} />
-        <span>حدود ۴ تا ۵ دقیقه</span>
-      </div>
-
-      {canResume && (
-        <div className="survey-resume-note" role="status">
-          پاسخ‌های قبلی‌تون ذخیره شده؛ می‌تونید از همون‌جا ادامه بدید.
+      <div className="survey-intro-form survey-panel">
+        <div className="survey-identity-form" aria-label="مشخصات پاسخ‌دهنده">
+          <IdentityField
+            autoComplete="given-name"
+            error={errors.firstName}
+            field="firstName"
+            label="نام"
+            onChange={onChange}
+            placeholder="نام"
+            respondent={respondent}
+          />
+          <IdentityField
+            autoComplete="family-name"
+            error={errors.lastName}
+            field="lastName"
+            label="نام خانوادگی"
+            onChange={onChange}
+            placeholder="نام خانوادگی"
+            respondent={respondent}
+          />
+          <IdentityField
+            autoComplete="tel"
+            error={errors.mobile}
+            field="mobile"
+            inputMode="tel"
+            label="شماره موبایل"
+            onChange={onChange}
+            placeholder="09121234567"
+            respondent={respondent}
+          />
         </div>
-      )}
 
-      <button
-        className="survey-primary-button survey-start-button"
-        onClick={onStart}
-        type="button"
-      >
-        {canResume ? "ادامه پرسش‌نامه" : "شروع پرسش‌نامه"}
-        <ArrowLeft size={20} />
-      </button>
+        <div
+          aria-label="زمان تقریبی تکمیل پرسش‌نامه"
+          className="survey-duration"
+        >
+          <Clock3 aria-hidden="true" size={17} />
+          <span>حدود ۴ تا ۵ دقیقه</span>
+        </div>
+
+        {canResume && (
+          <div className="survey-resume-note" role="status">
+            پاسخ‌های قبلی‌تون ذخیره شده؛ می‌تونید از همون‌جا ادامه بدید.
+          </div>
+        )}
+
+        <button
+          className="survey-primary-button survey-start-button"
+          onClick={onStart}
+          type="button"
+        >
+          {canResume ? "ادامه پرسش‌نامه" : "شروع پرسش‌نامه"}
+          <ArrowLeft size={20} />
+        </button>
+      </div>
     </section>
   );
 }

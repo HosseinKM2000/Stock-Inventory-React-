@@ -1,16 +1,7 @@
-import {
-  ArrowRight,
-  Check,
-  CheckCircle2,
-  ChevronLeft,
-} from "lucide-react";
+import { ArrowRight, CheckCircle2, ChevronLeft } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { isOtherSelected } from "../lib/survey-answers";
-import type {
-  SurveyAnswer,
-  SurveyDirection,
-  SurveyQuestion,
-} from "../types";
+import type { SurveyAnswer, SurveyDirection, SurveyQuestion } from "../types";
 import { QuestionOptions } from "./question-options";
 
 type QuestionStepProps = {
@@ -108,17 +99,9 @@ export function QuestionStep({
             <ChevronLeft size={20} />
           )}
         </button>
-        <button
-          className="survey-back-button"
-          onClick={onBack}
-          type="button"
-        >
+        <button className="survey-back-button" onClick={onBack} type="button">
           <ArrowRight size={18} /> قبلی
         </button>
-      </div>
-
-      <div aria-live="polite" className="survey-autosave-note">
-        <Check size={14} /> پاسخ‌ها خودکار روی این دستگاه ذخیره می‌شن
       </div>
     </section>
   );
