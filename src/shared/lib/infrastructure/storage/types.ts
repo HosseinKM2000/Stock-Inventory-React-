@@ -7,6 +7,7 @@ export type QueueStatus =
   | "pending"
   | "in_flight"
   | "retryable_error"
+  | "conflict"
   | "fatal_error"
   | "dead_letter";
 

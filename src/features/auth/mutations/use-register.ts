@@ -19,6 +19,7 @@ import type { AuthResponse } from "../types";
 import { authKeys } from "../query/query-keys";
 import { accessState } from "@/shared/access/access-state";
 import { entitlementService } from "@/shared/access/entitlement-service";
+import { transitionToAccount } from "@/shared/auth/account-transition";
 
 
 
@@ -40,7 +41,7 @@ export function useLogin() {
 
     onSuccess: async (data: AuthResponse) => {
       setToken(data.access_token);
-      accessState.saveUser(data.user);
+      transitionToAccount(queryClient, data.user);
 
       await entitlementService.verify();
 
@@ -74,7 +75,7 @@ export function useRegister() {
 
     onSuccess: async (data: AuthResponse) => {
       setToken(data.access_token);
-      accessState.saveUser(data.user);
+      transitionToAccount(queryClient, data.user);
 
       await entitlementService.verify();
 

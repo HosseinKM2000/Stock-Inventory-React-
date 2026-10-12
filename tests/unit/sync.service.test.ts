@@ -4,7 +4,7 @@ import type { SyncQueueItem } from "@/shared/lib/infrastructure/storage/types";
 const mocks = vi.hoisted(() => ({
   isOffline: vi.fn(), isOnline: vi.fn(), isAuthenticated: vi.fn(),
   count: vi.fn(), getDue: vi.fn(), getAll: vi.fn(), markInFlight: vi.fn(),
-  markFailed: vi.fn(), removeIfUnchanged: vi.fn(), resetFailures: vi.fn(),
+  markFailed: vi.fn(), markConflict: vi.fn(), removeIfUnchanged: vi.fn(), resetFailures: vi.fn(),
   canAccess: vi.fn(), canWrite: vi.fn(), ensureVerified: vi.fn(), setStatus: vi.fn(), getStatus: vi.fn(),
 }));
 vi.mock("@/shared/api/token-store", () => ({ isAuthenticated: mocks.isAuthenticated }));
@@ -15,6 +15,7 @@ vi.mock("@/shared/lib/infrastructure/sync/queue.service", () => ({
   queueService: {
     count: mocks.count, getDue: mocks.getDue, getAll: mocks.getAll,
     markInFlight: mocks.markInFlight, markFailed: mocks.markFailed,
+    markConflict: mocks.markConflict,
     removeIfUnchanged: mocks.removeIfUnchanged, resetFailures: mocks.resetFailures,
   },
 }));
@@ -80,6 +81,28 @@ describe("synchronization orchestration", () => {
     await syncService.sync();
     expect(mocks.markFailed).toHaveBeenCalledWith(queued, expect.any(Error));
     expect(mocks.removeIfUnchanged).not.toHaveBeenCalled();
+  });
+
+  it("retains a rejected local change as an inspectable conflict", async () => {
+    const entity = "conflict-test";
+    const queued = item(entity);
+    mocks.getDue.mockResolvedValue([queued]);
+    mocks.getAll.mockResolvedValue([{ ...queued, status: "conflict", lastError: "newer server version" }]);
+    registerSyncHandler(entity, vi.fn().mockResolvedValue([{
+      itemId: queued.id,
+      status: "conflict",
+      error: "newer server version",
+    }]));
+
+    await syncService.sync();
+
+    expect(mocks.markConflict).toHaveBeenCalledWith(queued, "newer server version");
+    expect(mocks.removeIfUnchanged).not.toHaveBeenCalled();
+    expect(mocks.setStatus).toHaveBeenLastCalledWith(expect.objectContaining({
+      state: "conflict",
+      pending: 1,
+      error: "newer server version",
+    }));
   });
 
   it("does not push queued writes after subscription expiry", async () => {

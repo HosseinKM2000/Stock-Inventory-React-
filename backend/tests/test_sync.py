@@ -194,6 +194,59 @@ class SyncApiTest(unittest.TestCase):
             )
         )
 
+    def test_partial_batch_failure_preserves_and_replays_committed_results(self) -> None:
+        entity_id = 1_700_000_000_020
+        operations = [
+            {
+                "operation_id": "partial-valid-create",
+                "entity": "product",
+                "entity_id": entity_id,
+                "operation": "CREATE",
+                "payload": {
+                    "quantity": 4,
+                    "price": 100,
+                    "custom_label": "Partial batch product",
+                    "low_stock_threshold": 1,
+                    "low_stock_alert": True,
+                    "is_hidden": False,
+                    "catalog_product": {"id": 0, "name": "Partial batch product"},
+                },
+            },
+            {
+                "operation_id": "partial-invalid-update",
+                "entity": "product",
+                "entity_id": 1_700_000_000_021,
+                "operation": "UPDATE",
+                "payload": {"quantity": 99},
+            },
+        ]
+
+        first = self.push(operations)
+        self.assertEqual(first.status_code, 200, first.text)
+        self.assertEqual(
+            [result["status"] for result in first.json()["results"]],
+            ["applied", "fatal_error"],
+        )
+        self.assertEqual(
+            first.json()["results"][1]["error"],
+            "PRODUCT_NOT_FOUND",
+        )
+
+        replay = self.push(operations)
+        self.assertEqual(replay.status_code, 200, replay.text)
+        self.assertEqual(replay.json()["results"], first.json()["results"])
+
+        snapshot = self.client.get("/api/sync/changes?cursor=0", headers=self.headers)
+        self.assertEqual(snapshot.status_code, 200, snapshot.text)
+        self.assertEqual(
+            [
+                change["entity_id"]
+                for change in snapshot.json()["changes"]
+                if change["entity_id"] == entity_id
+            ],
+            [entity_id],
+        )
+
     def test_image_upload_is_linked_and_removed(self) -> None:
         entity_id = 1_700_000_000_002
         operation_id = "create-product-image"

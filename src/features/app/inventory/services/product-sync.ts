@@ -7,6 +7,7 @@ import {
   registerSyncHandler,
   type SyncHandlerResult,
 } from "@/shared/lib/infrastructure/sync/sync-service";
+import { queueService } from "@/shared/lib/infrastructure/sync/queue.service";
 
 import { pullProductChanges, pushProductBatch } from "../api/sync.api";
 import type { Product } from "../types";
@@ -56,9 +57,10 @@ async function push(items: SyncQueueItem[]): Promise<SyncHandlerResult[]> {
       PERMANENTLY_REMOVED_ERRORS.has(result.error)
     ) {
       // The server permanently removed this inventory source while the client
-      // was offline. Resolve the stale mutation instead of retrying forever.
+      // was offline. Keep the rejected payload recoverable as a conflict while
+      // applying the authoritative server deletion to the local read model.
       await removeLocalProduct(item.entityId);
-      output.push({ itemId: item.id, status: "applied" });
+      output.push({ itemId: item.id, status: "conflict", error: result.error });
       continue;
     }
 
@@ -99,8 +101,19 @@ async function pull() {
       for (const local of await inventoryRepository.getAll()) {
         const pending = await queueStorage.get(`${PRODUCT_ENTITY}-${local.id}`);
 
-        if (!serverIds.has(local.id) && (!pending || pending.action === "UPDATE")) {
-          if (pending) await queueStorage.remove(pending.id);
+        if (!serverIds.has(local.id) && !pending) {
+          await removeLocalProduct(local.id);
+        } else if (
+          !serverIds.has(local.id) &&
+          pending?.action === "UPDATE"
+        ) {
+          await queueService.markConflict(pending, "PRODUCT_NOT_FOUND");
+          await removeLocalProduct(local.id);
+        } else if (
+          !serverIds.has(local.id) &&
+          pending?.action === "DELETE"
+        ) {
+          await queueService.removeIfUnchanged(pending);
           await removeLocalProduct(local.id);
         }
       }
@@ -112,9 +125,13 @@ async function pull() {
       );
 
       if (change.operation === "DELETE") {
-        // A server tombstone represents an authoritative permanent deletion and
-        // must win over stale queued edits for the same inventory item.
-        if (pending) await queueStorage.remove(pending.id);
+        // A server tombstone wins in the read model. A rejected edit remains in
+        // the outbox so the user can inspect/recover it instead of losing it.
+        if (pending?.action === "DELETE") {
+          await queueService.removeIfUnchanged(pending);
+        } else if (pending) {
+          await queueService.markConflict(pending, "PRODUCT_NOT_FOUND");
+        }
         await removeLocalProduct(change.entity_id);
         continue;
       }

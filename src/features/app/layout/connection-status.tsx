@@ -58,6 +58,15 @@ const ConnectionStatus = () => {
       };
     }
 
+    if (status.state === "conflict") {
+      return {
+        label: "تداخل نیازمند بررسی",
+        color: "red",
+        tooltip:
+          "نسخه سرور نمایش داده شده و تغییر محلی ردشده نگه‌داری شده است؛ برای اعمال دوباره، رکورد را ویرایش و ذخیره کنید.",
+      };
+    }
+
     if (status.pending > 0) {
       return {
         label: "در انتظار همگام سازی",
@@ -73,7 +82,9 @@ const ConnectionStatus = () => {
     };
   })();
 
-  const retryable = online && (status.state === "failed" || status.pending > 0);
+  const retryable =
+    online && status.state !== "conflict" &&
+    (status.state === "failed" || status.pending > 0);
 
   return (
     <Tooltip content={indicator.tooltip}>

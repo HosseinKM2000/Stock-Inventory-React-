@@ -7,6 +7,7 @@ import { queueStorage } from "@/shared/lib/infrastructure/storage/queue-storage"
 import type { User } from "@/features/auth/types";
 import { product } from "../helpers/product";
 import { localMutationStorage } from "@/shared/lib/infrastructure/storage/local-mutation-storage";
+import { queueService } from "@/shared/lib/infrastructure/sync/queue.service";
 
 function user(id: number): User {
   return {
@@ -147,5 +148,51 @@ describe("IndexedDB repositories", () => {
 
     expect(claims.filter(Boolean)).toHaveLength(1);
     expect((await queueStorage.get(queued.id))?.status).toBe("in_flight");
+  });
+
+  it("persists conflict payloads across a database restart", async () => {
+    accessState.saveUser(user(1));
+    const queued = {
+      id: "product-505",
+      operationId: "operation-505",
+      entity: "product",
+      entityId: 505,
+      action: "UPDATE" as const,
+      payload: { quantity: 17, version: 1 },
+      createdAt: 1,
+      updatedAt: 1,
+      retryCount: 0,
+      status: "in_flight" as const,
+      nextAttemptAt: 0,
+    };
+    await queueStorage.upsert(queued);
+
+    await queueService.markConflict(queued, "Server record has a newer version");
+    db.close();
+    await db.open();
+
+    expect(await queueStorage.get(queued.id)).toMatchObject({
+      status: "conflict",
+      payload: { quantity: 17, version: 1 },
+      lastError: "Server record has a newer version",
+    });
+  });
+
+  it("turns an edit after conflict into a fresh retry operation", async () => {
+    accessState.saveUser(user(1));
+    await queueService.enqueue("product", 606, "UPDATE", { quantity: 4, version: 1 });
+    const original = await queueStorage.get("product-606");
+    expect(original).toBeDefined();
+    await queueService.markConflict(original!, "newer server version");
+
+    await queueService.enqueue("product", 606, "UPDATE", { quantity: 5, version: 2 });
+
+    expect(await queueStorage.get("product-606")).toMatchObject({
+      status: "pending",
+      payload: { quantity: 5, version: 2 },
+      retryCount: 0,
+    });
+    expect((await queueStorage.get("product-606"))?.operationId)
+      .not.toBe(original?.operationId);
   });
 });
