@@ -1,12 +1,9 @@
-import Industries from "@/features/setting/components/industry";
-import { createFileRoute } from "@tanstack/react-router";
+import IndustryForm from "@/features/setting/components/industry/industry-form";
 import { OnlineGuard } from "@/shared/access/online-guard";
-import { CapabilityGuard } from "@/shared/access/capability-guard";
+import { createFileRoute } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/setting/industry")({
-  component: RouteComponent,
-});
+export const Route = createFileRoute("/setting/industry")({ component: IndustryPage });
 
-function RouteComponent() {
-  return <OnlineGuard><CapabilityGuard capability="industry.manage" admin><Industries /></CapabilityGuard></OnlineGuard>;
+function IndustryPage() {
+  return <OnlineGuard><IndustryForm embedded /></OnlineGuard>;
 }

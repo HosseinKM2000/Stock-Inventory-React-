@@ -2,6 +2,7 @@ import { Box, Flex, Text } from "@radix-ui/themes";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { primaryNavigationItems } from "./navigation-items";
 import { isPathActive } from "@/shared/lib/navigation/is-path-active";
+import { useAuth } from "@/shared/auth/use-auth";
 
 type Props = {
   hidden?: boolean;
@@ -11,8 +12,10 @@ const NavMenu = ({ hidden = false }: Props) => {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
+  const { user } = useAuth();
+  const items = primaryNavigationItems(user);
   return (
-    <Box
+    <nav
       dir="rtl"
       className="
         app-bottom-navigation
@@ -25,6 +28,7 @@ const NavMenu = ({ hidden = false }: Props) => {
       "
       data-hidden={hidden}
       aria-hidden={hidden}
+      aria-label="ناوبری اصلی"
     >
       <Flex
         align="center"
@@ -41,11 +45,11 @@ const NavMenu = ({ hidden = false }: Props) => {
           backdrop-blur-2xl
         "
       >
-        {primaryNavigationItems.map((item) => {
+        {items.map((item) => {
           const Icon = item.icon;
 
           const active = isPathActive(pathname, item.to);
-              
+
           return (
             <Link
               key={item.to}
@@ -56,8 +60,10 @@ const NavMenu = ({ hidden = false }: Props) => {
                 flex
                 px-3
                 py-2
-                w-[25%]
+                min-w-0
+                flex-1
                 md:w-70
+                md:flex-none
                 relative
                 flex-col
                 ease-out
@@ -133,6 +139,7 @@ const NavMenu = ({ hidden = false }: Props) => {
                 className="
                   app-bottom-navigation-label
                   mt-1
+                  whitespace-nowrap
 
                   transition-all
                   duration-200
@@ -144,7 +151,7 @@ const NavMenu = ({ hidden = false }: Props) => {
           );
         })}
       </Flex>
-    </Box>
+    </nav>
   );
 };
 

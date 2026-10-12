@@ -1,4 +1,3 @@
-import PasswordFields from "@/features/setting/components/profile/password-fields";
 import PersonalInformationFields from "@/features/setting/components/profile/personal-information-fields";
 import { Box, Text } from "@radix-ui/themes";
 import { createFileRoute } from "@tanstack/react-router";
@@ -18,7 +17,6 @@ function ProfilePage() {
       <ProfileMediaSelector />
       <OnlineGuard>
         <PersonalInformationFields />
-        <PasswordFields />
       </OnlineGuard>
     </Box>
   );

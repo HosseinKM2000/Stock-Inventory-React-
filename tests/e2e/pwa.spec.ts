@@ -36,6 +36,7 @@ test("PWA manifest and service worker are served", async ({ request }) => {
 
 test("prepares unvisited core routes and local inventory for an offline cold page", async ({ page, context }) => {
   const userId = 9001;
+  await page.route("http://localhost:8000/api/**", (route) => route.abort());
   await page.addInitScript(({ id }) => {
     const now = new Date().toISOString();
     localStorage.setItem("access_token", JSON.stringify("offline-test-token"));
@@ -150,6 +151,13 @@ test("prepares unvisited core routes and local inventory for an offline cold pag
 
   await offlinePage.reload();
   await expect(offlinePage.getByText("Offline Product").first()).toBeVisible();
+
+  await offlinePage.goto("/tools");
+  await expect(offlinePage.getByRole("heading", { name: "ابزارها" })).toBeVisible();
+  await expect(offlinePage.getByRole("link", { name: /کاتالوگ/ })).toBeVisible();
+  await offlinePage.goto("/tools/catalog");
+  await expect(offlinePage.getByRole("heading", { name: "کاتالوگ" })).toBeVisible();
+  await expect(offlinePage.getByRole("switch", { name: "نمایش محصولات کاتالوگی" })).toBeVisible();
 
   await offlinePage.goto("/inventory/add");
   await offlinePage.locator('input[name="custom_label"]').fill("Offline CRUD Product");

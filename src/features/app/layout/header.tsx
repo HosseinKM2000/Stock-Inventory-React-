@@ -1,48 +1,80 @@
-import { useRouter } from "@tanstack/react-router";
-import { ArrowLeftIcon } from "@radix-ui/react-icons";
+import { ArrowRightIcon, GearIcon } from "@radix-ui/react-icons";
 import { Flex, IconButton, Text } from "@radix-ui/themes";
-import { MobileNavigationDrawer } from "./mobile-navigation-drawer";
+import { Link, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
+import { useEffect, useRef } from "react";
+
 import { NotificationPanel } from "@/features/notifications/components/notification-panel";
+import { contextualBackFallback, contextualSection } from "@/shared/lib/navigation/contextual-back";
 import ConnectionStatus from "./connection-status";
 
-type Props = {
-  onMenuOpenChange?: (open: boolean) => void;
-};
+const CURRENT_PATH_KEY = "tanzim-navigation-current-path";
 
-const Header = ({ onMenuOpenChange }: Props) => {
+function readPreviousPath(pathname: string) {
+  try {
+    const current = sessionStorage.getItem(CURRENT_PATH_KEY);
+    return current && current !== pathname ? current : null;
+  } catch {
+    return null;
+  }
+}
+
+const Header = () => {
   const router = useRouter();
+  const navigate = useNavigate();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
+  const previousPath = useRef(readPreviousPath(pathname));
+  const section = contextualSection(pathname);
+
+  useEffect(() => {
+    try {
+      const current = sessionStorage.getItem(CURRENT_PATH_KEY);
+      if (current && current !== pathname) previousPath.current = current;
+      sessionStorage.setItem(CURRENT_PATH_KEY, pathname);
+    } catch {
+      previousPath.current = null;
+    }
+  }, [pathname]);
+
+  const goBack = () => {
+    const hasSafeInAppHistory =
+      router.history.canGoBack() &&
+      previousPath.current?.startsWith("/") &&
+      !previousPath.current.startsWith("/auth");
+
+    if (hasSafeInAppHistory) {
+      router.history.back();
+      return;
+    }
+    void navigate({ to: contextualBackFallback(pathname) });
+  };
 
   return (
     <header
       dir="ltr"
       className="app-header grid min-h-16 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-b-foreground/10 px-2 sm:px-5"
     >
-      <Flex align="center" justify="start" gap="3" className="app-header-left min-w-0">
-        <IconButton
-          size="3"
-          color="gray"
-          variant="ghost"
-          aria-label="بازگشت"
-          onClick={() => router.history.back()}
-        >
-          <ArrowLeftIcon width="22" height="22" />
+      <Flex align="center" justify="start" gap="2" className="app-header-left min-w-0">
+        {section && (
+          <IconButton size="3" color="gray" variant="ghost" aria-label="بازگشت" onClick={goBack}>
+            <ArrowRightIcon width="22" height="22" />
+          </IconButton>
+        )}
+        <IconButton asChild size="3" color="gray" variant="ghost">
+          <Link to="/setting" aria-label="تنظیمات">
+            <GearIcon width="22" height="22" />
+          </Link>
         </IconButton>
-        <div className="app-header-sync-status min-w-0">
-          <ConnectionStatus />
-        </div>
       </Flex>
 
-      <Text
-        size="3"
-        weight="bold"
-        className="app-header-title whitespace-nowrap text-center"
-      >
+      <Text size="3" weight="bold" className="app-header-title whitespace-nowrap text-center">
         Tanzim
       </Text>
 
-      <Flex align="center" justify="end" gap="5" className="app-header-right min-w-0">
+      <Flex align="center" justify="end" gap={{ initial: "2", sm: "4" }} className="app-header-right min-w-0">
         <NotificationPanel />
-        <MobileNavigationDrawer onOpenChange={onMenuOpenChange} />
+        <div className="app-header-sync-status min-w-0">
+          <ConnectionStatus />
+        </div>
       </Flex>
     </header>
   );

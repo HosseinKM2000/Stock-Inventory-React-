@@ -9,13 +9,23 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ToolsRouteRouteImport } from './routes/tools/route'
 import { Route as SettingRouteRouteImport } from './routes/setting/route'
+import { Route as ManagementRouteRouteImport } from './routes/management/route'
 import { Route as AuthRouteRouteImport } from './routes/auth/route'
 import { Route as appRouteRouteImport } from './routes/(app)/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ToolsIndexRouteImport } from './routes/tools/index'
+import { Route as SettingIndexRouteImport } from './routes/setting/index'
+import { Route as ManagementIndexRouteImport } from './routes/management/index'
+import { Route as ToolsRecoveryRouteImport } from './routes/tools/recovery'
+import { Route as ToolsExportRouteImport } from './routes/tools/export'
+import { Route as ToolsCategoriesRouteImport } from './routes/tools/categories'
+import { Route as ToolsCatalogRouteImport } from './routes/tools/catalog'
 import { Route as SettingUsersRouteImport } from './routes/setting/users'
 import { Route as SettingSubscriptionManagementRouteImport } from './routes/setting/subscription-management'
 import { Route as SettingSubscriptionRouteImport } from './routes/setting/subscription'
+import { Route as SettingSecurityRouteImport } from './routes/setting/security'
 import { Route as SettingProfileRouteImport } from './routes/setting/profile'
 import { Route as SettingProductsRouteImport } from './routes/setting/products'
 import { Route as SettingIndustryRouteImport } from './routes/setting/industry'
@@ -23,6 +33,10 @@ import { Route as SettingExportRouteImport } from './routes/setting/export'
 import { Route as SettingCategoriesRouteImport } from './routes/setting/categories'
 import { Route as SettingCatalogsRouteImport } from './routes/setting/catalogs'
 import { Route as SettingAppearanceRouteImport } from './routes/setting/appearance'
+import { Route as ManagementUsersRouteImport } from './routes/management/users'
+import { Route as ManagementSubscriptionsRouteImport } from './routes/management/subscriptions'
+import { Route as ManagementIndustriesRouteImport } from './routes/management/industries'
+import { Route as ManagementCatalogsRouteImport } from './routes/management/catalogs'
 import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as appIndustryRouteRouteImport } from './routes/(app)/industry/route'
@@ -43,9 +57,19 @@ import { Route as appDashboardProductsInventoryValueIndexRouteImport } from './r
 import { Route as appDashboardProductsHiddenIndexRouteImport } from './routes/(app)/dashboard/products/hidden/index'
 import { Route as appDashboardProductsAllIndexRouteImport } from './routes/(app)/dashboard/products/all/index'
 
+const ToolsRouteRoute = ToolsRouteRouteImport.update({
+  id: '/tools',
+  path: '/tools',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingRouteRoute = SettingRouteRouteImport.update({
   id: '/setting',
   path: '/setting',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ManagementRouteRoute = ManagementRouteRouteImport.update({
+  id: '/management',
+  path: '/management',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRouteRoute = AuthRouteRouteImport.update({
@@ -62,6 +86,41 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ToolsIndexRoute = ToolsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ToolsRouteRoute,
+} as any)
+const SettingIndexRoute = SettingIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SettingRouteRoute,
+} as any)
+const ManagementIndexRoute = ManagementIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ManagementRouteRoute,
+} as any)
+const ToolsRecoveryRoute = ToolsRecoveryRouteImport.update({
+  id: '/recovery',
+  path: '/recovery',
+  getParentRoute: () => ToolsRouteRoute,
+} as any)
+const ToolsExportRoute = ToolsExportRouteImport.update({
+  id: '/export',
+  path: '/export',
+  getParentRoute: () => ToolsRouteRoute,
+} as any)
+const ToolsCategoriesRoute = ToolsCategoriesRouteImport.update({
+  id: '/categories',
+  path: '/categories',
+  getParentRoute: () => ToolsRouteRoute,
+} as any)
+const ToolsCatalogRoute = ToolsCatalogRouteImport.update({
+  id: '/catalog',
+  path: '/catalog',
+  getParentRoute: () => ToolsRouteRoute,
+} as any)
 const SettingUsersRoute = SettingUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -76,6 +135,11 @@ const SettingSubscriptionManagementRoute =
 const SettingSubscriptionRoute = SettingSubscriptionRouteImport.update({
   id: '/subscription',
   path: '/subscription',
+  getParentRoute: () => SettingRouteRoute,
+} as any)
+const SettingSecurityRoute = SettingSecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
   getParentRoute: () => SettingRouteRoute,
 } as any)
 const SettingProfileRoute = SettingProfileRouteImport.update({
@@ -112,6 +176,26 @@ const SettingAppearanceRoute = SettingAppearanceRouteImport.update({
   id: '/appearance',
   path: '/appearance',
   getParentRoute: () => SettingRouteRoute,
+} as any)
+const ManagementUsersRoute = ManagementUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => ManagementRouteRoute,
+} as any)
+const ManagementSubscriptionsRoute = ManagementSubscriptionsRouteImport.update({
+  id: '/subscriptions',
+  path: '/subscriptions',
+  getParentRoute: () => ManagementRouteRoute,
+} as any)
+const ManagementIndustriesRoute = ManagementIndustriesRouteImport.update({
+  id: '/industries',
+  path: '/industries',
+  getParentRoute: () => ManagementRouteRoute,
+} as any)
+const ManagementCatalogsRoute = ManagementCatalogsRouteImport.update({
+  id: '/catalogs',
+  path: '/catalogs',
+  getParentRoute: () => ManagementRouteRoute,
 } as any)
 const AuthRegisterRoute = AuthRegisterRouteImport.update({
   id: '/register',
@@ -222,11 +306,17 @@ const appDashboardProductsAllIndexRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteRouteWithChildren
+  '/management': typeof ManagementRouteRouteWithChildren
   '/setting': typeof SettingRouteRouteWithChildren
+  '/tools': typeof ToolsRouteRouteWithChildren
   '/dashboard': typeof appDashboardRouteRouteWithChildren
   '/industry': typeof appIndustryRouteRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/management/catalogs': typeof ManagementCatalogsRoute
+  '/management/industries': typeof ManagementIndustriesRoute
+  '/management/subscriptions': typeof ManagementSubscriptionsRoute
+  '/management/users': typeof ManagementUsersRoute
   '/setting/appearance': typeof SettingAppearanceRoute
   '/setting/catalogs': typeof SettingCatalogsRoute
   '/setting/categories': typeof SettingCategoriesRoute
@@ -234,9 +324,17 @@ export interface FileRoutesByFullPath {
   '/setting/industry': typeof SettingIndustryRoute
   '/setting/products': typeof SettingProductsRoute
   '/setting/profile': typeof SettingProfileRoute
+  '/setting/security': typeof SettingSecurityRoute
   '/setting/subscription': typeof SettingSubscriptionRoute
   '/setting/subscription-management': typeof SettingSubscriptionManagementRoute
   '/setting/users': typeof SettingUsersRoute
+  '/tools/catalog': typeof ToolsCatalogRoute
+  '/tools/categories': typeof ToolsCategoriesRoute
+  '/tools/export': typeof ToolsExportRoute
+  '/tools/recovery': typeof ToolsRecoveryRoute
+  '/management/': typeof ManagementIndexRoute
+  '/setting/': typeof SettingIndexRoute
+  '/tools/': typeof ToolsIndexRoute
   '/dashboard/products': typeof appDashboardProductsRouteRouteWithChildren
   '/inventory/add': typeof appInventoryAddRoute
   '/inventory/edit': typeof appInventoryEditRoute
@@ -256,9 +354,12 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteRouteWithChildren
-  '/setting': typeof SettingRouteRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/management/catalogs': typeof ManagementCatalogsRoute
+  '/management/industries': typeof ManagementIndustriesRoute
+  '/management/subscriptions': typeof ManagementSubscriptionsRoute
+  '/management/users': typeof ManagementUsersRoute
   '/setting/appearance': typeof SettingAppearanceRoute
   '/setting/catalogs': typeof SettingCatalogsRoute
   '/setting/categories': typeof SettingCategoriesRoute
@@ -266,9 +367,17 @@ export interface FileRoutesByTo {
   '/setting/industry': typeof SettingIndustryRoute
   '/setting/products': typeof SettingProductsRoute
   '/setting/profile': typeof SettingProfileRoute
+  '/setting/security': typeof SettingSecurityRoute
   '/setting/subscription': typeof SettingSubscriptionRoute
   '/setting/subscription-management': typeof SettingSubscriptionManagementRoute
   '/setting/users': typeof SettingUsersRoute
+  '/tools/catalog': typeof ToolsCatalogRoute
+  '/tools/categories': typeof ToolsCategoriesRoute
+  '/tools/export': typeof ToolsExportRoute
+  '/tools/recovery': typeof ToolsRecoveryRoute
+  '/management': typeof ManagementIndexRoute
+  '/setting': typeof SettingIndexRoute
+  '/tools': typeof ToolsIndexRoute
   '/dashboard/products': typeof appDashboardProductsRouteRouteWithChildren
   '/inventory/add': typeof appInventoryAddRoute
   '/inventory/edit': typeof appInventoryEditRoute
@@ -290,11 +399,17 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/(app)': typeof appRouteRouteWithChildren
   '/auth': typeof AuthRouteRouteWithChildren
+  '/management': typeof ManagementRouteRouteWithChildren
   '/setting': typeof SettingRouteRouteWithChildren
+  '/tools': typeof ToolsRouteRouteWithChildren
   '/(app)/dashboard': typeof appDashboardRouteRouteWithChildren
   '/(app)/industry': typeof appIndustryRouteRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/management/catalogs': typeof ManagementCatalogsRoute
+  '/management/industries': typeof ManagementIndustriesRoute
+  '/management/subscriptions': typeof ManagementSubscriptionsRoute
+  '/management/users': typeof ManagementUsersRoute
   '/setting/appearance': typeof SettingAppearanceRoute
   '/setting/catalogs': typeof SettingCatalogsRoute
   '/setting/categories': typeof SettingCategoriesRoute
@@ -302,9 +417,17 @@ export interface FileRoutesById {
   '/setting/industry': typeof SettingIndustryRoute
   '/setting/products': typeof SettingProductsRoute
   '/setting/profile': typeof SettingProfileRoute
+  '/setting/security': typeof SettingSecurityRoute
   '/setting/subscription': typeof SettingSubscriptionRoute
   '/setting/subscription-management': typeof SettingSubscriptionManagementRoute
   '/setting/users': typeof SettingUsersRoute
+  '/tools/catalog': typeof ToolsCatalogRoute
+  '/tools/categories': typeof ToolsCategoriesRoute
+  '/tools/export': typeof ToolsExportRoute
+  '/tools/recovery': typeof ToolsRecoveryRoute
+  '/management/': typeof ManagementIndexRoute
+  '/setting/': typeof SettingIndexRoute
+  '/tools/': typeof ToolsIndexRoute
   '/(app)/dashboard/products': typeof appDashboardProductsRouteRouteWithChildren
   '/(app)/inventory/add': typeof appInventoryAddRoute
   '/(app)/inventory/edit': typeof appInventoryEditRoute
@@ -326,11 +449,17 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/management'
     | '/setting'
+    | '/tools'
     | '/dashboard'
     | '/industry'
     | '/auth/login'
     | '/auth/register'
+    | '/management/catalogs'
+    | '/management/industries'
+    | '/management/subscriptions'
+    | '/management/users'
     | '/setting/appearance'
     | '/setting/catalogs'
     | '/setting/categories'
@@ -338,9 +467,17 @@ export interface FileRouteTypes {
     | '/setting/industry'
     | '/setting/products'
     | '/setting/profile'
+    | '/setting/security'
     | '/setting/subscription'
     | '/setting/subscription-management'
     | '/setting/users'
+    | '/tools/catalog'
+    | '/tools/categories'
+    | '/tools/export'
+    | '/tools/recovery'
+    | '/management/'
+    | '/setting/'
+    | '/tools/'
     | '/dashboard/products'
     | '/inventory/add'
     | '/inventory/edit'
@@ -360,9 +497,12 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
-    | '/setting'
     | '/auth/login'
     | '/auth/register'
+    | '/management/catalogs'
+    | '/management/industries'
+    | '/management/subscriptions'
+    | '/management/users'
     | '/setting/appearance'
     | '/setting/catalogs'
     | '/setting/categories'
@@ -370,9 +510,17 @@ export interface FileRouteTypes {
     | '/setting/industry'
     | '/setting/products'
     | '/setting/profile'
+    | '/setting/security'
     | '/setting/subscription'
     | '/setting/subscription-management'
     | '/setting/users'
+    | '/tools/catalog'
+    | '/tools/categories'
+    | '/tools/export'
+    | '/tools/recovery'
+    | '/management'
+    | '/setting'
+    | '/tools'
     | '/dashboard/products'
     | '/inventory/add'
     | '/inventory/edit'
@@ -393,11 +541,17 @@ export interface FileRouteTypes {
     | '/'
     | '/(app)'
     | '/auth'
+    | '/management'
     | '/setting'
+    | '/tools'
     | '/(app)/dashboard'
     | '/(app)/industry'
     | '/auth/login'
     | '/auth/register'
+    | '/management/catalogs'
+    | '/management/industries'
+    | '/management/subscriptions'
+    | '/management/users'
     | '/setting/appearance'
     | '/setting/catalogs'
     | '/setting/categories'
@@ -405,9 +559,17 @@ export interface FileRouteTypes {
     | '/setting/industry'
     | '/setting/products'
     | '/setting/profile'
+    | '/setting/security'
     | '/setting/subscription'
     | '/setting/subscription-management'
     | '/setting/users'
+    | '/tools/catalog'
+    | '/tools/categories'
+    | '/tools/export'
+    | '/tools/recovery'
+    | '/management/'
+    | '/setting/'
+    | '/tools/'
     | '/(app)/dashboard/products'
     | '/(app)/inventory/add'
     | '/(app)/inventory/edit'
@@ -429,16 +591,32 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   appRouteRoute: typeof appRouteRouteWithChildren
   AuthRouteRoute: typeof AuthRouteRouteWithChildren
+  ManagementRouteRoute: typeof ManagementRouteRouteWithChildren
   SettingRouteRoute: typeof SettingRouteRouteWithChildren
+  ToolsRouteRoute: typeof ToolsRouteRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/tools': {
+      id: '/tools'
+      path: '/tools'
+      fullPath: '/tools'
+      preLoaderRoute: typeof ToolsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/setting': {
       id: '/setting'
       path: '/setting'
       fullPath: '/setting'
       preLoaderRoute: typeof SettingRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/management': {
+      id: '/management'
+      path: '/management'
+      fullPath: '/management'
+      preLoaderRoute: typeof ManagementRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -462,6 +640,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tools/': {
+      id: '/tools/'
+      path: '/'
+      fullPath: '/tools/'
+      preLoaderRoute: typeof ToolsIndexRouteImport
+      parentRoute: typeof ToolsRouteRoute
+    }
+    '/setting/': {
+      id: '/setting/'
+      path: '/'
+      fullPath: '/setting/'
+      preLoaderRoute: typeof SettingIndexRouteImport
+      parentRoute: typeof SettingRouteRoute
+    }
+    '/management/': {
+      id: '/management/'
+      path: '/'
+      fullPath: '/management/'
+      preLoaderRoute: typeof ManagementIndexRouteImport
+      parentRoute: typeof ManagementRouteRoute
+    }
+    '/tools/recovery': {
+      id: '/tools/recovery'
+      path: '/recovery'
+      fullPath: '/tools/recovery'
+      preLoaderRoute: typeof ToolsRecoveryRouteImport
+      parentRoute: typeof ToolsRouteRoute
+    }
+    '/tools/export': {
+      id: '/tools/export'
+      path: '/export'
+      fullPath: '/tools/export'
+      preLoaderRoute: typeof ToolsExportRouteImport
+      parentRoute: typeof ToolsRouteRoute
+    }
+    '/tools/categories': {
+      id: '/tools/categories'
+      path: '/categories'
+      fullPath: '/tools/categories'
+      preLoaderRoute: typeof ToolsCategoriesRouteImport
+      parentRoute: typeof ToolsRouteRoute
+    }
+    '/tools/catalog': {
+      id: '/tools/catalog'
+      path: '/catalog'
+      fullPath: '/tools/catalog'
+      preLoaderRoute: typeof ToolsCatalogRouteImport
+      parentRoute: typeof ToolsRouteRoute
+    }
     '/setting/users': {
       id: '/setting/users'
       path: '/users'
@@ -481,6 +708,13 @@ declare module '@tanstack/react-router' {
       path: '/subscription'
       fullPath: '/setting/subscription'
       preLoaderRoute: typeof SettingSubscriptionRouteImport
+      parentRoute: typeof SettingRouteRoute
+    }
+    '/setting/security': {
+      id: '/setting/security'
+      path: '/security'
+      fullPath: '/setting/security'
+      preLoaderRoute: typeof SettingSecurityRouteImport
       parentRoute: typeof SettingRouteRoute
     }
     '/setting/profile': {
@@ -531,6 +765,34 @@ declare module '@tanstack/react-router' {
       fullPath: '/setting/appearance'
       preLoaderRoute: typeof SettingAppearanceRouteImport
       parentRoute: typeof SettingRouteRoute
+    }
+    '/management/users': {
+      id: '/management/users'
+      path: '/users'
+      fullPath: '/management/users'
+      preLoaderRoute: typeof ManagementUsersRouteImport
+      parentRoute: typeof ManagementRouteRoute
+    }
+    '/management/subscriptions': {
+      id: '/management/subscriptions'
+      path: '/subscriptions'
+      fullPath: '/management/subscriptions'
+      preLoaderRoute: typeof ManagementSubscriptionsRouteImport
+      parentRoute: typeof ManagementRouteRoute
+    }
+    '/management/industries': {
+      id: '/management/industries'
+      path: '/industries'
+      fullPath: '/management/industries'
+      preLoaderRoute: typeof ManagementIndustriesRouteImport
+      parentRoute: typeof ManagementRouteRoute
+    }
+    '/management/catalogs': {
+      id: '/management/catalogs'
+      path: '/catalogs'
+      fullPath: '/management/catalogs'
+      preLoaderRoute: typeof ManagementCatalogsRouteImport
+      parentRoute: typeof ManagementRouteRoute
     }
     '/auth/register': {
       id: '/auth/register'
@@ -762,6 +1024,26 @@ const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
   AuthRouteRouteChildren,
 )
 
+interface ManagementRouteRouteChildren {
+  ManagementCatalogsRoute: typeof ManagementCatalogsRoute
+  ManagementIndustriesRoute: typeof ManagementIndustriesRoute
+  ManagementSubscriptionsRoute: typeof ManagementSubscriptionsRoute
+  ManagementUsersRoute: typeof ManagementUsersRoute
+  ManagementIndexRoute: typeof ManagementIndexRoute
+}
+
+const ManagementRouteRouteChildren: ManagementRouteRouteChildren = {
+  ManagementCatalogsRoute: ManagementCatalogsRoute,
+  ManagementIndustriesRoute: ManagementIndustriesRoute,
+  ManagementSubscriptionsRoute: ManagementSubscriptionsRoute,
+  ManagementUsersRoute: ManagementUsersRoute,
+  ManagementIndexRoute: ManagementIndexRoute,
+}
+
+const ManagementRouteRouteWithChildren = ManagementRouteRoute._addFileChildren(
+  ManagementRouteRouteChildren,
+)
+
 interface SettingRouteRouteChildren {
   SettingAppearanceRoute: typeof SettingAppearanceRoute
   SettingCatalogsRoute: typeof SettingCatalogsRoute
@@ -770,9 +1052,11 @@ interface SettingRouteRouteChildren {
   SettingIndustryRoute: typeof SettingIndustryRoute
   SettingProductsRoute: typeof SettingProductsRoute
   SettingProfileRoute: typeof SettingProfileRoute
+  SettingSecurityRoute: typeof SettingSecurityRoute
   SettingSubscriptionRoute: typeof SettingSubscriptionRoute
   SettingSubscriptionManagementRoute: typeof SettingSubscriptionManagementRoute
   SettingUsersRoute: typeof SettingUsersRoute
+  SettingIndexRoute: typeof SettingIndexRoute
 }
 
 const SettingRouteRouteChildren: SettingRouteRouteChildren = {
@@ -783,20 +1067,44 @@ const SettingRouteRouteChildren: SettingRouteRouteChildren = {
   SettingIndustryRoute: SettingIndustryRoute,
   SettingProductsRoute: SettingProductsRoute,
   SettingProfileRoute: SettingProfileRoute,
+  SettingSecurityRoute: SettingSecurityRoute,
   SettingSubscriptionRoute: SettingSubscriptionRoute,
   SettingSubscriptionManagementRoute: SettingSubscriptionManagementRoute,
   SettingUsersRoute: SettingUsersRoute,
+  SettingIndexRoute: SettingIndexRoute,
 }
 
 const SettingRouteRouteWithChildren = SettingRouteRoute._addFileChildren(
   SettingRouteRouteChildren,
 )
 
+interface ToolsRouteRouteChildren {
+  ToolsCatalogRoute: typeof ToolsCatalogRoute
+  ToolsCategoriesRoute: typeof ToolsCategoriesRoute
+  ToolsExportRoute: typeof ToolsExportRoute
+  ToolsRecoveryRoute: typeof ToolsRecoveryRoute
+  ToolsIndexRoute: typeof ToolsIndexRoute
+}
+
+const ToolsRouteRouteChildren: ToolsRouteRouteChildren = {
+  ToolsCatalogRoute: ToolsCatalogRoute,
+  ToolsCategoriesRoute: ToolsCategoriesRoute,
+  ToolsExportRoute: ToolsExportRoute,
+  ToolsRecoveryRoute: ToolsRecoveryRoute,
+  ToolsIndexRoute: ToolsIndexRoute,
+}
+
+const ToolsRouteRouteWithChildren = ToolsRouteRoute._addFileChildren(
+  ToolsRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   appRouteRoute: appRouteRouteWithChildren,
   AuthRouteRoute: AuthRouteRouteWithChildren,
+  ManagementRouteRoute: ManagementRouteRouteWithChildren,
   SettingRouteRoute: SettingRouteRouteWithChildren,
+  ToolsRouteRoute: ToolsRouteRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

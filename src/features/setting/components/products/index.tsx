@@ -14,9 +14,9 @@ export default function ProductSettings() {
   return (
     <Box className="space-y-5" dir="rtl">
       <Box>
-        <Text as="div" size="6" weight="bold">محصولات</Text>
+        <Text as="div" size="6" weight="bold">بازیابی</Text>
         <Text as="div" size="2" color="gray" mt="1">
-          نگهداری و بازیابی نسخه محلی محصولات
+          همگام‌سازی تغییرات محلی و دریافت دوباره نسخه معتبر محصولات از سرور
         </Text>
       </Box>
 

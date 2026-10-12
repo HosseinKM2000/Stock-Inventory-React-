@@ -8,7 +8,7 @@ import { useState } from "react";
 import { useIndustries, useSetIndustry } from "../../mutations/use-industry";
 import { ApiError } from "@/shared/api/api-error";
 
-function IndustryForm() {
+function IndustryForm({ embedded = false }: { embedded?: boolean }) {
   const setIndustryMutation = useSetIndustry();
   const [industry, setIndustry] = useState<string>("");
 
@@ -33,7 +33,7 @@ function IndustryForm() {
   return (
     <Flex>
       <Form
-        className="h-dvh w-full"
+        className={embedded ? "min-h-[60dvh] w-full" : "h-dvh w-full"}
         isSubmitting={setIndustryMutation.isPending}
         onSubmit={preventEventHandler(loginHandler)}
       >
