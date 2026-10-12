@@ -60,7 +60,8 @@ async function processGroup(entity: string, items: SyncQueueItem[]) {
 
   const active: SyncQueueItem[] = [];
   for (const item of items) {
-    if (await queueService.markInFlight(item)) active.push(item);
+    const claimed = await queueService.markInFlight(item);
+    if (claimed) active.push(claimed);
   }
   if (active.length === 0) return { changed: false, error: null };
 

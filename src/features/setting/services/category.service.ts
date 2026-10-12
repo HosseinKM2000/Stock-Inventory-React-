@@ -4,6 +4,7 @@ import type { Category, CategoryInput } from "../types";
 import { inventoryService } from "@/features/app/inventory/services/inventory-service";
 import { accessState } from "@/shared/access/access-state";
 import { createLocalEntityId } from "@/shared/lib/infrastructure/storage/local-entity-id";
+import { localMutationStorage } from "@/shared/lib/infrastructure/storage/local-mutation-storage";
 
 export const CATEGORY_ENTITY = "category";
 
@@ -20,8 +21,10 @@ export const categoryService = {
       created_at: now,
       updated_at: now,
     };
-    await categoryStorage.save(category);
-    await queueService.enqueue(CATEGORY_ENTITY, category.id, "CREATE", category);
+    await localMutationStorage.category(async () => {
+      await categoryStorage.save(category);
+      await queueService.enqueue(CATEGORY_ENTITY, category.id, "CREATE", category);
+    });
     return category;
   },
 
@@ -35,8 +38,10 @@ export const categoryService = {
       description: input.description ?? "",
       updated_at: new Date().toISOString(),
     };
-    await categoryStorage.save(category);
-    await queueService.enqueue(CATEGORY_ENTITY, id, "UPDATE", category);
+    await localMutationStorage.category(async () => {
+      await categoryStorage.save(category);
+      await queueService.enqueue(CATEGORY_ENTITY, id, "UPDATE", category);
+    });
     return category;
   },
 
@@ -45,7 +50,9 @@ export const categoryService = {
     for (const product of await inventoryService.getAll({ category_id: id })) {
       await inventoryService.update(product.id, { category_id: null });
     }
-    await categoryStorage.remove(id);
-    await queueService.enqueue(CATEGORY_ENTITY, id, "DELETE", null);
+    await localMutationStorage.category(async () => {
+      await categoryStorage.remove(id);
+      await queueService.enqueue(CATEGORY_ENTITY, id, "DELETE", null);
+    });
   },
 };

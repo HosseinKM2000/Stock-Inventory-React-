@@ -1,6 +1,12 @@
 const ROOT = "inventory-images";
 
 async function getRoot() {
+  if (!navigator.storage?.getDirectory) {
+    throw new Error(
+      "این مرورگر از ذخیره محلی تصویر پشتیبانی نمی‌کند. محصول را بدون تصویر ذخیره کنید.",
+    );
+  }
+
   const root = await navigator.storage.getDirectory();
 
   return root.getDirectoryHandle(ROOT, {

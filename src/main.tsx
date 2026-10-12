@@ -12,15 +12,33 @@ import { inventoryService } from "@/features/app/inventory/services/inventory-se
 import { registerServiceWorker } from "@/shared/lib/infrastructure/pwa/register-service-worker";
 import { AppTheme } from "@/shared/theme/app-theme";
 import { profileMediaRepository } from "@/shared/profile-media/profile-media.repository";
-import { storagePersistenceService } from "@/shared/lib/infrastructure/storage/storage-persistence.service";
+import { toast } from "sonner";
 
 const router = createRouter({ routeTree });
 
-registerServiceWorker();
-
-// A successful use of the application is the appropriate time to ask the
-// browser to retain its offline shell and local data more durably.
-void storagePersistenceService.ensure();
+registerServiceWorker({
+  onOfflineReady() {
+    if (sessionStorage.getItem("tanzim-offline-ready-notified") === "1") return;
+    sessionStorage.setItem("tanzim-offline-ready-notified", "1");
+    toast.success("برنامه برای استفاده آفلاین آماده است");
+  },
+  onUpdateReady(activate) {
+    toast("نسخه جدید برنامه آماده است", {
+      id: "tanzim-update-ready",
+      duration: Infinity,
+      action: {
+        label: "به‌روزرسانی",
+        onClick() {
+          if (queryClient.isMutating() > 0) {
+            toast.warning("پس از پایان ذخیره‌سازی دوباره تلاش کنید");
+            return;
+          }
+          activate();
+        },
+      },
+    });
+  },
+});
 
 profileMediaRepository.cleanupLegacyPreference();
 

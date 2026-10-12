@@ -47,7 +47,7 @@ describe("synchronization orchestration", () => {
     mocks.canAccess.mockReturnValue(true);
     mocks.canWrite.mockReturnValue(true);
     mocks.ensureVerified.mockResolvedValue(undefined);
-    mocks.markInFlight.mockResolvedValue(true);
+    mocks.markInFlight.mockImplementation(async (queued) => queued);
     mocks.removeIfUnchanged.mockResolvedValue(true);
     mocks.getAll.mockResolvedValue([]);
     mocks.getStatus.mockReturnValue({ lastSyncedAt: null });
