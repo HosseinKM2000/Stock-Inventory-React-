@@ -11,9 +11,14 @@ const Industries = () => {
   return (
     <Box className="space-y-6">
       <Flex justify="between" align="center" gap="3" wrap="wrap">
-        <Text size="6" weight="bold">
-          حوزه‌های کاری
-        </Text>
+        <Box>
+          <Text as="div" size="6" weight="bold">
+            حوزه‌های کاری
+          </Text>
+          <Text as="div" size="2" color="gray" mt="1">
+            حوزه‌های قابل انتخاب کاربران را ایجاد، ویرایش یا غیرفعال کنید؛ تغییرات روی سرور ذخیره می‌شوند.
+          </Text>
+        </Box>
         <IndustryFormDialog
           mode="create"
           trigger={

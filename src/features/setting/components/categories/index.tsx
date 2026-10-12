@@ -36,9 +36,14 @@ const CategoriesCards = () => {
   return (
     <Box className="space-y-6">
       <Flex justify="between" align="center" gap="3" wrap="wrap">
-        <Text size="6" weight="bold">
-          دسته بندی ها
-        </Text>
+        <Box>
+          <Text as="div" size="6" weight="bold">
+            دسته بندی ها
+          </Text>
+          <Text as="div" size="2" color="gray" mt="1">
+            دسته‌بندی‌های موجودی را روی دستگاه مدیریت کنید و در صورت نیاز نسخه معتبر سرور را دریافت کنید.
+          </Text>
+        </Box>
 
         <Flex gap="2" wrap="wrap" className="w-full sm:w-auto">
           <Button

@@ -14,6 +14,9 @@ function ProfilePage() {
       <Text className="text-2xl font-bold">
         تنظیمات پروفایل
       </Text>
+      <Text as="p" size="2" color="gray" mt="2" className="leading-6">
+        تصویر و اطلاعات حساب خود را مشاهده کنید؛ ثبت تغییرات اطلاعات حساب به اتصال اینترنت نیاز دارد.
+      </Text>
       <ProfileMediaSelector />
       <OnlineGuard>
         <PersonalInformationFields />

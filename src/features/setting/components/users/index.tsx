@@ -143,6 +143,9 @@ export default function UsersSettings() {
       <Text size="6" weight="bold">
         کاربران
       </Text>
+      <Text as="div" size="2" color="gray" mt="1">
+        حساب‌ها، نقش مدیریتی، وضعیت دسترسی و اشتراک کاربران را مدیریت کنید. این عملیات مستقیماً روی سرور اعمال می‌شود.
+      </Text>
       <Flex direction="column" gap="3" mt="5">
         {(users.data ?? []).map((user) => {
           const immutable = user.is_system_admin;

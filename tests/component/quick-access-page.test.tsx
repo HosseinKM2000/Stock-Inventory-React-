@@ -82,7 +82,7 @@ describe("quick-access navigation", () => {
     );
   });
 
-  it("marks server-dependent destinations without blocking local navigation offline", () => {
+  it("keeps mobile menu rows concise while preserving local navigation offline", () => {
     state.online = false;
     render(
       <QuickAccessPage
@@ -92,7 +92,8 @@ describe("quick-access navigation", () => {
       />,
     );
 
-    expect(screen.getAllByText("نیازمند اینترنت").length).toBeGreaterThan(0);
+    expect(screen.queryByText("نیازمند اینترنت")).not.toBeInTheDocument();
+    expect(screen.queryByText("اطلاعات حساب و تصویر پروفایل")).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: /ظاهر/ })).toBeVisible();
   });
 });
