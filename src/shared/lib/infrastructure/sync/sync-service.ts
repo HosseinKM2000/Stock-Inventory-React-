@@ -77,9 +77,12 @@ async function processGroup(entity: string, items: SyncQueueItem[]) {
         const error = new Error("Sync server omitted an operation result");
         await queueService.markFailed(item, error);
         lastError = error.message;
-      } else if (result.status === "applied" || result.status === "conflict") {
+      } else if (result.status === "applied") {
         await queueService.removeIfUnchanged(item);
-        if (result.status === "conflict") lastError = result.error ?? "Sync conflict";
+      } else if (result.status === "conflict") {
+        const error = result.error ?? "Sync conflict";
+        await queueService.markConflict(item, error);
+        lastError = error;
       } else {
         const error = new Error(result.error ?? "Server rejected the operation");
         await queueService.markFailed(item, error, true);
@@ -162,11 +165,12 @@ async function runSync() {
   const terminal = queued.find(
     (item) => item.status === "fatal_error" || item.status === "dead_letter",
   );
+  const conflict = queued.find((item) => item.status === "conflict");
 
   syncStatusStore.set({
-    state: lastError || terminal ? "failed" : "synced",
+    state: conflict ? "conflict" : lastError || terminal ? "failed" : "synced",
     pending: queued.length,
-    error: lastError ?? terminal?.lastError ?? null,
+    error: conflict?.lastError ?? lastError ?? terminal?.lastError ?? null,
     lastSyncedAt: lastError ? syncStatusStore.get().lastSyncedAt : Date.now(),
   });
 

@@ -2,6 +2,7 @@ export type SyncState =
   | "idle"
   | "syncing"
   | "synced"
+  | "conflict"
   | "failed";
 
 export type SyncStatus = {

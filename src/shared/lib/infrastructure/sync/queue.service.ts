@@ -180,6 +180,23 @@ export const queueService = {
     });
   },
 
+  async markConflict(item: SyncQueueItem, error: unknown) {
+    const current = await queueStorage.get(item.id);
+
+    // Preserve a newer edit recorded while the rejected request was in flight.
+    // That edit has its own operation id/base version and must remain pending.
+    if (!current || current.updatedAt !== item.updatedAt) return false;
+
+    await queueStorage.upsert({
+      ...item,
+      status: "conflict",
+      updatedAt: Date.now(),
+      nextAttemptAt: Number.MAX_SAFE_INTEGER,
+      lastError: error instanceof Error ? error.message : String(error),
+    });
+    return true;
+  },
+
   async resetFailures() {
     const items = await queueStorage.getAll();
 

@@ -150,9 +150,93 @@ test("prepares unvisited core routes and local inventory for an offline cold pag
 
   await offlinePage.reload();
   await expect(offlinePage.getByText("Offline Product").first()).toBeVisible();
+
+  await offlinePage.goto("/inventory/add");
+  await offlinePage.locator('input[name="custom_label"]').fill("Offline CRUD Product");
+  await offlinePage.locator('input[name="quantity"]').fill("3");
+  await offlinePage.locator('input[name="price"]').fill("250");
+  await offlinePage.locator('form button[type="submit"]').click();
+  await expect(offlinePage).toHaveURL(/\/inventory\/list/);
+  await expect(offlinePage.getByText("Offline CRUD Product").first()).toBeVisible();
+
+  const created = await offlinePage.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open("inventory-db");
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const products = await new Promise<Array<{ id: number; custom_label: string; quantity: number }>>((resolve, reject) => {
+      const request = database.transaction("inventoryItems").objectStore("inventoryItems").getAll();
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const record = products.find((item) => item.custom_label === "Offline CRUD Product");
+    const queued = record
+      ? await new Promise<{ action: string; payload: { quantity: number } } | undefined>((resolve, reject) => {
+          const request = database.transaction("syncQueue").objectStore("syncQueue").get(`9001:product-${record.id}`);
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        })
+      : undefined;
+    database.close();
+    return { record, queued };
+  });
+  expect(created.record?.quantity).toBe(3);
+  expect(created.queued).toMatchObject({ action: "CREATE", payload: { quantity: 3 } });
+  if (!created.record) throw new Error("Offline-created product was not persisted");
+  const createdId = created.record.id;
+
+  await offlinePage.goto(`/inventory/edit?id=${createdId}`);
+  await offlinePage.locator('input[name="quantity"]').fill("6");
+  await offlinePage.locator('form button[type="submit"]').click();
+  await expect(offlinePage).toHaveURL(/\/inventory\/list/);
+  await offlinePage.reload();
+  await expect(offlinePage.getByText("Offline CRUD Product").first()).toBeVisible();
+  expect(await offlinePage.evaluate(async (id) => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open("inventory-db");
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const queued = await new Promise<{ action: string; payload: { quantity: number } }>((resolve, reject) => {
+      const request = database.transaction("syncQueue").objectStore("syncQueue").get(`9001:product-${id}`);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    database.close();
+    return queued;
+  }, createdId)).toMatchObject({ action: "CREATE", payload: { quantity: 6 } });
+
+  await offlinePage.goto(`/inventory/edit?id=${createdId}`);
+  await offlinePage.getByRole("button", { name: "حذف", exact: true }).click();
+  await offlinePage.getByRole("button", { name: "حذف محصول", exact: true }).click();
+  await expect(offlinePage).toHaveURL(/\/inventory\/list/);
+  await offlinePage.reload();
+  await expect(offlinePage.getByText("Offline CRUD Product")).toHaveCount(0);
+  expect(await offlinePage.evaluate(async (id) => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open("inventory-db");
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const transaction = database.transaction(["inventoryItems", "syncQueue"]);
+    const productKey = await new Promise<IDBValidKey | undefined>((resolve, reject) => {
+      const request = transaction.objectStore("inventoryItems").getKey(id);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const queueKey = await new Promise<IDBValidKey | undefined>((resolve, reject) => {
+      const request = transaction.objectStore("syncQueue").getKey(`9001:product-${id}`);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    database.close();
+    return { productKey, queueKey };
+  }, createdId)).toEqual({ productKey: undefined, queueKey: undefined });
 });
 
-test("IndexedDB inventory survives a persistent browser-profile restart", async (_fixtures, testInfo) => {
+test("IndexedDB inventory survives a persistent browser-profile restart", async ({ browserName }, testInfo) => {
+  expect(browserName).toBe("chromium");
   const baseURL = process.env.E2E_BASE_URL ?? "http://127.0.0.1:5173";
   const userDataDir = testInfo.outputPath("persistent-storage-profile");
   const userId = 9101;
@@ -239,4 +323,106 @@ test("IndexedDB inventory survives a persistent browser-profile restart", async 
     return stored;
   })).toBe(9102);
   await persistentContext.close();
+});
+
+test("two isolated browser profiles keep the same account's local state independent", async ({ browser }) => {
+  const userId = 9201;
+  const contexts = [await browser.newContext(), await browser.newContext()];
+
+  try {
+    const states = await Promise.all(contexts.map(async (context, index) => {
+      await context.addInitScript(({ id }) => {
+        localStorage.setItem("access_token", JSON.stringify("multi-device-test-token"));
+        localStorage.setItem("inventory-last-user", JSON.stringify({
+          id,
+          first_name: "Device",
+          last_name: "User",
+          username: "multi-device-user",
+          email: null,
+          phone: null,
+          industry_id: 1,
+          plan: "pro",
+          is_active: true,
+          is_admin: true,
+          role: "ADMIN",
+          is_system_admin: false,
+          subscription_started_at: null,
+          subscription_expires_at: null,
+          created_at: "2026-10-12T00:00:00.000Z",
+        }));
+      }, { id: userId });
+
+      const page = await context.newPage();
+      await page.goto("/dashboard");
+      return page.evaluate(async ({ id, quantity, operationId }) => {
+        const database = await new Promise<IDBDatabase>((resolve, reject) => {
+          const request = indexedDB.open("inventory-db");
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+        await new Promise<void>((resolve, reject) => {
+          const transaction = database.transaction(["inventoryItems", "syncQueue"], "readwrite");
+          transaction.objectStore("inventoryItems").put({
+            id: 9202,
+            local_user_id: id,
+            catalog_product_id: 9202,
+            is_catalog_backed: false,
+            category_id: null,
+            quantity,
+            price: 1,
+            custom_label: "Multi-device product",
+            note: null,
+            low_stock_threshold: 0,
+            low_stock_alert: false,
+            is_hidden: false,
+            image_url: null,
+            deleted_at: null,
+            status: "in_stock",
+            created_at: "2026-10-12T00:00:00.000Z",
+            updated_at: "2026-10-12T00:00:00.000Z",
+          });
+          transaction.objectStore("syncQueue").put({
+            id: `${id}:product-9202`,
+            ownerUserId: id,
+            operationId,
+            entity: "product",
+            entityId: 9202,
+            action: "UPDATE",
+            payload: { quantity, version: 1 },
+            createdAt: 1,
+            updatedAt: 1,
+            retryCount: 0,
+            status: "pending",
+            nextAttemptAt: 0,
+          });
+          transaction.oncomplete = () => resolve();
+          transaction.onerror = () => reject(transaction.error);
+        });
+        const transaction = database.transaction(["inventoryItems", "syncQueue"]);
+        const product = await new Promise<{ quantity: number }>((resolve, reject) => {
+          const request = transaction.objectStore("inventoryItems").get(9202);
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+        const queued = await new Promise<{ operationId: string }>((resolve, reject) => {
+          const request = transaction.objectStore("syncQueue").get(`${id}:product-9202`);
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+        database.close();
+        return { quantity: product.quantity, operationId: queued.operationId };
+      }, {
+        id: userId,
+        quantity: index === 0 ? 11 : 22,
+        operationId: `device-${index + 1}-operation`,
+      });
+    }));
+
+    expect(states).toEqual([
+      { quantity: 11, operationId: "device-1-operation" },
+      { quantity: 22, operationId: "device-2-operation" },
+    ]);
+  } finally {
+    await Promise.all(contexts.map((context) => context.close()));
+  }
 });
