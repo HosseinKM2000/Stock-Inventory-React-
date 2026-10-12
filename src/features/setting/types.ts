@@ -26,6 +26,18 @@ export type CategoryInput = {
   description?: string | null;
 };
 
+export type Label = {
+  id: number;
+  local_user_id?: number;
+  name: string;
+  normalized_name: string;
+  version?: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type LabelInput = { name: string };
+
 export type CatalogProduct = {
   id: number;
 

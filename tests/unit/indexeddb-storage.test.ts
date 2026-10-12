@@ -36,6 +36,7 @@ describe("IndexedDB repositories", () => {
     await Promise.all([
       db.inventoryItems.clear(),
       db.categories.clear(),
+      db.labels.clear(),
       db.syncQueue.clear(),
       db.syncMetadata.clear(),
     ]);
@@ -106,6 +107,22 @@ describe("IndexedDB repositories", () => {
 
     accessState.saveUser(user(1));
     expect(await queueStorage.count()).toBe(1);
+  });
+
+  it("keeps an in-flight operation intact when a newer edit is queued", async () => {
+    accessState.saveUser(user(1));
+    await queueService.enqueue("product", 99, "CREATE", { quantity: 1 });
+    const original = (await queueService.getDue())[0];
+    const claimed = await queueService.markInFlight(original);
+    expect(claimed?.status).toBe("in_flight");
+
+    await queueService.enqueue("product", 99, "UPDATE", { quantity: 2 });
+    const operations = await queueService.getForEntity("product", 99);
+    expect(operations).toHaveLength(2);
+    expect(operations.find((item) => item.status === "in_flight")?.operationId)
+      .toBe(original.operationId);
+    expect(operations.find((item) => item.status === "pending")?.payload)
+      .toEqual({ quantity: 2 });
   });
 
   it("rolls back the local record when the matching outbox write fails", async () => {
@@ -187,12 +204,15 @@ describe("IndexedDB repositories", () => {
 
     await queueService.enqueue("product", 606, "UPDATE", { quantity: 5, version: 2 });
 
-    expect(await queueStorage.get("product-606")).toMatchObject({
+    const operations = await queueService.getForEntity("product", 606);
+    const fresh = operations.find((item) => item.status === "pending");
+    expect(fresh).toMatchObject({
       status: "pending",
       payload: { quantity: 5, version: 2 },
       retryCount: 0,
     });
-    expect((await queueStorage.get("product-606"))?.operationId)
-      .not.toBe(original?.operationId);
+    expect(fresh?.operationId).not.toBe(original?.operationId);
+    expect(operations.find((item) => item.status === "conflict")?.operationId)
+      .toBe(original?.operationId);
   });
 });

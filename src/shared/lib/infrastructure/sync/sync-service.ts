@@ -22,6 +22,8 @@ export type InboundSyncHandler = () => Promise<void>;
 
 const handlers = new Map<string, SyncHandler>();
 const inboundHandlers = new Map<string, InboundSyncHandler>();
+const BATCH_SIZE = 100;
+const ENTITY_ORDER = ["label", "category", "product"];
 
 let running: Promise<void> | null = null;
 let onSettled: (() => void) | null = null;
@@ -93,7 +95,11 @@ async function processGroup(entity: string, items: SyncQueueItem[]) {
     return { changed: true, error: lastError };
   } catch (error) {
     for (const item of active) {
-      await queueService.markFailed(item, error, isFatalRequest(error));
+      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+        await queueService.releaseAfterAuthFailure(item, error);
+      } else {
+        await queueService.markFailed(item, error, isFatalRequest(error));
+      }
     }
 
     return {
@@ -142,10 +148,17 @@ async function runSync() {
     groups.set(item.entity, [...(groups.get(item.entity) ?? []), item]);
   }
 
-  for (const [entity, group] of groups) {
-    const result = await processGroup(entity, group);
-    changed ||= result.changed;
-    lastError = result.error ?? lastError;
+  const orderedGroups = [...groups.entries()].sort(
+    ([a], [b]) => (ENTITY_ORDER.indexOf(a) < 0 ? 99 : ENTITY_ORDER.indexOf(a)) -
+      (ENTITY_ORDER.indexOf(b) < 0 ? 99 : ENTITY_ORDER.indexOf(b)),
+  );
+  for (const [entity, group] of orderedGroups) {
+    for (let offset = 0; offset < group.length; offset += BATCH_SIZE) {
+      const result = await processGroup(entity, group.slice(offset, offset + BATCH_SIZE));
+      changed ||= result.changed;
+      lastError = result.error ?? lastError;
+      if (networkService.isOffline()) break;
+    }
     if (networkService.isOffline()) break;
   }
 
@@ -181,7 +194,16 @@ export const syncService = {
   async sync() {
     if (running) return running;
 
-    running = runSync()
+    const coordinatedRun = async () => {
+      if (!navigator.locks) return runSync();
+      await navigator.locks.request(
+        "tanzim-outbox-sync",
+        { ifAvailable: true },
+        async (lock) => { if (lock) await runSync(); },
+      );
+    };
+
+    running = coordinatedRun()
       .catch((error) => {
         syncStatusStore.set({
           state: "failed",
@@ -193,6 +215,10 @@ export const syncService = {
       });
 
     return running;
+  },
+
+  schedule() {
+    window.setTimeout(() => { void this.sync(); }, 150);
   },
 
   async retry() {

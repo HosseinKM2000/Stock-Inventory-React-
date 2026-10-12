@@ -1,4 +1,3 @@
-import { queueStorage } from "@/shared/lib/infrastructure/storage/queue-storage";
 import { syncMetadataStorage } from "@/shared/lib/infrastructure/storage/sync-metadata-storage";
 import { imageService } from "@/shared/lib/infrastructure/media/image.service";
 import type { SyncQueueItem } from "@/shared/lib/infrastructure/storage/types";
@@ -99,7 +98,7 @@ async function pull() {
       );
 
       for (const local of await inventoryRepository.getAll()) {
-        const pending = await queueStorage.get(`${PRODUCT_ENTITY}-${local.id}`);
+        const pending = (await queueService.getForEntity(PRODUCT_ENTITY, local.id))[0];
 
         if (!serverIds.has(local.id) && !pending) {
           await removeLocalProduct(local.id);
@@ -120,9 +119,7 @@ async function pull() {
     }
 
     for (const change of response.changes) {
-      const pending = await queueStorage.get(
-        `${PRODUCT_ENTITY}-${change.entity_id}`,
-      );
+      const pending = (await queueService.getForEntity(PRODUCT_ENTITY, change.entity_id))[0];
 
       if (change.operation === "DELETE") {
         // A server tombstone wins in the read model. A rejected edit remains in

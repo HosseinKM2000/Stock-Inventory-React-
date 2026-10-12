@@ -1,45 +1,25 @@
-import { ApiError } from "@/shared/api/api-error";
 import { categoryStorage } from "@/shared/lib/infrastructure/storage/category-storage";
-import { queueStorage } from "@/shared/lib/infrastructure/storage/queue-storage";
+import { queueService } from "@/shared/lib/infrastructure/sync/queue.service";
 import type { SyncQueueItem } from "@/shared/lib/infrastructure/storage/types";
 import {
   registerInboundSyncHandler,
   registerSyncHandler,
   type SyncHandlerResult,
 } from "@/shared/lib/infrastructure/sync/sync-service";
-import { createCategory, deleteCategory, getCategories, updateCategory } from "../api/categories.api";
+import { getCategories } from "../api/categories.api";
+import { pushJsonBatch } from "@/features/app/inventory/api/sync.api";
 import type { Category } from "../types";
 import { CATEGORY_ENTITY } from "./category.service";
 
 async function push(items: SyncQueueItem[]): Promise<SyncHandlerResult[]> {
+  const response = await pushJsonBatch(items);
+  const byOperation = new Map(items.map((item) => [item.operationId, item]));
   const results: SyncHandlerResult[] = [];
-  for (const item of items) {
-    try {
-      let record: Category | undefined;
-      if (item.action === "CREATE") {
-        const value = item.payload as Category;
-        record = await createCategory({ id: item.entityId, name: value.name, description: value.description });
-      } else if (item.action === "UPDATE") {
-        const value = item.payload as Category;
-        record = await updateCategory(item.entityId, { name: value.name, description: value.description });
-      } else {
-        await deleteCategory(item.entityId);
-      }
-      if (record) await categoryStorage.save(record);
-      results.push({ itemId: item.id, status: "applied" });
-    } catch (error) {
-      if (error instanceof ApiError && error.message === "SUBSCRIPTION_EXPIRED") {
-        throw error;
-      }
-      if (!(error instanceof ApiError) || error.status >= 500 || error.status === 429) {
-        throw error;
-      }
-      results.push({
-        itemId: item.id,
-        status: "fatal_error",
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
+  for (const result of response.results) {
+    const item = byOperation.get(result.operation_id);
+    if (!item) continue;
+    if (result.record && result.status === "applied") await categoryStorage.save(result.record as unknown as Category);
+    results.push({ itemId: item.id, status: result.status, error: result.error });
   }
   return results;
 }
@@ -48,11 +28,11 @@ async function pull() {
   const server = await getCategories();
   const serverIds = new Set(server.map((category) => category.id));
   for (const local of await categoryStorage.getAll()) {
-    const pending = await queueStorage.get(`${CATEGORY_ENTITY}-${local.id}`);
+    const pending = await queueService.hasForEntity(CATEGORY_ENTITY, local.id);
     if (!pending && !serverIds.has(local.id)) await categoryStorage.remove(local.id);
   }
   for (const category of server) {
-    if (!(await queueStorage.get(`${CATEGORY_ENTITY}-${category.id}`))) {
+    if (!(await queueService.hasForEntity(CATEGORY_ENTITY, category.id))) {
       await categoryStorage.save(category);
     }
   }

@@ -31,6 +31,8 @@ export type Product = {
 
   category_id: number | null;
 
+  label_ids?: number[];
+
   version?: number;
 
   quantity: number;
@@ -100,6 +102,7 @@ export type ProductInput = {
   low_stock_alert?: boolean;
   description?: string | null;
   category_id?: number | null;
+  label_ids?: number[];
   low_stock_threshold?: number;
   is_packaged?: boolean;
   pack_size?: number | null;

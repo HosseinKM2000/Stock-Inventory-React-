@@ -19,6 +19,7 @@ import { productSchema } from "../schema/product.schema";
 import { type Product } from "../types";
 import { useCategories } from "@/features/setting/mutations/use-categories";
 import { getPackagingBreakdown, validPackSize } from "../domain/packaging";
+import { useLabels } from "@/features/setting/mutations/use-labels";
 
 type ProductFormMode = "create" | "edit" | "view";
 
@@ -64,6 +65,7 @@ export function ProductForm({
   deleting = false,
 }: ProductFormProps) {
   const { data: categories = [] } = useCategories();
+  const { data: labels = [] } = useLabels();
   const readOnly = mode === "view";
   const [displayPrice, setDisplayPrice] = useState(() =>
     initial ? formatPrice(initial.price) : "",
@@ -376,6 +378,33 @@ export function ProductForm({
               disabled={readOnly}
             />
           </FormField>
+
+          <Box className="md:col-span-2">
+            <FormField id="label_ids" label="برچسب‌ها">
+              {labels.length === 0 ? (
+                <Text size="2" color="gray">از بخش ابزارها، برچسب‌های مورد نیاز را بسازید.</Text>
+              ) : (
+                <Flex gap="2" wrap="wrap" mt="2">
+                  {labels.map((label) => {
+                    const checked = form.values.label_ids.includes(label.id);
+                    return (
+                      <label key={label.id} className="flex cursor-pointer items-center gap-2 rounded-xl border border-gray-5 px-3 py-2">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          disabled={readOnly}
+                          onChange={() => form.setValue("label_ids", checked
+                            ? form.values.label_ids.filter((id) => id !== label.id)
+                            : [...form.values.label_ids, label.id])}
+                        />
+                        <Text size="2">{label.name}</Text>
+                      </label>
+                    );
+                  })}
+                </Flex>
+              )}
+            </FormField>
+          </Box>
 
           {/* Note */}
 

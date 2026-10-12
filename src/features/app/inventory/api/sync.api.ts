@@ -74,6 +74,21 @@ export async function pushProductBatch(items: SyncQueueItem[]) {
   });
 }
 
+export async function pushJsonBatch(items: SyncQueueItem[]) {
+  const formData = new FormData();
+  formData.append("operations_json", JSON.stringify({
+    operations: items.map((item) => ({
+      operation_id: item.operationId,
+      entity: item.entity,
+      entity_id: item.entityId,
+      operation: item.action,
+      payload: item.payload,
+      base_version: (item.payload as { version?: number } | null)?.version,
+    })),
+  }));
+  return apiFetch<SyncBatchResponse>("/sync/batch", { method: "POST", formData });
+}
+
 export function pullProductChanges(cursor: number) {
   return apiFetch<SyncChangesResponse>(`/sync/changes?cursor=${cursor}`);
 }

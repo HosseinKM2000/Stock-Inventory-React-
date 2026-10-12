@@ -5,7 +5,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, File, Form, UploadFile
 from sqlalchemy import func, select
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 from ..config import settings
 from ..deps import CurrentUser, CurrentWritableUser, DbSession
@@ -14,6 +14,7 @@ from ..models import (
     Category,
     InventoryItem,
     InventoryTransaction,
+    Label,
     SyncChange,
     SyncOperation,
 )
@@ -164,6 +165,106 @@ def _apply_fields(
                 raise ValueError("CATEGORY_NOT_AVAILABLE")
         item.category_id = value
 
+    if "label_ids" in payload:
+        values = payload["label_ids"]
+        if not isinstance(values, list) or any(isinstance(value, bool) or not isinstance(value, int) for value in values):
+            raise ValueError("label_ids must be an integer list")
+        unique_ids = list(dict.fromkeys(values))
+        labels = list(db.scalars(select(Label).where(
+            Label.user_id == user_id, Label.id.in_(unique_ids)
+        ))) if unique_ids else []
+        if len(labels) != len(unique_ids):
+            raise ValueError("LABEL_NOT_AVAILABLE")
+        item.labels = labels
+
+
+def _normalize_label(value: str) -> tuple[str, str]:
+    import unicodedata
+    name = " ".join(unicodedata.normalize("NFC", value).strip().split())
+    if not name or len(name) > 60:
+        raise ValueError("LABEL_NAME_INVALID")
+    return name, name.casefold()
+
+
+def _apply_label(db: DbSession, user_id: int, operation: SyncOperationIn) -> SyncOperationResult:
+    label = db.scalar(select(Label).where(Label.id == operation.entity_id, Label.user_id == user_id))
+    if operation.operation == "DELETE":
+        if label is not None:
+            affected = list(label.inventory_items)
+            for item in affected:
+                item.labels = [existing for existing in item.labels if existing.id != label.id]
+            db.flush()
+            for item in affected:
+                _record_change(db, user_id, item.id, "UPSERT", _serialize(item))
+            db.delete(label)
+        return SyncOperationResult(operation_id=operation.operation_id, status="applied", entity_id=operation.entity_id)
+    payload = operation.payload or {}
+    raw_name = payload.get("name")
+    if not isinstance(raw_name, str):
+        raise ValueError("LABEL_NAME_INVALID")
+    name, normalized = _normalize_label(raw_name)
+    duplicate = db.scalar(select(Label).where(
+        Label.user_id == user_id, Label.normalized_name == normalized, Label.id != operation.entity_id
+    ))
+    if duplicate is not None:
+        raise ValueError("LABEL_NAME_EXISTS")
+    if label is None:
+        if operation.operation == "UPDATE":
+            raise ValueError("LABEL_NOT_FOUND")
+        label = Label(id=operation.entity_id, user_id=user_id, name=name, normalized_name=normalized)
+        db.add(label)
+    else:
+        if operation.base_version is not None and label.version != operation.base_version:
+            return SyncOperationResult(operation_id=operation.operation_id, status="conflict", entity_id=label.id, error="Server record has a newer version")
+        label.name = name
+        label.normalized_name = normalized
+        label.version += 1
+    db.flush()
+    return SyncOperationResult(
+        operation_id=operation.operation_id, status="applied", entity_id=label.id,
+        record={"id": label.id, "name": label.name, "normalized_name": label.normalized_name,
+                "version": label.version, "created_at": label.created_at, "updated_at": label.updated_at},
+    )
+
+
+def _apply_category(db: DbSession, user_id: int, operation: SyncOperationIn) -> SyncOperationResult:
+    category = db.scalar(select(Category).where(Category.id == operation.entity_id, Category.user_id == user_id))
+    if operation.operation == "DELETE":
+        if category is not None:
+            for item in list(db.scalars(select(InventoryItem).where(
+                InventoryItem.user_id == user_id, InventoryItem.category_id == category.id
+            ))):
+                item.category_id = None
+                db.flush()
+                _record_change(db, user_id, item.id, "UPSERT", _serialize(item))
+            db.delete(category)
+        return SyncOperationResult(operation_id=operation.operation_id, status="applied", entity_id=operation.entity_id)
+    payload = operation.payload or {}
+    name = payload.get("name")
+    if not isinstance(name, str) or not name.strip() or len(name.strip()) > 120:
+        raise ValueError("CATEGORY_NAME_INVALID")
+    duplicate = db.scalar(select(Category).where(
+        Category.user_id == user_id, Category.name == name.strip(), Category.id != operation.entity_id
+    ))
+    if duplicate is not None:
+        raise ValueError("CATEGORY_NAME_EXISTS")
+    if category is None:
+        if operation.operation == "UPDATE":
+            raise ValueError("CATEGORY_NOT_FOUND")
+        category = Category(id=operation.entity_id, user_id=user_id, name=name.strip())
+        db.add(category)
+    category.name = name.strip()
+    description = payload.get("description")
+    if description is not None and not isinstance(description, str):
+        raise ValueError("CATEGORY_DESCRIPTION_INVALID")
+    category.description = description
+    db.flush()
+    return SyncOperationResult(
+        operation_id=operation.operation_id, status="applied", entity_id=category.id,
+        record={"id": category.id, "name": category.name, "description": category.description,
+                "created_at": category.created_at, "updated_at": category.updated_at},
+    )
+
 
 def _record_quantity_change(
     db: DbSession,
@@ -246,10 +347,23 @@ async def push_batch(
             results.append(_result_from_json(previous.result_payload))
             continue
 
+        if operation.entity in {"label", "category"}:
+            try:
+                result = (_apply_label if operation.entity == "label" else _apply_category)(
+                    db, current_user.id, operation
+                )
+            except ValueError as error:
+                db.rollback()
+                result = SyncOperationResult(operation_id=operation.operation_id, status="fatal_error", entity_id=operation.entity_id, error=str(error))
+            db.add(SyncOperation(user_id=current_user.id, operation_id=operation.operation_id, result_payload=result.model_dump_json()))
+            db.commit()
+            results.append(result)
+            continue
+
         try:
             item = db.scalar(
                 select(InventoryItem)
-                .options(joinedload(InventoryItem.catalog_product))
+                .options(joinedload(InventoryItem.catalog_product), selectinload(InventoryItem.labels))
                 .where(
                     InventoryItem.id == operation.entity_id,
                     InventoryItem.user_id == current_user.id,
@@ -382,7 +496,7 @@ def pull_changes(
         items = list(
             db.scalars(
                 select(InventoryItem)
-                .options(joinedload(InventoryItem.catalog_product))
+                .options(joinedload(InventoryItem.catalog_product), selectinload(InventoryItem.labels))
                 .where(InventoryItem.user_id == current_user.id)
             )
         )

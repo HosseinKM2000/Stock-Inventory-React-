@@ -89,6 +89,10 @@ class User(Base):
         cascade="all, delete-orphan"
     )
 
+    labels: Mapped[list["Label"]] = relationship(
+        back_populates="owner", cascade="all, delete-orphan"
+    )
+
     inventory_items: Mapped[list["InventoryItem"]] = relationship(
         back_populates="owner",
         cascade="all, delete-orphan"
@@ -184,6 +188,34 @@ class Category(Base):
     )
 
     owner: Mapped["User"] = relationship(back_populates="categories")
+
+
+class Label(Base):
+    __tablename__ = "labels"
+    __table_args__ = (
+        UniqueConstraint("user_id", "normalized_name", name="uq_labels_user_normalized_name"),
+    )
+    id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(60))
+    normalized_name: Mapped[str] = mapped_column(String(60))
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now, onupdate=_now)
+    owner: Mapped["User"] = relationship(back_populates="labels")
+    inventory_items: Mapped[list["InventoryItem"]] = relationship(
+        secondary="inventory_item_labels", back_populates="labels"
+    )
+
+
+class InventoryItemLabel(Base):
+    __tablename__ = "inventory_item_labels"
+    inventory_item_id: Mapped[int] = mapped_column(
+        ForeignKey("inventory_items.id", ondelete="CASCADE"), primary_key=True
+    )
+    label_id: Mapped[int] = mapped_column(
+        ForeignKey("labels.id", ondelete="CASCADE"), primary_key=True
+    )
 
 
 # ---------- Shared Catalog ----------
@@ -356,6 +388,14 @@ class InventoryItem(Base):
         back_populates="inventory_item",
         cascade="all, delete-orphan"
     )
+
+    labels: Mapped[list["Label"]] = relationship(
+        secondary="inventory_item_labels", back_populates="inventory_items"
+    )
+
+    @property
+    def label_ids(self) -> list[int]:
+        return [label.id for label in self.labels]
 
     @property
     def status(self) -> str:

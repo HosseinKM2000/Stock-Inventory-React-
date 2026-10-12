@@ -14,6 +14,8 @@ export function createProductInitialValues(initial?: Product) {
 
     category_id: initial?.category_id ?? null,
 
+    label_ids: initial?.label_ids ?? [],
+
     quantity: initial?.quantity ?? 0,
 
     price: initial?.price ?? 0,

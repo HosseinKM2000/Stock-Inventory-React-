@@ -6,6 +6,7 @@ import type {
 } from "./types";
 import type { LocalInventoryItem } from "@/features/app/inventory/storage/types";
 import type { Category } from "@/features/setting/types";
+import type { Label } from "@/features/setting/types";
 
 
 class AppDatabase extends Dexie {
@@ -23,6 +24,7 @@ class AppDatabase extends Dexie {
   syncMetadata!: EntityTable<SyncMetadataItem, "key">;
 
   categories!: EntityTable<Category, "id">;
+  labels!: EntityTable<Label, "id">;
 
 
   constructor() {
@@ -145,6 +147,14 @@ class AppDatabase extends Dexie {
             item.local_user_id ??= lastUserId;
           });
       });
+
+    this.version(6).stores({
+      inventoryItems: "id, local_user_id, catalog_product_id, category_id, updated_at",
+      syncQueue: "id, ownerUserId, operationId, entity, entityId, status, nextAttemptAt, createdAt, updatedAt",
+      syncMetadata: "key, updatedAt",
+      categories: "id, local_user_id, name, updated_at",
+      labels: "id, local_user_id, normalized_name, updated_at",
+    });
   }
 }
 

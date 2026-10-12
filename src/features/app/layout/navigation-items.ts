@@ -13,6 +13,8 @@ import {
   PersonIcon,
   ReloadIcon,
   StarIcon,
+  BookmarkIcon,
+  UploadIcon,
 } from "@radix-ui/react-icons";
 import type { ComponentType } from "react";
 
@@ -32,6 +34,8 @@ export type NavigationRoute =
   | "/tools/export"
   | "/tools/catalog"
   | "/tools/recovery"
+  | "/tools/import"
+  | "/tools/labels"
   | "/management"
   | "/management/subscriptions"
   | "/management/users"
@@ -75,6 +79,8 @@ export const settingsNavigationItems = [
 ] as const satisfies readonly NavigationItem[];
 
 export const toolsNavigationItems = [
+  { id: "import", label: "ورود از اکسل", description: "بررسی و ورود گروهی محصولات از فایل xlsx، با ذخیره محلی و پشتیبانی آفلاین", to: "/tools/import", icon: UploadIcon, group: "tools" },
+  { id: "labels", label: "برچسب‌ها", description: "ساخت برچسب‌های شخصی و اختصاص چند برچسب به هر محصول", to: "/tools/labels", icon: BookmarkIcon, group: "tools" },
   { id: "categories", label: "دسته‌ها", description: "مدیریت دسته‌بندی‌های موجودی، با پشتیبانی آفلاین", to: "/tools/categories", icon: LayersIcon, group: "tools" },
   { id: "export", label: "خروجی", description: "تهیه فایل از داده‌های محلی یا خروجی سرور", to: "/tools/export", icon: DownloadIcon, group: "tools" },
   { id: "catalog", label: "کاتالوگ", description: "کنترل نمایش محصولات کاتالوگی در موجودی", to: "/tools/catalog", icon: ClipboardIcon, group: "tools" },

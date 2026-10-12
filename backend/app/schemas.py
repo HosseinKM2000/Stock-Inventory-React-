@@ -128,6 +128,16 @@ class CategoryWithStats(CategoryOut):
     total_quantity: int
 
 
+class LabelOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
+    normalized_name: str
+    version: int = 1
+    created_at: datetime
+    updated_at: datetime
+
+
 # =========================================================
 # CATALOG
 # =========================================================
@@ -249,6 +259,7 @@ class InventoryOut(BaseModel):
     catalog_product_id: int
     is_catalog_backed: bool = False
     category_id: int | None = None
+    label_ids: list[int] = []
     quantity: int
     price: int
 
@@ -402,7 +413,7 @@ class InventoryBulkSync(BaseModel):
 
 class SyncOperationIn(BaseModel):
     operation_id: str = Field(min_length=1, max_length=64)
-    entity: Literal["product"]
+    entity: Literal["product", "category", "label"]
     entity_id: int
     operation: Literal["CREATE", "UPDATE", "DELETE"]
     payload: dict[str, Any] | None = None
@@ -417,7 +428,7 @@ class SyncOperationResult(BaseModel):
     operation_id: str
     status: Literal["applied", "conflict", "fatal_error"]
     entity_id: int
-    record: InventoryOut | None = None
+    record: dict[str, Any] | InventoryOut | None = None
     error: str | None = None
 
 

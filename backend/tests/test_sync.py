@@ -247,6 +247,48 @@ class SyncApiTest(unittest.TestCase):
             [entity_id],
         )
 
+    def test_labels_are_idempotent_user_owned_and_assignable(self) -> None:
+        label_id = 1_710_000_000_001
+        label_operation = {
+            "operation_id": "create-label-1",
+            "entity": "label",
+            "entity_id": label_id,
+            "operation": "CREATE",
+            "payload": {"name": "  ویژه  "},
+        }
+        first = self.push([label_operation])
+        replay = self.push([label_operation])
+        self.assertEqual(first.status_code, 200, first.text)
+        self.assertEqual(first.json(), replay.json())
+        self.assertEqual(first.json()["results"][0]["record"]["name"], "ویژه")
+
+        entity_id = 1_710_000_000_002
+        product = self.push([{
+            "operation_id": "create-labeled-product-1",
+            "entity": "product",
+            "entity_id": entity_id,
+            "operation": "CREATE",
+            "payload": {
+                "quantity": 1, "price": 2, "custom_label": "Labeled",
+                "label_ids": [label_id],
+                "catalog_product": {"id": 0, "name": "Labeled"},
+            },
+        }])
+        self.assertEqual(product.status_code, 200, product.text)
+        self.assertEqual(product.json()["results"][0]["record"]["label_ids"], [label_id])
+
+        signup = self.client.post("/api/auth/signup", json={
+            "first_name": "Label", "last_name": "Tenant", "username": "label-tenant-test",
+            "password": "StrongPass123!", "device_fingerprint": "label-tenant-device",
+        })
+        other_headers = {
+            "Authorization": f"Bearer {signup.json()['access_token']}",
+            "X-Device-Fingerprint": "label-tenant-device",
+        }
+        labels = self.client.get("/api/labels", headers=other_headers)
+        self.assertEqual(labels.status_code, 200, labels.text)
+        self.assertEqual(labels.json(), [])
+
     def test_image_upload_is_linked_and_removed(self) -> None:
         entity_id = 1_700_000_000_002
         operation_id = "create-product-image"
