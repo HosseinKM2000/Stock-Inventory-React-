@@ -57,4 +57,19 @@ describe("storage persistence", () => {
       supported: true, persisted: false, requested: true,
     });
   });
+
+  it("treats a failed quota estimate as advisory", async () => {
+    setStorage({ estimate: vi.fn().mockRejectedValue(new Error("unavailable")) });
+    const { storageQuotaService } = await import("@/shared/lib/infrastructure/storage/storage-quota.service");
+    await expect(storageQuotaService.estimate()).resolves.toBeNull();
+    await expect(storageQuotaService.ensureAvailable(10)).resolves.toBeUndefined();
+  });
+
+  it("rejects a write before processing when the reported quota is exhausted", async () => {
+    setStorage({ estimate: vi.fn().mockResolvedValue({ usage: 95, quota: 100 }) });
+    const { storageQuotaService, StorageQuotaExceededError } = await import("@/shared/lib/infrastructure/storage/storage-quota.service");
+    await expect(storageQuotaService.ensureAvailable(10)).rejects.toBeInstanceOf(
+      StorageQuotaExceededError,
+    );
+  });
 });

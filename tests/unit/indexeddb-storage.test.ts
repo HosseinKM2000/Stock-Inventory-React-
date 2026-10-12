@@ -6,6 +6,7 @@ import { categoryStorage } from "@/shared/lib/infrastructure/storage/category-st
 import { queueStorage } from "@/shared/lib/infrastructure/storage/queue-storage";
 import type { User } from "@/features/auth/types";
 import { product } from "../helpers/product";
+import { localMutationStorage } from "@/shared/lib/infrastructure/storage/local-mutation-storage";
 
 function user(id: number): User {
   return {
@@ -94,6 +95,9 @@ describe("IndexedDB repositories", () => {
     });
     accessState.saveUser(user(1));
     await queueStorage.upsert(record("product-1"));
+    db.close();
+    await db.open();
+    expect(await queueStorage.count()).toBe(1);
     accessState.saveUser(user(2));
     await queueStorage.upsert(record("product-1"));
     expect(await queueStorage.count()).toBe(1);
@@ -101,5 +105,47 @@ describe("IndexedDB repositories", () => {
 
     accessState.saveUser(user(1));
     expect(await queueStorage.count()).toBe(1);
+  });
+
+  it("rolls back the local record when the matching outbox write fails", async () => {
+    accessState.saveUser(user(1));
+
+    await expect(
+      localMutationStorage.inventory(async () => {
+        await inventoryStorage.save(product({ id: 303 }));
+        throw new DOMException("full", "QuotaExceededError");
+      }),
+    ).rejects.toMatchObject({
+      name: "LocalStorageWriteError",
+      code: "quota_exceeded",
+    });
+
+    expect(await inventoryStorage.get(303)).toBeUndefined();
+  });
+
+  it("allows only one concurrent tab to claim the same outbox operation", async () => {
+    accessState.saveUser(user(1));
+    const queued = {
+      id: "product-404",
+      operationId: "operation-404",
+      entity: "product",
+      entityId: 404,
+      action: "UPDATE" as const,
+      payload: { quantity: 4 },
+      createdAt: 1,
+      updatedAt: 1,
+      retryCount: 0,
+      status: "pending" as const,
+      nextAttemptAt: 0,
+    };
+    await queueStorage.upsert(queued);
+
+    const claims = await Promise.all([
+      queueStorage.claim(queued.id, queued.updatedAt, Date.now() + 60_000),
+      queueStorage.claim(queued.id, queued.updatedAt, Date.now() + 60_000),
+    ]);
+
+    expect(claims.filter(Boolean)).toHaveLength(1);
+    expect((await queueStorage.get(queued.id))?.status).toBe("in_flight");
   });
 });

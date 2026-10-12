@@ -1,6 +1,7 @@
 import { imageService } from "@/shared/lib/infrastructure/media/image.service";
 import { queueService } from "@/shared/lib/infrastructure/sync/queue.service";
 import { accessState } from "@/shared/access/access-state";
+import { localMutationStorage } from "@/shared/lib/infrastructure/storage/local-mutation-storage";
 
 import { inventoryRepository } from "./inventory.repository";
 
@@ -147,16 +148,15 @@ class InventoryService {
     accessState.requireInventoryCapacity((await inventoryRepository.getAll()).length);
     const record = sanitize(product);
 
-    await inventoryRepository.save(record);
+    return localMutationStorage.inventory(async () => {
+      await inventoryRepository.save(record);
 
-    const saved = await inventoryRepository.get(record.id);
-    if (!saved) {
-      throw new Error("product was not saved");
-    }
+      const saved = await inventoryRepository.get(record.id);
+      if (!saved) throw new Error("product was not saved");
 
-    await queueService.enqueue(PRODUCT_ENTITY, saved.id, "CREATE", saved);
-
-    return saved;
+      await queueService.enqueue(PRODUCT_ENTITY, saved.id, "CREATE", saved);
+      return saved;
+    });
   }
 
   async update(id: number, input: ProductInput): Promise<Product> {
@@ -175,19 +175,25 @@ class InventoryService {
       updated_at: new Date().toISOString(),
     } as Product);
 
-    await inventoryRepository.save(updated);
+    const saved = await localMutationStorage.inventory(async () => {
+      await inventoryRepository.save(updated);
 
-    const saved = await inventoryRepository.get(id);
+      const persisted = await inventoryRepository.get(id);
+      if (!persisted) throw new Error("update failed");
 
-    if (!saved) {
-      throw new Error("update failed");
-    }
+      await queueService.enqueue(PRODUCT_ENTITY, id, "UPDATE", persisted);
+      return persisted;
+    });
 
     if (current.image_url && current.image_url !== saved.image_url) {
-      await imageService.remove(current.image_url);
+      // OPFS cannot participate in an IndexedDB transaction. Metadata and the
+      // outbox commit first; orphan cleanup is recoverable on the next start.
+      try {
+        await imageService.remove(current.image_url);
+      } catch {
+        // cleanupImages retries orphan removal on the next application start
+      }
     }
-
-    await queueService.enqueue(PRODUCT_ENTITY, id, "UPDATE", saved);
 
     return saved;
   }
@@ -236,11 +242,18 @@ class InventoryService {
       );
     }
 
-    await inventoryRepository.remove(id);
+    await localMutationStorage.inventory(async () => {
+      await inventoryRepository.remove(id);
+      await queueService.enqueue(PRODUCT_ENTITY, id, "DELETE", null);
+    });
 
-    await imageService.remove(current?.image_url);
-
-    await queueService.enqueue(PRODUCT_ENTITY, id, "DELETE", null);
+    // The durable delete is authoritative. A failed OPFS cleanup is retried by
+    // cleanupImages and must not turn a committed local mutation into failure.
+    try {
+      await imageService.remove(current.image_url);
+    } catch {
+      // cleanupImages retries orphan removal on the next application start
+    }
   }
 
   /** Removes OPFS files that no product references any more. */

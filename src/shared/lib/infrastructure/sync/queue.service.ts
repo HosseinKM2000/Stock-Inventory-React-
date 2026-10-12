@@ -8,6 +8,7 @@ export const MAX_RETRIES = 5;
 const BASE_BACKOFF_MS = 5_000;
 
 const MAX_BACKOFF_MS = 5 * 60_000;
+const IN_FLIGHT_LEASE_MS = 60_000;
 
 function queueId(entity: string, entityId: number) {
   const owner = accessState.user()?.id;
@@ -129,7 +130,9 @@ export const queueService = {
 
     return items.filter(
       (item) =>
-        (item.status === "pending" || item.status === "retryable_error") &&
+        (item.status === "pending" ||
+          item.status === "retryable_error" ||
+          (item.status === "in_flight" && item.nextAttemptAt <= now)) &&
         item.retryCount < MAX_RETRIES &&
         item.nextAttemptAt <= now,
     );
@@ -140,13 +143,11 @@ export const queueService = {
   },
 
   async markInFlight(item: SyncQueueItem) {
-    const current = await queueStorage.get(item.id);
-
-    if (!current || current.updatedAt !== item.updatedAt) return false;
-
-    await queueStorage.upsert({ ...current, status: "in_flight" });
-
-    return true;
+    return queueStorage.claim(
+      item.id,
+      item.updatedAt,
+      Date.now() + IN_FLIGHT_LEASE_MS,
+    );
   },
 
   async markFailed(item: SyncQueueItem, error: unknown, fatal = false) {

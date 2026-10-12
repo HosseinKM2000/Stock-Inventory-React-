@@ -7,6 +7,7 @@ import { getToken } from "@/shared/api/token-store";
 import { AuthContext } from "./auth-context";
 import { accessState } from "@/shared/access/access-state";
 import { useEffect } from "react";
+import { storagePersistenceService } from "@/shared/lib/infrastructure/storage/storage-persistence.service";
 
 export function AuthProvider({
   children,
@@ -31,6 +32,10 @@ export function AuthProvider({
   }, [user]);
 
   useEffect(() => {
+    if (effectiveUser) void storagePersistenceService.ensure();
+  }, [effectiveUser]);
+
+  useEffect(() => {
     const refresh = () => refreshAccountState((value) => value + 1);
     return accessState.subscribe(refresh);
   }, []);
@@ -43,7 +48,10 @@ export function AuthProvider({
     () => ({
       user: effectiveUser,
 
-      loading: hasToken && (isLoading || isFetching),
+      // A cached, user-bound account is enough to unlock supported local
+      // routes. Online revalidation continues in the background and must not
+      // blank the offline application while the backend is slow or down.
+      loading: hasToken && !effectiveUser && (isLoading || isFetching),
 
       isAuthenticated: !!effectiveUser,
 

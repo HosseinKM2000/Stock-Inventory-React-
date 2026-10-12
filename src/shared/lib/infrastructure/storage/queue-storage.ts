@@ -42,6 +42,35 @@ export const queueStorage = {
     return db.syncQueue.where("ownerUserId").equals(owner).count();
   },
 
+  async claim(id: string, expectedUpdatedAt: number, leaseUntil: number) {
+    const owner = ownerId();
+    if (!owner) return undefined;
+
+    return db.transaction("rw", db.syncQueue, async () => {
+      const item = await this.get(id);
+      if (
+        !item ||
+        item.ownerUserId !== owner ||
+        item.updatedAt !== expectedUpdatedAt ||
+        !(
+          item.status === "pending" ||
+          item.status === "retryable_error" ||
+          (item.status === "in_flight" && item.nextAttemptAt <= Date.now())
+        )
+      ) {
+        return undefined;
+      }
+
+      const claimed = {
+        ...item,
+        status: "in_flight" as const,
+        nextAttemptAt: leaseUntil,
+      };
+      await db.syncQueue.put(claimed);
+      return claimed;
+    });
+  },
+
   async remove(id: string) {
     const item = await this.get(id);
     if (item) return db.syncQueue.delete(item.id);
