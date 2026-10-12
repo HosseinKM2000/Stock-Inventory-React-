@@ -48,6 +48,8 @@ describe("navigation metadata", () => {
   it("separates personal subscription, tools, and administrative destinations", () => {
     expect(settingsNavigationItems.map((item) => item.to)).toContain("/setting/subscription");
     expect(toolsNavigationItems.map((item) => item.to)).toEqual([
+      "/tools/import",
+      "/tools/labels",
       "/tools/categories",
       "/tools/export",
       "/tools/catalog",

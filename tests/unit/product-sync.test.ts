@@ -32,6 +32,9 @@ vi.mock("@/shared/lib/infrastructure/sync/queue.service", () => ({
   queueService: {
     markConflict: mocks.markConflict,
     removeIfUnchanged: mocks.removeIfUnchanged,
+    getForEntity: (...args: unknown[]) => mocks.queueGet(...args).then(
+      (item: SyncQueueItem | undefined) => item ? [item] : [],
+    ),
   },
 }));
 vi.mock("@/shared/lib/infrastructure/storage/queue-storage", () => ({

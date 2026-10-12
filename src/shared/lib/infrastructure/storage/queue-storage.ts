@@ -36,6 +36,12 @@ export const queueStorage = {
     return db.syncQueue.where("ownerUserId").equals(owner).sortBy("createdAt");
   },
 
+  async getForEntity(entity: string, entityId: number) {
+    return (await this.getAll()).filter(
+      (item) => item.entity === entity && item.entityId === entityId,
+    );
+  },
+
   async count() {
     const owner = ownerId();
     if (!owner) return 0;

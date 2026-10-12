@@ -10,10 +10,10 @@ const BASE_BACKOFF_MS = 5_000;
 const MAX_BACKOFF_MS = 5 * 60_000;
 const IN_FLIGHT_LEASE_MS = 60_000;
 
-function queueId(entity: string, entityId: number) {
+function queueId(entity: string, entityId: number, suffix = "") {
   const owner = accessState.user()?.id;
   if (!owner) throw new Error("برای همگام‌سازی باید وارد حساب شوید");
-  return `${owner}:${entity}-${entityId}`;
+  return `${owner}:${entity}-${entityId}${suffix}`;
 }
 
 function mergePayload(previous: unknown, next: unknown) {
@@ -64,7 +64,8 @@ export function consolidate(
 }
 
 export function backoffDelay(retryCount: number) {
-  return Math.min(BASE_BACKOFF_MS * 2 ** retryCount, MAX_BACKOFF_MS);
+  const ceiling = Math.min(BASE_BACKOFF_MS * 2 ** retryCount, MAX_BACKOFF_MS);
+  return Math.round(ceiling * (0.75 + Math.random() * 0.5));
 }
 
 export const queueService = {
@@ -74,9 +75,11 @@ export const queueService = {
     action: QueueAction,
     payload: unknown,
   ) {
-    const id = queueId(entity, entityId);
-
-    const pending = await queueStorage.get(id);
+    const existing = await queueStorage.getForEntity(entity, entityId);
+    const pending = existing.find(
+      (item) => item.status === "pending" || item.status === "retryable_error",
+    );
+    const id = pending?.id ?? queueId(entity, entityId, existing.length ? `:${crypto.randomUUID()}` : "");
 
     const result = consolidate(pending, action, payload);
 
@@ -123,6 +126,14 @@ export const queueService = {
 
   async getAll() {
     return queueStorage.getAll();
+  },
+
+  async getForEntity(entity: string, entityId: number) {
+    return queueStorage.getForEntity(entity, entityId);
+  },
+
+  async hasForEntity(entity: string, entityId: number) {
+    return (await queueStorage.getForEntity(entity, entityId)).length > 0;
   },
 
   async getDue(now = Date.now()) {
@@ -176,6 +187,17 @@ export const queueService = {
 
       nextAttemptAt: Date.now() + backoffDelay(retryCount),
 
+      lastError: error instanceof Error ? error.message : String(error),
+    });
+  },
+
+  async releaseAfterAuthFailure(item: SyncQueueItem, error: unknown) {
+    const current = await queueStorage.get(item.id);
+    if (!current || current.updatedAt !== item.updatedAt) return;
+    await queueStorage.upsert({
+      ...item,
+      status: "pending",
+      nextAttemptAt: Date.now(),
       lastError: error instanceof Error ? error.message : String(error),
     });
   },

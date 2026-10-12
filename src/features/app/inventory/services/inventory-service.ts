@@ -7,6 +7,7 @@ import { inventoryRepository } from "./inventory.repository";
 
 import type { Product, ProductInput, ProductListParams } from "../types";
 import { validPackSize } from "../domain/packaging";
+import { labelStorage } from "@/shared/lib/infrastructure/storage/label-storage";
 
 export const PRODUCT_ENTITY = "product";
 
@@ -37,6 +38,10 @@ function sanitize(product: Product): Product {
     ...product,
 
     category_id: product.category_id ?? null,
+
+    label_ids: Array.isArray(product.label_ids)
+      ? [...new Set(product.label_ids.filter(Number.isSafeInteger))]
+      : [],
 
     quantity: safeQuantity,
 
@@ -84,13 +89,15 @@ class InventoryService {
     // Search
     if (params.search) {
       const search = params.search.trim().toLowerCase();
+      const labels = new Map((await labelStorage.getAll()).map((label) => [label.id, label.name.toLowerCase()]));
 
       products = products.filter((product) => {
         const name = product.catalog_product?.name?.toLowerCase() ?? "";
 
         const label = product.custom_label?.toLowerCase() ?? "";
 
-        return name.includes(search) || label.includes(search);
+        const labelMatch = product.label_ids?.some((id) => labels.get(id)?.includes(search)) ?? false;
+        return name.includes(search) || label.includes(search) || labelMatch;
       });
     }
 
@@ -156,6 +163,20 @@ class InventoryService {
 
       await queueService.enqueue(PRODUCT_ENTITY, saved.id, "CREATE", saved);
       return saved;
+    });
+  }
+
+  async createMany(products: Product[]): Promise<Product[]> {
+    accessState.requireWrite();
+    const existing = (await inventoryRepository.getAll()).length;
+    accessState.requireInventoryCapacity(existing + products.length);
+    const records = products.map(sanitize);
+    return localMutationStorage.inventory(async () => {
+      for (const record of records) {
+        await inventoryRepository.save(record);
+        await queueService.enqueue(PRODUCT_ENTITY, record.id, "CREATE", record);
+      }
+      return records;
     });
   }
 

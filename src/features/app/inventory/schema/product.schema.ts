@@ -37,6 +37,8 @@ export const productSchema = z.object({
 
   category_id: z.number().nullable(),
 
+  label_ids: z.array(z.number().int()),
+
   quantity: z.coerce.number().min(0, "تعداد نامعتبر است"),
 
   price: z.coerce.number().min(0, "قیمت نامعتبر است"),
