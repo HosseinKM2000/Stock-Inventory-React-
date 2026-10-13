@@ -18,6 +18,11 @@ export type BulkProductIntent = {
 
 export const PRODUCT_ENTITY = "product";
 
+/** Local products have no server version yet and must be created, not updated. */
+export function productSyncAction(product: Product): "CREATE" | "UPDATE" {
+  return product.version == null ? "CREATE" : "UPDATE";
+}
+
 export function normalizeProductSearch(value: string) {
   return value.normalize("NFC").trim().replace(/\s+/g, " ").toLocaleLowerCase("fa");
 }
@@ -233,7 +238,7 @@ class InventoryService {
           updated_at: new Date().toISOString(),
         });
         await inventoryRepository.save(next);
-        await queueService.enqueue(PRODUCT_ENTITY, id, "UPDATE", next);
+        await queueService.enqueue(PRODUCT_ENTITY, id, productSyncAction(current), next);
         updated.push(next);
       }
       if (updated.length === 0) throw new Error("محصول انتخاب‌شده دیگر در دسترس نیست");
@@ -263,7 +268,7 @@ class InventoryService {
       const persisted = await inventoryRepository.get(id);
       if (!persisted) throw new Error("update failed");
 
-      await queueService.enqueue(PRODUCT_ENTITY, id, "UPDATE", persisted);
+      await queueService.enqueue(PRODUCT_ENTITY, id, productSyncAction(current), persisted);
       return persisted;
     });
 
@@ -336,6 +341,40 @@ class InventoryService {
     } catch {
       // cleanupImages retries orphan removal on the next application start
     }
+  }
+
+  async bulkRemove(ids: readonly number[]): Promise<number[]> {
+    accessState.requireWrite();
+    const uniqueIds = [...new Set(ids)];
+    if (uniqueIds.length === 0) {
+      throw new Error("هیچ محصولی برای حذف انتخاب نشده است");
+    }
+
+    const products: Product[] = [];
+    for (const id of uniqueIds) {
+      const product = await inventoryRepository.get(id);
+      if (!product) throw new Error("یکی از محصولات انتخاب‌شده دیگر در دسترس نیست");
+      products.push(product);
+    }
+
+    if (products.some((product) => product.is_catalog_backed)) {
+      throw new Error(
+        "محصولات کاتالوگی قابل حذف نیستند. آن‌ها را از انتخاب خارج کنید یا مخفی کنید.",
+      );
+    }
+
+    await localMutationStorage.inventory(async () => {
+      for (const product of products) {
+        await inventoryRepository.remove(product.id);
+        await queueService.enqueue(PRODUCT_ENTITY, product.id, "DELETE", null);
+      }
+    });
+
+    await Promise.allSettled(
+      products.map((product) => imageService.remove(product.image_url)),
+    );
+
+    return uniqueIds;
   }
 
   /** Removes OPFS files that no product references any more. */

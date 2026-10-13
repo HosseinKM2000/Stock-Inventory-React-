@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
   pushBatch: vi.fn(),
   pullChanges: vi.fn(),
   queueGet: vi.fn(),
+  queueAll: vi.fn(),
   markConflict: vi.fn(),
   removeIfUnchanged: vi.fn(),
   metadataGet: vi.fn(),
@@ -32,6 +33,7 @@ vi.mock("@/shared/lib/infrastructure/sync/queue.service", () => ({
   queueService: {
     markConflict: mocks.markConflict,
     removeIfUnchanged: mocks.removeIfUnchanged,
+    getAll: mocks.queueAll,
     getForEntity: (...args: unknown[]) => mocks.queueGet(...args).then(
       (item: SyncQueueItem | undefined) => item ? [item] : [],
     ),
@@ -59,7 +61,10 @@ vi.mock("@/features/app/inventory/services/inventory.repository", () => ({
   },
 }));
 
-import { registerProductSync } from "@/features/app/inventory/services/product-sync";
+import {
+  recoverMissingProductConflicts,
+  registerProductSync,
+} from "@/features/app/inventory/services/product-sync";
 
 function queued(action: SyncQueueItem["action"] = "UPDATE"): SyncQueueItem {
   return {
@@ -87,6 +92,7 @@ describe("product synchronization reconciliation", () => {
     mocks.inbound = undefined;
     mocks.inventoryGet.mockResolvedValue(product({ id: 10, quantity: 17 }));
     mocks.inventoryGetAll.mockResolvedValue([]);
+    mocks.queueAll.mockResolvedValue([]);
     mocks.metadataGet.mockResolvedValue(1);
     mocks.metadataSet.mockResolvedValue(undefined);
     mocks.markConflict.mockResolvedValue(true);
@@ -94,7 +100,7 @@ describe("product synchronization reconciliation", () => {
     registerProductSync();
   });
 
-  it("keeps an offline edit recoverable when the server permanently deleted the record", async () => {
+  it("keeps the local product when an update receives PRODUCT_NOT_FOUND", async () => {
     const item = queued();
     mocks.pushBatch.mockResolvedValue({
       cursor: 4,
@@ -112,7 +118,37 @@ describe("product synchronization reconciliation", () => {
       status: "conflict",
       error: "PRODUCT_NOT_FOUND",
     }]);
-    expect(mocks.inventoryRemove).toHaveBeenCalledWith(item.entityId);
+    expect(mocks.inventoryRemove).not.toHaveBeenCalled();
+    expect(mocks.imageRemove).not.toHaveBeenCalled();
+  });
+
+  it("restores a product deleted by an older client from its retained conflict payload", async () => {
+    const item = {
+      ...queued(),
+      entityId: 3486749451280639,
+      status: "conflict" as const,
+      lastError: "PRODUCT_NOT_FOUND",
+      payload: product({ id: 3486749451280639, version: undefined, price: 125 }),
+    };
+    mocks.queueAll.mockResolvedValue([item]);
+    mocks.inventoryGet.mockResolvedValue(undefined);
+
+    await expect(recoverMissingProductConflicts()).resolves.toBe(1);
+    expect(mocks.inventorySave).toHaveBeenCalledWith(item.payload);
+  });
+
+  it("keeps an unsynced update during initial reconciliation when the server has no record", async () => {
+    const item = queued();
+    mocks.metadataGet.mockResolvedValue(0);
+    mocks.inventoryGetAll.mockResolvedValue([item.payload]);
+    mocks.queueGet.mockResolvedValue(item);
+    mocks.pullChanges.mockResolvedValue({ cursor: 0, changes: [] });
+
+    await mocks.inbound?.();
+
+    expect(mocks.markConflict).toHaveBeenCalledWith(item, "PRODUCT_NOT_FOUND");
+    expect(mocks.inventoryRemove).not.toHaveBeenCalled();
+    expect(mocks.imageRemove).not.toHaveBeenCalled();
   });
 
   it("reconciles the server version while reporting a normal version conflict", async () => {

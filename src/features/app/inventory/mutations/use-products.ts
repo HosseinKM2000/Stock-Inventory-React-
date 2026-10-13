@@ -115,3 +115,12 @@ export function useBulkUpdateProducts() {
     onError: notifySubscriptionRestriction,
   });
 }
+
+export function useBulkDeleteProducts() {
+  const invalidate = useInvalidateProducts();
+  return useMutation({
+    mutationFn: (ids: number[]) => inventoryService.bulkRemove(ids),
+    onSuccess: invalidate,
+    onError: notifySubscriptionRestriction,
+  });
+}

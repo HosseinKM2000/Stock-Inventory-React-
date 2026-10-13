@@ -28,7 +28,7 @@ type Props = {
   showActions?: boolean;
   showQuickStock?: boolean;
   onDelete?: (id: number) => void;
-  onPreview?: (product: Product) => void;
+  onImageOpen?: (product: Product) => void;
   onEdit?: (product: Product) => void;
   selectionMode?: boolean;
   selected?: boolean;
@@ -43,7 +43,7 @@ export function ProductCard({
   showActions = true,
   showQuickStock = true,
   onDelete,
-  onPreview,
+  onImageOpen,
   onEdit,
   selectionMode = false,
   selected = false,
@@ -83,12 +83,12 @@ export function ProductCard({
     <button
       type="button"
       className={`${className} relative block touch-pan-y overflow-hidden bg-[var(--gray-a3)] text-start`}
-      aria-label={`پیش‌نمایش تصویر ${name}`}
-      title="برای پیش‌نمایش نگه دارید یا کلیک کنید"
+      aria-label={`نمایش تصویر ${name}`}
+      title="نمایش تصویر در اندازه بزرگ"
       onClick={(event) => {
         event.stopPropagation();
         if (selectionMode) onToggleSelection?.(product);
-        else onPreview?.(product);
+        else onImageOpen?.(product);
       }}
       data-product-action={selectionMode ? undefined : "true"}
     >
@@ -175,7 +175,7 @@ export function ProductCard({
             </Badge>
             {showActions && !selectionMode && <Flex gap="2" justify="end" data-product-action className="inventory-card-actions inventory-card-mobile-actions">
               <IconButton type="button" size="2" variant="soft" aria-label={`کپی نام و قیمت ${name}`} onClick={(event) => { event.stopPropagation(); void copy(); }}><CopyIcon /></IconButton>
-              <IconButton type="button" size="2" variant="soft" aria-label={`پیش‌نمایش ${name}`} onClick={() => onPreview?.(product)}><EyeOpenIcon /></IconButton>
+              <IconButton type="button" size="2" variant="soft" aria-label={`نمایش تصویر ${name}`} onClick={() => onImageOpen?.(product)}><EyeOpenIcon /></IconButton>
               <Link to="/inventory/edit" search={{ id: product.id }} onClick={() => onEdit?.(product)}>
                 <Button size="2" variant="soft" color="amber" className="inventory-card-edit-button" aria-label={`ویرایش ${name}`}><Pencil1Icon width={20} height={20} /></Button>
               </Link>
@@ -196,7 +196,7 @@ export function ProductCard({
             <Badge color={status.color} className="inventory-card-desktop-status shrink-0">{status.label}</Badge>
             <Flex gap="2" className="inventory-card-actions">
               <IconButton type="button" size="2" variant="soft" aria-label={`کپی نام و قیمت ${name}`} onClick={(event) => { event.stopPropagation(); void copy(); }}><CopyIcon /></IconButton>
-              <IconButton type="button" size="2" variant="soft" aria-label={`پیش‌نمایش ${name}`} onClick={() => onPreview?.(product)}><EyeOpenIcon /></IconButton>
+              <IconButton type="button" size="2" variant="soft" aria-label={`نمایش تصویر ${name}`} onClick={() => onImageOpen?.(product)}><EyeOpenIcon /></IconButton>
               <Link to="/inventory/edit" search={{ id: product.id }} onClick={() => onEdit?.(product)}>
                 <Button size="2" variant="soft" color="amber" aria-label={`ویرایش ${name}`}><Pencil1Icon width={20} height={20} /></Button>
               </Link>

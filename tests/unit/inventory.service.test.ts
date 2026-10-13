@@ -49,8 +49,8 @@ describe("local-first inventory service", () => {
   });
 
   it("adjusts the latest persisted quantity and rejects invalid or negative results", async () => {
-    const current = product({ id: 1, quantity: 10 });
-    mocks.get.mockResolvedValueOnce(current).mockResolvedValueOnce(current).mockResolvedValueOnce(product({ id: 1, quantity: 15 }));
+    const current = product({ id: 1, quantity: 10, version: 1 });
+    mocks.get.mockResolvedValueOnce(current).mockResolvedValueOnce(current).mockResolvedValueOnce(product({ id: 1, quantity: 15, version: 1 }));
     mocks.save.mockResolvedValue(undefined);
     await expect(inventoryService.adjustQuantity(1, 5)).resolves.toMatchObject({ quantity: 15 });
     expect(mocks.save).toHaveBeenCalledWith(expect.objectContaining({ quantity: 15 }));
@@ -106,9 +106,36 @@ describe("local-first inventory service", () => {
     expect(mocks.enqueue).not.toHaveBeenCalled();
   });
 
+  it("bulk deletes unique selected products and queues every deletion", async () => {
+    const first = product({ id: 11, image_url: "local://11.webp" });
+    const second = product({ id: 22, image_url: null });
+    mocks.get.mockImplementation((id: number) => Promise.resolve(id === 11 ? first : second));
+    mocks.remove.mockResolvedValue(undefined);
+    mocks.enqueue.mockResolvedValue(undefined);
+    mocks.removeImage.mockResolvedValue(undefined);
+
+    await expect(inventoryService.bulkRemove([11, 22, 11])).resolves.toEqual([11, 22]);
+
+    expect(mocks.remove).toHaveBeenCalledTimes(2);
+    expect(mocks.enqueue).toHaveBeenNthCalledWith(1, "product", 11, "DELETE", null);
+    expect(mocks.enqueue).toHaveBeenNthCalledWith(2, "product", 22, "DELETE", null);
+  });
+
+  it("rejects the entire bulk deletion when a catalog product is selected", async () => {
+    mocks.get
+      .mockResolvedValueOnce(product({ id: 11 }))
+      .mockResolvedValueOnce(product({ id: 22, is_catalog_backed: true }));
+
+    await expect(inventoryService.bulkRemove([11, 22])).rejects.toThrow(
+      "محصولات کاتالوگی قابل حذف نیستند",
+    );
+    expect(mocks.remove).not.toHaveBeenCalled();
+    expect(mocks.enqueue).not.toHaveBeenCalled();
+  });
+
   it("applies only requested bulk fields and queues absolute prices once", async () => {
-    const first = product({ id: 1, price: 100, category_id: 4, low_stock_alert: true, low_stock_threshold: 7, label_ids: [9] });
-    const second = product({ id: 2, price: 250, category_id: null, low_stock_alert: false, low_stock_threshold: 3, label_ids: [8] });
+    const first = product({ id: 1, version: 1, price: 100, category_id: 4, low_stock_alert: true, low_stock_threshold: 7, label_ids: [9] });
+    const second = product({ id: 2, version: 1, price: 250, category_id: null, low_stock_alert: false, low_stock_threshold: 3, label_ids: [8] });
     mocks.get.mockImplementation((id: number) => Promise.resolve(id === 1 ? first : second));
     mocks.save.mockResolvedValue(undefined);
     const updated = await inventoryService.bulkUpdate([1, 2, 2], { priceIncrease: 50, lowStockAlert: false });
@@ -117,6 +144,21 @@ describe("local-first inventory service", () => {
     expect(updated[1]).toMatchObject({ price: 300, category_id: null, low_stock_alert: false, low_stock_threshold: 3, label_ids: [8] });
     expect(mocks.enqueue).toHaveBeenCalledTimes(2);
     expect(mocks.enqueue).toHaveBeenNthCalledWith(1, "product", 1, "UPDATE", expect.objectContaining({ price: 150 }));
+  });
+
+  it("queues a local-only product as CREATE so bulk editing cannot produce PRODUCT_NOT_FOUND", async () => {
+    const localOnly = product({ id: 3486749451280639, version: undefined, price: 100 });
+    mocks.get.mockResolvedValue(localOnly);
+    mocks.save.mockResolvedValue(undefined);
+
+    await inventoryService.bulkUpdate([localOnly.id], { priceIncrease: 25 });
+
+    expect(mocks.enqueue).toHaveBeenCalledWith(
+      "product",
+      localOnly.id,
+      "CREATE",
+      expect.objectContaining({ id: localOnly.id, price: 125 }),
+    );
   });
 
   it("updates category and alert threshold independently without erasing labels or alert state", async () => {
