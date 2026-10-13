@@ -13,8 +13,16 @@ import { registerServiceWorker } from "@/shared/lib/infrastructure/pwa/register-
 import { AppTheme } from "@/shared/theme/app-theme";
 import { profileMediaRepository } from "@/shared/profile-media/profile-media.repository";
 import { toast } from "sonner";
+import { accessState } from "@/shared/access/access-state";
+import { accountScrollRestorationKey } from "@/shared/lib/navigation/scroll-restoration";
 
-const router = createRouter({ routeTree });
+const router = createRouter({
+  routeTree,
+  scrollRestoration: true,
+  scrollToTopSelectors: ["[data-scroll-restoration-id='app-shell']"],
+  getScrollRestorationKey: (location) =>
+    accountScrollRestorationKey(location, accessState.user()?.id),
+});
 
 registerServiceWorker({
   onOfflineReady() {

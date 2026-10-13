@@ -171,7 +171,9 @@ export function ProductCard({
           )}
           <Flex justify="between" gap="3" className="inventory-card-footer min-w-0">
             <Badge size="3" color="green" className="inventory-card-price max-w-full overflow-hidden">
-              {product.price.toLocaleString("fa-IR")} تومان
+              {product.price_missing
+                ? "قیمت ثبت نشده"
+                : `${product.price.toLocaleString("fa-IR")} تومان`}
             </Badge>
             {showActions && !selectionMode && <Flex gap="2" justify="end" data-product-action className="inventory-card-actions inventory-card-mobile-actions">
               <IconButton type="button" size="2" variant="soft" aria-label={`کپی نام و قیمت ${name}`} onClick={(event) => { event.stopPropagation(); void copy(); }}><CopyIcon /></IconButton>

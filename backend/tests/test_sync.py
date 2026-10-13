@@ -762,12 +762,26 @@ class SyncApiTest(unittest.TestCase):
         )
         self.assertEqual(unauthorized_delete.status_code, 403, unauthorized_delete.text)
 
+        archive_cursor = self.client.get(
+            "/api/sync/changes?cursor=0", headers=self.headers
+        ).json()["cursor"]
         archived = self.client.patch(
             f"/api/catalog-products/{product['id']}/archive",
             headers=self.admin_headers,
         )
         self.assertEqual(archived.status_code, 200, archived.text)
         self.assertFalse(archived.json()["is_active"])
+
+        archive_delta = self.client.get(
+            f"/api/sync/changes?cursor={archive_cursor}", headers=self.headers
+        )
+        self.assertEqual(archive_delta.status_code, 200, archive_delta.text)
+        archived_change = next(
+            change for change in archive_delta.json()["changes"]
+            if change["entity_id"] == provisioned_id
+        )
+        self.assertEqual(archived_change["operation"], "UPSERT")
+        self.assertFalse(archived_change["record"]["catalog_product"]["is_active"])
 
         with SessionLocal() as db:
             catalog_row = db.get(CatalogProduct, product["id"])

@@ -5,6 +5,9 @@ export type CatalogProduct = {
 
   industry_id: number;
 
+  /** Missing on legacy snapshots; only an explicit false makes it ineligible. */
+  is_active?: boolean;
+
   name: string;
 
   description: string | null;
@@ -38,6 +41,9 @@ export type Product = {
   quantity: number;
 
   price: number;
+
+  /** Distinguishes absent/corrupt legacy prices from a valid zero price. */
+  price_missing?: boolean;
 
   custom_label: string | null;
 

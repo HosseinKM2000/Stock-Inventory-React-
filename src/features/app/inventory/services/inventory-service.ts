@@ -8,6 +8,7 @@ import { inventoryRepository } from "./inventory.repository";
 import type { Product, ProductInput, ProductListParams } from "../types";
 import { validPackSize } from "../domain/packaging";
 import { labelStorage } from "@/shared/lib/infrastructure/storage/label-storage";
+import { isProductEligible } from "../domain/product-eligibility";
 
 export type BulkProductIntent = {
   categoryId?: number | null;
@@ -33,6 +34,10 @@ function sanitize(product: Product): Product {
   const quantity = Number(product.quantity);
 
   const price = Number(product.price);
+  const priceMissing =
+    product.price_missing === true ||
+    product.price == null ||
+    !Number.isFinite(price);
 
   const threshold = Number(product.low_stock_threshold);
 
@@ -61,7 +66,9 @@ function sanitize(product: Product): Product {
 
     quantity: safeQuantity,
 
-    price: Number.isFinite(price) ? Math.max(0, price) : 0,
+    price: priceMissing ? 0 : Math.max(0, price),
+
+    price_missing: priceMissing,
 
     low_stock_threshold: safeThreshold,
 
@@ -90,17 +97,12 @@ function sanitize(product: Product): Product {
 
 class InventoryService {
   async getAll(params: ProductListParams = {}): Promise<Product[]> {
-    let products = (await inventoryRepository.getAll()).map(sanitize);
-
-    // Visibility filtering is opt-in so exports and maintenance operations
-    // still work with the complete inventory.
-    if (params.include_hidden === false) {
-      products = products.filter((product) => !product.is_hidden);
-    }
-
-    if (params.hide_catalog_products) {
-      products = products.filter((product) => !product.is_catalog_backed);
-    }
+    let products = (await inventoryRepository.getAll())
+      .map(sanitize)
+      .filter((product) => isProductEligible(product, {
+        includeHidden: params.include_hidden !== false,
+        hideCatalogProducts: params.hide_catalog_products,
+      }));
 
     // Search
     if (params.search) {
@@ -235,6 +237,7 @@ class InventoryService {
           ...(intent.lowStockAlert !== undefined ? { low_stock_alert: intent.lowStockAlert } : {}),
           ...(intent.lowStockThreshold !== undefined ? { low_stock_threshold: intent.lowStockThreshold } : {}),
           price,
+          ...(intent.priceIncrease ? { price_missing: false } : {}),
           updated_at: new Date().toISOString(),
         });
         await inventoryRepository.save(next);
@@ -258,6 +261,8 @@ class InventoryService {
       ...current,
 
       ...input,
+
+      ...(input.price !== undefined ? { price_missing: false } : {}),
 
       updated_at: new Date().toISOString(),
     } as Product);

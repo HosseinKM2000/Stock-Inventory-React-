@@ -50,14 +50,17 @@ import { Route as appInventoryEditRouteImport } from './routes/(app)/inventory/e
 import { Route as appInventoryAddRouteImport } from './routes/(app)/inventory/add'
 import { Route as appDashboardProductsRouteRouteImport } from './routes/(app)/dashboard/products/route'
 import { Route as appDashboardProductsUrgentPurchaseIndexRouteImport } from './routes/(app)/dashboard/products/urgent-purchase/index'
+import { Route as appDashboardProductsUnclassifiedIndexRouteImport } from './routes/(app)/dashboard/products/unclassified/index'
 import { Route as appDashboardProductsTodayIndexRouteImport } from './routes/(app)/dashboard/products/today/index'
 import { Route as appDashboardProductsOutOfStockIndexRouteImport } from './routes/(app)/dashboard/products/out-of-stock/index'
 import { Route as appDashboardProductsNoPriceIndexRouteImport } from './routes/(app)/dashboard/products/no-price/index'
 import { Route as appDashboardProductsNoImageIndexRouteImport } from './routes/(app)/dashboard/products/no-image/index'
 import { Route as appDashboardProductsLowStockIndexRouteImport } from './routes/(app)/dashboard/products/low-stock/index'
 import { Route as appDashboardProductsInventoryValueIndexRouteImport } from './routes/(app)/dashboard/products/inventory-value/index'
+import { Route as appDashboardProductsHighestValueIndexRouteImport } from './routes/(app)/dashboard/products/highest-value/index'
 import { Route as appDashboardProductsHiddenIndexRouteImport } from './routes/(app)/dashboard/products/hidden/index'
 import { Route as appDashboardProductsAllIndexRouteImport } from './routes/(app)/dashboard/products/all/index'
+import { Route as appDashboardProductsActionsIndexRouteImport } from './routes/(app)/dashboard/products/actions/index'
 
 const ToolsRouteRoute = ToolsRouteRouteImport.update({
   id: '/tools',
@@ -266,6 +269,12 @@ const appDashboardProductsUrgentPurchaseIndexRoute =
     path: '/urgent-purchase/',
     getParentRoute: () => appDashboardProductsRouteRoute,
   } as any)
+const appDashboardProductsUnclassifiedIndexRoute =
+  appDashboardProductsUnclassifiedIndexRouteImport.update({
+    id: '/unclassified/',
+    path: '/unclassified/',
+    getParentRoute: () => appDashboardProductsRouteRoute,
+  } as any)
 const appDashboardProductsTodayIndexRoute =
   appDashboardProductsTodayIndexRouteImport.update({
     id: '/today/',
@@ -302,6 +311,12 @@ const appDashboardProductsInventoryValueIndexRoute =
     path: '/inventory-value/',
     getParentRoute: () => appDashboardProductsRouteRoute,
   } as any)
+const appDashboardProductsHighestValueIndexRoute =
+  appDashboardProductsHighestValueIndexRouteImport.update({
+    id: '/highest-value/',
+    path: '/highest-value/',
+    getParentRoute: () => appDashboardProductsRouteRoute,
+  } as any)
 const appDashboardProductsHiddenIndexRoute =
   appDashboardProductsHiddenIndexRouteImport.update({
     id: '/hidden/',
@@ -312,6 +327,12 @@ const appDashboardProductsAllIndexRoute =
   appDashboardProductsAllIndexRouteImport.update({
     id: '/all/',
     path: '/all/',
+    getParentRoute: () => appDashboardProductsRouteRoute,
+  } as any)
+const appDashboardProductsActionsIndexRoute =
+  appDashboardProductsActionsIndexRouteImport.update({
+    id: '/actions/',
+    path: '/actions/',
     getParentRoute: () => appDashboardProductsRouteRoute,
   } as any)
 
@@ -355,14 +376,17 @@ export interface FileRoutesByFullPath {
   '/inventory/list': typeof appInventoryListRoute
   '/dashboard/': typeof appDashboardIndexRoute
   '/industry/': typeof appIndustryIndexRoute
+  '/dashboard/products/actions/': typeof appDashboardProductsActionsIndexRoute
   '/dashboard/products/all/': typeof appDashboardProductsAllIndexRoute
   '/dashboard/products/hidden/': typeof appDashboardProductsHiddenIndexRoute
+  '/dashboard/products/highest-value/': typeof appDashboardProductsHighestValueIndexRoute
   '/dashboard/products/inventory-value/': typeof appDashboardProductsInventoryValueIndexRoute
   '/dashboard/products/low-stock/': typeof appDashboardProductsLowStockIndexRoute
   '/dashboard/products/no-image/': typeof appDashboardProductsNoImageIndexRoute
   '/dashboard/products/no-price/': typeof appDashboardProductsNoPriceIndexRoute
   '/dashboard/products/out-of-stock/': typeof appDashboardProductsOutOfStockIndexRoute
   '/dashboard/products/today/': typeof appDashboardProductsTodayIndexRoute
+  '/dashboard/products/unclassified/': typeof appDashboardProductsUnclassifiedIndexRoute
   '/dashboard/products/urgent-purchase/': typeof appDashboardProductsUrgentPurchaseIndexRoute
 }
 export interface FileRoutesByTo {
@@ -400,14 +424,17 @@ export interface FileRoutesByTo {
   '/inventory/list': typeof appInventoryListRoute
   '/dashboard': typeof appDashboardIndexRoute
   '/industry': typeof appIndustryIndexRoute
+  '/dashboard/products/actions': typeof appDashboardProductsActionsIndexRoute
   '/dashboard/products/all': typeof appDashboardProductsAllIndexRoute
   '/dashboard/products/hidden': typeof appDashboardProductsHiddenIndexRoute
+  '/dashboard/products/highest-value': typeof appDashboardProductsHighestValueIndexRoute
   '/dashboard/products/inventory-value': typeof appDashboardProductsInventoryValueIndexRoute
   '/dashboard/products/low-stock': typeof appDashboardProductsLowStockIndexRoute
   '/dashboard/products/no-image': typeof appDashboardProductsNoImageIndexRoute
   '/dashboard/products/no-price': typeof appDashboardProductsNoPriceIndexRoute
   '/dashboard/products/out-of-stock': typeof appDashboardProductsOutOfStockIndexRoute
   '/dashboard/products/today': typeof appDashboardProductsTodayIndexRoute
+  '/dashboard/products/unclassified': typeof appDashboardProductsUnclassifiedIndexRoute
   '/dashboard/products/urgent-purchase': typeof appDashboardProductsUrgentPurchaseIndexRoute
 }
 export interface FileRoutesById {
@@ -452,14 +479,17 @@ export interface FileRoutesById {
   '/(app)/inventory/list': typeof appInventoryListRoute
   '/(app)/dashboard/': typeof appDashboardIndexRoute
   '/(app)/industry/': typeof appIndustryIndexRoute
+  '/(app)/dashboard/products/actions/': typeof appDashboardProductsActionsIndexRoute
   '/(app)/dashboard/products/all/': typeof appDashboardProductsAllIndexRoute
   '/(app)/dashboard/products/hidden/': typeof appDashboardProductsHiddenIndexRoute
+  '/(app)/dashboard/products/highest-value/': typeof appDashboardProductsHighestValueIndexRoute
   '/(app)/dashboard/products/inventory-value/': typeof appDashboardProductsInventoryValueIndexRoute
   '/(app)/dashboard/products/low-stock/': typeof appDashboardProductsLowStockIndexRoute
   '/(app)/dashboard/products/no-image/': typeof appDashboardProductsNoImageIndexRoute
   '/(app)/dashboard/products/no-price/': typeof appDashboardProductsNoPriceIndexRoute
   '/(app)/dashboard/products/out-of-stock/': typeof appDashboardProductsOutOfStockIndexRoute
   '/(app)/dashboard/products/today/': typeof appDashboardProductsTodayIndexRoute
+  '/(app)/dashboard/products/unclassified/': typeof appDashboardProductsUnclassifiedIndexRoute
   '/(app)/dashboard/products/urgent-purchase/': typeof appDashboardProductsUrgentPurchaseIndexRoute
 }
 export interface FileRouteTypes {
@@ -504,14 +534,17 @@ export interface FileRouteTypes {
     | '/inventory/list'
     | '/dashboard/'
     | '/industry/'
+    | '/dashboard/products/actions/'
     | '/dashboard/products/all/'
     | '/dashboard/products/hidden/'
+    | '/dashboard/products/highest-value/'
     | '/dashboard/products/inventory-value/'
     | '/dashboard/products/low-stock/'
     | '/dashboard/products/no-image/'
     | '/dashboard/products/no-price/'
     | '/dashboard/products/out-of-stock/'
     | '/dashboard/products/today/'
+    | '/dashboard/products/unclassified/'
     | '/dashboard/products/urgent-purchase/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -549,14 +582,17 @@ export interface FileRouteTypes {
     | '/inventory/list'
     | '/dashboard'
     | '/industry'
+    | '/dashboard/products/actions'
     | '/dashboard/products/all'
     | '/dashboard/products/hidden'
+    | '/dashboard/products/highest-value'
     | '/dashboard/products/inventory-value'
     | '/dashboard/products/low-stock'
     | '/dashboard/products/no-image'
     | '/dashboard/products/no-price'
     | '/dashboard/products/out-of-stock'
     | '/dashboard/products/today'
+    | '/dashboard/products/unclassified'
     | '/dashboard/products/urgent-purchase'
   id:
     | '__root__'
@@ -600,14 +636,17 @@ export interface FileRouteTypes {
     | '/(app)/inventory/list'
     | '/(app)/dashboard/'
     | '/(app)/industry/'
+    | '/(app)/dashboard/products/actions/'
     | '/(app)/dashboard/products/all/'
     | '/(app)/dashboard/products/hidden/'
+    | '/(app)/dashboard/products/highest-value/'
     | '/(app)/dashboard/products/inventory-value/'
     | '/(app)/dashboard/products/low-stock/'
     | '/(app)/dashboard/products/no-image/'
     | '/(app)/dashboard/products/no-price/'
     | '/(app)/dashboard/products/out-of-stock/'
     | '/(app)/dashboard/products/today/'
+    | '/(app)/dashboard/products/unclassified/'
     | '/(app)/dashboard/products/urgent-purchase/'
   fileRoutesById: FileRoutesById
 }
@@ -909,6 +948,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appDashboardProductsUrgentPurchaseIndexRouteImport
       parentRoute: typeof appDashboardProductsRouteRoute
     }
+    '/(app)/dashboard/products/unclassified/': {
+      id: '/(app)/dashboard/products/unclassified/'
+      path: '/unclassified'
+      fullPath: '/dashboard/products/unclassified/'
+      preLoaderRoute: typeof appDashboardProductsUnclassifiedIndexRouteImport
+      parentRoute: typeof appDashboardProductsRouteRoute
+    }
     '/(app)/dashboard/products/today/': {
       id: '/(app)/dashboard/products/today/'
       path: '/today'
@@ -951,6 +997,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appDashboardProductsInventoryValueIndexRouteImport
       parentRoute: typeof appDashboardProductsRouteRoute
     }
+    '/(app)/dashboard/products/highest-value/': {
+      id: '/(app)/dashboard/products/highest-value/'
+      path: '/highest-value'
+      fullPath: '/dashboard/products/highest-value/'
+      preLoaderRoute: typeof appDashboardProductsHighestValueIndexRouteImport
+      parentRoute: typeof appDashboardProductsRouteRoute
+    }
     '/(app)/dashboard/products/hidden/': {
       id: '/(app)/dashboard/products/hidden/'
       path: '/hidden'
@@ -965,25 +1018,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appDashboardProductsAllIndexRouteImport
       parentRoute: typeof appDashboardProductsRouteRoute
     }
+    '/(app)/dashboard/products/actions/': {
+      id: '/(app)/dashboard/products/actions/'
+      path: '/actions'
+      fullPath: '/dashboard/products/actions/'
+      preLoaderRoute: typeof appDashboardProductsActionsIndexRouteImport
+      parentRoute: typeof appDashboardProductsRouteRoute
+    }
   }
 }
 
 interface appDashboardProductsRouteRouteChildren {
+  appDashboardProductsActionsIndexRoute: typeof appDashboardProductsActionsIndexRoute
   appDashboardProductsAllIndexRoute: typeof appDashboardProductsAllIndexRoute
   appDashboardProductsHiddenIndexRoute: typeof appDashboardProductsHiddenIndexRoute
+  appDashboardProductsHighestValueIndexRoute: typeof appDashboardProductsHighestValueIndexRoute
   appDashboardProductsInventoryValueIndexRoute: typeof appDashboardProductsInventoryValueIndexRoute
   appDashboardProductsLowStockIndexRoute: typeof appDashboardProductsLowStockIndexRoute
   appDashboardProductsNoImageIndexRoute: typeof appDashboardProductsNoImageIndexRoute
   appDashboardProductsNoPriceIndexRoute: typeof appDashboardProductsNoPriceIndexRoute
   appDashboardProductsOutOfStockIndexRoute: typeof appDashboardProductsOutOfStockIndexRoute
   appDashboardProductsTodayIndexRoute: typeof appDashboardProductsTodayIndexRoute
+  appDashboardProductsUnclassifiedIndexRoute: typeof appDashboardProductsUnclassifiedIndexRoute
   appDashboardProductsUrgentPurchaseIndexRoute: typeof appDashboardProductsUrgentPurchaseIndexRoute
 }
 
 const appDashboardProductsRouteRouteChildren: appDashboardProductsRouteRouteChildren =
   {
+    appDashboardProductsActionsIndexRoute:
+      appDashboardProductsActionsIndexRoute,
     appDashboardProductsAllIndexRoute: appDashboardProductsAllIndexRoute,
     appDashboardProductsHiddenIndexRoute: appDashboardProductsHiddenIndexRoute,
+    appDashboardProductsHighestValueIndexRoute:
+      appDashboardProductsHighestValueIndexRoute,
     appDashboardProductsInventoryValueIndexRoute:
       appDashboardProductsInventoryValueIndexRoute,
     appDashboardProductsLowStockIndexRoute:
@@ -995,6 +1062,8 @@ const appDashboardProductsRouteRouteChildren: appDashboardProductsRouteRouteChil
     appDashboardProductsOutOfStockIndexRoute:
       appDashboardProductsOutOfStockIndexRoute,
     appDashboardProductsTodayIndexRoute: appDashboardProductsTodayIndexRoute,
+    appDashboardProductsUnclassifiedIndexRoute:
+      appDashboardProductsUnclassifiedIndexRoute,
     appDashboardProductsUrgentPurchaseIndexRoute:
       appDashboardProductsUrgentPurchaseIndexRoute,
   }
