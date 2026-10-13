@@ -31,22 +31,24 @@ const standardUser: User = {
 };
 
 describe("navigation metadata", () => {
-  it("keeps standard navigation operational and adds Management only for admins", () => {
+  it("keeps Settings in primary navigation and Management out of the bottom menu", () => {
     expect(primaryNavigationItems(standardUser).map((item) => item.to)).toEqual([
       "/dashboard",
       "/inventory/list",
       "/tools",
+      "/setting",
     ]);
     expect(primaryNavigationItems({ ...standardUser, role: "ADMIN" }).map((item) => item.to)).toEqual([
       "/dashboard",
       "/inventory/list",
       "/tools",
-      "/management",
+      "/setting",
     ]);
   });
 
   it("separates personal subscription, tools, and administrative destinations", () => {
     expect(settingsNavigationItems.map((item) => item.to)).toContain("/setting/subscription");
+    expect(settingsNavigationItems.map((item) => item.to)).toContain("/setting/sync");
     expect(toolsNavigationItems.map((item) => item.to)).toEqual([
       "/tools/import",
       "/tools/labels",

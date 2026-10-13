@@ -56,7 +56,7 @@ test("standard navigation separates Settings and Tools with contextual back beha
   const header = page.locator(".app-header");
   const leftControls = header.locator(".app-header-left");
   const rightControls = header.locator(".app-header-right");
-  await expect(leftControls.getByRole("link", { name: "تنظیمات" })).toBeVisible();
+  await expect(leftControls.getByRole("link", { name: "تنظیمات" })).toHaveCount(0);
   await expect(rightControls.locator("button").first()).toBeVisible();
   expect((await leftControls.boundingBox())!.x).toBeLessThan((await rightControls.boundingBox())!.x);
   await expect(page.getByRole("button", { name: "بازگشت" })).toHaveCount(0);
@@ -65,9 +65,10 @@ test("standard navigation separates Settings and Tools with contextual back beha
   const bottomNavigation = page.getByRole("navigation", { name: "ناوبری اصلی" });
   await expect(bottomNavigation.getByRole("link", { name: "ابزارها" })).toBeVisible();
   await expect(bottomNavigation.getByRole("link", { name: "مدیریت" })).toHaveCount(0);
-  await expect(bottomNavigation.getByRole("link", { name: "تنظیمات" })).toHaveCount(0);
+  await expect(bottomNavigation.getByRole("link", { name: "تنظیمات" })).toBeVisible();
+  await expect(bottomNavigation.getByRole("link", { name: "افزودن محصول" })).toBeVisible();
 
-  await leftControls.getByRole("link", { name: "تنظیمات" }).click();
+  await bottomNavigation.getByRole("link", { name: "تنظیمات" }).click();
   await expect(page).toHaveURL(/\/setting\/?$/);
   await expect(page.getByRole("heading", { name: "تنظیمات" })).toBeVisible();
   await expect(page.getByRole("link", { name: /پروفایل/ })).toHaveAttribute("href", "/setting/profile");
@@ -100,7 +101,8 @@ test("contextual back uses safe fallbacks for direct descendants and access page
 test("administrators receive Management without contextual back controls", async ({ page }) => {
   await seedAuthenticatedUser(page, "ADMIN");
   await page.goto("/dashboard");
-  await expect(page.getByRole("navigation", { name: "ناوبری اصلی" }).getByRole("link", { name: "مدیریت" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "ناوبری اصلی" }).getByRole("link", { name: "مدیریت" })).toHaveCount(0);
+  await expect(page.locator(".app-header-left").getByRole("link", { name: "مدیریت" })).toBeVisible();
 
   await page.goto("/management");
   await expect(page.getByRole("heading", { name: "مدیریت" })).toBeVisible();
@@ -123,4 +125,24 @@ test("application navigation has no horizontal overflow at narrow and desktop wi
     }));
     expect(dimensions.scrollWidth, `${viewport.width}px`).toBeLessThanOrEqual(dimensions.clientWidth);
   }
+});
+
+test("sync status links expose responsive details", async ({ page }) => {
+  await seedAuthenticatedUser(page, "USER");
+  await page.goto("/setting/sync");
+
+  await expect(page.getByRole("heading", { name: "همگام‌سازی", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "همگام‌سازی اکنون" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "صف تغییرات" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "آخرین رخدادها" })).toBeVisible();
+
+  const header = page.locator(".app-header");
+  await expect(header.getByRole("link", { name: /مشاهده جزئیات همگام‌سازی/ })).toHaveAttribute("href", "/setting/sync");
+  await expect(header.locator(".sync-status-badge")).toHaveAttribute("href", "/setting/sync");
+  await expect(header.locator("[aria-label='باز کردن جزئیات همگام‌سازی']")).toHaveCount(0);
+
+  const labelPosition = await header.locator(".sync-status-label").evaluate(
+    (element) => getComputedStyle(element).position,
+  );
+  expect(labelPosition).toBe(test.info().project.name === "chromium-mobile" ? "absolute" : "static");
 });

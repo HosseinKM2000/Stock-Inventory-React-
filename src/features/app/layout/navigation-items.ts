@@ -25,6 +25,7 @@ export type NavigationRoute =
   | "/dashboard"
   | "/inventory/list"
   | "/setting"
+  | "/setting/sync"
   | "/setting/profile"
   | "/setting/security"
   | "/setting/appearance"
@@ -61,18 +62,11 @@ const basePrimaryNavigationItems = [
   { id: "dashboard", label: "داشبورد", to: "/dashboard", icon: DashboardIcon, group: "primary" },
   { id: "inventory", label: "محصولات", to: "/inventory/list", icon: MixIcon, group: "primary" },
   { id: "tools", label: "ابزارها", to: "/tools", icon: CubeIcon, group: "primary" },
+  { id: "settings", label: "تنظیمات", to: "/setting", icon: GearIcon, group: "primary" },
 ] as const satisfies readonly NavigationItem[];
 
-const managementPrimaryItem = {
-  id: "management",
-  label: "مدیریت",
-  to: "/management",
-  icon: LockClosedIcon,
-  group: "primary",
-  adminOnly: true,
-} as const satisfies NavigationItem;
-
 export const settingsNavigationItems = [
+  { id: "sync", label: "همگام‌سازی", description: "وضعیت اتصال، صف تغییرات، آخرین رویدادها و خطاهای همگام‌سازی", to: "/setting/sync", icon: ReloadIcon, group: "settings" },
   { id: "local-backup", label: "فایل پشتیبان محلی", description: "ذخیره و بازیابی نسخه کامل داده‌ها روی همین دستگاه", to: "/setting/backup", icon: ArchiveIcon, group: "settings" },
   { id: "profile", label: "پروفایل", description: "اطلاعات حساب و تصویر پروفایل", to: "/setting/profile", icon: PersonIcon, group: "settings", requiresOnline: true },
   { id: "security", label: "امنیت", description: "تغییر رمز عبور و تنظیمات امنیتی", to: "/setting/security", icon: LockClosedIcon, group: "settings", requiresOnline: true },
@@ -105,7 +99,6 @@ export function visibleNavigationItems(
 }
 
 export function primaryNavigationItems(user: User | null | undefined) {
-  return isAdmin(user)
-    ? [...basePrimaryNavigationItems, managementPrimaryItem]
-    : [...basePrimaryNavigationItems];
+  void user;
+  return [...basePrimaryNavigationItems];
 }

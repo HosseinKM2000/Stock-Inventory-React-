@@ -12,6 +12,10 @@ const RouterDevtools = import.meta.env.DEV
     })
   : null;
 
+const routerDevtoolsToggleProps = {
+  style: { bottom: "calc(var(--app-bottom-navigation-height) + 1rem)" },
+};
+
 export const Route = createRootRoute({
   component: () => (
     <AuthProvider>
@@ -19,7 +23,7 @@ export const Route = createRootRoute({
       <AuthenticatedPwaInstallPromotion />
       {RouterDevtools && (
         <Suspense fallback={null}>
-          <RouterDevtools />
+          <RouterDevtools toggleButtonProps={routerDevtoolsToggleProps} />
         </Suspense>
       )}
     </AuthProvider>

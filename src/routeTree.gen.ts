@@ -25,6 +25,7 @@ import { Route as ToolsExportRouteImport } from './routes/tools/export'
 import { Route as ToolsCategoriesRouteImport } from './routes/tools/categories'
 import { Route as ToolsCatalogRouteImport } from './routes/tools/catalog'
 import { Route as SettingUsersRouteImport } from './routes/setting/users'
+import { Route as SettingSyncRouteImport } from './routes/setting/sync'
 import { Route as SettingSubscriptionManagementRouteImport } from './routes/setting/subscription-management'
 import { Route as SettingSubscriptionRouteImport } from './routes/setting/subscription'
 import { Route as SettingSecurityRouteImport } from './routes/setting/security'
@@ -140,6 +141,11 @@ const ToolsCatalogRoute = ToolsCatalogRouteImport.update({
 const SettingUsersRoute = SettingUsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => SettingRouteRoute,
+} as any)
+const SettingSyncRoute = SettingSyncRouteImport.update({
+  id: '/sync',
+  path: '/sync',
   getParentRoute: () => SettingRouteRoute,
 } as any)
 const SettingSubscriptionManagementRoute =
@@ -367,6 +373,7 @@ export interface FileRoutesByFullPath {
   '/setting/security': typeof SettingSecurityRoute
   '/setting/subscription': typeof SettingSubscriptionRoute
   '/setting/subscription-management': typeof SettingSubscriptionManagementRoute
+  '/setting/sync': typeof SettingSyncRoute
   '/setting/users': typeof SettingUsersRoute
   '/tools/catalog': typeof ToolsCatalogRoute
   '/tools/categories': typeof ToolsCategoriesRoute
@@ -416,6 +423,7 @@ export interface FileRoutesByTo {
   '/setting/security': typeof SettingSecurityRoute
   '/setting/subscription': typeof SettingSubscriptionRoute
   '/setting/subscription-management': typeof SettingSubscriptionManagementRoute
+  '/setting/sync': typeof SettingSyncRoute
   '/setting/users': typeof SettingUsersRoute
   '/tools/catalog': typeof ToolsCatalogRoute
   '/tools/categories': typeof ToolsCategoriesRoute
@@ -472,6 +480,7 @@ export interface FileRoutesById {
   '/setting/security': typeof SettingSecurityRoute
   '/setting/subscription': typeof SettingSubscriptionRoute
   '/setting/subscription-management': typeof SettingSubscriptionManagementRoute
+  '/setting/sync': typeof SettingSyncRoute
   '/setting/users': typeof SettingUsersRoute
   '/tools/catalog': typeof ToolsCatalogRoute
   '/tools/categories': typeof ToolsCategoriesRoute
@@ -528,6 +537,7 @@ export interface FileRouteTypes {
     | '/setting/security'
     | '/setting/subscription'
     | '/setting/subscription-management'
+    | '/setting/sync'
     | '/setting/users'
     | '/tools/catalog'
     | '/tools/categories'
@@ -577,6 +587,7 @@ export interface FileRouteTypes {
     | '/setting/security'
     | '/setting/subscription'
     | '/setting/subscription-management'
+    | '/setting/sync'
     | '/setting/users'
     | '/tools/catalog'
     | '/tools/categories'
@@ -632,6 +643,7 @@ export interface FileRouteTypes {
     | '/setting/security'
     | '/setting/subscription'
     | '/setting/subscription-management'
+    | '/setting/sync'
     | '/setting/users'
     | '/tools/catalog'
     | '/tools/categories'
@@ -783,6 +795,13 @@ declare module '@tanstack/react-router' {
       path: '/users'
       fullPath: '/setting/users'
       preLoaderRoute: typeof SettingUsersRouteImport
+      parentRoute: typeof SettingRouteRoute
+    }
+    '/setting/sync': {
+      id: '/setting/sync'
+      path: '/sync'
+      fullPath: '/setting/sync'
+      preLoaderRoute: typeof SettingSyncRouteImport
       parentRoute: typeof SettingRouteRoute
     }
     '/setting/subscription-management': {
@@ -1182,6 +1201,7 @@ interface SettingRouteRouteChildren {
   SettingSecurityRoute: typeof SettingSecurityRoute
   SettingSubscriptionRoute: typeof SettingSubscriptionRoute
   SettingSubscriptionManagementRoute: typeof SettingSubscriptionManagementRoute
+  SettingSyncRoute: typeof SettingSyncRoute
   SettingUsersRoute: typeof SettingUsersRoute
   SettingIndexRoute: typeof SettingIndexRoute
 }
@@ -1198,6 +1218,7 @@ const SettingRouteRouteChildren: SettingRouteRouteChildren = {
   SettingSecurityRoute: SettingSecurityRoute,
   SettingSubscriptionRoute: SettingSubscriptionRoute,
   SettingSubscriptionManagementRoute: SettingSubscriptionManagementRoute,
+  SettingSyncRoute: SettingSyncRoute,
   SettingUsersRoute: SettingUsersRoute,
   SettingIndexRoute: SettingIndexRoute,
 }
