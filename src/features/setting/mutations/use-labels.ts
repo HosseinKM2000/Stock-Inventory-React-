@@ -4,6 +4,7 @@ import { labelService } from "../services/label.service";
 import type { LabelInput } from "../types";
 import { accessState } from "@/shared/access/access-state";
 import { productKeys } from "@/features/app/inventory/query/query-keys";
+import { dashboardKeys } from "@/features/app/dashboard/query/dashboard-query-keys";
 
 export const labelKeys = {
   all: ["labels"] as const,
@@ -23,6 +24,7 @@ export function useCreateLabel() {
       void Promise.all([
         client.invalidateQueries({ queryKey: labelKeys.all }),
         client.invalidateQueries({ queryKey: productKeys.all }),
+        client.invalidateQueries({ queryKey: dashboardKeys.all }),
       ]);
       syncService.schedule();
     },
@@ -37,6 +39,7 @@ export function useUpdateLabel() {
       void Promise.all([
         client.invalidateQueries({ queryKey: labelKeys.all }),
         client.invalidateQueries({ queryKey: productKeys.all }),
+        client.invalidateQueries({ queryKey: dashboardKeys.all }),
       ]);
       syncService.schedule();
     },
@@ -51,6 +54,7 @@ export function useDeleteLabel() {
       void Promise.all([
         client.invalidateQueries({ queryKey: labelKeys.all }),
         client.invalidateQueries({ queryKey: productKeys.all }),
+        client.invalidateQueries({ queryKey: dashboardKeys.all }),
       ]);
       syncService.schedule();
     },

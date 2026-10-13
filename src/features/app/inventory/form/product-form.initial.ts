@@ -20,6 +20,8 @@ export function createProductInitialValues(initial?: Product) {
 
     price: initial?.price ?? 0,
 
+    price_missing: initial?.price_missing ?? false,
+
     custom_label: initial?.custom_label ?? "",
 
     note: initial?.note ?? null,
@@ -44,6 +46,8 @@ export function createProductInitialValues(initial?: Product) {
       id: initial?.catalog_product?.id ?? 0,
 
       industry_id: initial?.catalog_product?.industry_id ?? 0,
+
+      is_active: initial?.catalog_product?.is_active ?? true,
 
       name: initial?.catalog_product?.name ?? "",
 

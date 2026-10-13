@@ -11,14 +11,31 @@ import {
 } from "@radix-ui/themes";
 
 import { useNavigate } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { accessState } from "@/shared/access/access-state";
+import {
+  consumeDashboardReturnAnchor,
+  rememberDashboardReturnAnchor,
+} from "@/shared/lib/navigation/scroll-restoration";
 import { dashboardCards } from "../data/dashboard-cards";
 import { useDashboardStats } from "../mutations/use-dashboard";
 import type { DashboardStats } from "../types";
 
 const DashboardComponent = () => {
   const navigate = useNavigate();
+  const userId = accessState.user()?.id;
 
   const { data: stats, isLoading, isError } = useDashboardStats();
+
+  useEffect(() => {
+    const anchorId = consumeDashboardReturnAnchor(userId);
+    if (anchorId) document.getElementById(anchorId)?.scrollIntoView({ block: "center" });
+  }, [userId]);
+
+  const openCard = (card: (typeof dashboardCards)[number]) => {
+    rememberDashboardReturnAnchor(userId, `dashboard-section-${card.id}`);
+    void navigate({ to: card.to });
+  };
 
   return (
     <main className="app-responsive-page container mx-auto p-4 md:p-6">
@@ -41,18 +58,17 @@ const DashboardComponent = () => {
       <Grid columns={{ initial: "1", sm: "2", lg: "4" }} gap="4" mt="5">
         {dashboardCards.map((card) => (
           <Card
-            key={card.label}
+            key={card.id}
+            id={`dashboard-section-${card.id}`}
             size="2"
-            role={card.filter ? "button" : undefined}
-            tabIndex={card.filter ? 0 : undefined}
-            className={`${card.filter ? "cursor-pointer" : ""} transition-all hover:shadow-lg`}
-            onClick={() => {
-              if (card.filter) navigate({ to: `/dashboard/products/${card.filter}` });
-            }}
+            role="button"
+            tabIndex={0}
+            className="cursor-pointer transition-all hover:shadow-lg"
+            onClick={() => openCard(card)}
             onKeyDown={(event) => {
-              if ((event.key === "Enter" || event.key === " ") && card.filter) {
+              if (event.key === "Enter" || event.key === " ") {
                 event.preventDefault();
-                navigate({ to: `/dashboard/products/${card.filter}` });
+                openCard(card);
               }
             }}
           >
@@ -76,7 +92,13 @@ const DashboardComponent = () => {
 
               <Skeleton loading={isLoading}>
                 <Text as="div" mt="1" size="5" weight="bold">
-                  {card.value(stats as DashboardStats)}
+                  {card.value((stats ?? {
+                    totalProducts: 0, inventoryValue: 0, lowStockCount: 0,
+                    outOfStockCount: 0, hiddenCount: 0, noImageCount: 0,
+                    noPriceCount: 0, urgentPurchaseCount: 0, addedTodayCount: 0,
+                    missingClassificationCount: 0, valuedProductsCount: 0,
+                    todayActionCount: 0,
+                  }) as DashboardStats)}
                 </Text>
               </Skeleton>
             </Box>

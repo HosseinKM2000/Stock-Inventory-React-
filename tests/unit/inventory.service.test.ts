@@ -48,6 +48,26 @@ describe("local-first inventory service", () => {
     expect(records[1]).toMatchObject({ id: 1, quantity: 0, price: 0, low_stock_threshold: 0, status: "out_of_stock" });
   });
 
+  it("filters ineligible records without deleting hidden data and preserves valid zero prices", async () => {
+    mocks.getAll.mockResolvedValue([
+      product({ id: 1, price: 0 }),
+      product({ id: 2, deleted_at: "2026-09-03T00:00:00Z" }),
+      product({ id: 3, is_catalog_backed: true, catalog_product: undefined }),
+      product({ id: 4, is_catalog_backed: true, catalog_product: { ...product().catalog_product!, is_active: false } }),
+      product({ id: 5, is_hidden: true }),
+      product({ id: 6, price: undefined as never }),
+    ]);
+
+    const visible = await inventoryService.getAll({ include_hidden: false });
+    expect(visible.map((item) => item.id)).toEqual([6, 1]);
+    expect(visible.find((item) => item.id === 1)).toMatchObject({ price: 0, price_missing: false });
+    expect(visible.find((item) => item.id === 6)).toMatchObject({ price: 0, price_missing: true });
+    await expect(inventoryService.getAll({ include_hidden: true })).resolves.toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: 5 })]),
+    );
+    expect(mocks.remove).not.toHaveBeenCalled();
+  });
+
   it("adjusts the latest persisted quantity and rejects invalid or negative results", async () => {
     const current = product({ id: 1, quantity: 10, version: 1 });
     mocks.get.mockResolvedValueOnce(current).mockResolvedValueOnce(current).mockResolvedValueOnce(product({ id: 1, quantity: 15, version: 1 }));

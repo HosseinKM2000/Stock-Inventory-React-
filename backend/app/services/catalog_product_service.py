@@ -237,7 +237,22 @@ def archive_catalog_product(
         return product
 
     try:
+        affected_items = list(
+            db.scalars(
+                select(InventoryItem)
+                .options(
+                    joinedload(InventoryItem.catalog_product).joinedload(
+                        CatalogProduct.industry
+                    )
+                )
+                .where(InventoryItem.catalog_product_id == product.id)
+            )
+        )
         repository.archive_catalog_product(db, product)
+        # The inventory row remains intact, but every user's local snapshot
+        # must learn that its shared catalog source is no longer eligible.
+        for item in affected_items:
+            _record_inventory_change(db, item)
         record_admin_action(
             db,
             actor,
