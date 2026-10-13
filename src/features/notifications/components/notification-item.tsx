@@ -2,9 +2,9 @@ import { Button } from "@/shared/ui/button/button";
 import { ExclamationTriangleIcon } from "@radix-ui/react-icons";
 import { Badge, Box, Card, Flex, Text } from "@radix-ui/themes";
 import { Link } from "@tanstack/react-router";
-import type { InventoryNotification } from "../types";
+import type { AppNotification } from "../types";
 
-export function NotificationItem({ item, onNavigate }: { item: InventoryNotification; onNavigate: () => void }) {
+export function NotificationItem({ item, onNavigate }: { item: AppNotification; onNavigate: () => void }) {
   const critical = item.severity === "critical";
   return (
     <Card size="1">
@@ -19,9 +19,15 @@ export function NotificationItem({ item, onNavigate }: { item: InventoryNotifica
           </Flex>
           <Text as="div" size="2" mt="2">{item.description}</Text>
           <Text as="div" size="1" color="gray" mt="1">{item.context}</Text>
-          <Link to="/inventory/edit" search={{ id: item.productId }} onClick={onNavigate}>
-            <Button size="2" variant="soft" mt="3" className="w-full sm:w-auto">مشاهده و ویرایش محصول</Button>
-          </Link>
+          {"productId" in item ? (
+            <Link to="/inventory/edit" search={{ id: item.productId }} onClick={onNavigate}>
+              <Button size="2" variant="soft" mt="3" className="w-full sm:w-auto">مشاهده و ویرایش محصول</Button>
+            </Link>
+          ) : (
+            <Link to={item.route} onClick={onNavigate}>
+              <Button size="2" variant="soft" mt="3" className="w-full sm:w-auto">باز کردن تنظیمات فایل پشتیبان</Button>
+            </Link>
+          )}
         </Box>
       </Flex>
     </Card>

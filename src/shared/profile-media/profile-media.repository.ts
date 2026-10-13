@@ -67,6 +67,7 @@ export const profileMediaRepository = {
     cachedRaw = raw;
     cachedSelection = selection;
     window.dispatchEvent(new CustomEvent(CHANGE_EVENT));
+    window.dispatchEvent(new Event("tanzim-backup-relevant-change"));
   },
 
   subscribe(listener: () => void) {

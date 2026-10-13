@@ -4,6 +4,7 @@ import { Link, useNavigate, useRouter, useRouterState } from "@tanstack/react-ro
 import { useEffect, useRef } from "react";
 
 import { NotificationPanel } from "@/features/notifications/components/notification-panel";
+import { BackupShortcut } from "@/features/backup/components/backup-shortcut";
 import { contextualBackFallback, contextualSection } from "@/shared/lib/navigation/contextual-back";
 import ConnectionStatus from "./connection-status";
 
@@ -71,6 +72,7 @@ const Header = () => {
       </Text>
 
       <Flex align="center" justify="end" gap={{ initial: "2", sm: "4" }} className="app-header-right min-w-0">
+        <BackupShortcut />
         <NotificationPanel />
         <div className="app-header-sync-status min-w-0">
           <ConnectionStatus />

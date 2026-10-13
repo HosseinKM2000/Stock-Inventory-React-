@@ -10,4 +10,5 @@ export function getAppearance(): Appearance {
 export function setAppearance(value: Appearance) {
   localStorage.setItem(KEY, value);
   window.dispatchEvent(new CustomEvent("appearance-change", { detail: value }));
+  window.dispatchEvent(new Event("tanzim-backup-relevant-change"));
 }
