@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Badge, Card, Flex, IconButton, Text } from "@radix-ui/themes";
-import { EyeOpenIcon, Pencil1Icon, TrashIcon } from "@radix-ui/react-icons";
+import { CheckIcon, CopyIcon, EyeOpenIcon, Pencil1Icon, TrashIcon } from "@radix-ui/react-icons";
+import { toast } from "sonner";
 
 import { Button } from "@/shared/ui/button/button";
 import productPlaceholder from "@/assets/product-placeholder.svg";
@@ -12,6 +13,7 @@ import { useLongPress } from "../hooks/use-long-press";
 import type { Product, ProductStatus } from "../types";
 import type { ProductViewMode } from "../services/inventory-list-preferences";
 import { QuickStockAdjustment } from "./quick-stock-adjustment";
+import { copyPlainText, productClipboardText } from "../services/clipboard.service";
 
 const STATUS_META: Record<ProductStatus, { label: string; color: "green" | "yellow" | "red" }> = {
   in_stock: { label: "موجود", color: "green" },
@@ -28,6 +30,10 @@ type Props = {
   onDelete?: (id: number) => void;
   onPreview?: (product: Product) => void;
   onEdit?: (product: Product) => void;
+  selectionMode?: boolean;
+  selected?: boolean;
+  onToggleSelection?: (product: Product) => void;
+  onEnterSelection?: (product: Product) => void;
 };
 
 export function ProductCard({
@@ -39,6 +45,10 @@ export function ProductCard({
   onDelete,
   onPreview,
   onEdit,
+  selectionMode = false,
+  selected = false,
+  onToggleSelection,
+  onEnterSelection,
 }: Props) {
   useEntitlementAccess();
   const navigate = useNavigate();
@@ -50,11 +60,23 @@ export function ProductCard({
     : null;
   const imagePreview = useImage(product.image_url ?? product.catalog_product?.image_url) ?? productPlaceholder;
   const name = product.custom_label ?? product.catalog_product?.name ?? "محصول بدون نام";
-  const longPress = useLongPress(() => onPreview?.(product));
+  const longPress = useLongPress(() => onEnterSelection?.(product), 550);
 
   const edit = () => {
     onEdit?.(product);
     void navigate({ to: "/inventory/edit", search: { id: product.id } });
+  };
+
+  const activate = () => selectionMode ? onToggleSelection?.(product) : edit();
+  const copy = async () => {
+    const text = productClipboardText(name, product.price);
+    try {
+      await copyPlainText(text);
+      toast.success("نام و قیمت محصول کپی شد");
+    } catch {
+      window.prompt("کپی خودکار در دسترس نیست؛ متن را دستی کپی کنید:", text);
+      toast.error("کپی خودکار انجام نشد");
+    }
   };
 
   const image = (className: string) => (
@@ -63,8 +85,12 @@ export function ProductCard({
       className={`${className} relative block touch-pan-y overflow-hidden bg-[var(--gray-a3)] text-start`}
       aria-label={`پیش‌نمایش تصویر ${name}`}
       title="برای پیش‌نمایش نگه دارید یا کلیک کنید"
-      onClick={(event) => { event.stopPropagation(); onPreview?.(product); }}
-      {...longPress}
+      onClick={(event) => {
+        event.stopPropagation();
+        if (selectionMode) onToggleSelection?.(product);
+        else onPreview?.(product);
+      }}
+      data-product-action={selectionMode ? undefined : "true"}
     >
       <img
         src={imagePreview}
@@ -82,12 +108,14 @@ export function ProductCard({
         size="1"
         role="button"
         tabIndex={0}
-        aria-label={`ویرایش ${name}`}
-        className={`inventory-card inventory-card--${viewMode} cursor-pointer overflow-hidden transition-shadow hover:shadow-md`}
-        onClick={edit}
+        aria-label={selectionMode ? `${selected ? "لغو انتخاب" : "انتخاب"} ${name}` : `ویرایش ${name}`}
+        aria-pressed={selectionMode ? selected : undefined}
+        className={`inventory-card inventory-card--${viewMode} cursor-pointer overflow-hidden transition-shadow hover:shadow-md ${selected ? "ring-2 ring-violet-8 bg-violet-2" : ""}`}
+        onClick={activate}
         onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") { event.preventDefault(); edit(); }
+          if (event.key === "Enter" || event.key === " ") { event.preventDefault(); activate(); }
         }}
+        {...longPress}
       >
         <Flex align="center" gap="3" className="min-w-0">
           {image(viewMode === "grid" ? "h-20 w-20 shrink-0 rounded-lg" : "h-14 w-14 shrink-0 rounded-lg")}
@@ -98,6 +126,7 @@ export function ProductCard({
               <Badge size="1" color={status.color}>{status.label}</Badge>
             </Flex>
           </Flex>
+          {selectionMode && <Flex align="center" justify="center" className={`h-7 w-7 rounded-full border ${selected ? "border-violet-9 bg-violet-9 text-white" : "border-gray-7"}`} aria-hidden="true">{selected && <CheckIcon />}</Flex>}
         </Flex>
       </Card>
     );
@@ -106,7 +135,20 @@ export function ProductCard({
   return (
     <Card
       size="2"
-      className={`inventory-card h-auto overflow-hidden transition-all duration-200 ${showActions ? "" : "inventory-card--readonly"}`}
+      role="button"
+      tabIndex={0}
+      aria-pressed={selectionMode ? selected : undefined}
+      aria-label={selectionMode ? `${selected ? "لغو انتخاب" : "انتخاب"} ${name}` : `انتخاب ${name} با نگه‌داشتن`}
+      className={`inventory-card h-auto overflow-hidden transition-all duration-200 ${showActions ? "" : "inventory-card--readonly"} ${selected ? "ring-2 ring-violet-8 bg-violet-2" : ""}`}
+      onClick={() => { if (selectionMode) onToggleSelection?.(product); }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          if (selectionMode) onToggleSelection?.(product);
+          else onEnterSelection?.(product);
+        }
+      }}
+      {...longPress}
     >
       <Flex className="inventory-card-layout min-w-0" dir="rtl">
         {image("inventory-card-image shrink-0")}
@@ -116,7 +158,7 @@ export function ProductCard({
               <Text weight="bold" size="3" className="break-words text-lg!">{name}</Text>
               {product.catalog_product?.brand && <Text size="1" color="gray" className="break-words">{product.catalog_product.brand}</Text>}
             </Flex>
-            <Badge color={status.color} className="inventory-card-mobile-status shrink-0">{status.label}</Badge>
+            {selectionMode ? <Flex align="center" justify="center" className={`h-8 w-8 shrink-0 rounded-full border ${selected ? "border-violet-9 bg-violet-9 text-white" : "border-gray-7"}`} aria-hidden="true">{selected && <CheckIcon />}</Flex> : <Badge color={status.color} className="inventory-card-mobile-status shrink-0">{status.label}</Badge>}
           </Flex>
           <Text size="2" color="gray" className="line-clamp-2 break-words">
             {product.note ?? product.catalog_product?.description ?? "بدون توضیح"}
@@ -131,7 +173,8 @@ export function ProductCard({
             <Badge size="3" color="green" className="inventory-card-price max-w-full overflow-hidden">
               {product.price.toLocaleString("fa-IR")} تومان
             </Badge>
-            {showActions && <Flex gap="2" justify="end" className="inventory-card-actions inventory-card-mobile-actions">
+            {showActions && !selectionMode && <Flex gap="2" justify="end" data-product-action className="inventory-card-actions inventory-card-mobile-actions">
+              <IconButton type="button" size="2" variant="soft" aria-label={`کپی نام و قیمت ${name}`} onClick={(event) => { event.stopPropagation(); void copy(); }}><CopyIcon /></IconButton>
               <IconButton type="button" size="2" variant="soft" aria-label={`پیش‌نمایش ${name}`} onClick={() => onPreview?.(product)}><EyeOpenIcon /></IconButton>
               <Link to="/inventory/edit" search={{ id: product.id }} onClick={() => onEdit?.(product)}>
                 <Button size="2" variant="soft" color="amber" className="inventory-card-edit-button" aria-label={`ویرایش ${name}`}><Pencil1Icon width={20} height={20} /></Button>
@@ -145,13 +188,14 @@ export function ProductCard({
             </Flex>}
           </Flex>
         </Flex>
-        {showActions && <div className="inventory-card-controls">
+        {showActions && !selectionMode && <div className="inventory-card-controls" data-product-action>
           {showQuickStock && <div className="inventory-card-quick shrink-0 border-[var(--gray-a5)] bg-[var(--gray-a2)]">
             <QuickStockAdjustment key={`${product.id}-${product.catalog_product?.is_packaged}-${product.catalog_product?.pack_size ?? "none"}`} product={product} />
           </div>}
           <Flex align="center" gap="3" className="inventory-card-desktop-end">
             <Badge color={status.color} className="inventory-card-desktop-status shrink-0">{status.label}</Badge>
             <Flex gap="2" className="inventory-card-actions">
+              <IconButton type="button" size="2" variant="soft" aria-label={`کپی نام و قیمت ${name}`} onClick={(event) => { event.stopPropagation(); void copy(); }}><CopyIcon /></IconButton>
               <IconButton type="button" size="2" variant="soft" aria-label={`پیش‌نمایش ${name}`} onClick={() => onPreview?.(product)}><EyeOpenIcon /></IconButton>
               <Link to="/inventory/edit" search={{ id: product.id }} onClick={() => onEdit?.(product)}>
                 <Button size="2" variant="soft" color="amber" aria-label={`ویرایش ${name}`}><Pencil1Icon width={20} height={20} /></Button>

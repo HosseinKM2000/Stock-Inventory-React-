@@ -28,6 +28,13 @@ def _now() -> datetime:
 # ---------- User ----------
 class User(Base):
     __tablename__ = "users"
+    __table_args__ = (
+        CheckConstraint(
+            "(device_limit_mode IN ('inherit', 'unlimited') AND device_limit_override IS NULL) OR "
+            "(device_limit_mode = 'limited' AND device_limit_override > 0)",
+            name="ck_users_device_limit_policy",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True)
 
@@ -68,6 +75,8 @@ class User(Base):
     subscription_expires_at: Mapped[datetime | None] = mapped_column(
         UTC_DATETIME, nullable=True
     )
+    device_limit_mode: Mapped[str] = mapped_column(String(20), default="inherit")
+    device_limit_override: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
     industry_id: Mapped[int | None] = mapped_column(
         ForeignKey("industries.id"),

@@ -25,6 +25,7 @@ import {
 } from "../../mutations/use-admin";
 import { adminErrorMessage } from "../admin-error";
 import { UserDetailsDialog } from "./user-details-dialog";
+import { DevicePolicyEditor } from "./device-policy-editor";
 
 const date = (value: string | null) =>
   value ? new Intl.DateTimeFormat("fa-IR").format(new Date(value)) : "—";
@@ -200,6 +201,7 @@ export default function UsersSettings() {
                   </Box>
                 </Box>
                 <Flex direction="column" gap="2" className="w-full sm:w-60">
+                  <DevicePolicyEditor user={user} />
                   <Select.Root
                     value={user.plan}
                     disabled={loading}

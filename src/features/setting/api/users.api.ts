@@ -13,3 +13,11 @@ export const setUserSubscription = (id: number, plan: string) =>
 
 export const deleteUser = (id: number) =>
   apiFetch<void>(`/admin/users/${id}`, { method: "DELETE" });
+
+export const setUserDevicePolicy = (
+  id: number,
+  mode: "inherit" | "unlimited" | "limited",
+  limit: number | null,
+) => apiFetch<AdminUser>(`/admin/users/${id}/device-policy`, {
+  method: "PATCH", json: { mode, limit },
+});

@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import type {
   MouseEvent as ReactMouseEvent,
   PointerEvent as ReactPointerEvent,
@@ -18,8 +18,21 @@ export function useLongPress(onLongPress: () => void, delay = DEFAULT_DELAY) {
     origin.current = null;
   };
 
+  useEffect(() => {
+    const cancelOnScroll = () => cancel();
+    window.addEventListener("scroll", cancelOnScroll, true);
+    return () => {
+      window.removeEventListener("scroll", cancelOnScroll, true);
+      cancel();
+    };
+  }, []);
+
   const onPointerDown = (event: ReactPointerEvent<HTMLElement>) => {
     if (event.pointerType === "mouse" && event.button !== 0) return;
+    if (event.target instanceof Element) {
+      const interactive = event.target.closest("button,a,input,select,textarea,[data-product-action]");
+      if (interactive && interactive !== event.currentTarget) return;
+    }
     fired.current = false;
     origin.current = { x: event.clientX, y: event.clientY };
     timer.current = window.setTimeout(() => {

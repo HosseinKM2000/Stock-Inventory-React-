@@ -20,6 +20,7 @@ from ..schemas import (
     AdminUserOut,
     AdminUserRoleUpdate,
     AdminUserStateUpdate,
+    AdminDevicePolicyUpdate,
     PlanCreate,
     PlanDefinitionOut,
     PlanPatch,
@@ -33,6 +34,7 @@ from ..services.subscription_service import (
     list_plans,
     plan_payload,
 )
+from ..services.plan_policy import effective_device_policy
 
 router = APIRouter(prefix="/admin", tags=["administration"])
 
@@ -68,6 +70,7 @@ def _admin_user_payload(db: DbSession, user: User) -> dict:
         default=None,
     )
     remaining_days = None
+    device_policy = effective_device_policy(db, user)
     if user.subscription_expires_at is not None:
         expiration = user.subscription_expires_at
         if expiration.tzinfo is None:
@@ -80,9 +83,32 @@ def _admin_user_payload(db: DbSession, user: User) -> dict:
                 "subscription_status": entitlement["status"],
                 "last_activity_at": last_activity,
                 "remaining_days": remaining_days,
+                "device_limit_mode": user.device_limit_mode,
+                "device_limit_override": user.device_limit_override,
+                "effective_device_limit": device_policy["limit"],
+                "device_limit_source": device_policy["source"],
+                "active_session_count": sum(1 for session in user.sessions if session.is_active),
             }
         ).model_dump(),
     }
+
+
+@router.patch("/users/{user_id}/device-policy", response_model=AdminUserOut)
+def update_user_device_policy(
+    user_id: int,
+    payload: AdminDevicePolicyUpdate,
+    admin: CurrentUserManager,
+    db: DbSession,
+):
+    user = _user_or_404(db, user_id)
+    user.device_limit_mode = payload.mode
+    user.device_limit_override = payload.limit if payload.mode == "limited" else None
+    record_admin_action(db, admin, "device_policy.updated", user, {
+        "mode": payload.mode, "limit": payload.limit,
+    })
+    db.commit()
+    db.refresh(user)
+    return _admin_user_payload(db, user)
 
 
 @router.get("/users", response_model=list[AdminUserOut])

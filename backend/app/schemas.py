@@ -512,6 +512,13 @@ class PlanCreate(BaseModel):
     features: dict[str, bool]
     limits: dict[str, int | None]
 
+    @field_validator("limits")
+    @classmethod
+    def validate_limits(cls, value):
+        if any(item is not None and (isinstance(item, bool) or item < 1) for item in value.values()):
+            raise ValueError("PLAN_LIMIT_INVALID")
+        return value
+
 
 class PlanPatch(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
@@ -523,6 +530,13 @@ class PlanPatch(BaseModel):
     is_active: bool | None = None
     features: dict[str, bool] | None = None
     limits: dict[str, int | None] | None = None
+
+    @field_validator("limits")
+    @classmethod
+    def validate_optional_limits(cls, value):
+        if value is not None and any(item is not None and (isinstance(item, bool) or item < 1) for item in value.values()):
+            raise ValueError("PLAN_LIMIT_INVALID")
+        return value
 
 
 class AdminUserStateUpdate(BaseModel):
@@ -543,6 +557,22 @@ class AdminUserOut(UserOut):
     subscription_status: Literal["active", "expired"]
     last_activity_at: datetime | None = None
     remaining_days: int | None = None
+    device_limit_mode: Literal["inherit", "unlimited", "limited"]
+    device_limit_override: int | None = None
+    effective_device_limit: int | None = None
+    device_limit_source: Literal["plan", "user"]
+    active_session_count: int = 0
+
+
+class AdminDevicePolicyUpdate(BaseModel):
+    mode: Literal["inherit", "unlimited", "limited"]
+    limit: int | None = Field(default=None, gt=0)
+
+    @model_validator(mode="after")
+    def validate_policy(self):
+        if (self.mode == "limited") != (self.limit is not None):
+            raise ValueError("DEVICE_POLICY_INVALID")
+        return self
     
 
 class DeviceInfo(BaseModel):

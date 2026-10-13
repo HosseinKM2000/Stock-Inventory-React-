@@ -1,3 +1,5 @@
+import { CAPABILITIES } from "@/shared/access/capabilities";
+
 export type PlanFeatureOption = {
   key: string;
   label: string;
@@ -12,6 +14,9 @@ export const PLAN_FEATURE_OPTIONS: readonly PlanFeatureOption[] = [
   { key: "export.local", label: "خروجی آفلاین", description: "ساخت خروجی از داده‌های محلی دستگاه", group: "داده و خروجی" },
   { key: "export.server", label: "خروجی آنلاین", description: "ساخت خروجی کامل با پردازش سرور", group: "داده و خروجی" },
   { key: "backup", label: "پشتیبان‌گیری", description: "دریافت نسخه پشتیبان آنلاین", group: "داده و خروجی" },
+  { key: CAPABILITIES.bulkEdit, label: "ویرایش گروهی", description: "نقطه پیکربندی آینده؛ اکنون بدون محدودیت تجاری فعال است", group: "آفلاین و موجودی" },
+  { key: CAPABILITIES.labelsWrite, label: "مدیریت برچسب‌ها", description: "نقطه پیکربندی آینده برای برچسب‌های شخصی", group: "آفلاین و موجودی" },
+  { key: CAPABILITIES.importXlsx, label: "ورود از اکسل", description: "نقطه پیکربندی آینده برای ورود گروهی محلی", group: "داده و خروجی" },
 ];
 
 export const PLAN_LIMIT_OPTIONS = [

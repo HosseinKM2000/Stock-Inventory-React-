@@ -4,6 +4,7 @@ import { product } from "../helpers/product";
 const mocks = vi.hoisted(() => ({
   getAll: vi.fn(), get: vi.fn(), save: vi.fn(), remove: vi.fn(), getAllStored: vi.fn(),
   enqueue: vi.fn(), requireWrite: vi.fn(), requireInventoryCapacity: vi.fn(), removeImage: vi.fn(),
+  getLabels: vi.fn(),
 }));
 
 vi.mock("@/features/app/inventory/services/inventory.repository", () => ({
@@ -25,11 +26,17 @@ vi.mock("@/shared/access/access-state", () => ({
 vi.mock("@/shared/lib/infrastructure/media/image.service", () => ({
   imageService: { remove: mocks.removeImage, removeOrphans: vi.fn() },
 }));
+vi.mock("@/shared/lib/infrastructure/storage/label-storage", () => ({
+  labelStorage: { getAll: mocks.getLabels },
+}));
 
 import { inventoryService } from "@/features/app/inventory/services/inventory-service";
 
 describe("local-first inventory service", () => {
-  beforeEach(() => Object.values(mocks).forEach((mock) => mock.mockReset()));
+  beforeEach(() => {
+    Object.values(mocks).forEach((mock) => mock.mockReset());
+    mocks.getLabels.mockResolvedValue([]);
+  });
 
   it("sanitizes corrupted values and derives boundary stock status", async () => {
     mocks.getAll.mockResolvedValue([
@@ -54,6 +61,19 @@ describe("local-first inventory service", () => {
     await expect(inventoryService.adjustQuantity(1, 0)).rejects.toThrow();
   });
 
+  it("searches associated label names locally without duplicating products", async () => {
+    mocks.getAll.mockResolvedValue([
+      product({ id: 1, custom_label: "چای", label_ids: [7, 8] }),
+      product({ id: 2, custom_label: "قهوه", label_ids: [] }),
+    ]);
+    mocks.getLabels.mockResolvedValue([
+      { id: 7, name: "  ویژه فروش  " },
+      { id: 8, name: "ویژه فروش" },
+    ]);
+    const result = await inventoryService.getAll({ search: "ویژه   فروش" });
+    expect(result.map((item) => item.id)).toEqual([1]);
+  });
+
   it("removes a replaced local image after the record is safely saved", async () => {
     const current = product({ image_url: "local://old.webp" });
     const updated = product({ image_url: "local://new.webp" });
@@ -68,5 +88,41 @@ describe("local-first inventory service", () => {
     await expect(inventoryService.remove(1)).rejects.toThrow();
     expect(mocks.remove).not.toHaveBeenCalled();
     expect(mocks.enqueue).not.toHaveBeenCalled();
+  });
+
+  it("applies only requested bulk fields and queues absolute prices once", async () => {
+    const first = product({ id: 1, price: 100, category_id: 4, low_stock_alert: true, low_stock_threshold: 7, label_ids: [9] });
+    const second = product({ id: 2, price: 250, category_id: null, low_stock_alert: false, low_stock_threshold: 3, label_ids: [8] });
+    mocks.get.mockImplementation((id: number) => Promise.resolve(id === 1 ? first : second));
+    mocks.save.mockResolvedValue(undefined);
+    const updated = await inventoryService.bulkUpdate([1, 2, 2], { priceIncrease: 50, lowStockAlert: false });
+    expect(updated).toHaveLength(2);
+    expect(updated[0]).toMatchObject({ price: 150, category_id: 4, low_stock_alert: false, low_stock_threshold: 7, label_ids: [9] });
+    expect(updated[1]).toMatchObject({ price: 300, category_id: null, low_stock_alert: false, low_stock_threshold: 3, label_ids: [8] });
+    expect(mocks.enqueue).toHaveBeenCalledTimes(2);
+    expect(mocks.enqueue).toHaveBeenNthCalledWith(1, "product", 1, "UPDATE", expect.objectContaining({ price: 150 }));
+  });
+
+  it("updates category and alert threshold independently without erasing labels or alert state", async () => {
+    const current = product({
+      id: 3, category_id: 4, price: 900, low_stock_alert: false,
+      low_stock_threshold: 2, label_ids: [7, 8],
+    });
+    mocks.get.mockResolvedValue(current);
+    mocks.save.mockResolvedValue(undefined);
+    const [updated] = await inventoryService.bulkUpdate([3], {
+      categoryId: null,
+      lowStockThreshold: 12,
+    });
+    expect(updated).toMatchObject({
+      category_id: null, price: 900, low_stock_alert: false,
+      low_stock_threshold: 12, label_ids: [7, 8],
+    });
+  });
+
+  it("rejects empty and unsafe bulk changes without writing", async () => {
+    await expect(inventoryService.bulkUpdate([1], { priceIncrease: 0 })).rejects.toThrow();
+    await expect(inventoryService.bulkUpdate([1], { priceIncrease: Number.MAX_SAFE_INTEGER + 1 })).rejects.toThrow();
+    expect(mocks.save).not.toHaveBeenCalled();
   });
 });

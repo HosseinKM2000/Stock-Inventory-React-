@@ -9,7 +9,18 @@ import type { Product, ProductInput, ProductListParams } from "../types";
 import { validPackSize } from "../domain/packaging";
 import { labelStorage } from "@/shared/lib/infrastructure/storage/label-storage";
 
+export type BulkProductIntent = {
+  categoryId?: number | null;
+  priceIncrease?: number;
+  lowStockAlert?: boolean;
+  lowStockThreshold?: number;
+};
+
 export const PRODUCT_ENTITY = "product";
+
+export function normalizeProductSearch(value: string) {
+  return value.normalize("NFC").trim().replace(/\s+/g, " ").toLocaleLowerCase("fa");
+}
 
 function sanitize(product: Product): Product {
   // Local data is never trusted blindly — it may come from an older schema,
@@ -88,13 +99,13 @@ class InventoryService {
 
     // Search
     if (params.search) {
-      const search = params.search.trim().toLowerCase();
-      const labels = new Map((await labelStorage.getAll()).map((label) => [label.id, label.name.toLowerCase()]));
+      const search = normalizeProductSearch(params.search);
+      const labels = new Map((await labelStorage.getAll()).map((label) => [label.id, normalizeProductSearch(label.name)]));
 
       products = products.filter((product) => {
-        const name = product.catalog_product?.name?.toLowerCase() ?? "";
+        const name = normalizeProductSearch(product.catalog_product?.name ?? "");
 
-        const label = product.custom_label?.toLowerCase() ?? "";
+        const label = normalizeProductSearch(product.custom_label ?? "");
 
         const labelMatch = product.label_ids?.some((id) => labels.get(id)?.includes(search)) ?? false;
         return name.includes(search) || label.includes(search) || labelMatch;
@@ -177,6 +188,49 @@ class InventoryService {
         await queueService.enqueue(PRODUCT_ENTITY, record.id, "CREATE", record);
       }
       return records;
+    });
+  }
+
+  async bulkUpdate(ids: readonly number[], intent: BulkProductIntent): Promise<Product[]> {
+    accessState.requireWrite();
+    const uniqueIds = [...new Set(ids)];
+    if (uniqueIds.length === 0) throw new Error("هیچ محصولی انتخاب نشده است");
+    if (intent.priceIncrease !== undefined &&
+        (!Number.isSafeInteger(intent.priceIncrease) || intent.priceIncrease < 0)) {
+      throw new Error("افزایش قیمت باید عدد صحیح و نامنفی باشد");
+    }
+    if (intent.lowStockThreshold !== undefined &&
+        (!Number.isSafeInteger(intent.lowStockThreshold) || intent.lowStockThreshold < 0)) {
+      throw new Error("حد هشدار باید عدد صحیح و نامنفی باشد");
+    }
+    const hasEffectiveChange = intent.categoryId !== undefined ||
+      (intent.priceIncrease ?? 0) > 0 || intent.lowStockAlert !== undefined ||
+      intent.lowStockThreshold !== undefined;
+    if (!hasEffectiveChange) throw new Error("حداقل یک تغییر مؤثر انتخاب کنید");
+
+    return localMutationStorage.inventory(async () => {
+      const updated: Product[] = [];
+      for (const id of uniqueIds) {
+        const current = await inventoryRepository.get(id);
+        if (!current) continue;
+        const price = intent.priceIncrease
+          ? current.price + intent.priceIncrease
+          : current.price;
+        if (!Number.isSafeInteger(price)) throw new Error("قیمت نهایی از محدوده مجاز خارج است");
+        const next = sanitize({
+          ...current,
+          ...(intent.categoryId !== undefined ? { category_id: intent.categoryId } : {}),
+          ...(intent.lowStockAlert !== undefined ? { low_stock_alert: intent.lowStockAlert } : {}),
+          ...(intent.lowStockThreshold !== undefined ? { low_stock_threshold: intent.lowStockThreshold } : {}),
+          price,
+          updated_at: new Date().toISOString(),
+        });
+        await inventoryRepository.save(next);
+        await queueService.enqueue(PRODUCT_ENTITY, id, "UPDATE", next);
+        updated.push(next);
+      }
+      if (updated.length === 0) throw new Error("محصول انتخاب‌شده دیگر در دسترس نیست");
+      return updated;
     });
   }
 

@@ -5,6 +5,7 @@ non-PostgreSQL URLs and databases whose name does not contain ``test``.
 """
 
 import os
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -43,6 +44,7 @@ EXPECTED_TABLES = {
     "admin_audit_logs", "catalog_products", "categories", "custom_products",
     "industries", "inventory_items", "inventory_transactions",
     "subscription_plans", "sync_changes", "sync_operations", "user_sessions", "users",
+    "labels", "inventory_item_labels",
 }
 
 
@@ -92,7 +94,7 @@ def signup(client: TestClient):
 def test_migration_reaches_head_with_all_expected_tables(migrated_empty_database):
     assert EXPECTED_TABLES <= set(inspect(engine).get_table_names())
     with engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20260902_0001"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261012_0003"
 
 
 @pytest.mark.postgres
@@ -126,6 +128,35 @@ def test_auth_session_logout_and_current_user(client):
     denied = client.get("/api/auth/me", headers=headers)
     assert denied.status_code == 403
     assert denied.json()["detail"] == "Invalid device session"
+
+
+@pytest.mark.postgres
+def test_concurrent_device_admission_respects_user_limit(client):
+    created = signup(client)
+    user_id = created.json()["user"]["id"]
+    admin_login = client.post("/api/auth/login", json={
+        "username": "HosseinKM2000", "password": "Test-only-system-admin-password-123!",
+        "device_fingerprint": "device-policy-admin",
+    })
+    admin_headers = {
+        "Authorization": f"Bearer {admin_login.json()['access_token']}",
+        "X-Device-Fingerprint": "device-policy-admin",
+    }
+    policy = client.patch(
+        f"/api/admin/users/{user_id}/device-policy", headers=admin_headers,
+        json={"mode": "limited", "limit": 2},
+    )
+    assert policy.status_code == 200, policy.text
+
+    def login(fingerprint: str):
+        return client.post("/api/auth/login", json={
+            "username": "postgres-user", "password": "StrongPass123!",
+            "device_fingerprint": fingerprint,
+        }).status_code
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        statuses = list(pool.map(login, ["concurrent-device-a", "concurrent-device-b"]))
+    assert sorted(statuses) == [200, 403]
 
 
 @pytest.mark.postgres

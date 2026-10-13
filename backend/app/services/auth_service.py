@@ -131,6 +131,9 @@ def login(
 
     else:
 
+        # Serialize new-device admission for this account. PostgreSQL row locks
+        # prevent concurrent logins from both observing the same free slot.
+        db.execute(select(User).where(User.id == user.id).with_for_update())
         active_sessions = get_active_sessions(
             db,
             user.id,

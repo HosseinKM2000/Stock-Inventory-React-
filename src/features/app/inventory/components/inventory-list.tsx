@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Box, Callout, Flex, Select, Spinner, Text } from "@radix-ui/themes";
-import { EyeNoneIcon, EyeOpenIcon } from "@radix-ui/react-icons";
+import { Cross2Icon, EyeNoneIcon, EyeOpenIcon, MixerHorizontalIcon } from "@radix-ui/react-icons";
 import { toast } from "sonner";
 
 import { Button } from "@/shared/ui/button/button";
@@ -10,10 +10,13 @@ import AddButton from "./add-button";
 import FilterPanel from "./filter-panel";
 import { ProductCard } from "./inventory-card";
 import { ProductPreviewDialog } from "./product-preview-dialog";
+import { BulkEditDialog } from "./bulk-edit-dialog";
 import type { Product, ProductSort } from "../types";
 import { useInventoryVirtual } from "../mutations/useInventoryVirtual";
 import { useDeleteProduct, useProducts } from "../mutations/use-products";
 import { catalogVisibilityService } from "../services/catalog-visibility.service";
+import { inventoryService } from "../services/inventory-service";
+import { useProductSelection } from "../hooks/use-product-selection";
 import {
   inventoryListPreferences,
   type ProductViewMode,
@@ -36,6 +39,10 @@ const InventoryList = () => {
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
   const [catalogProductsHidden, setCatalogProductsHidden] = useState(() => catalogVisibilityService.isHidden());
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const closeBulkOnAccountChange = useCallback(() => setBulkOpen(false), []);
+  const selection = useProductSelection(closeBulkOnAccountChange);
+  const { selectedIds, selectionMode, retainAvailable } = selection;
   const { data: categories = [] } = useCategories();
   const { data, isLoading, isError } = useProducts({
     search: search || undefined,
@@ -50,6 +57,18 @@ const InventoryList = () => {
   );
   const deleteProduct = useDeleteProduct();
   const restored = useRef(false);
+  useEffect(() => {
+    if (!selectionMode) return;
+    let cancelled = false;
+    void inventoryService.getAll({ include_hidden: true })
+      .then((all) => {
+        if (cancelled) return;
+        const available = new Set(all.map((product) => product.id));
+        retainAvailable(available);
+      })
+      .catch(() => { /* Keep selection when local availability cannot be verified. */ });
+    return () => { cancelled = true; };
+  }, [products, selectionMode, retainAvailable]);
 
   useEffect(() => {
     inventoryListPreferences.update({ search, sort, categoryId, viewMode });
@@ -110,12 +129,20 @@ const InventoryList = () => {
       onEdit={rememberEdit}
       onDelete={() => setProductToDelete(product)}
       deleting={deleteProduct.isPending && deleteProduct.variables === product.id}
+      selectionMode={selectionMode}
+      selected={selectedIds.has(product.id)}
+      onEnterSelection={(item) => selection.enter(item.id)}
+      onToggleSelection={(item) => selection.toggle(item.id)}
     />
   );
 
   return (
     <Flex direction="column" className="inventory-list-shell h-full min-h-0 overflow-hidden p-4 gap-4">
       <Flex align="center" gap="2" wrap="wrap" className="inventory-toolbar min-w-0">
+        {selectionMode && <Flex align="center" gap="2" role="status" aria-live="polite">
+          <Text weight="bold">{selectedIds.size.toLocaleString("fa-IR")} انتخاب</Text>
+          <Button type="button" size="2" variant="soft" color="gray" aria-label="خروج از حالت انتخاب" onClick={selection.clear}><Cross2Icon /> پاک‌کردن</Button>
+        </Flex>}
         <Button
           type="button"
           size="2"
@@ -202,6 +229,21 @@ const InventoryList = () => {
       </Flex>
 
       <AddButton />
+      {selectionMode && <Button
+        type="button"
+        aria-label={`ویرایش گروهی ${selectedIds.size.toLocaleString("fa-IR")} محصول`}
+        className="fixed left-4 z-40 h-14! rounded-full! px-5! shadow-xl bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-6"
+        onClick={() => setBulkOpen(true)}
+      ><MixerHorizontalIcon width="22" height="22" /> ویرایش {selectedIds.size.toLocaleString("fa-IR")}</Button>}
+      <BulkEditDialog
+        open={bulkOpen}
+        selectedIds={[...selectedIds]}
+        onOpenChange={setBulkOpen}
+        onComplete={(updated) => {
+          const updatedSet = new Set(updated);
+          selection.remove(updatedSet);
+        }}
+      />
       <ProductPreviewDialog product={previewProduct} onOpenChange={(open) => { if (!open) setPreviewProduct(null); }} />
       <ConfirmDialog
         open={productToDelete !== null}

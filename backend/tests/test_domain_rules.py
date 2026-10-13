@@ -8,10 +8,11 @@ from pydantic import ValidationError
 os.environ.setdefault("ENVIRONMENT", "test")
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 
-from app.plans import subscription_expired
+from app.plans import PLAN_CATALOG, subscription_expired
 from app.schemas import CatalogProductCreate, InventoryCreate, PasswordUpdate, SyncBatchRequest
 from app.security import hash_password, verify_password
 from app.services.authorization_service import Permission, RoleId, has_permission, set_role
+from app.services import plan_policy
 
 
 def test_bcrypt_hashes_and_verifies_without_storing_plaintext() -> None:
@@ -62,6 +63,22 @@ def test_subscription_expiry_uses_absolute_time_and_free_plan_does_not_expire() 
     assert not subscription_expired("pro", now + timedelta(minutes=1))
     assert not subscription_expired("free", now - timedelta(days=1))
     assert subscription_expired("pro", (now - timedelta(seconds=1)).replace(tzinfo=None))
+
+
+def test_builtin_device_limits_are_unlimited_by_default() -> None:
+    assert all(plan["limits"]["devices"] is None for plan in PLAN_CATALOG.values())
+
+
+def test_user_device_policy_precedence(monkeypatch) -> None:
+    monkeypatch.setattr(plan_policy, "entitlement_for_user", lambda _db, _user: {"limits": {"devices": 3}})
+    user = SimpleNamespace(is_admin=False, is_system_admin=False, role="USER", device_limit_mode="inherit", device_limit_override=None)
+    assert plan_policy.effective_device_policy(None, user) == {"limit": 3, "source": "plan", "mode": "limited"}
+    user.device_limit_mode = "unlimited"
+    assert plan_policy.effective_device_policy(None, user)["limit"] is None
+    user.device_limit_mode = "limited"
+    user.device_limit_override = 2
+    assert plan_policy.can_add_device(None, user, 1)
+    assert not plan_policy.can_add_device(None, user, 2)
 
 
 def test_role_changes_keep_legacy_admin_flag_synchronized() -> None:

@@ -20,6 +20,11 @@ export type AdminUser = User & {
   subscription_status: "active" | "expired";
   last_activity_at: string | null;
   remaining_days: number | null;
+  device_limit_mode: "inherit" | "unlimited" | "limited";
+  device_limit_override: number | null;
+  effective_device_limit: number | null;
+  device_limit_source: "plan" | "user";
+  active_session_count: number;
 };
 
 export type AuthResponse = {

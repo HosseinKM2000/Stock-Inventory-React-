@@ -9,6 +9,7 @@ import { productKeys } from "../query/query-keys";
 import { inventoryService } from "../services/inventory-service";
 
 import type { Product, ProductInput, ProductListParams } from "../types";
+import type { BulkProductIntent } from "../services/inventory-service";
 import { exportKeys } from "@/features/setting/query/query-keys";
 import { notifySubscriptionRestriction } from "@/shared/access/subscription-limit";
 
@@ -102,5 +103,15 @@ export function useDeleteProduct() {
     onSuccess() {
       invalidate();
     },
+  });
+}
+
+export function useBulkUpdateProducts() {
+  const invalidate = useInvalidateProducts();
+  return useMutation({
+    mutationFn: ({ ids, intent }: { ids: number[]; intent: BulkProductIntent }) =>
+      inventoryService.bulkUpdate(ids, intent),
+    onSuccess: invalidate,
+    onError: notifySubscriptionRestriction,
   });
 }

@@ -1284,6 +1284,39 @@ class SyncApiTest(unittest.TestCase):
             self.assertIsNotNone(restored_item)
             self.assertEqual(restored_item.quantity, 8)
 
+    def test_admin_device_policy_enforces_new_session_admission_without_revoking_existing(self) -> None:
+        limited = self.client.patch(
+            f"/api/admin/users/{self.user_id}/device-policy",
+            headers=self.admin_headers,
+            json={"mode": "limited", "limit": 2},
+        )
+        self.assertEqual(limited.status_code, 200, limited.text)
+        self.assertEqual(limited.json()["effective_device_limit"], 2)
+        second = self.client.post("/api/auth/login", json={
+            "username": "offline-sync-test", "password": "StrongPass123!",
+            "device_fingerprint": "sync-test-device-2",
+        })
+        self.assertEqual(second.status_code, 200, second.text)
+        blocked = self.client.post("/api/auth/login", json={
+            "username": "offline-sync-test", "password": "StrongPass123!",
+            "device_fingerprint": "sync-test-device-3",
+        })
+        self.assertEqual(blocked.status_code, 403, blocked.text)
+        still_valid = self.client.get("/api/auth/me", headers=self.headers)
+        self.assertEqual(still_valid.status_code, 200, still_valid.text)
+
+        unlimited = self.client.patch(
+            f"/api/admin/users/{self.user_id}/device-policy",
+            headers=self.admin_headers,
+            json={"mode": "unlimited", "limit": None},
+        )
+        self.assertEqual(unlimited.status_code, 200, unlimited.text)
+        admitted = self.client.post("/api/auth/login", json={
+            "username": "offline-sync-test", "password": "StrongPass123!",
+            "device_fingerprint": "sync-test-device-3",
+        })
+        self.assertEqual(admitted.status_code, 200, admitted.text)
+
     def test_resource_ownership_blocks_cross_user_access(self) -> None:
         signup = self.client.post(
             "/api/auth/signup",
