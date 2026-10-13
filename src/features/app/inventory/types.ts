@@ -88,6 +88,7 @@ export type ProductListParams = {
   search?: string;
   sort?: ProductSort;
   category_id?: number;
+  label_ids?: number[];
   include_hidden?: boolean;
   hide_catalog_products?: boolean;
 };

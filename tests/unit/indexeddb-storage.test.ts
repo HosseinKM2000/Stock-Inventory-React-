@@ -8,6 +8,7 @@ import type { User } from "@/features/auth/types";
 import { product } from "../helpers/product";
 import { localMutationStorage } from "@/shared/lib/infrastructure/storage/local-mutation-storage";
 import { queueService } from "@/shared/lib/infrastructure/sync/queue.service";
+import { inventoryService } from "@/features/app/inventory/services/inventory-service";
 
 function user(id: number): User {
   return {
@@ -55,6 +56,38 @@ describe("IndexedDB repositories", () => {
 
     accessState.saveUser(user(1));
     expect((await inventoryStorage.getAll()).map((item) => item.id)).toEqual([101]);
+  });
+
+  it("keeps a bulk-edited product and its outbox payload durable across restart", async () => {
+    accessState.saveUser({ ...user(1), is_admin: true, role: "ADMIN" });
+    await inventoryStorage.save(product({
+      id: 707,
+      category_id: 3,
+      quantity: 12,
+      price: 900,
+      label_ids: [4, 5],
+      image_url: "local://durable.webp",
+      is_hidden: false,
+    }));
+
+    await inventoryService.bulkUpdate([707], { priceIncrease: 100, lowStockAlert: false });
+    db.close();
+    await db.open();
+
+    expect(await inventoryStorage.get(707)).toMatchObject({
+      id: 707,
+      category_id: 3,
+      quantity: 12,
+      price: 1000,
+      label_ids: [4, 5],
+      image_url: "local://durable.webp",
+      is_hidden: false,
+      low_stock_alert: false,
+    });
+    expect((await queueService.getForEntity("product", 707))[0]).toMatchObject({
+      action: "UPDATE",
+      payload: expect.objectContaining({ id: 707, price: 1000, quantity: 12 }),
+    });
   });
 
   it("replaceAll changes only the active user's inventory", async () => {

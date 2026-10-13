@@ -6,6 +6,8 @@ import { MagnifyingGlassIcon, TextAlignTopIcon } from "@radix-ui/react-icons";
 import { Flex, Popover, RadioGroup, Text } from "@radix-ui/themes";
 
 import type { ProductSort } from "../types";
+import type { Label } from "@/features/setting/types";
+import { LabelFilter } from "./label-filter";
 
 const SORT_LABELS: Record<ProductSort, string> = {
   newest: "جدیدترین",
@@ -24,6 +26,11 @@ type Props = {
   sort: ProductSort;
 
   setSort: (value: ProductSort) => void;
+  labels: Label[];
+  selectedLabelIds: number[];
+  onToggleLabel(id: number): void;
+  onRemoveLabel(id: number): void;
+  onClearLabels(): void;
 };
 
 export default function FilterPanel({
@@ -31,6 +38,11 @@ export default function FilterPanel({
   search,
   setSort,
   setSearch,
+  labels,
+  selectedLabelIds,
+  onToggleLabel,
+  onRemoveLabel,
+  onClearLabels,
 }: Props) {
   return (
     <Flex direction="column" gap="3" width="100%">
@@ -47,6 +59,14 @@ export default function FilterPanel({
         placeholder="جستجوی محصول..."
         value={search}
         onChange={(event) => setSearch(event.target.value)}
+      />
+
+      <LabelFilter
+        labels={labels}
+        selectedIds={selectedLabelIds}
+        onToggle={onToggleLabel}
+        onRemove={onRemoveLabel}
+        onClear={onClearLabels}
       />
 
       {/* Sort */}

@@ -17,6 +17,8 @@ import { useDeleteProduct, useProducts } from "../mutations/use-products";
 import { catalogVisibilityService } from "../services/catalog-visibility.service";
 import { inventoryService } from "../services/inventory-service";
 import { useProductSelection } from "../hooks/use-product-selection";
+import { useProductLabelFilter } from "../hooks/use-product-label-filter";
+import { useLabels } from "@/features/setting/mutations/use-labels";
 import {
   inventoryListPreferences,
   type ProductViewMode,
@@ -42,12 +44,21 @@ const InventoryList = () => {
   const [bulkOpen, setBulkOpen] = useState(false);
   const closeBulkOnAccountChange = useCallback(() => setBulkOpen(false), []);
   const selection = useProductSelection(closeBulkOnAccountChange);
+  const {
+    selectedLabelIds,
+    toggle: toggleLabel,
+    remove: removeLabel,
+    clear: clearLabels,
+    retainAvailable: retainAvailableLabels,
+  } = useProductLabelFilter();
   const { selectedIds, selectionMode, retainAvailable } = selection;
   const { data: categories = [] } = useCategories();
+  const { data: labels = [] } = useLabels();
   const { data, isLoading, isError } = useProducts({
     search: search || undefined,
     sort,
     category_id: categoryId ?? undefined,
+    label_ids: selectedLabelIds.length ? selectedLabelIds : undefined,
     hide_catalog_products: catalogProductsHidden,
   });
   const products = data ?? EMPTY_PRODUCTS;
@@ -57,6 +68,10 @@ const InventoryList = () => {
   );
   const deleteProduct = useDeleteProduct();
   const restored = useRef(false);
+  useEffect(() => {
+    retainAvailableLabels(new Set(labels.map((label) => label.id)));
+  }, [retainAvailableLabels, labels]);
+
   useEffect(() => {
     if (!selectionMode) return;
     let cancelled = false;
@@ -192,9 +207,35 @@ const InventoryList = () => {
         </Select.Root>
       </Flex>
 
-      <Box className="lg:hidden! w-full"><FilterPanel search={search} setSearch={(value) => { setSearch(value); parentRef.current?.scrollTo({ top: 0 }); }} sort={sort} setSort={(value) => { setSort(value); parentRef.current?.scrollTo({ top: 0 }); }} /></Box>
+      <Box className="lg:hidden! w-full">
+        <FilterPanel
+          search={search}
+          setSearch={(value) => { setSearch(value); parentRef.current?.scrollTo({ top: 0 }); }}
+          sort={sort}
+          setSort={(value) => { setSort(value); parentRef.current?.scrollTo({ top: 0 }); }}
+          labels={labels}
+          selectedLabelIds={selectedLabelIds}
+          onToggleLabel={toggleLabel}
+          onRemoveLabel={removeLabel}
+          onClearLabels={clearLabels}
+        />
+      </Box>
       <Flex className="flex-1 overflow-hidden gap-5">
-        <Box className="hidden! lg:block! w-80 shrink-0"><div className="sticky top-5"><FilterPanel search={search} setSearch={(value) => { setSearch(value); parentRef.current?.scrollTo({ top: 0 }); }} sort={sort} setSort={(value) => { setSort(value); parentRef.current?.scrollTo({ top: 0 }); }} /></div></Box>
+        <Box className="hidden! lg:block! w-80 shrink-0">
+          <div className="sticky top-5">
+            <FilterPanel
+              search={search}
+              setSearch={(value) => { setSearch(value); parentRef.current?.scrollTo({ top: 0 }); }}
+              sort={sort}
+              setSort={(value) => { setSort(value); parentRef.current?.scrollTo({ top: 0 }); }}
+              labels={labels}
+              selectedLabelIds={selectedLabelIds}
+              onToggleLabel={toggleLabel}
+              onRemoveLabel={removeLabel}
+              onClearLabels={clearLabels}
+            />
+          </div>
+        </Box>
         <Box className="flex-1 min-w-0">
           {isLoading && <Flex justify="center" align="center" className="h-full"><Spinner /></Flex>}
           {isError && <Callout.Root color="red"><Callout.Text>خطا در دریافت محصولات</Callout.Text></Callout.Root>}

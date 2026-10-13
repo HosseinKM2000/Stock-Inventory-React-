@@ -74,6 +74,22 @@ describe("local-first inventory service", () => {
     expect(result.map((item) => item.id)).toEqual([1]);
   });
 
+  it("matches any selected label and combines the label filter with search and category", async () => {
+    mocks.getAll.mockResolvedValue([
+      product({ id: 1, custom_label: "چای سبز", category_id: 4, label_ids: [7] }),
+      product({ id: 2, custom_label: "چای سیاه", category_id: 4, label_ids: [8] }),
+      product({ id: 3, custom_label: "قهوه", category_id: 4, label_ids: [9] }),
+      product({ id: 4, custom_label: "چای کیسه‌ای", category_id: 5, label_ids: [7] }),
+    ]);
+    const byLabels = await inventoryService.getAll({ label_ids: [7, 8] });
+    expect(new Set(byLabels.map((item) => item.id))).toEqual(new Set([1, 2, 4]));
+
+    const combined = await inventoryService.getAll({
+      label_ids: [7, 8], search: "چای", category_id: 4,
+    });
+    expect(new Set(combined.map((item) => item.id))).toEqual(new Set([1, 2]));
+  });
+
   it("removes a replaced local image after the record is safely saved", async () => {
     const current = product({ image_url: "local://old.webp" });
     const updated = product({ image_url: "local://new.webp" });
@@ -118,6 +134,27 @@ describe("local-first inventory service", () => {
       category_id: null, price: 900, low_stock_alert: false,
       low_stock_threshold: 12, label_ids: [7, 8],
     });
+  });
+
+  it("keeps the product visible after unrelated bulk edits and excludes it only after an intentional category change", async () => {
+    let stored = product({
+      id: 6, category_id: 4, price: 500, quantity: 9, label_ids: [7],
+      image_url: "local://product.webp", is_hidden: false,
+    });
+    mocks.get.mockImplementation(() => Promise.resolve(stored));
+    mocks.getAll.mockImplementation(() => Promise.resolve([stored]));
+    mocks.save.mockImplementation((next) => { stored = next; return Promise.resolve(); });
+
+    await inventoryService.bulkUpdate([6], { priceIncrease: 100, lowStockThreshold: 0 });
+    await expect(inventoryService.getAll({ category_id: 4 })).resolves.toHaveLength(1);
+    expect(stored).toMatchObject({
+      id: 6, category_id: 4, price: 600, quantity: 9, label_ids: [7],
+      image_url: "local://product.webp", is_hidden: false,
+    });
+
+    await inventoryService.bulkUpdate([6], { categoryId: 5 });
+    await expect(inventoryService.getAll({ category_id: 4 })).resolves.toEqual([]);
+    await expect(inventoryService.get(6)).resolves.toMatchObject({ id: 6, category_id: 5 });
   });
 
   it("rejects empty and unsafe bulk changes without writing", async () => {

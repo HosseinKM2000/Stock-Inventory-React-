@@ -20,6 +20,7 @@ import { type Product } from "../types";
 import { useCategories } from "@/features/setting/mutations/use-categories";
 import { getPackagingBreakdown, validPackSize } from "../domain/packaging";
 import { useLabels } from "@/features/setting/mutations/use-labels";
+import { LowStockThresholdField } from "./low-stock-threshold-field";
 
 type ProductFormMode = "create" | "edit" | "view";
 
@@ -439,18 +440,12 @@ export function ProductForm({
               <Text weight="bold">تنظیمات موجودی</Text>
             </Flex>
             <Grid columns={{ initial: "1", md: "2" }} gap="5">
-              <FormField id="low_stock_threshold" label="حد نصاب هشدار">
-                <TextInput
-                  size="3"
-                  type="number"
-                  name="low_stock_threshold"
-                  value={form.values.low_stock_threshold}
-                  placeholder="۰"
-                  onFocus={(event) => event.currentTarget.select()}
-                  onChange={form.handleChange}
-                  disabled={readOnly}
-                />
-              </FormField>
+              <LowStockThresholdField
+                value={form.values.low_stock_threshold}
+                disabled={readOnly}
+                error={form.errors.low_stock_threshold}
+                onValueChange={(value) => form.setValue("low_stock_threshold", Number(value || 0))}
+              />
 
               <FormField id="low_stock_alert" label="فعال بودن هشدار">
                 <Box pt="2">

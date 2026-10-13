@@ -34,4 +34,11 @@ describe("product selection state", () => {
     expect(result.current.selectedIds.size).toBe(0);
     expect(onAccountChange).toHaveBeenCalledOnce();
   });
+
+  it("clears completed ids from selection without affecting unresolved ids", () => {
+    const { result } = renderHook(() => useProductSelection());
+    act(() => { result.current.enter(11); result.current.toggle(22); });
+    act(() => result.current.remove([11]));
+    expect([...result.current.selectedIds]).toEqual([22]);
+  });
 });

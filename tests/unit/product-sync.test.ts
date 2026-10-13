@@ -141,6 +141,32 @@ describe("product synchronization reconciliation", () => {
     }));
   });
 
+  it("keeps a bulk-edited product after the server acknowledges its absolute payload", async () => {
+    const item = queued();
+    const serverRecord = product({
+      id: 10, price: 250, quantity: 17, category_id: 3,
+      label_ids: [4], image_url: "/uploads/product.webp", version: 2,
+    });
+    mocks.pushBatch.mockResolvedValue({
+      cursor: 5,
+      results: [{
+        operation_id: item.operationId,
+        entity_id: item.entityId,
+        status: "applied",
+        record: serverRecord,
+        error: null,
+      }],
+    });
+
+    await expect(mocks.outbound?.([item])).resolves.toEqual([{
+      itemId: item.id, status: "applied", error: null,
+    }]);
+    expect(mocks.inventoryRemove).not.toHaveBeenCalled();
+    expect(mocks.inventorySave).toHaveBeenCalledWith(expect.objectContaining({
+      id: 10, price: 250, quantity: 17, category_id: 3, label_ids: [4], version: 2,
+    }));
+  });
+
   it("applies a server tombstone but retains the displaced edit as a conflict", async () => {
     const item = queued();
     mocks.queueGet.mockResolvedValue(item);

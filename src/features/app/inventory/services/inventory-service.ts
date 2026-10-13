@@ -116,6 +116,13 @@ class InventoryService {
       products = products.filter((product) => product.category_id === params.category_id);
     }
 
+    if (params.label_ids?.length) {
+      const selectedLabels = new Set(params.label_ids);
+      products = products.filter((product) =>
+        product.label_ids?.some((labelId) => selectedLabels.has(labelId)) ?? false
+      );
+    }
+
     // Every inventory consumer gets deterministic newest-first ordering unless
     // it explicitly requests a different user-selected sort.
     const sort = params.sort ?? "newest";
