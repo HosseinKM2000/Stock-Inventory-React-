@@ -29,14 +29,14 @@ export function QuickAccessPage({ title, description, items, footer }: Props) {
         </Text>
       </Box>
 
-      <nav aria-label={title} className="mx-auto max-w-xl overflow-hidden rounded-2xl border border-foreground/10 bg-background">
-        {visibleItems.map((item, index) => {
+      <nav aria-label={title} className="quick-access-menu mx-auto max-w-xl overflow-hidden rounded-2xl border">
+        {visibleItems.map((item) => {
           const Icon = item.icon;
           return (
             <Link
               key={item.id}
               to={item.to}
-              className={`group flex min-h-17 items-center gap-3 px-4 py-3 outline-none transition-colors hover:bg-[var(--accent-a2)] focus-visible:bg-[var(--accent-a3)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent-8)] sm:px-5 ${index > 0 ? "border-t border-foreground/10" : ""}`}
+              className="quick-access-menu-item group flex min-h-17 items-center gap-3 px-4 py-3 outline-none transition-colors hover:bg-[var(--accent-a2)] focus-visible:bg-[var(--accent-a3)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent-8)] sm:px-5"
             >
               <Flex align="center" justify="center" className="h-10 w-10 shrink-0 rounded-xl bg-[var(--accent-a3)] text-[var(--accent-11)]" aria-hidden="true">
                 <Icon width="20" height="20" />

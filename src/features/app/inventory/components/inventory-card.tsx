@@ -110,7 +110,7 @@ export function ProductCard({
         tabIndex={0}
         aria-label={selectionMode ? `${selected ? "لغو انتخاب" : "انتخاب"} ${name}` : `ویرایش ${name}`}
         aria-pressed={selectionMode ? selected : undefined}
-        className={`inventory-card inventory-card--${viewMode} cursor-pointer overflow-hidden transition-shadow hover:shadow-md ${selected ? "ring-2 ring-violet-8 bg-violet-2" : ""}`}
+        className={`inventory-card inventory-card--${viewMode} cursor-pointer overflow-hidden transition-shadow hover:shadow-md ${selected ? "inventory-card--selected" : ""}`}
         onClick={activate}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") { event.preventDefault(); activate(); }
@@ -126,7 +126,7 @@ export function ProductCard({
               <Badge size="1" color={status.color}>{status.label}</Badge>
             </Flex>
           </Flex>
-          {selectionMode && <Flex align="center" justify="center" className={`h-7 w-7 rounded-full border ${selected ? "border-violet-9 bg-violet-9 text-white" : "border-gray-7"}`} aria-hidden="true">{selected && <CheckIcon />}</Flex>}
+          {selectionMode && <Flex align="center" justify="center" data-selected={selected} className="inventory-selection-mark h-7 w-7 rounded-full border" aria-hidden="true">{selected && <CheckIcon />}</Flex>}
         </Flex>
       </Card>
     );
@@ -139,7 +139,7 @@ export function ProductCard({
       tabIndex={0}
       aria-pressed={selectionMode ? selected : undefined}
       aria-label={selectionMode ? `${selected ? "لغو انتخاب" : "انتخاب"} ${name}` : `انتخاب ${name} با نگه‌داشتن`}
-      className={`inventory-card h-auto overflow-hidden transition-all duration-200 ${showActions ? "" : "inventory-card--readonly"} ${selected ? "ring-2 ring-violet-8 bg-violet-2" : ""}`}
+      className={`inventory-card h-auto overflow-hidden transition-all duration-200 ${showActions ? "" : "inventory-card--readonly"} ${selected ? "inventory-card--selected" : ""}`}
       onClick={() => { if (selectionMode) onToggleSelection?.(product); }}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -158,7 +158,7 @@ export function ProductCard({
               <Text weight="bold" size="3" className="break-words text-lg!">{name}</Text>
               {product.catalog_product?.brand && <Text size="1" color="gray" className="break-words">{product.catalog_product.brand}</Text>}
             </Flex>
-            {selectionMode ? <Flex align="center" justify="center" className={`h-8 w-8 shrink-0 rounded-full border ${selected ? "border-violet-9 bg-violet-9 text-white" : "border-gray-7"}`} aria-hidden="true">{selected && <CheckIcon />}</Flex> : <Badge color={status.color} className="inventory-card-mobile-status shrink-0">{status.label}</Badge>}
+            {selectionMode ? <Flex align="center" justify="center" data-selected={selected} className="inventory-selection-mark h-8 w-8 shrink-0 rounded-full border" aria-hidden="true">{selected && <CheckIcon />}</Flex> : <Badge color={status.color} className="inventory-card-mobile-status shrink-0">{status.label}</Badge>}
           </Flex>
           <Text size="2" color="gray" className="line-clamp-2 break-words">
             {product.note ?? product.catalog_product?.description ?? "بدون توضیح"}

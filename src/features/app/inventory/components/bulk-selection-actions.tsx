@@ -22,7 +22,7 @@ export function BulkSelectionActions({
     <Flex
       gap="2"
       align="center"
-      className="fixed left-4 z-60 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-6"
+      className="bulk-selection-actions fixed left-4 z-60 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-6"
       aria-label="عملیات گروهی محصولات"
     >
       <Button
@@ -30,7 +30,7 @@ export function BulkSelectionActions({
         color="red"
         variant="soft"
         aria-label={`حذف گروهی ${localizedCount} محصول`}
-        className="h-14! rounded-full! px-5! shadow-xl"
+        className="h-14! rounded-full! px-5!"
         loading={deleting}
         onClick={onDelete}
       >
@@ -39,7 +39,7 @@ export function BulkSelectionActions({
       <Button
         type="button"
         aria-label={`ویرایش گروهی ${localizedCount} محصول`}
-        className="h-14! rounded-full! px-5! shadow-xl"
+        className="h-14! rounded-full! px-5!"
         onClick={onEdit}
       >
         <MixerHorizontalIcon width="22" height="22" /> ویرایش {localizedCount}

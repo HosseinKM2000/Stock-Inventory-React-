@@ -54,9 +54,9 @@ const Chart = ({ data }: ChartProps) => {
         bottom: 0,
       }}
     >
-      <CartesianGrid vertical={false} horizontal={false} />
-      <YAxis width="auto" niceTicks="snap125" />
-      <XAxis dataKey="name" niceTicks="snap125" />
+      <CartesianGrid vertical={false} stroke="var(--app-chart-grid)" />
+      <YAxis width="auto" niceTicks="snap125" tick={{ fill: "var(--app-text-muted)" }} axisLine={{ stroke: "var(--app-chart-grid)" }} tickLine={false} />
+      <XAxis dataKey="name" niceTicks="snap125" tick={{ fill: "var(--app-text-muted)" }} axisLine={{ stroke: "var(--app-chart-grid)" }} tickLine={false} />
       <Tooltip
         content={CustomTooltip}
         isAnimationActive={true}
@@ -66,7 +66,7 @@ const Chart = ({ data }: ChartProps) => {
       <Bar
         dataKey="value"
         barSize={100}
-        fill="#8884d8"
+        fill="var(--app-chart-primary)"
         isAnimationActive={true}
       />
     </BarChart>

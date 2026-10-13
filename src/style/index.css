@@ -5,6 +5,8 @@ body {
   margin: 0;
   padding: 0;
   min-width: 0;
+  background: var(--app-background);
+  color: var(--app-foreground);
 }
 
 html,
@@ -19,6 +21,7 @@ body,
 }
 
 .app-shell-content {
+  background: var(--app-background);
   padding-bottom: calc(
     var(--app-bottom-navigation-height) + env(safe-area-inset-bottom, 0px)
   );
@@ -44,7 +47,7 @@ body,
   border-width: 1px 0 0;
   border-color: var(--gray-a6);
   background: color-mix(in srgb, var(--color-panel-solid) 92%, transparent);
-  box-shadow: 0 -12px 35px color-mix(in srgb, var(--gray-12) 12%, transparent);
+  box-shadow: 0 -8px 24px color-mix(in srgb, var(--app-overlay) 45%, transparent);
 }
 
 :root[data-appearance="light"] .app-bottom-navigation-surface,
@@ -59,6 +62,10 @@ body,
 .app-navigation-indicator,
 .app-navigation-glow {
   background: var(--accent-9);
+}
+
+.app-navigation-glow {
+  display: none;
 }
 
 .themed-navigation-item {
@@ -85,6 +92,79 @@ body,
   color: var(--violet-11);
   background: var(--violet-a3);
   border: 1px solid var(--violet-a5);
+}
+
+.quick-access-menu {
+  border-color: var(--app-border-subtle);
+  background: var(--app-surface-card);
+  box-shadow: var(--shadow-2);
+}
+
+.quick-access-menu-item + .quick-access-menu-item {
+  border-top: 1px solid var(--app-border-subtle);
+}
+
+.bulk-selection-actions {
+  padding: 0.375rem;
+  border: 1px solid var(--app-border-subtle);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--app-surface-raised) 94%, transparent);
+  box-shadow: var(--shadow-4);
+  backdrop-filter: blur(12px);
+}
+
+.inventory-card--selected {
+  background: var(--app-selection-bg) !important;
+  box-shadow: inset 0 0 0 2px var(--app-selection-border), var(--shadow-2);
+}
+
+.inventory-selection-mark {
+  border-color: var(--app-border-strong);
+}
+
+.inventory-selection-mark[data-selected="true"] {
+  color: var(--app-selection-contrast);
+  border-color: var(--app-selection-mark);
+  background: var(--app-selection-mark);
+}
+
+.custom-tooltip {
+  padding: 0.5rem 0.75rem;
+  color: var(--app-text-primary);
+  border: 1px solid var(--app-border-strong);
+  border-radius: 0.625rem;
+  background: var(--app-surface-raised);
+  box-shadow: var(--shadow-3);
+}
+
+.custom-tooltip .label {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.radix-themes.dark .app-header {
+  border-color: var(--app-border-subtle);
+  background: var(--app-surface-section);
+}
+
+.radix-themes.dark .rt-Card {
+  border-color: var(--app-border-subtle);
+}
+
+.radix-themes.dark :is(.rt-TextFieldRoot, .rt-TextAreaRoot, .rt-SelectTrigger) {
+  background: var(--app-surface-control);
+}
+
+.radix-themes.dark :is(.rt-DialogContent, .rt-AlertDialogContent, .rt-PopoverContent, .rt-DropdownMenuContent) {
+  border: 1px solid var(--app-border-strong);
+  background: var(--app-surface-raised);
+}
+
+.radix-themes.dark [data-sonner-toaster] {
+  --normal-bg: var(--app-surface-raised);
+  --normal-border: var(--app-border-strong);
+  --normal-text: var(--app-text-primary);
 }
 
 .card-title-icon > svg,

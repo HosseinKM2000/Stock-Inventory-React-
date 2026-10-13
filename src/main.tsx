@@ -5,8 +5,8 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { routeTree } from "./routeTree.gen";
 
-import "@/style/index.css";
 import "@radix-ui/themes/styles.css";
+import "@/style/index.css";
 import { startSync } from "@/shared/lib/infrastructure/sync/sync-bootstrap";
 import { inventoryService } from "@/features/app/inventory/services/inventory-service";
 import { registerServiceWorker } from "@/shared/lib/infrastructure/pwa/register-service-worker";
