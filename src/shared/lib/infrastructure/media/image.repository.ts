@@ -54,6 +54,25 @@ export const imageRepository = {
     return file;
   },
 
+  async restore(path: string, file: Blob) {
+    if (!path.startsWith("local://")) throw new Error("BACKUP_IMAGE_PATH_INVALID");
+    const name = path.slice("local://".length);
+    if (!name || name.includes("/") || name.includes("\\") || name.includes("..")) {
+      throw new Error("BACKUP_IMAGE_PATH_INVALID");
+    }
+    const dir = await getRoot();
+    const handle = await dir.getFileHandle(name, { create: true });
+    const writable = await handle.createWritable();
+    try {
+      await writable.write(file);
+      await writable.close();
+    } catch (error) {
+      await writable.abort().catch(() => undefined);
+      throw error;
+    }
+    return path;
+  },
+
   async remove(path: string) {
     const id = path.replace("local://", "");
 

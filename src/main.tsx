@@ -15,6 +15,7 @@ import { profileMediaRepository } from "@/shared/profile-media/profile-media.rep
 import { toast } from "sonner";
 import { accessState } from "@/shared/access/access-state";
 import { accountScrollRestorationKey } from "@/shared/lib/navigation/scroll-restoration";
+import { startBackupAutomation } from "@/features/backup/services/backup-bootstrap";
 
 const router = createRouter({
   routeTree,
@@ -49,6 +50,7 @@ registerServiceWorker({
 });
 
 profileMediaRepository.cleanupLegacyPreference();
+startBackupAutomation();
 
 // Recover product records retained in conflict payloads before orphan cleanup
 // inspects their image references.

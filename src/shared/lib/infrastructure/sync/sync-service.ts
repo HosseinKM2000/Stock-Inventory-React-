@@ -110,6 +110,10 @@ async function processGroup(entity: string, items: SyncQueueItem[]) {
 }
 
 async function runSync() {
+  if (syncService.isPaused()) {
+    syncStatusStore.set({ state: "idle", pending: await queueService.count(), error: "SYNC_PAUSED_FOR_RESTORE" });
+    return;
+  }
   if (networkService.isOffline() || !isAuthenticated()) {
     syncStatusStore.set({ state: "idle", pending: await queueService.count() });
     return;
@@ -191,6 +195,25 @@ async function runSync() {
 }
 
 export const syncService = {
+  pause(reason = "manual", accountId?: number) {
+    const userId = accountId ?? accessState.user?.()?.id;
+    if (!userId) return;
+    localStorage.setItem(`tanzim:${userId}:sync-paused`, reason);
+  },
+
+  resume(accountId?: number) {
+    const userId = accountId ?? accessState.user?.()?.id;
+    if (!userId) return;
+    localStorage.removeItem(`tanzim:${userId}:sync-paused`);
+    syncStatusStore.set({ error: null });
+  },
+
+  isPaused(accountId?: number) {
+    const userId = accountId ?? accessState.user?.()?.id;
+    if (!userId) return false;
+    return localStorage.getItem(`tanzim:${userId}:sync-paused`) != null;
+  },
+
   async sync() {
     if (running) return running;
 

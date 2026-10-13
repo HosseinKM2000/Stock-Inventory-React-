@@ -1,6 +1,7 @@
 import type { User } from "@/features/auth/types";
 import { isAdmin } from "@/shared/access/authorization";
 import {
+  ArchiveIcon,
   ClipboardIcon,
   CubeIcon,
   DashboardIcon,
@@ -27,6 +28,7 @@ export type NavigationRoute =
   | "/setting/profile"
   | "/setting/security"
   | "/setting/appearance"
+  | "/setting/backup"
   | "/setting/industry"
   | "/setting/subscription"
   | "/tools"
@@ -71,6 +73,7 @@ const managementPrimaryItem = {
 } as const satisfies NavigationItem;
 
 export const settingsNavigationItems = [
+  { id: "local-backup", label: "فایل پشتیبان محلی", description: "ذخیره و بازیابی نسخه کامل داده‌ها روی همین دستگاه", to: "/setting/backup", icon: ArchiveIcon, group: "settings" },
   { id: "profile", label: "پروفایل", description: "اطلاعات حساب و تصویر پروفایل", to: "/setting/profile", icon: PersonIcon, group: "settings", requiresOnline: true },
   { id: "security", label: "امنیت", description: "تغییر رمز عبور و تنظیمات امنیتی", to: "/setting/security", icon: LockClosedIcon, group: "settings", requiresOnline: true },
   { id: "appearance", label: "ظاهر", description: "رنگ و حالت نمایش برنامه", to: "/setting/appearance", icon: MixerHorizontalIcon, group: "settings" },

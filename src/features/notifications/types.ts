@@ -11,3 +11,21 @@ export type InventoryNotification = {
   description: string;
   context: string;
 };
+
+export type BackupNotificationKind =
+  | "backup_not_configured"
+  | "backup_permission_required"
+  | "backup_failed"
+  | "backup_manual_required";
+
+export type BackupNotification = {
+  id: string;
+  kind: BackupNotificationKind;
+  severity: NotificationSeverity;
+  title: string;
+  description: string;
+  context: string;
+  route: "/setting/backup";
+};
+
+export type AppNotification = InventoryNotification | BackupNotification;

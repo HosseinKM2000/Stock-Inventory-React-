@@ -17,6 +17,7 @@ export const catalogVisibilityService = {
   setHidden(hidden: boolean) {
     try {
       localStorage.setItem(storageKey(), String(hidden));
+      window.dispatchEvent(new Event("tanzim-backup-relevant-change"));
     } catch {
       // The in-memory UI state still works when storage is unavailable.
     }
