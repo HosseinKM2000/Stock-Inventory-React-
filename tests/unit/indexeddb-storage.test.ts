@@ -85,7 +85,7 @@ describe("IndexedDB repositories", () => {
       low_stock_alert: false,
     });
     expect((await queueService.getForEntity("product", 707))[0]).toMatchObject({
-      action: "UPDATE",
+      action: "CREATE",
       payload: expect.objectContaining({ id: 707, price: 1000, quantity: 12 }),
     });
   });

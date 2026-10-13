@@ -4,7 +4,10 @@ import { createLocalEntityId } from "@/shared/lib/infrastructure/storage/local-e
 import { labelStorage } from "@/shared/lib/infrastructure/storage/label-storage";
 import { localMutationStorage } from "@/shared/lib/infrastructure/storage/local-mutation-storage";
 import { queueService } from "@/shared/lib/infrastructure/sync/queue.service";
-import { PRODUCT_ENTITY } from "@/features/app/inventory/services/inventory-service";
+import {
+  PRODUCT_ENTITY,
+  productSyncAction,
+} from "@/features/app/inventory/services/inventory-service";
 import type { Label, LabelInput } from "../types";
 
 export const LABEL_ENTITY = "label";
@@ -66,7 +69,12 @@ export const labelService = {
           updated_at: new Date().toISOString(),
         };
         await db.inventoryItems.put(updated);
-        await queueService.enqueue(PRODUCT_ENTITY, product.id, "UPDATE", updated);
+        await queueService.enqueue(
+          PRODUCT_ENTITY,
+          product.id,
+          productSyncAction(product),
+          updated,
+        );
       }
       await labelStorage.remove(id);
       await queueService.enqueue(LABEL_ENTITY, id, "DELETE", null);

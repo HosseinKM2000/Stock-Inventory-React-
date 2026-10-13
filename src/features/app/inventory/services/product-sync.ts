@@ -15,10 +15,7 @@ import { PRODUCT_ENTITY } from "./inventory-service";
 
 const CURSOR_KEY = "product-sync-cursor";
 const INITIALIZED_KEY = "product-sync-initialized";
-const PERMANENTLY_REMOVED_ERRORS = new Set([
-  "PRODUCT_NOT_FOUND",
-  "CATALOG_PRODUCT_NOT_AVAILABLE",
-]);
+const PERMANENTLY_REMOVED_ERRORS = new Set(["CATALOG_PRODUCT_NOT_AVAILABLE"]);
 
 async function removeLocalProduct(id: number) {
   const local = await inventoryRepository.get(id);
@@ -49,6 +46,14 @@ async function push(items: SyncQueueItem[]): Promise<SyncHandlerResult[]> {
     );
 
     if (!item) continue;
+
+    if (result.status === "fatal_error" && result.error === "PRODUCT_NOT_FOUND") {
+      // An UPDATE can refer to a product created locally before this client
+      // learned to enqueue it as CREATE. Preserve both the read model and the
+      // rejected payload so no offline data is lost.
+      output.push({ itemId: item.id, status: "conflict", error: result.error });
+      continue;
+    }
 
     if (
       result.status === "fatal_error" &&
@@ -107,7 +112,6 @@ async function pull() {
           pending?.action === "UPDATE"
         ) {
           await queueService.markConflict(pending, "PRODUCT_NOT_FOUND");
-          await removeLocalProduct(local.id);
         } else if (
           !serverIds.has(local.id) &&
           pending?.action === "DELETE"
@@ -150,6 +154,38 @@ async function pull() {
   }
 
   await syncMetadataStorage.set(INITIALIZED_KEY, 1);
+}
+
+function isRecoverableProductPayload(
+  item: SyncQueueItem,
+): item is SyncQueueItem & { payload: Product } {
+  if (
+    item.entity !== PRODUCT_ENTITY ||
+    item.action !== "UPDATE" ||
+    item.status !== "conflict" ||
+    item.lastError !== "PRODUCT_NOT_FOUND" ||
+    typeof item.payload !== "object" ||
+    item.payload === null
+  ) {
+    return false;
+  }
+
+  return (item.payload as { id?: unknown }).id === item.entityId;
+}
+
+/** Restores records removed by older clients after a PRODUCT_NOT_FOUND reply. */
+export async function recoverMissingProductConflicts(): Promise<number> {
+  let restored = 0;
+
+  for (const item of await queueService.getAll()) {
+    if (!isRecoverableProductPayload(item)) continue;
+    if (await inventoryRepository.get(item.entityId)) continue;
+
+    await inventoryRepository.save(item.payload);
+    restored += 1;
+  }
+
+  return restored;
 }
 
 export function registerProductSync() {

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Box, Callout, Flex, Select, Spinner, Text } from "@radix-ui/themes";
-import { Cross2Icon, EyeNoneIcon, EyeOpenIcon, MixerHorizontalIcon } from "@radix-ui/react-icons";
+import { Cross2Icon, EyeNoneIcon, EyeOpenIcon } from "@radix-ui/react-icons";
 import { toast } from "sonner";
 
 import { Button } from "@/shared/ui/button/button";
@@ -9,11 +9,16 @@ import { useCategories } from "@/features/setting/mutations/use-categories";
 import AddButton from "./add-button";
 import FilterPanel from "./filter-panel";
 import { ProductCard } from "./inventory-card";
-import { ProductPreviewDialog } from "./product-preview-dialog";
+import { ProductImageDialog } from "./product-image-dialog";
 import { BulkEditDialog } from "./bulk-edit-dialog";
+import { BulkSelectionActions } from "./bulk-selection-actions";
 import type { Product, ProductSort } from "../types";
 import { useInventoryVirtual } from "../mutations/useInventoryVirtual";
-import { useDeleteProduct, useProducts } from "../mutations/use-products";
+import {
+  useBulkDeleteProducts,
+  useDeleteProduct,
+  useProducts,
+} from "../mutations/use-products";
 import { catalogVisibilityService } from "../services/catalog-visibility.service";
 import { inventoryService } from "../services/inventory-service";
 import { useProductSelection } from "../hooks/use-product-selection";
@@ -39,10 +44,14 @@ const InventoryList = () => {
   const [categoryId, setCategoryId] = useState<number | null>(initial.categoryId);
   const [viewMode, setViewMode] = useState<ProductViewMode>(initial.viewMode);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
-  const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
+  const [imageProduct, setImageProduct] = useState<Product | null>(null);
   const [catalogProductsHidden, setCatalogProductsHidden] = useState(() => catalogVisibilityService.isHidden());
   const [bulkOpen, setBulkOpen] = useState(false);
-  const closeBulkOnAccountChange = useCallback(() => setBulkOpen(false), []);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const closeBulkOnAccountChange = useCallback(() => {
+    setBulkOpen(false);
+    setBulkDeleteOpen(false);
+  }, []);
   const selection = useProductSelection(closeBulkOnAccountChange);
   const {
     selectedLabelIds,
@@ -67,6 +76,7 @@ const InventoryList = () => {
     viewMode === "compact" ? 86 : 250,
   );
   const deleteProduct = useDeleteProduct();
+  const bulkDeleteProducts = useBulkDeleteProducts();
   const restored = useRef(false);
   useEffect(() => {
     retainAvailableLabels(new Set(labels.map((label) => label.id)));
@@ -135,12 +145,28 @@ const InventoryList = () => {
     });
   };
 
+  const confirmBulkDelete = () => {
+    const ids = [...selectedIds];
+    if (ids.length === 0 || bulkDeleteProducts.isPending) return;
+
+    bulkDeleteProducts.mutate(ids, {
+      onSuccess: (deletedIds) => {
+        setBulkDeleteOpen(false);
+        selection.remove(deletedIds);
+        toast.success(`${deletedIds.length.toLocaleString("fa-IR")} محصول حذف شد.`);
+      },
+      onError: (error) => {
+        toast.error(error instanceof Error ? error.message : "حذف گروهی محصولات ناموفق بود");
+      },
+    });
+  };
+
   const productCard = (product: Product) => (
     <ProductCard
       key={product.id}
       product={product}
       viewMode={viewMode}
-      onPreview={setPreviewProduct}
+      onImageOpen={setImageProduct}
       onEdit={rememberEdit}
       onDelete={() => setProductToDelete(product)}
       deleting={deleteProduct.isPending && deleteProduct.variables === product.id}
@@ -270,12 +296,12 @@ const InventoryList = () => {
       </Flex>
 
       <AddButton />
-      {selectionMode && <Button
-        type="button"
-        aria-label={`ویرایش گروهی ${selectedIds.size.toLocaleString("fa-IR")} محصول`}
-        className="fixed left-4 z-40 h-14! rounded-full! px-5! shadow-xl bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-6"
-        onClick={() => setBulkOpen(true)}
-      ><MixerHorizontalIcon width="22" height="22" /> ویرایش {selectedIds.size.toLocaleString("fa-IR")}</Button>}
+      {selectionMode && <BulkSelectionActions
+        selectedCount={selectedIds.size}
+        deleting={bulkDeleteProducts.isPending}
+        onEdit={() => setBulkOpen(true)}
+        onDelete={() => setBulkDeleteOpen(true)}
+      />}
       <BulkEditDialog
         open={bulkOpen}
         selectedIds={[...selectedIds]}
@@ -285,7 +311,18 @@ const InventoryList = () => {
           selection.remove(updatedSet);
         }}
       />
-      <ProductPreviewDialog product={previewProduct} onOpenChange={(open) => { if (!open) setPreviewProduct(null); }} />
+      <ProductImageDialog product={imageProduct} onOpenChange={(open) => { if (!open) setImageProduct(null); }} />
+      <ConfirmDialog
+        open={bulkDeleteOpen}
+        onOpenChange={setBulkDeleteOpen}
+        title="محصولات انتخاب‌شده حذف شوند؟"
+        description={`با تأیید، ${selectedIds.size.toLocaleString("fa-IR")} محصول انتخاب‌شده از موجودی حذف می‌شود و این تغییر پس از همگام‌سازی روی سرور نیز اعمال خواهد شد.`}
+        confirmLabel={`حذف ${selectedIds.size.toLocaleString("fa-IR")} محصول`}
+        cancelLabel="لغو"
+        variant="danger"
+        loading={bulkDeleteProducts.isPending}
+        onConfirm={confirmBulkDelete}
+      />
       <ConfirmDialog
         open={productToDelete !== null}
         onOpenChange={(open) => { if (!open) setProductToDelete(null); }}

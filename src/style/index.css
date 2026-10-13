@@ -179,11 +179,6 @@ body,
   contain-intrinsic-size: 86px;
 }
 
-.product-preview-dialog {
-  width: calc(100vw - 2rem) !important;
-  width: calc(100dvw - 2rem) !important;
-}
-
 @media (min-width: 768px) {
   .inventory-add-button {
     inset-inline-end: 2rem;

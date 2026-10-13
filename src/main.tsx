@@ -42,12 +42,14 @@ registerServiceWorker({
 
 profileMediaRepository.cleanupLegacyPreference();
 
-startSync();
-
-// Clean files left by an abandoned/failed image form on the next app start.
-void inventoryService.cleanupImages().catch(() => {
-  // OPFS is not available in every browser; image operations surface their own
-  // errors when the user attempts them.
+// Recover product records retained in conflict payloads before orphan cleanup
+// inspects their image references.
+void startSync().finally(() => {
+  // Clean files left by an abandoned/failed image form on the next app start.
+  void inventoryService.cleanupImages().catch(() => {
+    // OPFS is not available in every browser; image operations surface their
+    // own errors when the user attempts them.
+  });
 });
 
 declare module "@tanstack/react-router" {
