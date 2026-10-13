@@ -64,6 +64,7 @@ describe("quick-access navigation", () => {
     expect(screen.getByRole("link", { name: /پروفایل/ })).toHaveAttribute("href", "/setting/profile");
     expect(screen.getByRole("link", { name: /امنیت/ })).toHaveAttribute("href", "/setting/security");
     expect(screen.getByRole("link", { name: /اشتراک/ })).toHaveAttribute("href", "/setting/subscription");
+    expect(screen.getByRole("link", { name: /همگام‌سازی/ })).toHaveAttribute("href", "/setting/sync");
   });
 
   it("hides admin entries from standard users and exposes them to administrators", () => {

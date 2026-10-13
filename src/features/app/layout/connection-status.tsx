@@ -1,29 +1,101 @@
-import { syncService } from "@/shared/lib/infrastructure/sync/sync-service";
+import { notifySubscriptionRestriction } from "@/shared/access/subscription-limit";
+import type { SyncStatus } from "@/shared/lib/infrastructure/sync/sync-status";
 import {
   useOnline,
   useSyncStatus,
 } from "@/shared/lib/infrastructure/sync/use-sync-status";
-import { Badge, Tooltip } from "@radix-ui/themes";
+import { CheckIcon, ClockIcon, ExclamationTriangleIcon } from "@radix-ui/react-icons";
+import { Tooltip } from "@radix-ui/themes";
+import { Link } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { notifySubscriptionRestriction } from "@/shared/access/subscription-limit";
 
-type Indicator = {
+export type SyncIndicator = {
+  kind: "idle" | "pending" | "syncing" | "success" | "error";
   label: string;
-  color: "gray" | "green" | "amber" | "red" | "blue";
   tooltip: string;
 };
 
-function syncErrorMessage(error: string | null) {
+export function syncErrorMessage(error: string | null) {
   if (error === "PACK_SIZE_REQUIRED" || error === "PACKAGING_FLAG_INVALID") {
     return "تنظیمات بسته‌بندی یکی از محصولات نامعتبر است";
   }
-  return error ?? "برای تلاش مجدد کلیک کنید";
+  if (error === "SYNC_PAUSED_FOR_RESTORE") {
+    return "همگام‌سازی پس از بازیابی فایل پشتیبان متوقف شده است";
+  }
+  return error ?? "جزئیات خطا ثبت نشده است";
+}
+
+export function getSyncIndicator(status: SyncStatus, online: boolean): SyncIndicator {
+  if (!online) {
+    return {
+      kind: "pending",
+      label: status.pending > 0 ? `${status.pending.toLocaleString("fa-IR")} در انتظار` : "آفلاین",
+      tooltip: status.pending > 0
+        ? `${status.pending.toLocaleString("fa-IR")} تغییر پس از اتصال ارسال می‌شود`
+        : "تغییرات به‌صورت محلی ذخیره می‌شوند",
+    };
+  }
+
+  if (status.state === "syncing") {
+    return {
+      kind: "syncing",
+      label: "در حال همگام‌سازی",
+      tooltip: "در حال ارسال تغییرات محلی و دریافت نسخه سرور",
+    };
+  }
+
+  if (status.error === "SYNC_PAUSED_FOR_RESTORE") {
+    return {
+      kind: "pending",
+      label: "متوقف",
+      tooltip: syncErrorMessage(status.error),
+    };
+  }
+
+  if (status.state === "failed" || status.state === "conflict") {
+    return {
+      kind: "error",
+      label: status.state === "conflict" ? "نیازمند بررسی" : "خطای همگام‌سازی",
+      tooltip: status.state === "conflict"
+        ? "یک یا چند تغییر با نسخه سرور تداخل دارد"
+        : syncErrorMessage(status.error),
+    };
+  }
+
+  if (status.pending > 0) {
+    return {
+      kind: "pending",
+      label: `${status.pending.toLocaleString("fa-IR")} در انتظار`,
+      tooltip: `${status.pending.toLocaleString("fa-IR")} تغییر در صف ارسال است`,
+    };
+  }
+
+  if (status.state === "synced") {
+    return {
+      kind: "success",
+      label: "همگام",
+      tooltip: "همه تغییرات با سرور همگام شده‌اند",
+    };
+  }
+
+  return {
+    kind: "idle",
+    label: "آماده",
+    tooltip: "سامانه همگام‌سازی آماده است",
+  };
+}
+
+export function SyncStateIcon({ kind }: Pick<SyncIndicator, "kind">) {
+  if (kind === "success") return <CheckIcon width="18" height="18" />;
+  if (kind === "error") return <ExclamationTriangleIcon width="18" height="18" />;
+  if (kind === "pending") return <ClockIcon width="18" height="18" />;
+  return <span className="sync-status-ring" aria-hidden="true" />;
 }
 
 const ConnectionStatus = () => {
   const online = useOnline();
-
   const status = useSyncStatus();
+  const indicator = getSyncIndicator(status, online);
 
   useEffect(() => {
     if (status.state === "failed" && status.error) {
@@ -31,76 +103,19 @@ const ConnectionStatus = () => {
     }
   }, [status.error, status.state]);
 
-  const indicator = ((): Indicator => {
-    if (!online) {
-      return {
-        label: "آفلاین",
-        color: "amber",
-        tooltip: status.pending
-          ? `${status.pending} تغییر در انتظار همگام سازی`
-          : "تغییرات به صورت محلی ذخیره می شوند",
-      };
-    }
-
-    if (status.state === "syncing") {
-      return {
-        label: "در حال همگام سازی",
-        color: "blue",
-        tooltip: "ارسال تغییرات محلی به سرور",
-      };
-    }
-
-    if (status.state === "failed") {
-      return {
-        label: "خطای همگام سازی",
-        color: "red",
-        tooltip: syncErrorMessage(status.error),
-      };
-    }
-
-    if (status.state === "conflict") {
-      return {
-        label: "تداخل نیازمند بررسی",
-        color: "red",
-        tooltip:
-          "نسخه سرور نمایش داده شده و تغییر محلی ردشده نگه‌داری شده است؛ برای اعمال دوباره، رکورد را ویرایش و ذخیره کنید.",
-      };
-    }
-
-    if (status.pending > 0) {
-      return {
-        label: "در انتظار همگام سازی",
-        color: "amber",
-        tooltip: `${status.pending} تغییر در انتظار ارسال`,
-      };
-    }
-
-    return {
-      label: status.state === "synced" ? "همگام" : "آنلاین",
-      color: "green",
-      tooltip: "همه تغییرات ذخیره شده اند",
-    };
-  })();
-
-  const retryable =
-    online && status.state !== "conflict" &&
-    (status.state === "failed" || status.pending > 0);
-
   return (
     <Tooltip content={indicator.tooltip}>
-      <Badge
-        color={indicator.color}
-        variant="soft"
-        radius="full"
-        className={retryable ? "cursor-pointer" : undefined}
-        onClick={() => retryable && void syncService.retry()}
+      <Link
+        to="/setting/sync"
+        className="sync-status-badge"
+        data-status={indicator.kind}
+        aria-label={`${indicator.label}؛ مشاهده جزئیات همگام‌سازی`}
       >
-        <span
-          className="inline-block w-1.5 h-1.5 rounded-full bg-current"
-          aria-hidden
-        />
-        {indicator.label}
-      </Badge>
+        <span className="sync-status-icon" aria-hidden="true">
+          <SyncStateIcon kind={indicator.kind} />
+        </span>
+        <span className="sync-status-label">{indicator.label}</span>
+      </Link>
     </Tooltip>
   );
 };

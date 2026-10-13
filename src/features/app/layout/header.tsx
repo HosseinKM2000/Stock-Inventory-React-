@@ -1,4 +1,4 @@
-import { ArrowRightIcon, GearIcon } from "@radix-ui/react-icons";
+import { ArrowRightIcon, PersonIcon } from "@radix-ui/react-icons";
 import { Flex, IconButton, Text } from "@radix-ui/themes";
 import { Link, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
@@ -7,6 +7,8 @@ import { NotificationPanel } from "@/features/notifications/components/notificat
 import { BackupShortcut } from "@/features/backup/components/backup-shortcut";
 import { contextualBackFallback, contextualSection } from "@/shared/lib/navigation/contextual-back";
 import ConnectionStatus from "./connection-status";
+import { useAuth } from "@/shared/auth/use-auth";
+import { isAdmin } from "@/shared/access/authorization";
 
 const CURRENT_PATH_KEY = "tanzim-navigation-current-path";
 
@@ -25,6 +27,7 @@ const Header = () => {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const previousPath = useRef(readPreviousPath(pathname));
   const section = contextualSection(pathname);
+  const { user } = useAuth();
 
   useEffect(() => {
     try {
@@ -55,16 +58,19 @@ const Header = () => {
       className="app-header grid min-h-16 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-b-foreground/10 px-2 sm:px-5"
     >
       <Flex align="center" justify="start" gap="2" className="app-header-left min-w-0">
+        <BackupShortcut />
         {section && (
           <IconButton size="3" color="gray" variant="ghost" aria-label="بازگشت" onClick={goBack}>
             <ArrowRightIcon width="22" height="22" />
           </IconButton>
         )}
-        <IconButton asChild size="3" color="gray" variant="ghost">
-          <Link to="/setting" aria-label="تنظیمات">
-            <GearIcon width="22" height="22" />
-          </Link>
-        </IconButton>
+        {isAdmin(user) && (
+          <IconButton asChild size="3" color="gray" variant="ghost">
+            <Link to="/management" aria-label="مدیریت">
+              <PersonIcon width="22" height="22" />
+            </Link>
+          </IconButton>
+        )}
       </Flex>
 
       <Text size="3" weight="bold" className="app-header-title whitespace-nowrap text-center">
@@ -72,7 +78,6 @@ const Header = () => {
       </Text>
 
       <Flex align="center" justify="end" gap={{ initial: "2", sm: "4" }} className="app-header-right min-w-0">
-        <BackupShortcut />
         <NotificationPanel />
         <div className="app-header-sync-status min-w-0">
           <ConnectionStatus />

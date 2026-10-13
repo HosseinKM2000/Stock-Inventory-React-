@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { Button } from "@/shared/ui/button/button";
 import { ConfirmDialog } from "@/shared/ui/dialog/confirm-dialog";
 import { useCategories } from "@/features/setting/mutations/use-categories";
-import AddButton from "./add-button";
 import FilterPanel from "./filter-panel";
 import { ProductCard } from "./inventory-card";
 import { ProductImageDialog } from "./product-image-dialog";
@@ -295,7 +294,6 @@ const InventoryList = () => {
         </Box>
       </Flex>
 
-      <AddButton />
       {selectionMode && <BulkSelectionActions
         selectedCount={selectedIds.size}
         deleting={bulkDeleteProducts.isPending}

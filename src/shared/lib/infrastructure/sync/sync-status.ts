@@ -15,6 +15,11 @@ export type SyncStatus = {
   error: string | null;
 };
 
+export type SyncEvent = SyncStatus & {
+  id: number;
+  occurredAt: number;
+};
+
 type Listener = () => void;
 
 class SyncStatusStore {
@@ -30,12 +35,35 @@ class SyncStatusStore {
 
   private listeners = new Set<Listener>();
 
+  private events: SyncEvent[] = [];
+
+  private nextEventId = 1;
+
   get(): SyncStatus {
     return this.status;
   }
 
+  getEvents(): readonly SyncEvent[] {
+    return this.events;
+  }
+
   set(patch: Partial<SyncStatus>) {
-    this.status = { ...this.status, ...patch };
+    const next = { ...this.status, ...patch };
+    const changed =
+      next.state !== this.status.state ||
+      next.pending !== this.status.pending ||
+      next.lastSyncedAt !== this.status.lastSyncedAt ||
+      next.error !== this.status.error;
+
+    this.status = next;
+
+    if (changed) {
+      this.events = [
+        { ...next, id: this.nextEventId, occurredAt: Date.now() },
+        ...this.events,
+      ].slice(0, 20);
+      this.nextEventId += 1;
+    }
 
     this.listeners.forEach((listener) => listener());
   }
