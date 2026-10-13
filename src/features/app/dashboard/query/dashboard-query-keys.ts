@@ -5,6 +5,8 @@ export const dashboardKeys = {
 
   stats: () => ["dashboard", "stats"] as const,
 
+  analysis: () => ["dashboard", "analysis"] as const,
+
   products: (filter: DashboardFilter) =>
     ["dashboard", "products", filter] as const,
 };

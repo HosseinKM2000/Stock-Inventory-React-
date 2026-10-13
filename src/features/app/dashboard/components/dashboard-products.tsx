@@ -5,6 +5,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import type { Product } from "@/features/app/inventory/types";
 import { ConfirmDialog } from "@/shared/ui/dialog/confirm-dialog";
+import { Link } from "@tanstack/react-router";
+import { formatProductQuantity } from "../services/dashboard-format";
 
 import { useDashboardProducts } from "../mutations/use-dashboard";
 import { DashboardFilters, type DashboardFilter } from "../types";
@@ -67,24 +69,31 @@ const DashboardProducts = ({ filter }: DashboardProductsProps) => {
 
         if (minimal) {
           return (
-            <Card key={product.id} size="1" className="min-w-0">
-              <Text as="div" weight="medium" className="break-words">{name}</Text>
+            <Link key={product.id} to="/inventory/edit" search={{ id: product.id }} className="block rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2">
+            <Card size="1" className="min-w-0 transition-colors hover:bg-[var(--accent-a2)]">
+              {filter === DashboardFilters.ALL ? (
+                <Flex justify="between" align="center" gap="4">
+                  <Text weight="medium" className="min-w-0 break-words">{name}</Text>
+                  <Text size="2" color="gray" className="shrink-0">{formatProductQuantity(product)}</Text>
+                </Flex>
+              ) : <Text as="div" weight="medium" className="break-words">{name}</Text>}
               {filter === DashboardFilters.TODAY && (
                 <Flex gap="4" mt="1" wrap="wrap">
-                  <Text size="1" color="gray">قیمت: {product.price.toLocaleString("fa-IR")} تومان</Text>
+                  <Text size="1" color="gray">قیمت: {product.price_missing ? "ثبت نشده" : `${product.price.toLocaleString("fa-IR")} تومان`}</Text>
                   <Text size="1" color="gray">تعداد: {product.quantity.toLocaleString("fa-IR")}</Text>
                 </Flex>
               )}
               {filter === DashboardFilters.INVENTORY_VALUE && (
                 <Flex direction="column" gap="1" mt="1">
-                  <Text size="1" color="gray">قیمت واحد: {product.price.toLocaleString("fa-IR")} تومان</Text>
+                  <Text size="1" color="gray">قیمت واحد: {product.price_missing ? "ثبت نشده" : `${product.price.toLocaleString("fa-IR")} تومان`}</Text>
                   <Text size="1" color="gray">تعداد: {product.quantity.toLocaleString("fa-IR")}</Text>
                   <Text size="2" weight="bold" color="green">
-                    ارزش موجودی: {(product.price * product.quantity).toLocaleString("fa-IR")} تومان
+                    ارزش موجودی: {product.price_missing ? "نامشخص" : `${(product.price * product.quantity).toLocaleString("fa-IR")} تومان`}
                   </Text>
                 </Flex>
               )}
             </Card>
+            </Link>
           );
         }
 
