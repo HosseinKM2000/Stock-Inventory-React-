@@ -22,7 +22,7 @@ export function BulkSelectionActions({
     <Flex
       gap="2"
       align="center"
-      className="bulk-selection-actions fixed left-4 z-60 bottom-[calc(5.5rem+env(safe-area-inset-bottom))] lg:bottom-6"
+      className="bulk-selection-actions fixed left-4 z-60"
       aria-label="عملیات گروهی محصولات"
     >
       <Button

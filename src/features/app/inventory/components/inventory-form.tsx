@@ -10,7 +10,7 @@ import { Form } from "@/shared/ui/form/form";
 import { SelectInput } from "@/shared/ui/form/input/select-input";
 import { TextAreaInput } from "@/shared/ui/form/input/text-area";
 import { TextInput } from "@/shared/ui/form/input/text-input";
-import { CubeIcon, GearIcon } from "@radix-ui/react-icons";
+import { CubeIcon, EyeOpenIcon, GearIcon, Pencil2Icon, PlusIcon } from "@radix-ui/react-icons";
 import { Box, Callout, Card, Flex, Grid, Switch, Text } from "@radix-ui/themes";
 import { type ChangeEvent, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -187,20 +187,32 @@ export function ProductForm({
     form.setValue("price", price);
   };
 
+  const modeLabel = mode === "create"
+    ? "افزودن محصول"
+    : mode === "edit"
+      ? "ویرایش محصول"
+      : "مشاهده محصول";
+  const ModeIcon = mode === "create" ? PlusIcon : mode === "edit" ? Pencil2Icon : EyeOpenIcon;
+
   return (
     <Form isSubmitting={submitting} onSubmit={preventEventHandler(form.submit)}>
       <Box
         mt="6"
         mb="9"
-        className="bg-foreground/5 border border-foreground/20 rounded-2xl p-5"
+        data-mode={mode}
+        className="product-form bg-foreground/5 border border-foreground/20 rounded-2xl p-5"
       >
-        <Text size="6" weight="bold">
-          {mode === "create"
-            ? "افزودن محصول"
-            : mode === "edit"
-              ? "ویرایش محصول"
-              : "مشاهده محصول"}
-        </Text>
+        <Flex align="center" gap="3" className="product-form-heading">
+          <Box className="product-form-mode-icon" aria-hidden="true">
+            <ModeIcon width="22" height="22" />
+          </Box>
+          <Box>
+            <Text as="div" size="6" weight="bold">{modeLabel}</Text>
+            <Text as="div" size="2" color="gray">
+              {mode === "create" ? "ثبت یک محصول تازه در موجودی" : mode === "edit" ? "به‌روزرسانی اطلاعات محصول موجود" : "اطلاعات ثبت‌شده محصول"}
+            </Text>
+          </Box>
+        </Flex>
 
         {errorMessage && (
           <Callout.Root color="red" dir="rtl" mt="4">
@@ -219,14 +231,6 @@ export function ProductForm({
         )}
 
         <Grid columns={{ initial: "1", md: "3" }} gap="5" mt="5">
-          <Box className="md:col-span-3">
-            <ProductImageUpload
-              value={imagePreview}
-              onChange={handleImageChange}
-              disabled={readOnly}
-            />
-          </Box>
-
           {initial?.is_catalog_backed && (
             <Card className="md:col-span-3" size="2">
               <Text as="div" weight="bold" mb="3">
@@ -308,56 +312,36 @@ export function ProductForm({
             />
           </FormField>
 
-          <Card size="3" className="md:col-span-3 rounded-3xl border border-violet-1 bg-violet-1/40">
-            <Flex align="center" gap="3" mb="4">
-              <Box className="card-title-icon" aria-hidden="true">
-                <CubeIcon width="20" height="20" />
-              </Box>
-              <Text weight="bold">بسته‌بندی محصول</Text>
-            </Flex>
-            <Grid columns={{ initial: "1", sm: "2" }} gap="4">
-              <FormField id="is_packaged" label="محصول به‌صورت بسته‌ای عرضه می‌شود؟">
-                <Box pt="2">
-                  <SwitchInput
-                    checked={packaging.is_packaged}
-                    disabled={packagingReadOnly}
-                    onCheckedChange={setPackagingEnabled}
-                  />
-                </Box>
+          <Box className="md:col-span-3">
+            <FormField id="note" label="یادداشت">
+              <TextAreaInput
+                size="3"
+                name="note"
+                value={form.values.note ?? ""}
+                onChange={form.handleChange}
+                disabled={readOnly}
+              />
+            </FormField>
+          </Box>
+
+          {initial && (
+            <>
+              <FormField id="created_at" label="تاریخ ایجاد">
+                <TextInput size="3" value={formatJalaliDateTime(form.values.created_at)} disabled />
               </FormField>
+              <FormField id="updated_at" label="آخرین بروزرسانی">
+                <TextInput size="3" value={formatJalaliDateTime(form.values.updated_at)} disabled />
+              </FormField>
+            </>
+          )}
 
-              {packaging.is_packaged && (
-                <FormField
-                  id="pack_size"
-                  label="تعداد در هر بسته"
-                  error={!validPackSize(packaging.pack_size) ? "یک عدد صحیح بزرگ‌تر از صفر وارد کنید" : undefined}
-                >
-                  <TextInput
-                    id="pack_size"
-                    type="number"
-                    min="1"
-                    step="1"
-                    inputMode="numeric"
-                    value={packaging.pack_size ?? ""}
-                    placeholder="برای نمونه: ۱۲"
-                    onChange={setPackSize}
-                    disabled={packagingReadOnly}
-                  />
-                </FormField>
-              )}
-            </Grid>
-
-            {packageBreakdown && (
-              <Grid columns={{ initial: "1", sm: "3" }} gap="3" mt="4">
-                <Text as="div" size="2"><Text color="gray">بسته کامل: </Text>{packageBreakdown.completePackages.toLocaleString("fa-IR")}</Text>
-                <Text as="div" size="2"><Text color="gray">هر بسته: </Text>{packaging.pack_size?.toLocaleString("fa-IR")} عدد</Text>
-                <Text as="div" size="2"><Text color="gray">تعداد کل: </Text>{Number(form.values.quantity).toLocaleString("fa-IR")}</Text>
-                {packageBreakdown.remainingUnits > 0 && (
-                  <Text as="div" size="2" color="amber">واحد باقی‌مانده: {packageBreakdown.remainingUnits.toLocaleString("fa-IR")}</Text>
-                )}
-              </Grid>
-            )}
-          </Card>
+          <Box className="md:col-span-3">
+            <ProductImageUpload
+              value={imagePreview}
+              onChange={handleImageChange}
+              disabled={readOnly}
+            />
+          </Box>
 
           <FormField id="category_id" label="دسته‌بندی">
             <SelectInput
@@ -408,86 +392,69 @@ export function ProductForm({
             </FormField>
           </Box>
 
-          {/* Note */}
+          <Box className="product-form-configurations md:col-span-3">
+            <Text as="div" size="3" weight="bold" mb="3">پیکربندی محصول</Text>
+            <Grid columns={{ initial: "1", lg: "3" }} gap="4" align="stretch">
+              <Card size="3" className="product-form-config-card rounded-3xl">
+                <Flex align="center" gap="3" mb="4">
+                  <Box className="card-title-icon" aria-hidden="true"><CubeIcon width="20" height="20" /></Box>
+                  <Text weight="bold">بسته‌بندی</Text>
+                </Flex>
+                <Flex direction="column" gap="4">
+                  <FormField id="is_packaged" label="محصول به‌صورت بسته‌ای عرضه می‌شود؟">
+                    <Box pt="2">
+                      <SwitchInput checked={packaging.is_packaged} disabled={packagingReadOnly} onCheckedChange={setPackagingEnabled} />
+                    </Box>
+                  </FormField>
+                  {packaging.is_packaged && (
+                    <FormField id="pack_size" label="تعداد در هر بسته" error={!validPackSize(packaging.pack_size) ? "یک عدد صحیح بزرگ‌تر از صفر وارد کنید" : undefined}>
+                      <TextInput id="pack_size" type="number" min="1" step="1" inputMode="numeric" value={packaging.pack_size ?? ""} placeholder="برای نمونه: ۱۲" onChange={setPackSize} disabled={packagingReadOnly} />
+                    </FormField>
+                  )}
+                  {packageBreakdown && (
+                    <Flex direction="column" gap="1">
+                      <Text size="2"><Text color="gray">بسته کامل: </Text>{packageBreakdown.completePackages.toLocaleString("fa-IR")}</Text>
+                      <Text size="2"><Text color="gray">تعداد کل: </Text>{Number(form.values.quantity).toLocaleString("fa-IR")}</Text>
+                      {packageBreakdown.remainingUnits > 0 && <Text size="2" color="amber">واحد باقی‌مانده: {packageBreakdown.remainingUnits.toLocaleString("fa-IR")}</Text>}
+                    </Flex>
+                  )}
+                </Flex>
+              </Card>
 
-          <Box className="md:col-span-3">
-            <FormField id="note" label="یادداشت">
-              <TextAreaInput
-                size="3"
-                name="note"
-                value={form.values.note ?? ""}
-                onChange={form.handleChange}
-                disabled={readOnly}
-              />
-            </FormField>
+              <Card size="3" className="product-form-config-card rounded-3xl">
+                <Flex align="center" gap="3" mb="4">
+                  <Box className="card-title-icon" aria-hidden="true"><EyeOpenIcon width="20" height="20" /></Box>
+                  <Text weight="bold">نمایش محصول</Text>
+                </Flex>
+                <FormField id="is_hidden" label="محصول از فهرست مخفی باشد؟">
+                  <Box pt="2">
+                    <Switch checked={form.values.is_hidden} disabled={readOnly} onCheckedChange={(checked) => form.setValue("is_hidden", checked)} />
+                  </Box>
+                </FormField>
+              </Card>
+
+              <Card size="3" className="product-form-config-card rounded-3xl">
+                <Flex align="center" gap="3" mb="4">
+                  <Box className="card-title-icon" aria-hidden="true"><GearIcon width="20" height="20" /></Box>
+                  <Text weight="bold">هشدار کمبود موجودی</Text>
+                </Flex>
+                <Flex direction="column" gap="4">
+                  <FormField id="low_stock_alert" label="هشدار فعال باشد؟">
+                    <Box pt="2">
+                      <SwitchInput checked={form.values.low_stock_alert} disabled={readOnly} onCheckedChange={(checked) => form.setValue("low_stock_alert", checked)} />
+                    </Box>
+                  </FormField>
+                  <LowStockThresholdField value={form.values.low_stock_threshold} disabled={readOnly} error={form.errors.low_stock_threshold} onValueChange={(value) => form.setValue("low_stock_threshold", Number(value || 0))} />
+                </Flex>
+              </Card>
+            </Grid>
           </Box>
 
-          {/* Inventory Settings */}
-
-          <Card
-            size="3"
-            className="
-          md:col-span-3
-          rounded-3xl
-          border
-          border-violet-1
-          bg-violet-1/40
-        "
-          >
-            <Flex align="center" gap="3" mb="4">
-              <Box className="card-title-icon" aria-hidden="true">
-                <GearIcon width="20" height="20" />
-              </Box>
-              <Text weight="bold">تنظیمات موجودی</Text>
-            </Flex>
-            <Grid columns={{ initial: "1", md: "2" }} gap="5">
-              <LowStockThresholdField
-                value={form.values.low_stock_threshold}
-                disabled={readOnly}
-                error={form.errors.low_stock_threshold}
-                onValueChange={(value) => form.setValue("low_stock_threshold", Number(value || 0))}
-              />
-
-              <FormField id="low_stock_alert" label="فعال بودن هشدار">
-                <Box pt="2">
-                  <SwitchInput
-                    checked={form.values.low_stock_alert}
-                    disabled={readOnly}
-                    onCheckedChange={(checked) =>
-                      form.setValue("low_stock_alert", checked)
-                    }
-                  />
-                </Box>
-              </FormField>
-
-              <FormField id="is_hidden" label="مخفی باشد">
-                <Box pt="2">
-                  <Switch
-                    checked={form.values.is_hidden}
-                    disabled={readOnly}
-                    onCheckedChange={(checked) =>
-                      form.setValue("is_hidden", checked)
-                    }
-                  />
-                </Box>
-              </FormField>
-            </Grid>
-          </Card>
-
-          {/* Dates */}
-
-          <FormField id="created_at" label="تاریخ ایجاد">
-            <TextInput size="3" value={formatJalaliDateTime(form.values.created_at)} disabled />
-          </FormField>
-
-          <FormField id="updated_at" label="آخرین بروزرسانی">
-            <TextInput size="3" value={formatJalaliDateTime(form.values.updated_at)} disabled />
-          </FormField>
         </Grid>
 
         {mode !== "view" && (
-          <Grid mt="6">
-            <Button type="submit" loading={submitting}>
+          <Grid mt="6" className="product-form-actions">
+            <Button type="submit" loading={submitting} className="product-form-primary-action">
               {mode === "create" ? "افزودن" : "ثبت تغییرات"}
             </Button>
 
