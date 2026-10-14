@@ -9,6 +9,8 @@ from sqlalchemy.orm import joinedload
 from ..deps import CurrentUser, DbSession, require_capability
 from ..models import InventoryItem, InventoryTransaction
 from ..schemas import InventoryOut
+from ..services.tool_policy import require_tool
+from ..services.jalali_date import format_jalali_datetime
 
 router = APIRouter(prefix="/export", tags=["export"])
 
@@ -22,6 +24,7 @@ def export_inventory_json(
     db: DbSession,
 ):
     require_capability(db, current_user, "export.server")
+    require_tool(db, current_user, "export")
     items = db.scalars(
         select(InventoryItem).options(joinedload(InventoryItem.catalog_product)).where(
             InventoryItem.user_id == current_user.id,
@@ -41,6 +44,7 @@ def export_inventory_csv(
     db: DbSession,
 ):
     require_capability(db, current_user, "export.server")
+    require_tool(db, current_user, "export")
     items = db.scalars(
         select(InventoryItem).where(
             InventoryItem.user_id == current_user.id,
@@ -95,6 +99,7 @@ def export_transactions_csv(
     db: DbSession,
 ):
     require_capability(db, current_user, "export.server")
+    require_tool(db, current_user, "export")
     transactions = db.scalars(
         select(InventoryTransaction).where(
             InventoryTransaction.user_id == current_user.id
@@ -123,7 +128,7 @@ def export_transactions_csv(
             t.type,
             t.quantity,
             t.note,
-            t.created_at,
+            format_jalali_datetime(t.created_at),
         ])
 
     output.seek(0)

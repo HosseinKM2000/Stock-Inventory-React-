@@ -21,3 +21,23 @@ test("system appearance follows the browser color scheme", async ({ page }) => {
   await expect.poll(() => page.evaluate(() => getComputedStyle(document.body).backgroundColor))
     .toBe("rgb(255, 255, 255)");
 });
+
+test("all display sizes are applied before render in light and dark themes", async ({ page }) => {
+  for (const appearance of ["light", "dark"] as const) {
+    for (const size of ["compact", "normal", "large"] as const) {
+      await page.goto("/auth/login");
+      await page.evaluate(({ appearance, size }) => {
+        localStorage.setItem("inventory-appearance", appearance);
+        localStorage.setItem("inventory-display-size", size);
+      }, { appearance, size });
+      await page.reload();
+      await expect(page.locator("html")).toHaveAttribute("data-appearance", appearance);
+      await expect(page.locator("html")).toHaveAttribute("data-display-size", size);
+      const dimensions = await page.evaluate(() => ({
+        clientWidth: document.documentElement.clientWidth,
+        scrollWidth: document.documentElement.scrollWidth,
+      }));
+      expect(dimensions.scrollWidth, `${appearance}/${size}`).toBeLessThanOrEqual(dimensions.clientWidth);
+    }
+  }
+});

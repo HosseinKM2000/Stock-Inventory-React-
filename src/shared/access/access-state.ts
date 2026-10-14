@@ -3,6 +3,7 @@ import { normalizeUser } from "@/features/auth/normalize-user";
 import { storage } from "@/shared/lib/infrastructure/storage/local-storage";
 import { isAdmin } from "./authorization";
 import { SubscriptionRestrictionError } from "./subscription-limit";
+import type { DomainToolId } from "./tools";
 
 export type Entitlement = {
   user_id: number;
@@ -16,6 +17,7 @@ export type Entitlement = {
   synced_at: string;
   capabilities: Record<string, boolean>;
   limits: Record<string, number | null>;
+  tools?: Record<string, boolean>;
 };
 
 export type LocalEntitlement = Entitlement & {
@@ -183,6 +185,37 @@ export const accessState = {
   },
   canWrite() {
     return this.canUse("inventory.write");
+  },
+  isDomainToolEnabled(tool: DomainToolId) {
+    const user = this.user();
+    if (isAdmin(user)) return user?.is_active !== false;
+    const state = evaluate();
+    if (state.status === "disabled") return false;
+    // Older/offline snapshots contain no domain policy. Treat that as the
+    // migration default (all tools enabled) until an authoritative snapshot arrives.
+    if (!state.entitlement) return user?.is_active === true;
+    return state.entitlement.tools?.[tool] !== false;
+  },
+  canUseTool(tool: DomainToolId) {
+    if (!this.isDomainToolEnabled(tool)) return false;
+    if (tool === "import") return this.canUse("import.xlsx");
+    if (tool === "labels") return this.canUse("labels.write");
+    if (tool === "categories") return this.canUse("categories.write");
+    if (tool === "export") return this.canUse("export.local") || this.canUse("export.server");
+    return this.canUse("inventory.read");
+  },
+  requireTool(tool: DomainToolId) {
+    if (!this.canAccess()) throw new Error("حساب کاربری غیرفعال است");
+    if (!this.isDomainToolEnabled(tool)) {
+      throw new Error("این ابزار برای حوزه کاری شما غیرفعال است");
+    }
+    if (!this.canUseTool(tool)) {
+      const entitlement = this.entitlement();
+      throw new SubscriptionRestrictionError(
+        { code: "capability", plan: entitlement?.label ?? entitlement?.plan ?? "فعلی", capability: `tool.${tool}` },
+        `TOOL_CAPABILITY_REQUIRED:${tool}`,
+      );
+    }
   },
   canAccess() {
     return this.user()?.is_active === true;

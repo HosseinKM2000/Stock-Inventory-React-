@@ -12,7 +12,7 @@ export const categoryService = {
   getAll: () => categoryStorage.getAll(),
 
   async create(input: CategoryInput) {
-    accessState.requireCapability("categories.write");
+    accessState.requireTool("categories");
     const now = new Date().toISOString();
     const category: Category = {
       id: input.id ?? createLocalEntityId(),
@@ -29,7 +29,7 @@ export const categoryService = {
   },
 
   async update(id: number, input: CategoryInput) {
-    accessState.requireCapability("categories.write");
+    accessState.requireTool("categories");
     const current = await categoryStorage.get(id);
     if (!current) throw new Error("Category not found");
     const category = {
@@ -46,7 +46,7 @@ export const categoryService = {
   },
 
   async remove(id: number) {
-    accessState.requireCapability("categories.write");
+    accessState.requireTool("categories");
     for (const product of await inventoryService.getAll({ category_id: id })) {
       await inventoryService.update(product.id, { category_id: null });
     }

@@ -482,6 +482,7 @@ class EntitlementOut(BaseModel):
     synced_at: datetime
     capabilities: dict[str, bool]
     limits: dict[str, int | None]
+    tools: dict[str, bool]
 
 
 class PlanDefinitionOut(BaseModel):
@@ -593,13 +594,28 @@ class IndustryBase(BaseModel):
 
 class IndustryCreate(IndustryBase):
     is_active: bool = True
-    pass
+    tools: dict[str, bool] | None = None
+
+    @field_validator("tools")
+    @classmethod
+    def validate_tools(cls, value):
+        if value is not None and set(value) - {"import", "labels", "categories", "export", "catalog", "recovery"}:
+            raise ValueError("UNKNOWN_TOOL_ID")
+        return value
 
 
 class IndustryUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     is_active: bool | None = None
     description: str | None = Field(default=None, max_length=5000)
+    tools: dict[str, bool] | None = None
+
+    @field_validator("tools")
+    @classmethod
+    def validate_tools(cls, value):
+        if value is not None and set(value) - {"import", "labels", "categories", "export", "catalog", "recovery"}:
+            raise ValueError("UNKNOWN_TOOL_ID")
+        return value
 
     @field_validator("name")
     @classmethod
@@ -615,6 +631,7 @@ class IndustryUpdate(BaseModel):
 class IndustryOut(IndustryBase):
     id: int
     is_active: bool
+    tools: dict[str, bool]
 
     model_config = ConfigDict(from_attributes=True)
 

@@ -16,12 +16,13 @@ import {
 
 import type { Industry } from "../../types";
 
-import { Callout, Dialog, Flex } from "@radix-ui/themes";
+import { Box, Callout, Dialog, Flex, Text } from "@radix-ui/themes";
 import {
   industrySchema,
   type IndustryFormValues,
 } from "../../validators/industry.schema";
 import { adminErrorMessage } from "../admin-error";
+import { DEFAULT_DOMAIN_TOOLS, DOMAIN_TOOLS } from "@/shared/access/tools";
 
 type Props = {
   mode: "create" | "edit";
@@ -33,6 +34,7 @@ const emptyValues: IndustryFormValues = {
   name: "",
   description: "",
   is_active: true,
+  tools: { ...DEFAULT_DOMAIN_TOOLS },
 };
 
 export default function IndustryFormDialog({ mode, industry, trigger }: Props) {
@@ -83,6 +85,7 @@ export default function IndustryFormDialog({ mode, industry, trigger }: Props) {
           name: industry.name,
           description: industry.description ?? "",
           is_active: industry.is_active,
+          tools: { ...DEFAULT_DOMAIN_TOOLS, ...industry.tools },
         });
       } else {
         form.reset();
@@ -138,6 +141,17 @@ export default function IndustryFormDialog({ mode, industry, trigger }: Props) {
               onCheckedChange={(checked) => form.setValue("is_active", checked)}
             />
           </FormField>
+
+          <Box>
+            <Text as="div" weight="bold">ابزارهای حوزه کاری</Text>
+            <Text as="p" size="2" color="gray" mt="1">راهنمای برنامه همیشه در دسترس می‌ماند. قطع ابزار، داده محلی و صف موجود را حذف نمی‌کند.</Text>
+            <Flex direction="column" gap="3" mt="3">
+              {DOMAIN_TOOLS.map((tool) => <Flex key={tool.id} justify="between" align="center" className="rounded-xl border border-[var(--gray-a5)] px-3 py-2">
+                <Text size="2">{tool.label}</Text>
+                <SwitchInput checked={form.values.tools[tool.id] !== false} onCheckedChange={(checked) => form.setValue("tools", { ...form.values.tools, [tool.id]: checked })} />
+              </Flex>)}
+            </Flex>
+          </Box>
         </Flex>
 
         <Flex justify="end" gap="3" mt="6">

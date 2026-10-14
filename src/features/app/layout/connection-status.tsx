@@ -89,7 +89,8 @@ export function SyncStateIcon({ kind }: Pick<SyncIndicator, "kind">) {
   if (kind === "success") return <CheckIcon width="18" height="18" />;
   if (kind === "error") return <ExclamationTriangleIcon width="18" height="18" />;
   if (kind === "pending") return <ClockIcon width="18" height="18" />;
-  return <span className="sync-status-ring" aria-hidden="true" />;
+  if (kind === "syncing") return <span className="sync-status-ring" aria-hidden="true" />;
+  return <span className="sync-status-idle-dot" aria-hidden="true" />;
 }
 
 const ConnectionStatus = () => {
@@ -114,7 +115,6 @@ const ConnectionStatus = () => {
         <span className="sync-status-icon" aria-hidden="true">
           <SyncStateIcon kind={indicator.kind} />
         </span>
-        <span className="sync-status-label">{indicator.label}</span>
       </Link>
     </Tooltip>
   );

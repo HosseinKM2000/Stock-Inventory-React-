@@ -20,7 +20,7 @@ const user: User = {
   created_at: "2026-01-01T00:00:00Z",
 };
 
-function entitlement(expiresAt: string | null): Entitlement {
+function entitlement(expiresAt: string | null, tools?: Record<string, boolean>): Entitlement {
   return {
     user_id: user.id,
     plan: "pro",
@@ -33,6 +33,7 @@ function entitlement(expiresAt: string | null): Entitlement {
     synced_at: "2026-09-02T08:00:00Z",
     capabilities: { "inventory.read": true, "inventory.write": true, "export.local": true },
     limits: { inventory_items: 100 },
+    tools,
   };
 }
 
@@ -84,5 +85,23 @@ describe("offline subscription access", () => {
     expect(accessState.evaluate().status).toBe("disabled");
     expect(accessState.canAccess()).toBe(false);
     expect(accessState.canWrite()).toBe(false);
+  });
+
+  it("gives domain restrictions precedence and keeps the last offline policy", async () => {
+    const { accessState } = await import("@/shared/access/access-state");
+    accessState.saveUser(user);
+    accessState.saveEntitlement(entitlement(null, { export: false, catalog: true }));
+    accessState.useOfflineSnapshot();
+    expect(accessState.canUse("export.local")).toBe(true);
+    expect(accessState.canUseTool("export")).toBe(false);
+    expect(accessState.canUseTool("catalog")).toBe(true);
+  });
+
+  it("preserves tools for legacy snapshots with no domain policy", async () => {
+    const { accessState } = await import("@/shared/access/access-state");
+    accessState.saveUser(user);
+    accessState.saveEntitlement(entitlement(null));
+    accessState.useOfflineSnapshot();
+    expect(accessState.canUseTool("export")).toBe(true);
   });
 });

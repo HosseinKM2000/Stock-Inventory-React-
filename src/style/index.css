@@ -507,17 +507,6 @@ body,
     padding: 3px;
   }
 
-  .sync-status-label {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
 }
 
 .inventory-visibility-row {
@@ -1149,3 +1138,49 @@ body,
   .app-bottom-navigation { transition-duration: 1ms !important; }
   .sync-status-ring { animation-duration: 1ms !important; }
 }
+
+/* Display-size presets use tokens, never transforms or browser zoom. */
+:root {
+  --app-font-scale: 1;
+  --app-space-scale: 1;
+  --app-page-padding: 16px;
+}
+:root[data-display-size="compact"] {
+  --app-font-scale: .92;
+  --app-space-scale: .86;
+  --app-page-padding: 12px;
+}
+:root[data-display-size="large"] {
+  --app-font-scale: 1.12;
+  --app-space-scale: 1.14;
+  --app-page-padding: 20px;
+}
+:root[data-display-size="compact"] .radix-themes { --default-font-size: 15px; }
+:root[data-display-size="large"] .radix-themes { --default-font-size: 18px; }
+.app-responsive-page {
+  padding-inline: var(--app-page-padding) !important;
+  padding-top: var(--app-page-padding) !important;
+}
+:root[data-display-size="large"] .rt-Button,
+:root[data-display-size="large"] .rt-TextFieldRoot,
+:root[data-display-size="large"] .rt-SelectTrigger { min-height: 44px; }
+:root[data-display-size="large"] .app-bottom-navigation-item { min-height: 60px; }
+
+@media (min-width: 768px) {
+  :root { --app-page-padding: 40px; }
+  :root[data-display-size="compact"] { --app-page-padding: 32px; }
+  :root[data-display-size="large"] { --app-page-padding: 48px; }
+}
+
+.help-page-heading { padding: 8px 2px 18px; }
+.help-quick-nav { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px 12px; scrollbar-width: thin; position: sticky; top: 64px; z-index: 10; background: var(--color-background); }
+.help-quick-nav a,
+.help-direct-link { flex: 0 0 auto; border: 1px solid var(--gray-a6); border-radius: 999px; padding: 8px 12px; color: var(--accent-11); background: var(--color-panel-solid); text-decoration: none; }
+.help-section { content-visibility: auto; contain-intrinsic-size: 280px; }
+.help-section ol { display: grid; gap: 10px; margin-top: 18px; padding: 0; list-style: none; }
+.help-section li { display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start; line-height: 1.8; }
+.help-section li > span { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 8px; background: var(--accent-a3); color: var(--accent-11); font-weight: 700; }
+.help-section details { margin-top: 14px; border-top: 1px solid var(--gray-a5); padding-top: 12px; }
+.help-section summary { cursor: pointer; font-weight: 700; }
+.sync-status-badge { width: 36px !important; min-width: 36px !important; height: 36px; padding: 0 !important; border-radius: 999px; }
+.sync-status-idle-dot { width: 10px; height: 10px; border-radius: 999px; background: currentColor; box-shadow: 0 0 0 4px var(--gray-a4); }

@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { getAppearance, setAppearance } from "@/shared/theme/appearance";
+import { getDisplaySize, setDisplaySize } from "@/shared/theme/display-size";
 
 describe("appearance persistence", () => {
   it("defaults invalid or missing values to system", () => {
@@ -15,5 +16,20 @@ describe("appearance persistence", () => {
     expect(getAppearance()).toBe(appearance);
     expect(listener).toHaveBeenCalledOnce();
     window.removeEventListener("appearance-change", listener);
+  });
+});
+
+describe("display size persistence", () => {
+  it("uses normal for missing or invalid values", () => {
+    expect(getDisplaySize()).toBe("normal");
+    localStorage.setItem("inventory-display-size", "zoomed");
+    expect(getDisplaySize()).toBe("normal");
+  });
+
+  it.each(["compact", "normal", "large"] as const)("persists %s without browser zoom", (size) => {
+    setDisplaySize(size);
+    expect(getDisplaySize()).toBe(size);
+    expect(document.documentElement.dataset.displaySize).toBe(size);
+    expect(document.documentElement.style.zoom).toBe("");
   });
 });

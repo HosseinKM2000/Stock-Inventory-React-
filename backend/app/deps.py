@@ -9,6 +9,7 @@ from .security import decode_access_token
 from .services.authorization_service import Permission, is_admin, require_permission
 from .services.subscription_service import entitlement_for_user
 from .services.session_service import validate_session
+from .services.tool_policy import require_tool
 
 DeviceFingerprint = Annotated[str, Header(alias="X-Device-Fingerprint")]
 
@@ -63,6 +64,31 @@ def get_current_category_writer(
     db: Annotated[Session, Depends(get_db)],
 ) -> User:
     require_capability(db, user, "categories.write")
+    require_tool(db, user, "categories")
+    return user
+
+
+def get_current_category_user(
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> User:
+    require_tool(db, user, "categories")
+    return user
+
+
+def get_current_label_user(
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> User:
+    require_tool(db, user, "labels")
+    return user
+
+
+def get_current_catalog_user(
+    user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[Session, Depends(get_db)],
+) -> User:
+    require_tool(db, user, "catalog")
     return user
 
 
@@ -100,6 +126,9 @@ def require_backup_access(db: Session, user: User) -> None:
 CurrentUser = Annotated[User, Depends(get_current_user)]
 CurrentWritableUser = Annotated[User, Depends(get_current_writable_user)]
 CurrentCategoryWriter = Annotated[User, Depends(get_current_category_writer)]
+CurrentCategoryUser = Annotated[User, Depends(get_current_category_user)]
+CurrentLabelUser = Annotated[User, Depends(get_current_label_user)]
+CurrentCatalogUser = Annotated[User, Depends(get_current_catalog_user)]
 CurrentAdmin = Annotated[User, Depends(get_current_admin)]
 CurrentUserManager = Annotated[User, Depends(get_current_user_manager)]
 CurrentPlanManager = Annotated[User, Depends(get_current_plan_manager)]

@@ -19,6 +19,7 @@ from ..models import (
     SyncOperation,
 )
 from ..services.subscription_service import entitlement_for_user
+from ..services.tool_policy import tool_allowed
 from ..services.authorization_service import is_admin
 from ..schemas import (
     InventoryOut,
@@ -349,6 +350,12 @@ async def push_batch(
 
         if operation.entity in {"label", "category"}:
             try:
+                tool_id = "labels" if operation.entity == "label" else "categories"
+                capability = "labels.write" if operation.entity == "label" else "categories.write"
+                if not is_admin(current_user) and not entitlement_for_user(db, current_user)["capabilities"].get(capability, False):
+                    raise ValueError(f"CAPABILITY_REQUIRED:{capability}")
+                if not tool_allowed(db, current_user, tool_id):
+                    raise ValueError(f"DOMAIN_TOOL_DISABLED:{tool_id}")
                 result = (_apply_label if operation.entity == "label" else _apply_category)(
                     db, current_user.id, operation
                 )

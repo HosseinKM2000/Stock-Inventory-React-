@@ -11,18 +11,13 @@ import {
 } from "@radix-ui/react-icons";
 import { Badge, Box, Dialog, Flex, Grid, Separator, Text } from "@radix-ui/themes";
 import type { ReactNode } from "react";
+import { formatJalaliDateTime } from "@/shared/lib/date/jalali";
 
 type Props = { user: AdminUser };
 
-const dateTimeFormatter = new Intl.DateTimeFormat("fa-IR", {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
-
 function formatDateTime(value: string | null) {
   if (!value) return "ثبت نشده";
-  const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "نامعتبر" : dateTimeFormatter.format(date);
+  return formatJalaliDateTime(value);
 }
 
 function DetailItem({ label, value, icon }: { label: string; value: ReactNode; icon: ReactNode }) {

@@ -4,6 +4,7 @@ type Role = "USER" | "ADMIN";
 
 async function seedAuthenticatedUser(page: Page, role: Role) {
   await page.addInitScript(({ seededRole }) => {
+    Object.defineProperty(window.navigator, "onLine", { configurable: true, get: () => false });
     const now = new Date().toISOString();
     const user = {
       id: seededRole === "ADMIN" ? 7102 : 7101,
@@ -41,7 +42,10 @@ async function seedAuthenticatedUser(page: Page, role: Role) {
         "inventory.read": true,
         "inventory.write": true,
         "categories.write": true,
+        "labels.write": true,
+        "import.xlsx": true,
         "export.local": true,
+        "export.server": true,
       },
       limits: { inventory_items: null },
     }));
@@ -141,8 +145,25 @@ test("sync status links expose responsive details", async ({ page }) => {
   await expect(header.locator(".sync-status-badge")).toHaveAttribute("href", "/setting/sync");
   await expect(header.locator("[aria-label='باز کردن جزئیات همگام‌سازی']")).toHaveCount(0);
 
-  const labelPosition = await header.locator(".sync-status-label").evaluate(
-    (element) => getComputedStyle(element).position,
-  );
-  expect(labelPosition).toBe(test.info().project.name === "chromium-mobile" ? "absolute" : "static");
+  await expect(header.locator(".sync-status-label")).toHaveCount(0);
+});
+
+test("domain policy hides a tool and protects its direct route while Help remains available", async ({ page }) => {
+  await seedAuthenticatedUser(page, "USER");
+  await page.addInitScript(() => {
+    const user = JSON.parse(localStorage.getItem("inventory-last-user")!);
+    const key = `inventory-entitlement-v2:${user.id}`;
+    const entitlement = JSON.parse(localStorage.getItem(key)!);
+    entitlement.tools = { import: true, labels: true, categories: true, export: false, catalog: true, recovery: true };
+    localStorage.setItem(key, JSON.stringify(entitlement));
+  });
+
+  await page.goto("/tools");
+  await expect(page.getByRole("link", { name: /راهنمای برنامه/ })).toBeVisible();
+  await expect(page.getByRole("link", { name: /^خروجی/ })).toHaveCount(0);
+
+  await page.goto("/tools/export");
+  await expect(page).toHaveURL(/\/tools\/?$/);
+  await page.goto("/tools/help");
+  await expect(page.getByRole("heading", { name: "راهنمای برنامه" })).toBeVisible();
 });

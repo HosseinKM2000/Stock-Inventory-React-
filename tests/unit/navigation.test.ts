@@ -50,6 +50,7 @@ describe("navigation metadata", () => {
     expect(settingsNavigationItems.map((item) => item.to)).toContain("/setting/subscription");
     expect(settingsNavigationItems.map((item) => item.to)).toContain("/setting/sync");
     expect(toolsNavigationItems.map((item) => item.to)).toEqual([
+      "/tools/help",
       "/tools/import",
       "/tools/labels",
       "/tools/categories",

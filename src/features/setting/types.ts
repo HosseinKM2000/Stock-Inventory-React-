@@ -3,12 +3,14 @@ export type Industry = {
   name: string;
   is_active: boolean;
   description: string;
+  tools: Record<string, boolean>;
 };
 
 export type IndustryInput = {
   name: string;
   description: string;
   is_active: boolean;
+  tools: Record<string, boolean>;
 };
 
 export type Category = {

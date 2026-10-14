@@ -13,6 +13,9 @@ from app.schemas import CatalogProductCreate, InventoryCreate, PasswordUpdate, S
 from app.security import hash_password, verify_password
 from app.services.authorization_service import Permission, RoleId, has_permission, set_role
 from app.services import plan_policy
+from app.services.tool_policy import DEFAULT_TOOL_POLICY, normalize_tool_policy
+from app.demo_fixture import _assert_safe
+from app.services.jalali_date import format_jalali_datetime
 
 
 def test_bcrypt_hashes_and_verifies_without_storing_plaintext() -> None:
@@ -90,3 +93,21 @@ def test_role_changes_keep_legacy_admin_flag_synchronized() -> None:
     assert has_permission(user, Permission.CATALOG_MANAGE)
     set_role(user, RoleId.USER)
     assert user.is_admin is False
+
+
+def test_industry_tool_policy_preserves_existing_availability_and_rejects_unknown_ids() -> None:
+    assert normalize_tool_policy(None) == DEFAULT_TOOL_POLICY
+    assert normalize_tool_policy({"export": False})["export"] is False
+    assert normalize_tool_policy({"export": False})["catalog"] is True
+    with pytest.raises(ValueError, match="UNKNOWN_TOOL_ID"):
+        normalize_tool_policy({"future-tool": True})
+
+
+def test_demo_reset_requires_explicit_confirmation() -> None:
+    with pytest.raises(RuntimeError, match="CONFIRMATION_REQUIRED"):
+        _assert_safe(1, "wrong")
+
+
+def test_server_exports_use_fixed_jalali_datetime_shape() -> None:
+    value = format_jalali_datetime(datetime(2025, 1, 1, 0, 0, tzinfo=timezone.utc))
+    assert value == "۱۴۰۳/۱۰/۱۲ ۰۳:۳۰"

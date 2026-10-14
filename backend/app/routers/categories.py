@@ -3,7 +3,7 @@ import json
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select, func
 
-from ..deps import CurrentCategoryWriter, CurrentUser, DbSession
+from ..deps import CurrentCategoryWriter, CurrentCategoryUser, DbSession
 from ..models import Category, InventoryItem, SyncChange
 from ..schemas import (
     CategoryCreate,
@@ -51,7 +51,7 @@ def _category_exists(
 
 @router.get("", response_model=list[CategoryOut])
 def list_categories(
-    current_user: CurrentUser,
+    current_user: CurrentCategoryUser,
     db: DbSession,
 ) -> list[Category]:
     stmt = (
@@ -177,7 +177,7 @@ def delete_category(
 
 @router.get("/stats", response_model=list[CategoryWithStats])
 def category_stats(
-    current_user: CurrentUser,
+    current_user: CurrentCategoryUser,
     db: DbSession,
 ) -> list[CategoryWithStats]:
     rows = db.execute(

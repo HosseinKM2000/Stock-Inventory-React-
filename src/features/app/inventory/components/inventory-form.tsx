@@ -21,6 +21,7 @@ import { useCategories } from "@/features/setting/mutations/use-categories";
 import { getPackagingBreakdown, validPackSize } from "../domain/packaging";
 import { useLabels } from "@/features/setting/mutations/use-labels";
 import { LowStockThresholdField } from "./low-stock-threshold-field";
+import { formatJalaliDateTime } from "@/shared/lib/date/jalali";
 
 type ProductFormMode = "create" | "edit" | "view";
 
@@ -476,11 +477,11 @@ export function ProductForm({
           {/* Dates */}
 
           <FormField id="created_at" label="تاریخ ایجاد">
-            <TextInput size="3" value={form.values.created_at} disabled />
+            <TextInput size="3" value={formatJalaliDateTime(form.values.created_at)} disabled />
           </FormField>
 
           <FormField id="updated_at" label="آخرین بروزرسانی">
-            <TextInput size="3" value={form.values.updated_at} disabled />
+            <TextInput size="3" value={formatJalaliDateTime(form.values.updated_at)} disabled />
           </FormField>
         </Grid>
 

@@ -2,10 +2,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { product } from "../helpers/product";
 
 const mocks = vi.hoisted(() => ({
-  getAll: vi.fn(), requireCapability: vi.fn(), apiFetch: vi.fn(), isOffline: vi.fn(),
+  getAll: vi.fn(), requireTool: vi.fn(), requireCapability: vi.fn(), apiFetch: vi.fn(), isOffline: vi.fn(),
 }));
 vi.mock("@/features/app/inventory/services/inventory-service", () => ({ inventoryService: { getAll: mocks.getAll } }));
-vi.mock("@/shared/access/access-state", () => ({ accessState: { requireCapability: mocks.requireCapability } }));
+vi.mock("@/shared/access/access-state", () => ({ accessState: { requireTool: mocks.requireTool, requireCapability: mocks.requireCapability } }));
 vi.mock("@/shared/api/client", () => ({ apiFetch: mocks.apiFetch }));
 vi.mock("@/shared/lib/infrastructure/network/network-service", () => ({
   networkService: { isOffline: mocks.isOffline },
@@ -28,7 +28,7 @@ describe("export selection and availability", () => {
   it("exports only the selected local user's products", async () => {
     mocks.getAll.mockResolvedValue([product({ id: 1 }), product({ id: 2 }), product({ id: 3 })]);
     await expect(exportService.exportLocal({ format: "csv", scope: "selected", selectedIds: [2] })).resolves.toBe(1);
-    expect(mocks.requireCapability).toHaveBeenCalledWith("export.local");
+    expect(mocks.requireTool).toHaveBeenCalledWith("export");
     expect(URL.createObjectURL).toHaveBeenCalledWith(expect.any(Blob));
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:export");
   });
