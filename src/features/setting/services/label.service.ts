@@ -31,7 +31,7 @@ export const labelService = {
   getAll: () => labelStorage.getAll(),
 
   async create(input: LabelInput) {
-    accessState.requireWrite();
+    accessState.requireTool("labels");
     const { name, normalized } = await validatedName(input);
     const now = new Date().toISOString();
     const label: Label = {
@@ -46,7 +46,7 @@ export const labelService = {
   },
 
   async update(id: number, input: LabelInput) {
-    accessState.requireWrite();
+    accessState.requireTool("labels");
     const current = await labelStorage.get(id);
     if (!current) throw new Error("برچسب پیدا نشد");
     const { name, normalized } = await validatedName(input, id);
@@ -59,7 +59,7 @@ export const labelService = {
   },
 
   async remove(id: number) {
-    accessState.requireWrite();
+    accessState.requireTool("labels");
     await localMutationStorage.label(async () => {
       for (const product of await db.inventoryItems.toArray()) {
         if (product.local_user_id !== accessState.user()?.id || !product.label_ids?.includes(id)) continue;

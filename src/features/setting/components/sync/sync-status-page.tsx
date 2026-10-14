@@ -11,11 +11,9 @@ import {
 import { CheckIcon, ClockIcon, ReloadIcon } from "@radix-ui/react-icons";
 import { Badge, Box, Callout, Flex, Grid, Text } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
+import { formatJalaliDateTime } from "@/shared/lib/date/jalali";
 
-const dateFormatter = new Intl.DateTimeFormat("fa-IR", {
-  dateStyle: "medium",
-  timeStyle: "medium",
-});
+const dateFormatter = { format: formatJalaliDateTime };
 
 const entityLabels: Record<string, string> = {
   product: "محصول",

@@ -26,9 +26,10 @@ import {
 import { adminErrorMessage } from "../admin-error";
 import { UserDetailsDialog } from "./user-details-dialog";
 import { DevicePolicyEditor } from "./device-policy-editor";
+import { formatJalaliDate } from "@/shared/lib/date/jalali";
 
 const date = (value: string | null) =>
-  value ? new Intl.DateTimeFormat("fa-IR").format(new Date(value)) : "—";
+  value ? formatJalaliDate(value) : "—";
 
 type PendingAction =
   | { kind: "subscription"; user: AdminUser; plan: string; planName: string }

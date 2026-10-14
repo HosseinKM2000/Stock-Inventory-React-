@@ -568,6 +568,10 @@ class Industry(Base):
         default=True,
     )
 
+    # NULL is deliberately interpreted as every existing tool enabled. This
+    # keeps pre-migration industries behaviorally unchanged.
+    tools_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+
     catalog_products: Mapped[list["CatalogProduct"]] = relationship(
         back_populates="industry",
     )

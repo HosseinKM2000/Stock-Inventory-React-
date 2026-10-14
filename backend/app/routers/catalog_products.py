@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Query, status
 
-from ..deps import CurrentCatalogManager, CurrentUser, DbSession
+from ..deps import CurrentCatalogManager, CurrentCatalogUser, DbSession
 
 from ..schemas import (
     CatalogProductCreate,
@@ -24,7 +24,7 @@ router = APIRouter(
     response_model=list[CatalogProductOut],
 )
 def list_catalog_products(
-    _: CurrentUser,
+    current_user: CurrentCatalogUser,
     db: DbSession,
     search: str | None = Query(default=None, max_length=200),
     industry_id: int | None = Query(default=None, gt=0),
@@ -65,7 +65,7 @@ def list_archived_catalog_products(
 )
 def get_catalog(
     catalog_id: int,
-    _: CurrentUser,
+    _: CurrentCatalogUser,
     db: DbSession,
 ):
     return catalog_product_service.get_catalog_product_or_404(db, catalog_id)

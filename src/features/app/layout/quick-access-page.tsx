@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Box, Flex, Text } from "@radix-ui/themes";
 import { ChevronLeftIcon } from "@radix-ui/react-icons";
 import type { ReactNode } from "react";
+import { useEntitlementAccess } from "@/shared/access/use-entitlement";
 
 import {
   visibleNavigationItems,
@@ -17,6 +18,7 @@ type Props = {
 };
 
 export function QuickAccessPage({ title, description, items, footer }: Props) {
+  useEntitlementAccess();
   const { user } = useAuth();
   const visibleItems = visibleNavigationItems(items, user);
 

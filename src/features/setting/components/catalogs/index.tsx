@@ -24,8 +24,8 @@ import CatalogDetailsDialog from "./catalog-details-dialog";
 import CatalogFormDialog from "./catalog-form-dialog";
 import DeleteCatalogDialog from "./delete-catalog-dialog";
 import RestoreCatalogDialog from "./restore-catalog-dialog";
+import { formatJalaliDate } from "@/shared/lib/date/jalali";
 
-const dateFormatter = new Intl.DateTimeFormat("fa-IR", { dateStyle: "medium" });
 
 const Catalogs = () => {
   const [industryId, setIndustryId] = useState<number | undefined>();
@@ -193,7 +193,7 @@ const Catalogs = () => {
                     {product.brand && <Text as="div" mt="2" size="2">برند: {product.brand}</Text>}
                     <Flex align="center" gap="1" mt={{ initial: "3", lg: "2" }}>
                       <CalendarIcon />
-                      <Text size="1" color="gray">{dateFormatter.format(new Date(product.created_at))}</Text>
+                      <Text size="1" color="gray">{formatJalaliDate(product.created_at)}</Text>
                     </Flex>
                   </Box>
 

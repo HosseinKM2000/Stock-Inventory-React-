@@ -28,12 +28,11 @@ import {
   FEATURE_LABELS,
   formatToman,
 } from "../subscription-management/plan-options";
+import { formatJalaliDate } from "@/shared/lib/date/jalali";
 
 const date = (value: string | null | undefined) =>
   value
-    ? new Intl.DateTimeFormat("fa-IR", { dateStyle: "medium" }).format(
-        new Date(value),
-      )
+    ? formatJalaliDate(value)
     : "—";
 
 function InfoCard({

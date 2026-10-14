@@ -11,6 +11,7 @@ import {
   LockClosedIcon,
   MixIcon,
   MixerHorizontalIcon,
+  QuestionMarkCircledIcon,
   PersonIcon,
   ReloadIcon,
   StarIcon,
@@ -18,6 +19,8 @@ import {
   UploadIcon,
 } from "@radix-ui/react-icons";
 import type { ComponentType } from "react";
+import type { DomainToolId } from "@/shared/access/tools";
+import { accessState } from "@/shared/access/access-state";
 
 export type NavigationGroup = "primary" | "settings" | "tools" | "management";
 
@@ -39,6 +42,7 @@ export type NavigationRoute =
   | "/tools/recovery"
   | "/tools/import"
   | "/tools/labels"
+  | "/tools/help"
   | "/management"
   | "/management/subscriptions"
   | "/management/users"
@@ -56,6 +60,7 @@ export type NavigationItem = {
   group: NavigationGroup;
   adminOnly?: boolean;
   requiresOnline?: boolean;
+  toolId?: DomainToolId;
 };
 
 const basePrimaryNavigationItems = [
@@ -76,12 +81,13 @@ export const settingsNavigationItems = [
 ] as const satisfies readonly NavigationItem[];
 
 export const toolsNavigationItems = [
-  { id: "import", label: "ورود از اکسل", description: "بررسی و ورود گروهی محصولات از فایل xlsx، با ذخیره محلی و پشتیبانی آفلاین", to: "/tools/import", icon: UploadIcon, group: "tools" },
-  { id: "labels", label: "برچسب‌ها", description: "ساخت برچسب‌های شخصی و اختصاص چند برچسب به هر محصول", to: "/tools/labels", icon: BookmarkIcon, group: "tools" },
-  { id: "categories", label: "دسته‌ها", description: "مدیریت دسته‌بندی‌های موجودی، با پشتیبانی آفلاین", to: "/tools/categories", icon: LayersIcon, group: "tools" },
-  { id: "export", label: "خروجی", description: "تهیه فایل از داده‌های محلی یا خروجی سرور", to: "/tools/export", icon: DownloadIcon, group: "tools" },
-  { id: "catalog", label: "کاتالوگ", description: "کنترل نمایش محصولات کاتالوگی در موجودی", to: "/tools/catalog", icon: ClipboardIcon, group: "tools" },
-  { id: "recovery", label: "بازیابی", description: "همگام‌سازی تغییرات و تطبیق دوباره با نسخه سرور", to: "/tools/recovery", icon: ReloadIcon, group: "tools", requiresOnline: true },
+  { id: "help", label: "راهنمای برنامه", description: "راهنمای کوتاه و مرحله‌به‌مرحله همه بخش‌های برنامه", to: "/tools/help", icon: QuestionMarkCircledIcon, group: "tools" },
+  { id: "import", toolId: "import", label: "ورود از اکسل", description: "بررسی و ورود گروهی محصولات از فایل xlsx، با ذخیره محلی و پشتیبانی آفلاین", to: "/tools/import", icon: UploadIcon, group: "tools" },
+  { id: "labels", toolId: "labels", label: "برچسب‌ها", description: "ساخت برچسب‌های شخصی و اختصاص چند برچسب به هر محصول", to: "/tools/labels", icon: BookmarkIcon, group: "tools" },
+  { id: "categories", toolId: "categories", label: "دسته‌ها", description: "مدیریت دسته‌بندی‌های موجودی، با پشتیبانی آفلاین", to: "/tools/categories", icon: LayersIcon, group: "tools" },
+  { id: "export", toolId: "export", label: "خروجی", description: "تهیه فایل از داده‌های محلی یا خروجی سرور", to: "/tools/export", icon: DownloadIcon, group: "tools" },
+  { id: "catalog", toolId: "catalog", label: "کاتالوگ", description: "کنترل نمایش محصولات کاتالوگی در موجودی", to: "/tools/catalog", icon: ClipboardIcon, group: "tools" },
+  { id: "recovery", toolId: "recovery", label: "بازیابی", description: "همگام‌سازی تغییرات و تطبیق دوباره با نسخه سرور", to: "/tools/recovery", icon: ReloadIcon, group: "tools", requiresOnline: true },
 ] as const satisfies readonly NavigationItem[];
 
 export const managementNavigationItems = [
@@ -95,7 +101,7 @@ export function visibleNavigationItems(
   items: readonly NavigationItem[],
   user: User | null | undefined,
 ) {
-  return items.filter((item) => !item.adminOnly || isAdmin(user));
+  return items.filter((item) => (!item.adminOnly || isAdmin(user)) && (!item.toolId || accessState.canUseTool(item.toolId)));
 }
 
 export function primaryNavigationItems(user: User | null | undefined) {

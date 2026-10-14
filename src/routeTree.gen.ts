@@ -21,6 +21,7 @@ import { Route as ManagementIndexRouteImport } from './routes/management/index'
 import { Route as ToolsRecoveryRouteImport } from './routes/tools/recovery'
 import { Route as ToolsLabelsRouteImport } from './routes/tools/labels'
 import { Route as ToolsImportRouteImport } from './routes/tools/import'
+import { Route as ToolsHelpRouteImport } from './routes/tools/help'
 import { Route as ToolsExportRouteImport } from './routes/tools/export'
 import { Route as ToolsCategoriesRouteImport } from './routes/tools/categories'
 import { Route as ToolsCatalogRouteImport } from './routes/tools/catalog'
@@ -121,6 +122,11 @@ const ToolsLabelsRoute = ToolsLabelsRouteImport.update({
 const ToolsImportRoute = ToolsImportRouteImport.update({
   id: '/import',
   path: '/import',
+  getParentRoute: () => ToolsRouteRoute,
+} as any)
+const ToolsHelpRoute = ToolsHelpRouteImport.update({
+  id: '/help',
+  path: '/help',
   getParentRoute: () => ToolsRouteRoute,
 } as any)
 const ToolsExportRoute = ToolsExportRouteImport.update({
@@ -378,6 +384,7 @@ export interface FileRoutesByFullPath {
   '/tools/catalog': typeof ToolsCatalogRoute
   '/tools/categories': typeof ToolsCategoriesRoute
   '/tools/export': typeof ToolsExportRoute
+  '/tools/help': typeof ToolsHelpRoute
   '/tools/import': typeof ToolsImportRoute
   '/tools/labels': typeof ToolsLabelsRoute
   '/tools/recovery': typeof ToolsRecoveryRoute
@@ -428,6 +435,7 @@ export interface FileRoutesByTo {
   '/tools/catalog': typeof ToolsCatalogRoute
   '/tools/categories': typeof ToolsCategoriesRoute
   '/tools/export': typeof ToolsExportRoute
+  '/tools/help': typeof ToolsHelpRoute
   '/tools/import': typeof ToolsImportRoute
   '/tools/labels': typeof ToolsLabelsRoute
   '/tools/recovery': typeof ToolsRecoveryRoute
@@ -485,6 +493,7 @@ export interface FileRoutesById {
   '/tools/catalog': typeof ToolsCatalogRoute
   '/tools/categories': typeof ToolsCategoriesRoute
   '/tools/export': typeof ToolsExportRoute
+  '/tools/help': typeof ToolsHelpRoute
   '/tools/import': typeof ToolsImportRoute
   '/tools/labels': typeof ToolsLabelsRoute
   '/tools/recovery': typeof ToolsRecoveryRoute
@@ -542,6 +551,7 @@ export interface FileRouteTypes {
     | '/tools/catalog'
     | '/tools/categories'
     | '/tools/export'
+    | '/tools/help'
     | '/tools/import'
     | '/tools/labels'
     | '/tools/recovery'
@@ -592,6 +602,7 @@ export interface FileRouteTypes {
     | '/tools/catalog'
     | '/tools/categories'
     | '/tools/export'
+    | '/tools/help'
     | '/tools/import'
     | '/tools/labels'
     | '/tools/recovery'
@@ -648,6 +659,7 @@ export interface FileRouteTypes {
     | '/tools/catalog'
     | '/tools/categories'
     | '/tools/export'
+    | '/tools/help'
     | '/tools/import'
     | '/tools/labels'
     | '/tools/recovery'
@@ -767,6 +779,13 @@ declare module '@tanstack/react-router' {
       path: '/import'
       fullPath: '/tools/import'
       preLoaderRoute: typeof ToolsImportRouteImport
+      parentRoute: typeof ToolsRouteRoute
+    }
+    '/tools/help': {
+      id: '/tools/help'
+      path: '/help'
+      fullPath: '/tools/help'
+      preLoaderRoute: typeof ToolsHelpRouteImport
       parentRoute: typeof ToolsRouteRoute
     }
     '/tools/export': {
@@ -1231,6 +1250,7 @@ interface ToolsRouteRouteChildren {
   ToolsCatalogRoute: typeof ToolsCatalogRoute
   ToolsCategoriesRoute: typeof ToolsCategoriesRoute
   ToolsExportRoute: typeof ToolsExportRoute
+  ToolsHelpRoute: typeof ToolsHelpRoute
   ToolsImportRoute: typeof ToolsImportRoute
   ToolsLabelsRoute: typeof ToolsLabelsRoute
   ToolsRecoveryRoute: typeof ToolsRecoveryRoute
@@ -1241,6 +1261,7 @@ const ToolsRouteRouteChildren: ToolsRouteRouteChildren = {
   ToolsCatalogRoute: ToolsCatalogRoute,
   ToolsCategoriesRoute: ToolsCategoriesRoute,
   ToolsExportRoute: ToolsExportRoute,
+  ToolsHelpRoute: ToolsHelpRoute,
   ToolsImportRoute: ToolsImportRoute,
   ToolsLabelsRoute: ToolsLabelsRoute,
   ToolsRecoveryRoute: ToolsRecoveryRoute,

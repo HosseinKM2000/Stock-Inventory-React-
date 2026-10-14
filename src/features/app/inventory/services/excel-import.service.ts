@@ -1,6 +1,7 @@
 import type { Product } from "../types";
 import { createProductInitialValues } from "../form/product-form.initial";
 import { inventoryService } from "./inventory-service";
+import { accessState } from "@/shared/access/access-state";
 
 export const IMPORT_HEADERS = ["نام محصول", "تعداد", "قیمت", "توضیحات", "یادداشت"] as const;
 export const IMPORT_MAX_BYTES = 5 * 1024 * 1024;
@@ -86,6 +87,7 @@ function toProduct(row: ImportRow): Product {
 }
 
 export async function importProductRows(rows: ImportRow[], onProgress?: (done: number) => void) {
+  accessState.requireTool("import");
   let done = 0;
   for (let offset = 0; offset < rows.length; offset += CHUNK_SIZE) {
     const chunk = rows.slice(offset, offset + CHUNK_SIZE).map(toProduct);

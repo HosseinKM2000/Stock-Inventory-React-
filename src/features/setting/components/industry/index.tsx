@@ -95,6 +95,9 @@ const Industries = () => {
                   <Text mt="3" size="2" color="gray" className="line-clamp-3">
                     {industry.description ?? "بدون توضیحات"}
                   </Text>
+                  <Text as="div" mt="3" size="1" color="gray">
+                    ابزارهای فعال: {Object.values(industry.tools ?? {}).filter(Boolean).length.toLocaleString("fa-IR")} از ۶
+                  </Text>
                 </Box>
 
                 <Flex justify="between" align="center">

@@ -20,7 +20,12 @@
         const dark = saved === "dark" ||
           (saved !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
         const appearance = dark ? "dark" : "light";
+        const savedSize = localStorage.getItem("inventory-display-size");
+        const displaySize = ["compact", "normal", "large"].includes(savedSize)
+          ? savedSize
+          : "normal";
         document.documentElement.dataset.appearance = appearance;
+        document.documentElement.dataset.displaySize = displaySize;
         document.documentElement.style.colorScheme = appearance;
         document.querySelector('meta[name="theme-color"]').content = dark ? "#171326" : "#ffffff";
       })();

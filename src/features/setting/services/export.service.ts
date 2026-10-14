@@ -3,6 +3,7 @@ import type { Product } from "@/features/app/inventory/types";
 import { apiFetch } from "@/shared/api/client";
 import { accessState } from "@/shared/access/access-state";
 import { networkService } from "@/shared/lib/infrastructure/network/network-service";
+import { formatJalaliDateTime } from "@/shared/lib/date/jalali";
 
 export type ExportFormat = "xlsx" | "csv" | "pdf";
 
@@ -31,7 +32,7 @@ const COLUMNS: { key: string; label: string; value(product: Product): string }[]
     { key: "price", label: "قیمت", value: (p) => String(p.price) },
     { key: "status", label: "وضعیت", value: (p) => p.status },
     { key: "note", label: "یادداشت", value: (p) => p.note ?? "" },
-    { key: "updated_at", label: "بروزرسانی", value: (p) => p.updated_at },
+    { key: "updated_at", label: "بروزرسانی", value: (p) => formatJalaliDateTime(p.updated_at) },
   ];
 
 function escapeCsv(value: string) {
@@ -193,7 +194,7 @@ export class ServerExportUnavailableError extends Error {
 export const exportService = {
   /** Exports the current offline state, straight from IndexedDB. */
   async exportLocal(options: ExportOptions) {
-    accessState.requireCapability("export.local");
+    accessState.requireTool("export");
     const products = applyScope(await inventoryService.getAll(), options);
 
     const title = "خروجی داده های محلی";
@@ -213,6 +214,7 @@ export const exportService = {
 
   /** Exports the server dataset, which may differ while changes are pending. */
   async exportServer(options: ExportOptions) {
+    accessState.requireTool("export");
     accessState.requireCapability("export.server");
     if (networkService.isOffline()) {
       throw new ServerExportUnavailableError();

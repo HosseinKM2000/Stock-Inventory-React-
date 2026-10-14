@@ -30,15 +30,13 @@ import { backupService } from "../services/backup-service";
 import { chooseBackupFile, isPickerCancellation } from "../services/external-backup-adapter";
 import { backupErrorMessage } from "../services/backup-error";
 import type { BackupPreview } from "../types";
+import { formatJalaliDateTime } from "@/shared/lib/date/jalali";
 
 const UNSUPPORTED = "در این مرورگر، ذخیره خودکار فایل پشتیبان پشتیبانی نمی‌شود.";
 
 function dateTime(value: number | string | null | undefined) {
   if (!value) return "هنوز انجام نشده";
-  return new Intl.DateTimeFormat("fa-IR", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
+  return formatJalaliDateTime(value);
 }
 
 function permissionLabel(permission: string | undefined) {

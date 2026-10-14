@@ -1,9 +1,11 @@
 from fastapi import HTTPException
+import json
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from ..models import CatalogProduct, Industry, User
 from ..schemas import IndustryCreate, IndustryUpdate
+from .tool_policy import industry_tool_policy, normalize_tool_policy
 
 
 def _ensure_name_available(
@@ -24,6 +26,16 @@ def get_industries(db: Session):
     return list(db.scalars(select(Industry).order_by(Industry.id.desc())))
 
 
+def industry_payload(industry: Industry) -> dict:
+    return {
+        "id": industry.id,
+        "name": industry.name,
+        "description": industry.description,
+        "is_active": industry.is_active,
+        "tools": industry_tool_policy(industry),
+    }
+
+
 def create_industry(
     db: Session,
     payload: IndustryCreate,
@@ -33,13 +45,14 @@ def create_industry(
         name=payload.name,
         is_active=payload.is_active,
         description=payload.description,
+        tools_json=json.dumps(normalize_tool_policy(payload.tools)),
     )
 
     db.add(industry)
     db.commit()
     db.refresh(industry)
 
-    return industry
+    return industry_payload(industry)
 
 
 def update_industry(
@@ -48,17 +61,23 @@ def update_industry(
     payload: IndustryUpdate,
 ):
     data = payload.model_dump(exclude_unset=True)
+    tools = data.pop("tools", None)
 
     if payload.name is not None:
         _ensure_name_available(db, payload.name, exclude_id=industry.id)
 
     for key, value in data.items():
         setattr(industry, key, value)
+    if tools is not None:
+        try:
+            industry.tools_json = json.dumps(normalize_tool_policy(tools))
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
 
     db.commit()
     db.refresh(industry)
 
-    return industry
+    return industry_payload(industry)
 
 
 def delete_industry(

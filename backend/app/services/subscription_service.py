@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..models import SubscriptionPlan, User
+from .tool_policy import industry_tool_policy
 from ..plans import PLAN_CATALOG, SUBSCRIPTION_CAPABILITIES, subscription_expired
 
 
@@ -96,6 +97,7 @@ def entitlement_for_user(db: Session, user: User) -> dict[str, Any]:
         "synced_at": now,
         "capabilities": capabilities,
         "limits": parse_json_object(plan.limits_json),
+        "tools": industry_tool_policy(user.industry),
     }
 
 
