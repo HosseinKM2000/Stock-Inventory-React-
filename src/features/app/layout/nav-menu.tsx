@@ -84,7 +84,7 @@ const NavMenu = ({ hidden = false }: Props) => {
             aria-label="افزودن محصول"
           >
             <span className="app-bottom-navigation-add-button" aria-hidden="true">
-              <PlusIcon width="28" height="28" />
+              <PlusIcon width="32" height="32" />
             </span>
           </Link>
         )}

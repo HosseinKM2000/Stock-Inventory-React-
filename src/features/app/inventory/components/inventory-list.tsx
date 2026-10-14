@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Box, Callout, Flex, Select, Spinner, Text } from "@radix-ui/themes";
-import { Cross2Icon, EyeNoneIcon, EyeOpenIcon } from "@radix-ui/react-icons";
+import { Cross2Icon } from "@radix-ui/react-icons";
 import { toast } from "sonner";
 
 import { Button } from "@/shared/ui/button/button";
@@ -160,6 +160,13 @@ const InventoryList = () => {
     });
   };
 
+  const updateCatalogVisibility = (hidden: boolean) => {
+    catalogVisibilityService.setHidden(hidden);
+    setCatalogProductsHidden(hidden);
+    parentRef.current?.scrollTo({ top: 0 });
+    toast.success(hidden ? "محصولات کاتالوگی مخفی شدند." : "محصولات کاتالوگی نمایش داده می‌شوند.");
+  };
+
   const productCard = (product: Product) => (
     <ProductCard
       key={product.id}
@@ -183,36 +190,6 @@ const InventoryList = () => {
           <Text weight="bold">{selectedIds.size.toLocaleString("fa-IR")} انتخاب</Text>
           <Button type="button" size="2" variant="soft" color="gray" aria-label="خروج از حالت انتخاب" onClick={selection.clear}><Cross2Icon /> پاک‌کردن</Button>
         </Flex>}
-        <Button
-          type="button"
-          size="2"
-          variant="soft"
-          color={catalogProductsHidden ? "gray" : "violet"}
-          className="inventory-visibility-button"
-          aria-pressed={catalogProductsHidden}
-          onClick={() => {
-            const next = !catalogProductsHidden;
-            catalogVisibilityService.setHidden(next);
-            setCatalogProductsHidden(next);
-            parentRef.current?.scrollTo({ top: 0 });
-            toast.success(next ? "محصولات کاتالوگی مخفی شدند." : "محصولات کاتالوگی نمایش داده می‌شوند.");
-          }}
-        >
-          {catalogProductsHidden ? <EyeOpenIcon /> : <EyeNoneIcon />}
-          <span>{catalogProductsHidden ? "نمایش کاتالوگ" : "مخفی کردن کاتالوگ"}</span>
-        </Button>
-
-        <Select.Root value={categoryId == null ? "all" : String(categoryId)} onValueChange={(value) => {
-          setCategoryId(value === "all" ? null : Number(value));
-          parentRef.current?.scrollTo({ top: 0 });
-        }}>
-          <Select.Trigger aria-label="فیلتر دسته‌بندی" className="inventory-category-filter min-w-0" />
-          <Select.Content>
-            <Select.Item value="all">همه دسته‌بندی‌ها</Select.Item>
-            {categories.map((category) => <Select.Item key={category.id} value={String(category.id)}>{category.name}</Select.Item>)}
-          </Select.Content>
-        </Select.Root>
-
         <Select.Root
           value={viewMode}
           onValueChange={(value) => {
@@ -232,36 +209,26 @@ const InventoryList = () => {
         </Select.Root>
       </Flex>
 
-      <Box className="lg:hidden! w-full">
+      <div className="inventory-list-workspace flex-1 min-h-0">
+        <aside className="inventory-filter-sidebar min-h-0" aria-label="فیلترهای محصولات">
         <FilterPanel
           search={search}
           setSearch={(value) => { setSearch(value); parentRef.current?.scrollTo({ top: 0 }); }}
           sort={sort}
           setSort={(value) => { setSort(value); parentRef.current?.scrollTo({ top: 0 }); }}
+          categories={categories}
+          categoryId={categoryId}
+          setCategoryId={(value) => { setCategoryId(value); parentRef.current?.scrollTo({ top: 0 }); }}
           labels={labels}
           selectedLabelIds={selectedLabelIds}
           onToggleLabel={toggleLabel}
           onRemoveLabel={removeLabel}
           onClearLabels={clearLabels}
+          catalogProductsHidden={catalogProductsHidden}
+          onCatalogVisibilityChange={updateCatalogVisibility}
         />
-      </Box>
-      <Flex className="flex-1 overflow-hidden gap-5">
-        <Box className="hidden! lg:block! w-80 shrink-0">
-          <div className="sticky top-5">
-            <FilterPanel
-              search={search}
-              setSearch={(value) => { setSearch(value); parentRef.current?.scrollTo({ top: 0 }); }}
-              sort={sort}
-              setSort={(value) => { setSort(value); parentRef.current?.scrollTo({ top: 0 }); }}
-              labels={labels}
-              selectedLabelIds={selectedLabelIds}
-              onToggleLabel={toggleLabel}
-              onRemoveLabel={removeLabel}
-              onClearLabels={clearLabels}
-            />
-          </div>
-        </Box>
-        <Box className="flex-1 min-w-0">
+        </aside>
+        <Box className="inventory-list-results min-h-0 min-w-0">
           {isLoading && <Flex justify="center" align="center" className="h-full"><Spinner /></Flex>}
           {isError && <Callout.Root color="red"><Callout.Text>خطا در دریافت محصولات</Callout.Text></Callout.Root>}
           {!isLoading && !isError && products.length === 0 && <Flex justify="center" align="center" className="h-full"><Text color="gray">محصولی یافت نشد</Text></Flex>}
@@ -292,7 +259,7 @@ const InventoryList = () => {
             </div>
           )}
         </Box>
-      </Flex>
+      </div>
 
       {selectionMode && <BulkSelectionActions
         selectedCount={selectedIds.size}

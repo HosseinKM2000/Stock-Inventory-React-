@@ -1,11 +1,12 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Badge, Card, Flex, IconButton, Text } from "@radix-ui/themes";
-import { CheckIcon, CopyIcon, EyeOpenIcon, Pencil1Icon, TrashIcon } from "@radix-ui/react-icons";
+import { CheckIcon, CopyIcon, Pencil1Icon, TrashIcon } from "@radix-ui/react-icons";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/shared/ui/button/button";
 import productPlaceholder from "@/assets/product-placeholder.svg";
-import { useImage } from "@/shared/lib/infrastructure/media/useImage";
+import { useResolvedImage } from "@/shared/lib/infrastructure/media/useImage";
 import { accessState } from "@/shared/access/access-state";
 import { useEntitlementAccess } from "@/shared/access/use-entitlement";
 import { getPackagingBreakdown, packagingOf } from "../domain/packaging";
@@ -58,7 +59,11 @@ export function ProductCard({
   const packageBreakdown = packaging.isPackaged
     ? getPackagingBreakdown(product.quantity, packaging.packSize)
     : null;
-  const imagePreview = useImage(product.image_url ?? product.catalog_product?.image_url) ?? productPlaceholder;
+  const imagePath = product.image_url ?? product.catalog_product?.image_url ?? null;
+  const resolvedImage = useResolvedImage(imagePath);
+  const [unavailableImagePath, setUnavailableImagePath] = useState<string | null>(null);
+  const imagePreview = resolvedImage.src ?? productPlaceholder;
+  const hasViewableImage = Boolean(imagePath && resolvedImage.src && !resolvedImage.error && unavailableImagePath !== imagePath);
   const name = product.custom_label ?? product.catalog_product?.name ?? "محصول بدون نام";
   const longPress = useLongPress(() => onEnterSelection?.(product), 550);
 
@@ -79,28 +84,42 @@ export function ProductCard({
     }
   };
 
-  const image = (className: string) => (
-    <button
-      type="button"
-      className={`${className} relative block touch-pan-y overflow-hidden bg-[var(--gray-a3)] text-start`}
-      aria-label={`نمایش تصویر ${name}`}
-      title="نمایش تصویر در اندازه بزرگ"
-      onClick={(event) => {
-        event.stopPropagation();
-        if (selectionMode) onToggleSelection?.(product);
-        else onImageOpen?.(product);
-      }}
-      data-product-action={selectionMode ? undefined : "true"}
-    >
+  const image = (className: string) => {
+    const content = (
       <img
         src={imagePreview}
-        alt={name}
+        alt={hasViewableImage ? name : ""}
         draggable={false}
-        onError={(event) => { event.currentTarget.onerror = null; event.currentTarget.src = productPlaceholder; }}
+        onError={(event) => {
+          setUnavailableImagePath(imagePath);
+          event.currentTarget.onerror = null;
+          event.currentTarget.src = productPlaceholder;
+        }}
         className="h-full w-full object-cover"
       />
-    </button>
-  );
+    );
+
+    if (!hasViewableImage) {
+      return <div className={`${className} relative block overflow-hidden bg-[var(--gray-a3)]`} aria-hidden="true">{content}</div>;
+    }
+
+    return (
+      <button
+        type="button"
+        className={`${className} relative block touch-pan-y overflow-hidden bg-[var(--gray-a3)] text-start focus-visible:outline-3 focus-visible:outline-offset-[-3px] focus-visible:outline-[var(--focus-8)]`}
+        aria-label={selectionMode ? `${selected ? "لغو انتخاب" : "انتخاب"} ${name}` : `نمایش تصویر ${name}`}
+        title={selectionMode ? undefined : "نمایش تصویر در اندازه بزرگ"}
+        onClick={(event) => {
+          event.stopPropagation();
+          if (selectionMode) onToggleSelection?.(product);
+          else onImageOpen?.(product);
+        }}
+        data-product-action="true"
+      >
+        {content}
+      </button>
+    );
+  };
 
   if (viewMode !== "comfortable") {
     return (
@@ -177,7 +196,6 @@ export function ProductCard({
             </Badge>
             {showActions && !selectionMode && <Flex gap="2" justify="end" data-product-action className="inventory-card-actions inventory-card-mobile-actions">
               <IconButton type="button" size="2" variant="soft" aria-label={`کپی نام و قیمت ${name}`} onClick={(event) => { event.stopPropagation(); void copy(); }}><CopyIcon /></IconButton>
-              <IconButton type="button" size="2" variant="soft" aria-label={`نمایش تصویر ${name}`} onClick={() => onImageOpen?.(product)}><EyeOpenIcon /></IconButton>
               <Link to="/inventory/edit" search={{ id: product.id }} onClick={() => onEdit?.(product)}>
                 <Button size="2" variant="soft" color="amber" className="inventory-card-edit-button" aria-label={`ویرایش ${name}`}><Pencil1Icon width={20} height={20} /></Button>
               </Link>
@@ -198,7 +216,6 @@ export function ProductCard({
             <Badge color={status.color} className="inventory-card-desktop-status shrink-0">{status.label}</Badge>
             <Flex gap="2" className="inventory-card-actions">
               <IconButton type="button" size="2" variant="soft" aria-label={`کپی نام و قیمت ${name}`} onClick={(event) => { event.stopPropagation(); void copy(); }}><CopyIcon /></IconButton>
-              <IconButton type="button" size="2" variant="soft" aria-label={`نمایش تصویر ${name}`} onClick={() => onImageOpen?.(product)}><EyeOpenIcon /></IconButton>
               <Link to="/inventory/edit" search={{ id: product.id }} onClick={() => onEdit?.(product)}>
                 <Button size="2" variant="soft" color="amber" aria-label={`ویرایش ${name}`}><Pencil1Icon width={20} height={20} /></Button>
               </Link>
