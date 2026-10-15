@@ -56,7 +56,7 @@ def list_categories(
 ) -> list[Category]:
     stmt = (
         select(Category)
-        .where(Category.user_id == current_user.id)
+        .where(Category.user_id == current_user.data_owner_id)
         .order_by(Category.created_at.desc(), Category.id.desc())
     )
 
@@ -76,21 +76,22 @@ def create_category(
     if payload.id is not None:
         existing = db.get(Category, payload.id)
         if existing is not None:
-            if existing.user_id == current_user.id:
+            if existing.user_id == current_user.data_owner_id:
                 return existing
             raise HTTPException(status_code=409, detail="CATEGORY_ID_CONFLICT")
 
-    if _category_exists(db, payload.name, current_user.id):
+    if _category_exists(db, payload.name, current_user.data_owner_id):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="این دسته بندی قبلا ثبت شده است",
         )
 
     category = Category(
+        store_id=current_user.store_id,
         id=payload.id,
         name=payload.name,
         description=payload.description,
-        user_id=current_user.id,
+        user_id=current_user.data_owner_id,
     )
 
     db.add(category)
@@ -110,13 +111,13 @@ def update_category(
     category = _get_owned_category(
         db,
         category_id,
-        current_user.id,
+        current_user.data_owner_id,
     )
 
     if payload.name and _category_exists(
         db,
         payload.name,
-        current_user.id,
+        current_user.data_owner_id,
         exclude_id=category.id,
     ):
         raise HTTPException(
@@ -146,14 +147,14 @@ def delete_category(
     if category is None:
         # DELETE is idempotent for a resource that no longer exists.
         return
-    if category.user_id != current_user.id:
+    if category.user_id != current_user.data_owner_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="دسته بندی یافت نشد",
         )
 
     affected_items = list(db.scalars(select(InventoryItem).where(
-        InventoryItem.user_id == current_user.id,
+        InventoryItem.user_id == current_user.data_owner_id,
         InventoryItem.category_id == category.id,
     )))
     for item in affected_items:
@@ -162,7 +163,9 @@ def delete_category(
     db.flush()
     for item in affected_items:
         db.add(SyncChange(
-            user_id=current_user.id,
+            store_id=current_user.store_id,
+            actor_user_id=current_user.id,
+            user_id=current_user.data_owner_id,
             entity="product",
             entity_id=item.id,
             operation="UPSERT",
@@ -190,7 +193,7 @@ def category_stats(
             ).label("total_quantity"),
         )
         .outerjoin(InventoryItem, InventoryItem.category_id == Category.id)
-        .where(Category.user_id == current_user.id)
+        .where(Category.user_id == current_user.data_owner_id)
         .group_by(Category.id)
         .order_by(Category.created_at.desc(), Category.id.desc())
     ).all()

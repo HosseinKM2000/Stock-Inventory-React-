@@ -45,6 +45,7 @@ EXPECTED_TABLES = {
     "industries", "inventory_items", "inventory_transactions",
     "subscription_plans", "sync_changes", "sync_operations", "user_sessions", "users",
     "labels", "inventory_item_labels",
+    "stores", "store_roles", "store_memberships", "store_activity",
 }
 
 
@@ -94,7 +95,7 @@ def signup(client: TestClient):
 def test_migration_reaches_head_with_all_expected_tables(migrated_empty_database):
     assert EXPECTED_TABLES <= set(inspect(engine).get_table_names())
     with engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261014_0004"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261015_0005"
         columns = {column["name"] for column in inspect(engine).get_columns("industries")}
         assert "tools_json" in columns
 

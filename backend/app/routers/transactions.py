@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
-from ..deps import CurrentUser, CurrentWritableUser, DbSession
+from ..deps import CurrentProductReader, CurrentQuantityWriter, DbSession
 from ..models import InventoryItem, InventoryTransaction
 from ..schemas import TransactionCreate, TransactionOut
 
@@ -32,11 +32,11 @@ def _get_owned_product(
 def create_transaction(
     product_id: int,
     payload: TransactionCreate,
-    current_user: CurrentWritableUser,
+    current_user: CurrentQuantityWriter,
     db: DbSession,
 ) -> InventoryTransaction:
 
-    product = _get_owned_product(db, product_id, current_user.id)
+    product = _get_owned_product(db, product_id, current_user.data_owner_id)
 
     # validation
     if payload.type == "stock_out" and payload.quantity > product.quantity:
@@ -57,8 +57,10 @@ def create_transaction(
 
     # create transaction
     transaction = InventoryTransaction(
+        store_id=current_user.store_id,
+        actor_user_id=current_user.id,
         inventory_item_id=product.id,
-        user_id=current_user.id,
+        user_id=current_user.data_owner_id,
         type=payload.type,
         quantity=payload.quantity,
         before_quantity=before_quantity,
@@ -79,17 +81,17 @@ def create_transaction(
 )
 def product_transactions(
     product_id: int,
-    current_user: CurrentUser,
+    current_user: CurrentProductReader,
     db: DbSession,
 ) -> list[InventoryTransaction]:
 
-    _get_owned_product(db, product_id, current_user.id)
+    _get_owned_product(db, product_id, current_user.data_owner_id)
 
     stmt = (
         select(InventoryTransaction)
         .where(
             InventoryTransaction.inventory_item_id == product_id,
-            InventoryTransaction.user_id == current_user.id,
+            InventoryTransaction.user_id == current_user.data_owner_id,
         )
         .order_by(
             InventoryTransaction.created_at.desc(),
@@ -102,13 +104,13 @@ def product_transactions(
 
 @router.get("", response_model=list[TransactionOut])
 def all_transactions(
-    current_user: CurrentUser,
+    current_user: CurrentProductReader,
     db: DbSession,
 ) -> list[InventoryTransaction]:
 
     stmt = (
         select(InventoryTransaction)
-        .where(InventoryTransaction.user_id == current_user.id)
+        .where(InventoryTransaction.user_id == current_user.data_owner_id)
         .order_by(
             InventoryTransaction.created_at.desc(),
             InventoryTransaction.id.desc(),

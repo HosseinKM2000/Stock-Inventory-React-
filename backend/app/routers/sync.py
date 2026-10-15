@@ -3,12 +3,12 @@ import uuid
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, UploadFile
+from fastapi import APIRouter, File, Form, Header, HTTPException, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload, selectinload
 
 from ..config import settings
-from ..deps import CurrentUser, CurrentWritableUser, DbSession
+from ..deps import CurrentProductReader, DbSession
 from ..models import (
     CatalogProduct,
     Category,
@@ -17,10 +17,14 @@ from ..models import (
     Label,
     SyncChange,
     SyncOperation,
+    User,
 )
 from ..services.subscription_service import entitlement_for_user
 from ..services.tool_policy import tool_allowed
 from ..services.authorization_service import is_admin
+from ..services.activity_service import record_store_activity
+from ..services.store_authorization import StorePermission, effective_permissions
+from ..services.store_service import active_store_context
 from ..schemas import (
     InventoryOut,
     SyncBatchRequest,
@@ -41,6 +45,41 @@ _IMAGE_EXTENSIONS = {
     "image/gif": ".gif",
 }
 _MAX_IMAGE_BYTES = 10 * 1024 * 1024
+_MINIMUM_CLIENT_DATA_SCHEMA = 2
+
+
+def _require_store_aware_client(value: int | None) -> None:
+    if value is None or value < _MINIMUM_CLIENT_DATA_SCHEMA:
+        raise HTTPException(status_code=426, detail="CLIENT_UPDATE_REQUIRED:STORE_WORKSPACE")
+
+
+def _authorize_operation(db: DbSession, user: User, operation: SyncOperationIn) -> None:
+    permissions = effective_permissions(active_store_context(db, user))
+    required: set[str]
+    if operation.entity == "label":
+        required = {StorePermission.LABELS_MANAGE.value}
+    elif operation.entity == "category":
+        required = {StorePermission.CATEGORIES_MANAGE.value}
+    elif operation.entity != "product":
+        raise ValueError("UNKNOWN_SYNC_ENTITY")
+    elif operation.operation == "DELETE":
+        required = {StorePermission.PRODUCTS_DELETE.value}
+    elif operation.operation == "CREATE":
+        required = {StorePermission.PRODUCTS_CREATE.value}
+    else:
+        payload = operation.payload or {}
+        required = set()
+        if "quantity" in payload:
+            required.add(StorePermission.QUANTITY_CHANGE.value)
+        if "price" in payload:
+            required.add(StorePermission.PRICE_CHANGE.value)
+        if set(payload) - {"quantity", "price"}:
+            required.add(StorePermission.PRODUCTS_EDIT.value)
+    missing = required - permissions
+    if missing:
+        raise ValueError(f"PERMISSION_REQUIRED:{sorted(missing)[0]}")
+    if not entitlement_for_user(db, user)["capabilities"].get("inventory.write", False):
+        raise ValueError("CAPABILITY_REQUIRED:inventory.write")
 
 
 def _serialize(item: InventoryItem) -> dict:
@@ -69,7 +108,7 @@ def _packaging_values(
 
 def _catalog_for_operation(
     db: DbSession,
-    user: CurrentUser,
+    user: User,
     operation: SyncOperationIn,
 ) -> CatalogProduct:
     payload = operation.payload or {}
@@ -329,10 +368,12 @@ def _record_change(
 @router.post("/batch", response_model=SyncBatchResponse)
 async def push_batch(
     operations_json: Annotated[str, Form()],
-    current_user: CurrentWritableUser,
+    current_user: CurrentProductReader,
     db: DbSession,
     files: Annotated[list[UploadFile] | None, File()] = None,
+    client_data_schema: Annotated[int | None, Header(alias="X-Client-Data-Schema")] = None,
 ) -> SyncBatchResponse:
+    _require_store_aware_client(client_data_schema)
     request = SyncBatchRequest.model_validate_json(operations_json)
     image_files = {file.filename: file for file in files or [] if file.filename}
     results: list[SyncOperationResult] = []
@@ -340,13 +381,21 @@ async def push_batch(
     for operation in request.operations:
         previous = db.scalar(
             select(SyncOperation).where(
-                SyncOperation.user_id == current_user.id,
+                SyncOperation.user_id == current_user.data_owner_id,
                 SyncOperation.operation_id == operation.operation_id,
             )
         )
         if previous is not None:
             results.append(_result_from_json(previous.result_payload))
             continue
+
+        try:
+            _authorize_operation(db, current_user, operation)
+        except ValueError as error:
+            result = SyncOperationResult(operation_id=operation.operation_id, status="fatal_error", entity_id=operation.entity_id, error=str(error))
+            record_store_activity(db, current_user, action=f"sync.{operation.operation.lower()}", target_entity=operation.entity, target_id=operation.entity_id, operation_id=operation.operation_id, outcome="rejected", client_occurred_at=operation.client_occurred_at)
+            db.add(SyncOperation(store_id=current_user.store_id, actor_user_id=current_user.id, user_id=current_user.data_owner_id, operation_id=operation.operation_id, result_payload=result.model_dump_json()))
+            db.commit(); results.append(result); continue
 
         if operation.entity in {"label", "category"}:
             try:
@@ -357,12 +406,17 @@ async def push_batch(
                 if not tool_allowed(db, current_user, tool_id):
                     raise ValueError(f"DOMAIN_TOOL_DISABLED:{tool_id}")
                 result = (_apply_label if operation.entity == "label" else _apply_category)(
-                    db, current_user.id, operation
+                    db, current_user.data_owner_id, operation
                 )
+                entity_model = Label if operation.entity == "label" else Category
+                entity_record = db.get(entity_model, operation.entity_id)
+                if entity_record is not None:
+                    entity_record.store_id = current_user.store_id
             except ValueError as error:
                 db.rollback()
                 result = SyncOperationResult(operation_id=operation.operation_id, status="fatal_error", entity_id=operation.entity_id, error=str(error))
-            db.add(SyncOperation(user_id=current_user.id, operation_id=operation.operation_id, result_payload=result.model_dump_json()))
+            record_store_activity(db, current_user, action=f"sync.{operation.operation.lower()}", target_entity=operation.entity, target_id=operation.entity_id, operation_id=operation.operation_id, outcome="applied" if result.status == "applied" else "rejected", client_occurred_at=operation.client_occurred_at)
+            db.add(SyncOperation(store_id=current_user.store_id, actor_user_id=current_user.id, user_id=current_user.data_owner_id, operation_id=operation.operation_id, result_payload=result.model_dump_json()))
             db.commit()
             results.append(result)
             continue
@@ -373,7 +427,7 @@ async def push_batch(
                 .options(joinedload(InventoryItem.catalog_product), selectinload(InventoryItem.labels))
                 .where(
                     InventoryItem.id == operation.entity_id,
-                    InventoryItem.user_id == current_user.id,
+                    InventoryItem.user_id == current_user.data_owner_id,
                 )
             )
 
@@ -393,7 +447,7 @@ async def push_batch(
                     if private_catalog is not None:
                         db.delete(private_catalog)
                         db.flush()
-                _record_change(db, current_user.id, operation.entity_id, "DELETE", None)
+                _record_change(db, current_user.data_owner_id, operation.entity_id, "DELETE", None)
                 result = SyncOperationResult(
                     operation_id=operation.operation_id,
                     status="applied",
@@ -420,25 +474,26 @@ async def push_batch(
                         limit = None if is_admin(current_user) else entitlement_for_user(db, current_user)["limits"]["inventory_items"]
                         count = db.scalar(
                             select(func.count(InventoryItem.id)).where(
-                                InventoryItem.user_id == current_user.id
+                                InventoryItem.user_id == current_user.data_owner_id
                             )
                         ) or 0
                         if limit is not None and count >= limit:
                             raise ValueError("INVENTORY_LIMIT_REACHED")
                         catalog = _catalog_for_operation(db, current_user, operation)
                         item = InventoryItem(
+                            store_id=current_user.store_id,
                             id=operation.entity_id,
-                            user_id=current_user.id,
+                            user_id=current_user.data_owner_id,
                             catalog_product_id=catalog.id,
                             catalog_product=catalog,
                             is_catalog_backed=catalog.is_shared,
                         )
                         db.add(item)
                     before_quantity = item.quantity or 0
-                    _apply_fields(db, current_user.id, item, payload)
+                    _apply_fields(db, current_user.data_owner_id, item, payload)
                     _record_quantity_change(
                         db,
-                        current_user.id,
+                        current_user.data_owner_id,
                         item,
                         before_quantity,
                     )
@@ -457,7 +512,7 @@ async def push_batch(
                     db.flush()
                     db.refresh(item)
                     record = _serialize(item)
-                    _record_change(db, current_user.id, item.id, "UPSERT", record)
+                    _record_change(db, current_user.data_owner_id, item.id, "UPSERT", record)
                     result = SyncOperationResult(
                         operation_id=operation.operation_id,
                         status="applied",
@@ -475,28 +530,33 @@ async def push_batch(
 
         db.add(
             SyncOperation(
-                user_id=current_user.id,
+                store_id=current_user.store_id,
+                actor_user_id=current_user.id,
+                user_id=current_user.data_owner_id,
                 operation_id=operation.operation_id,
                 result_payload=result.model_dump_json(),
             )
         )
+        record_store_activity(db, current_user, action=f"sync.{operation.operation.lower()}", target_entity=operation.entity, target_id=operation.entity_id, operation_id=operation.operation_id, outcome="applied" if result.status == "applied" else ("conflict" if result.status == "conflict" else "rejected"), client_occurred_at=operation.client_occurred_at)
         db.commit()
         results.append(result)
 
     cursor = db.scalar(
-        select(func.max(SyncChange.id)).where(SyncChange.user_id == current_user.id)
+        select(func.max(SyncChange.id)).where(SyncChange.user_id == current_user.data_owner_id)
     ) or 0
     return SyncBatchResponse(results=results, cursor=cursor)
 
 
 @router.get("/changes", response_model=SyncChangesResponse)
 def pull_changes(
-    current_user: CurrentUser,
+    current_user: CurrentProductReader,
     db: DbSession,
     cursor: int = 0,
+    client_data_schema: Annotated[int | None, Header(alias="X-Client-Data-Schema")] = None,
 ) -> SyncChangesResponse:
+    _require_store_aware_client(client_data_schema)
     latest = db.scalar(
-        select(func.max(SyncChange.id)).where(SyncChange.user_id == current_user.id)
+        select(func.max(SyncChange.id)).where(SyncChange.user_id == current_user.data_owner_id)
     ) or 0
 
     if cursor == 0:
@@ -504,7 +564,7 @@ def pull_changes(
             db.scalars(
                 select(InventoryItem)
                 .options(joinedload(InventoryItem.catalog_product), selectinload(InventoryItem.labels))
-                .where(InventoryItem.user_id == current_user.id)
+                .where(InventoryItem.user_id == current_user.data_owner_id)
             )
         )
         return SyncChangesResponse(
@@ -524,7 +584,7 @@ def pull_changes(
     changes = list(
         db.scalars(
             select(SyncChange)
-            .where(SyncChange.user_id == current_user.id, SyncChange.id > cursor)
+            .where(SyncChange.user_id == current_user.data_owner_id, SyncChange.id > cursor)
             .order_by(SyncChange.id)
             .limit(500)
         )
