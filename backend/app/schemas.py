@@ -156,8 +156,8 @@ class PersonnelCreated(PersonnelOut):
 class PersonnelCapacityOut(BaseModel):
     enabled: bool
     used: int
-    limit: int
-    available: int
+    limit: int | None
+    available: int | None
 
 
 class ActivityOut(BaseModel):

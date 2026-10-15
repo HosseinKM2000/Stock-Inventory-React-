@@ -74,8 +74,9 @@ def ensure_owner_store(db: Session, user: User) -> StoreContext | None:
         if store is None:
             return None
         return StoreContext(store, membership, _role_permissions(membership.role))
-    if user.is_system_admin:
-        return None
+    # Platform administrators get an isolated owner workspace as a safe
+    # operational sandbox. This lets them exercise every customer workflow
+    # without implicitly reading or mutating another store's data.
     return create_owner_store(db, user)
 
 

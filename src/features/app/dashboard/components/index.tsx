@@ -22,11 +22,13 @@ import { useDashboardStats } from "../mutations/use-dashboard";
 import type { DashboardStats } from "../types";
 import { useQuery } from "@tanstack/react-query";
 import { personnelApi } from "@/features/personnel/api";
+import { isAdmin } from "@/shared/access/authorization";
 
 const DashboardComponent = () => {
   const navigate = useNavigate();
-  const userId = accessState.user()?.id;
-  const isOwner = accessState.user()?.is_store_owner === true;
+  const user = accessState.user();
+  const userId = user?.id;
+  const isOwner = user?.is_store_owner === true || isAdmin(user);
 
   const { data: stats, isLoading, isError } = useDashboardStats();
 

@@ -95,12 +95,27 @@ def test_personnel_capacity_temporary_password_gate_and_attribution(client: Test
     assert any(item["action"] == "personnel.created" for item in activity.json()["items"])
 
 
-def test_platform_administrator_is_not_a_store_owner(client: TestClient):
+def test_platform_administrator_has_unrestricted_store_access(client: TestClient):
     login = client.post("/api/auth/login", json={
         "username": "HosseinKM2000", "password": "Test-only-system-admin-password-123!",
         "device_fingerprint": "platform-admin-personnel-test",
     })
     assert login.status_code == 200
-    response = client.get("/api/store/personnel", headers=headers(login.json(), "platform-admin-personnel-test"))
-    assert response.status_code == 403
-    assert response.json()["detail"] == "STORE_MEMBERSHIP_REQUIRED"
+    auth = login.json()
+    assert auth["user"]["is_store_owner"] is True
+    assert auth["user"]["store_id"] is not None
+
+    admin_headers = headers(auth, "platform-admin-personnel-test")
+    assert client.get("/api/products", headers=admin_headers).status_code == 200
+    assert client.get("/api/store/personnel", headers=admin_headers).status_code == 200
+
+    capacity = client.get("/api/store/personnel/capacity", headers=admin_headers)
+    assert capacity.status_code == 200
+    assert capacity.json()["enabled"] is True
+    assert capacity.json()["limit"] is None
+    assert capacity.json()["available"] is None
+
+    entitlement = client.get("/api/plans/current", headers=admin_headers)
+    assert entitlement.status_code == 200
+    assert all(entitlement.json()["capabilities"].values())
+    assert all(value is None for value in entitlement.json()["limits"].values())

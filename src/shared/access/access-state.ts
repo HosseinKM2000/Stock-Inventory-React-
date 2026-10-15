@@ -197,6 +197,7 @@ export const accessState = {
   hasStorePermission(permission: string) {
     const user = this.user();
     if (!user) return false;
+    if (isAdmin(user)) return user.is_active !== false;
     if (user.is_store_owner === undefined && user.store_permissions === undefined) return true;
     return Boolean(user.is_store_owner || user.store_permissions?.includes(permission));
   },

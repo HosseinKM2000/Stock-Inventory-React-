@@ -1,6 +1,6 @@
 # Store workspaces, personnel, and authorization
 
-TZ-012 changes the commercial ownership boundary from a user account to a store workspace. A `User` is still one independently authenticated identity. A `StoreMembership` connects that identity to one store, and a `StoreRole` supplies permissions for non-owner members. Platform administration (`User.is_system_admin`/`ADMIN`) remains separate and never implies store ownership.
+TZ-012 changes the commercial ownership boundary from a user account to a store workspace. A `User` is still one independently authenticated identity. A `StoreMembership` connects that identity to one store, and a `StoreRole` supplies permissions for non-owner members. Platform administration (`User.is_system_admin`/`ADMIN`) remains separate from customer ownership. Administrators receive a lazily created, isolated owner workspace for supervision and end-to-end testing; this does not grant access to any customer workspace.
 
 ## Migration and compatibility
 
@@ -22,7 +22,7 @@ The IndexedDB v8 migration keeps pending operations and cursors and partitions p
 
 Mutation permissions depend on `products.view`. Import depends on viewing and creating products; export/backup depend on viewing; restore depends on backup. The role API rejects unknown identifiers and expands dependencies before persistence. New roles start empty. Assigned roles cannot be deleted. Personnel/role/subscription/ownership administration and activity history are owner-only.
 
-Effective access is the intersection of: a valid session; active membership; the store subscription; industry/tool policy; owner authority or role permission; and resource membership in the resolved store. Owner authority does not bypass subscription or domain policy. Platform administrators use separate management permissions and do not receive customer-store access.
+Effective customer access is the intersection of: a valid session; active membership; the store subscription; industry/tool policy; owner authority or role permission; and resource membership in the resolved store. Owner authority does not bypass subscription or domain policy. Platform administrators bypass commercial, domain-tool, and store-role restrictions only in their isolated administrator workspace, while customer-store access still requires an explicit future selection/impersonation workflow.
 
 ## Commercial policy
 

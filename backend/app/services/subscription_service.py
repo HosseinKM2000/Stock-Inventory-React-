@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from ..models import Store, StoreMembership, SubscriptionPlan, User
 from .tool_policy import industry_tool_policy
 from ..plans import PLAN_CATALOG, SUBSCRIPTION_CAPABILITIES, subscription_expired
+from .authorization_service import is_admin
 
 
 def seed_default_plans(db: Session) -> None:
@@ -69,6 +70,22 @@ def list_plans(db: Session, active_only: bool = False) -> list[SubscriptionPlan]
 
 
 def entitlement_for_user(db: Session, user: User) -> dict[str, Any]:
+    if is_admin(user):
+        now = datetime.now(timezone.utc)
+        return {
+            "user_id": user.id,
+            "plan": user.plan,
+            "label": "Administrator",
+            "status": "active",
+            "account_status": "active",
+            "started_at": user.subscription_started_at,
+            "expires_at": None,
+            "server_time": now,
+            "synced_at": now,
+            "capabilities": {key: True for key in SUBSCRIPTION_CAPABILITIES},
+            "limits": {key: None for key in ("inventory_items", "devices", "active_personnel")},
+            "tools": industry_tool_policy(None),
+        }
     membership = db.scalar(select(StoreMembership).where(StoreMembership.user_id == user.id).order_by(StoreMembership.is_owner.desc()))
     if membership is not None:
         store = db.get(Store, membership.store_id)

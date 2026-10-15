@@ -17,6 +17,7 @@ from ..schemas import (
 from ..security import hash_password
 from ..services.activity_service import record_store_activity
 from ..services.auth_service import username_taken
+from ..services.authorization_service import is_admin
 from ..services.store_authorization import normalize_permissions
 from ..services.store_service import active_personnel_count, active_store_context, owner_store_context
 from ..services.subscription_service import entitlement_for_store
@@ -63,11 +64,13 @@ def _username(db: Session, requested: str | None, first_name: str, last_name: st
     raise HTTPException(status_code=503, detail="USERNAME_GENERATION_FAILED")
 
 
-def _capacity(db: Session, store: Store) -> PersonnelCapacityOut:
+def _capacity(db: Session, store: Store, user: User) -> PersonnelCapacityOut:
+    used = active_personnel_count(db, store.id)
+    if is_admin(user):
+        return PersonnelCapacityOut(enabled=True, used=used, limit=None, available=None)
     entitlement = entitlement_for_store(db, store)
     enabled = entitlement["capabilities"].get("personnel", False)
     limit = int(entitlement["limits"].get("active_personnel") or 0)
-    used = active_personnel_count(db, store.id)
     return PersonnelCapacityOut(enabled=enabled, used=used, limit=limit, available=max(0, limit - used))
 
 
@@ -114,7 +117,7 @@ def delete_role(role_id: int, current_user: CurrentUser, db: DbSession):
 
 @router.get("/store/personnel/capacity", response_model=PersonnelCapacityOut)
 def personnel_capacity(current_user: CurrentUser, db: DbSession):
-    return _capacity(db, owner_store_context(db, current_user).store)
+    return _capacity(db, owner_store_context(db, current_user).store, current_user)
 
 
 @router.get("/store/personnel", response_model=list[PersonnelOut])
@@ -128,9 +131,9 @@ def list_personnel(current_user: CurrentUser, db: DbSession):
 def create_personnel(payload: PersonnelCreate, current_user: CurrentUser, db: DbSession):
     context = owner_store_context(db, current_user)
     store = db.scalar(select(Store).where(Store.id == context.store.id).with_for_update())
-    capacity = _capacity(db, store)
+    capacity = _capacity(db, store, current_user)
     if not capacity.enabled: raise HTTPException(status_code=403, detail="PERSONNEL_ENTITLEMENT_REQUIRED")
-    if capacity.available <= 0: raise HTTPException(status_code=409, detail="PERSONNEL_CAPACITY_REACHED")
+    if capacity.available is not None and capacity.available <= 0: raise HTTPException(status_code=409, detail="PERSONNEL_CAPACITY_REACHED")
     role = db.scalar(select(StoreRole).where(StoreRole.id == payload.role_id, StoreRole.store_id == store.id))
     if role is None: raise HTTPException(status_code=404, detail="ROLE_NOT_FOUND")
     password = _temporary_password()
@@ -156,7 +159,8 @@ def update_personnel(membership_id: int, payload: PersonnelUpdate, current_user:
     if payload.active is not None:
         if payload.active and membership.status != "active":
             db.execute(select(Store).where(Store.id == context.store.id).with_for_update())
-            if _capacity(db, context.store).available <= 0: raise HTTPException(status_code=409, detail="PERSONNEL_CAPACITY_REACHED")
+            available = _capacity(db, context.store, current_user).available
+            if available is not None and available <= 0: raise HTTPException(status_code=409, detail="PERSONNEL_CAPACITY_REACHED")
         membership.status = "active" if payload.active else "inactive"
     record_store_activity(db, current_user, action="personnel.updated", target_entity="membership", target_id=membership.id, before=before, after={"role_id": membership.role_id, "status": membership.status})
     db.commit()

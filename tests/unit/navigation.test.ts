@@ -62,6 +62,9 @@ describe("navigation metadata", () => {
     expect(managementNavigationItems.map((item) => item.to)).toContain("/management/subscriptions");
     expect(visibleNavigationItems(managementNavigationItems, standardUser)).toEqual([]);
     expect(visibleNavigationItems(managementNavigationItems, { ...standardUser, is_admin: true })).toHaveLength(4);
+    const administrator = { ...standardUser, is_admin: true, role: "ADMIN" as const, is_store_owner: false };
+    expect(visibleNavigationItems(settingsNavigationItems, administrator).map((item) => item.to)).toContain("/setting/personnel");
+    expect(visibleNavigationItems(toolsNavigationItems, administrator).map((item) => item.to)).toContain("/tools/activity");
   });
 });
 

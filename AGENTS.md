@@ -1,7 +1,7 @@
 # Mandatory Tanzim invariants
 
 - Customer business data belongs to a store; a user is an actor, not the ownership boundary.
-- Never infer store-owner authority from platform-administrator status, or platform authority from store ownership.
+- Platform administrators bypass commercial and store-role restrictions inside their isolated administrator workspace; this never grants implicit access to another customer's store. Store ownership never implies platform authority.
 - Resolve store context from the authenticated active membership. Never trust client `store_id`, actor, role, or permission claims.
 - Unknown permissions deny by default. Keep permission dependencies and subscription capacity in centralized configuration.
 - Personnel and role administration is online-only and owner-only. Never place identity/authorization changes in the operational outbox.

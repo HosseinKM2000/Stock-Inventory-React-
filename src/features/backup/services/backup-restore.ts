@@ -1,4 +1,5 @@
 import type { User } from "@/features/auth/types";
+import { isAdmin } from "@/shared/access/authorization";
 import { accessState } from "@/shared/access/access-state";
 import { queryClient } from "@/shared/api/query-client";
 import { imageRepository } from "@/shared/lib/infrastructure/media/image.repository";
@@ -76,7 +77,7 @@ export const backupRestoreService = {
   },
 
   async apply(preview: BackupPreview, user: User) {
-    if (user.is_store_owner === false) throw new Error("BACKUP_STORE_OWNER_REQUIRED");
+    if (!isAdmin(user) && user.is_store_owner === false) throw new Error("BACKUP_STORE_OWNER_REQUIRED");
     if (preview.envelope.owner.userId !== user.id) throw new Error("BACKUP_OWNER_MISMATCH");
     const restored = await withBackupRestore(user.id, async () => {
       syncService.pause("backup-restore-review", user.id);

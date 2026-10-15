@@ -1,4 +1,5 @@
 import type { User } from "@/features/auth/types";
+import { isAdmin } from "@/shared/access/authorization";
 import { isLocalImage } from "@/shared/lib/infrastructure/media/image.service";
 import { imageRepository } from "@/shared/lib/infrastructure/media/image.repository";
 import { db } from "@/shared/lib/infrastructure/storage/db";
@@ -112,7 +113,7 @@ export async function currentBackupRevision(userId: number) {
 }
 
 export async function createBackupSnapshot(user: User) {
-  if (user.is_store_owner === false) throw new Error("BACKUP_STORE_OWNER_REQUIRED");
+  if (!isAdmin(user) && user.is_store_owner === false) throw new Error("BACKUP_STORE_OWNER_REQUIRED");
   const data = await captureBackupData(user.id, true, user.store_id ?? user.id);
   return buildBackupEnvelope({
     owner: { userId: user.id, username: user.username, storeId: user.store_id ?? user.id },

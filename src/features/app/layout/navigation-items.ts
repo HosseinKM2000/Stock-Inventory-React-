@@ -47,5 +47,5 @@ export const managementNavigationItems = [
   { id: "industry-management", label: "مدیریت حوزه‌ها", description: "ایجاد و نگهداری حوزه‌های کاری", to: "/management/industries", icon: GearIcon, group: "management", adminOnly: true, requiresOnline: true },
 ] as const satisfies readonly NavigationItem[];
 
-export function visibleNavigationItems(items: readonly NavigationItem[], user: User | null | undefined) { return items.filter((item) => (!item.adminOnly || isAdmin(user)) && (!item.ownerOnly || user?.is_store_owner !== false) && (!item.storePermission || accessState.hasStorePermission(item.storePermission)) && (!item.toolId || accessState.canUseTool(item.toolId))); }
+export function visibleNavigationItems(items: readonly NavigationItem[], user: User | null | undefined) { const administrator = isAdmin(user); return items.filter((item) => (!item.adminOnly || administrator) && (!item.ownerOnly || administrator || user?.is_store_owner !== false) && (!item.storePermission || accessState.hasStorePermission(item.storePermission)) && (!item.toolId || accessState.canUseTool(item.toolId))); }
 export function primaryNavigationItems(user: User | null | undefined) { void user; return [...basePrimaryNavigationItems]; }

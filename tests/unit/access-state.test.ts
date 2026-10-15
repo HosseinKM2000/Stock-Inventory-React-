@@ -116,4 +116,20 @@ describe("offline subscription access", () => {
     accessState.useOfflineSnapshot();
     expect(accessState.canUseTool("export")).toBe(true);
   });
+
+  it("grants a system administrator every store permission", async () => {
+    const { accessState } = await import("@/shared/access/access-state");
+    accessState.saveUser({
+      ...user,
+      is_admin: true,
+      role: "ADMIN",
+      is_system_admin: true,
+      is_store_owner: false,
+      store_permissions: [],
+    });
+
+    expect(accessState.hasStorePermission("products.view")).toBe(true);
+    expect(accessState.hasStorePermission("products.delete")).toBe(true);
+    expect(accessState.hasStorePermission("tools.backup")).toBe(true);
+  });
 });

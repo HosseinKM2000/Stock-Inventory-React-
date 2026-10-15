@@ -95,7 +95,7 @@ and multi-system E2E journeys remain explicitly listed release risks.**
 
 | Check | Result | Evidence / note |
 | --- | --- | --- |
-| Frontend unit + component | PASS | 51 files, 202 tests |
+| Frontend unit + component | PASS | 51 files, 203 tests |
 | Frontend test typecheck | PASS | `tsc --noEmit -p tsconfig.test.json` |
 | Frontend lint | PASS | `eslint .` |
 | Backend fast/domain/API | PASS | 37 tests, including store personnel and sync authorization |
@@ -107,5 +107,5 @@ and multi-system E2E journeys remain explicitly listed release risks.**
 
 TZ-012 adds focused coverage for permission normalization and unknown-permission
 denial, personnel capacity/overrides, temporary-credential gating, activity
-attribution, platform-admin separation, the 24-hour offline authorization lease,
+attribution, the platform-admin isolated-workspace bypass, the 24-hour offline authorization lease,
 store/actor IndexedDB isolation, backup schema v2, and owner-only navigation.
