@@ -5,9 +5,11 @@ import { type PropsWithChildren, useEffect, useRef } from "react";
 import { useEntitlementAccess } from "./use-entitlement";
 import { isAdmin } from "./authorization";
 import { toast } from "sonner";
+import { Link, useRouterState } from "@tanstack/react-router";
 
 export function AccessBoundary({ children }: PropsWithChildren) {
   const { user, logout } = useAuth();
+  const pathname = useRouterState({ select: (state) => state.location.pathname });
   const entitlement = useEntitlementAccess();
   const expirationNotified = useRef(false);
   const expired = Boolean(user) && !isAdmin(user) && entitlement.status === "expired";
@@ -33,6 +35,10 @@ export function AccessBoundary({ children }: PropsWithChildren) {
         </Card>
       </Flex>
     );
+  }
+
+  if (user?.temporary_password_required && pathname !== "/setting/security") {
+    return <Flex minHeight="100vh" align="center" justify="center" p="4" dir="rtl"><Card size="4" className="max-w-lg text-center"><Text as="div" size="6" weight="bold">تغییر رمز عبور لازم است</Text><Text as="div" color="gray" mt="3">برای شروع کار، رمز موقت را با یک رمز شخصی و امن جایگزین کنید.</Text><Button asChild mt="5"><Link to="/setting/security">رفتن به امنیت حساب</Link></Button></Card></Flex>;
   }
 
   return (

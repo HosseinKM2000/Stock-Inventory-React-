@@ -14,7 +14,7 @@ class AppDatabase extends Dexie {
 
   inventoryItems!: EntityTable<
     LocalInventoryItem,
-    "id"
+    "local_key"
   >;
 
   syncQueue!: EntityTable<
@@ -24,8 +24,8 @@ class AppDatabase extends Dexie {
 
   syncMetadata!: EntityTable<SyncMetadataItem, "key">;
 
-  categories!: EntityTable<Category, "id">;
-  labels!: EntityTable<Label, "id">;
+  categories!: EntityTable<Category, "local_key">;
+  labels!: EntityTable<Label, "local_key">;
 
   backupSettings!: EntityTable<BackupSettings, "userId">;
 
@@ -167,6 +167,40 @@ class AppDatabase extends Dexie {
       labels: "id, local_user_id, normalized_name, updated_at",
       backupSettings: "userId, mode, nextAttemptAt",
     });
+
+    this.version(8).stores({
+      inventoryItems: "local_key, id, [local_user_id+local_store_id], catalog_product_id, category_id, updated_at",
+      syncQueue: "id, ownerUserId, storeId, operationId, entity, entityId, status, nextAttemptAt, createdAt, updatedAt",
+      syncMetadata: "key, updatedAt",
+      categories: "local_key, id, [local_user_id+local_store_id], name, updated_at",
+      labels: "local_key, id, [local_user_id+local_store_id], normalized_name, updated_at",
+      backupSettings: "userId, mode, nextAttemptAt",
+    }).upgrade(async (transaction) => {
+      let cached: { id?: number; store_id?: number } | null = null;
+      try { cached = JSON.parse(localStorage.getItem("inventory-last-user") ?? "null"); } catch { cached = null; }
+      for (const tableName of ["inventoryItems", "categories", "labels"]) {
+        await transaction.table(tableName).toCollection().modify((item) => {
+          const actor = item.local_user_id ?? cached?.id;
+          const store = item.local_store_id ?? (actor === cached?.id ? cached?.store_id : undefined);
+          item.local_user_id = actor;
+          item.local_store_id = store;
+          item.local_key = `${actor ?? "legacy"}:${store ?? "legacy"}:${item.id}`;
+        });
+      }
+      await transaction.table<SyncQueueItem>("syncQueue").toCollection().modify((item) => {
+        if (item.ownerUserId === cached?.id) item.storeId ??= cached?.store_id;
+      });
+    });
+
+    const ensureLocalKey = (_primaryKey: unknown, item: { id: number; local_user_id?: number; local_store_id?: number; local_key?: string }) => {
+      const actor = item.local_user_id;
+      const store = item.local_store_id ?? actor;
+      item.local_store_id ??= store;
+      item.local_key ??= `${actor ?? "legacy"}:${store ?? "legacy"}:${item.id}`;
+    };
+    this.inventoryItems.hook("creating", ensureLocalKey);
+    this.categories.hook("creating", ensureLocalKey);
+    this.labels.hook("creating", ensureLocalKey);
   }
 }
 

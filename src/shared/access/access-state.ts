@@ -46,6 +46,7 @@ const LEGACY_ENTITLEMENT_KEY = "inventory-entitlement";
 const ENTITLEMENT_PREFIX = "inventory-entitlement-v2:";
 const EXPIRING_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
 const EXPIRED_CAPABILITIES = new Set(["inventory.read"]);
+export const PERSONNEL_AUTHORIZATION_VALIDITY_MS = 24 * 60 * 60 * 1000;
 const listeners = new Set<() => void>();
 
 let revision = 0;
@@ -131,6 +132,12 @@ function evaluate(): EntitlementEvaluation {
   }
 
   const now = trustedNow(entitlement);
+  if (!user?.is_store_owner && user?.membership_authorization_checked_at) {
+    const checkedAt = new Date(user.membership_authorization_checked_at).getTime();
+    if (!Number.isFinite(checkedAt) || now - checkedAt > PERSONNEL_AUTHORIZATION_VALIDITY_MS) {
+      return { entitlement, status: "requires_online_verification", remainingMs: null, requiresOnlineVerification: true };
+    }
+  }
   const expiresAt = entitlement.expires_at ? new Date(entitlement.expires_at).getTime() : null;
   const remainingMs = expiresAt == null || !Number.isFinite(expiresAt)
     ? null
@@ -176,6 +183,7 @@ export const accessState = {
     const state = evaluate();
     if (!state.entitlement || state.status === "disabled" || state.status === "missing") return false;
     if (state.status === "requires_online_verification") {
+      if (!user?.is_store_owner) return false;
       return capability === "inventory.read" && state.entitlement.capabilities[capability] === true;
     }
     if (state.status === "expired") {
@@ -185,6 +193,15 @@ export const accessState = {
   },
   canWrite() {
     return this.canUse("inventory.write");
+  },
+  hasStorePermission(permission: string) {
+    const user = this.user();
+    if (!user) return false;
+    if (user.is_store_owner === undefined && user.store_permissions === undefined) return true;
+    return Boolean(user.is_store_owner || user.store_permissions?.includes(permission));
+  },
+  requireStorePermission(permission: string) {
+    if (!this.hasStorePermission(permission)) throw new Error(`PERMISSION_REQUIRED:${permission}`);
   },
   isDomainToolEnabled(tool: DomainToolId) {
     const user = this.user();

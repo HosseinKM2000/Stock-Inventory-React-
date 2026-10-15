@@ -22,8 +22,8 @@ function fromBase64(value: string, mimeType: string) {
   return new Blob([bytes], { type: mimeType });
 }
 
-export async function previewBackupFile(file: File, userId: number): Promise<BackupPreview> {
-  const envelope = await parseBackupEnvelope(await file.text(), userId);
+export async function previewBackupFile(file: File, userId: number, storeId = userId): Promise<BackupPreview> {
+  const envelope = await parseBackupEnvelope(await file.text(), userId, storeId);
   return { envelope, sourceName: file.name };
 }
 
@@ -47,6 +47,11 @@ function restoredQueue(items: SyncQueueItem[], userId: number): SyncQueueItem[] 
   }));
 }
 
+function restoreScope(user: User) {
+  const storeId = user.store_id ?? user.id;
+  return { storeId, key: (id: number) => `${user.id}:${storeId}:${id}` };
+}
+
 function restorePreferences(envelope: BackupEnvelope, userId: number) {
   const allowed = new Set([
     "inventory-appearance",
@@ -67,10 +72,11 @@ export const backupRestoreService = {
   async previewConnected(user: User) {
     const settings = await backupRepository.get(user.id);
     if (!settings) throw new Error("BACKUP_SETTINGS_NOT_FOUND");
-    return previewBackupFile(await readConnectedBackup(settings), user.id);
+    return previewBackupFile(await readConnectedBackup(settings), user.id, user.store_id ?? user.id);
   },
 
   async apply(preview: BackupPreview, user: User) {
+    if (user.is_store_owner === false) throw new Error("BACKUP_STORE_OWNER_REQUIRED");
     if (preview.envelope.owner.userId !== user.id) throw new Error("BACKUP_OWNER_MISMATCH");
     const restored = await withBackupRestore(user.id, async () => {
       syncService.pause("backup-restore-review", user.id);
@@ -81,14 +87,15 @@ export const backupRestoreService = {
         }
 
         const data = preview.envelope.data;
+        const scope = restoreScope(user);
         await db.transaction(
           "rw",
           [db.inventoryItems, db.categories, db.labels, db.syncQueue, db.syncMetadata],
           async () => {
             const [productIds, categoryIds, labelIds, queueIds] = await Promise.all([
-              db.inventoryItems.where("local_user_id").equals(user.id).primaryKeys(),
-              db.categories.where("local_user_id").equals(user.id).primaryKeys(),
-              db.labels.where("local_user_id").equals(user.id).primaryKeys(),
+              db.inventoryItems.where("[local_user_id+local_store_id]").equals([user.id, scope.storeId]).primaryKeys(),
+              db.categories.where("[local_user_id+local_store_id]").equals([user.id, scope.storeId]).primaryKeys(),
+              db.labels.where("[local_user_id+local_store_id]").equals([user.id, scope.storeId]).primaryKeys(),
               db.syncQueue.where("ownerUserId").equals(user.id).primaryKeys(),
             ]);
             await Promise.all([
@@ -97,12 +104,12 @@ export const backupRestoreService = {
               db.labels.bulkDelete(labelIds),
               db.syncQueue.bulkDelete(queueIds),
             ]);
-            await db.inventoryItems.bulkPut(data.products.map((item) => ({ ...item, local_user_id: user.id })));
-            await db.categories.bulkPut(data.categories.map((item) => ({ ...item, local_user_id: user.id })));
-            await db.labels.bulkPut(data.labels.map((item) => ({ ...item, local_user_id: user.id })));
-            await db.syncQueue.bulkPut(restoredQueue(data.pendingOperations, user.id));
+            await db.inventoryItems.bulkPut(data.products.map((item) => ({ ...item, local_user_id: user.id, local_store_id: scope.storeId, local_key: scope.key(item.id) })));
+            await db.categories.bulkPut(data.categories.map((item) => ({ ...item, local_user_id: user.id, local_store_id: scope.storeId, local_key: scope.key(item.id) })));
+            await db.labels.bulkPut(data.labels.map((item) => ({ ...item, local_user_id: user.id, local_store_id: scope.storeId, local_key: scope.key(item.id) })));
+            await db.syncQueue.bulkPut(restoredQueue(data.pendingOperations, user.id).map((item) => ({ ...item, storeId: scope.storeId })));
             await db.syncMetadata.put({
-              key: `${user.id}:restore-reconciliation-required`,
+              key: `${user.id}:${scope.storeId}:restore-reconciliation-required`,
               value: preview.envelope.createdAt,
               updatedAt: Date.now(),
             });

@@ -57,7 +57,7 @@ async function performSave(
     try {
       const snapshot = await createBackupSnapshot(user);
       const blob = serializeBackupEnvelope(snapshot);
-      await parseBackupEnvelope(await blob.text(), user.id);
+      await parseBackupEnvelope(await blob.text(), user.id, user.store_id ?? user.id);
       if (settings.mode === "manual") await deliverManualBackup(blob);
       else await writeConnectedBackup(settings, blob);
       await backupRepository.update(user.id, {

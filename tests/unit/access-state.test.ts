@@ -67,6 +67,18 @@ describe("offline subscription access", () => {
     expect(accessState.entitlement()?.plan).toBe("pro");
   });
 
+  it("pauses personnel access after the 24-hour authorization lease", async () => {
+    const { accessState, PERSONNEL_AUTHORIZATION_VALIDITY_MS } = await import("@/shared/access/access-state");
+    accessState.saveUser({ ...user, store_id: 9, is_store_owner: false, store_permissions: ["products.view"], membership_authorization_checked_at: "2026-09-02T08:00:00Z" });
+    accessState.saveEntitlement(entitlement(null));
+    accessState.useOfflineSnapshot();
+    expect(accessState.canUse("inventory.read")).toBe(true);
+
+    vi.setSystemTime(new Date(Date.parse("2026-09-02T08:00:00Z") + PERSONNEL_AUTHORIZATION_VALIDITY_MS + 1));
+    expect(accessState.evaluate().status).toBe("requires_online_verification");
+    expect(accessState.canUse("inventory.read")).toBe(false);
+  });
+
   it("never grants regular capabilities from another user's cached snapshot", async () => {
     const { accessState } = await import("@/shared/access/access-state");
     accessState.saveUser(user);

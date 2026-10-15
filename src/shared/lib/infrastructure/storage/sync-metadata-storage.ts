@@ -2,8 +2,8 @@ import { db } from "./db";
 import { accessState } from "@/shared/access/access-state";
 
 function scopedKey(key: string) {
-  const owner = accessState.user()?.id;
-  return owner ? `${owner}:${key}` : `anonymous:${key}`;
+  const user = accessState.user();
+  return user ? `${user.id}:${user.store_id ?? "legacy"}:${key}` : `anonymous:${key}`;
 }
 
 export const syncMetadataStorage = {

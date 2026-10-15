@@ -4,7 +4,7 @@ import type { SyncMetadataItem, SyncQueueItem } from "@/shared/lib/infrastructur
 
 export const BACKUP_FORMAT = "tanzim-local-backup" as const;
 export const BACKUP_FORMAT_VERSION = 1 as const;
-export const BACKUP_SCHEMA_VERSION = 1 as const;
+export const BACKUP_SCHEMA_VERSION = 2 as const;
 export const DEFAULT_BACKUP_INTERVAL_MS = 5 * 60_000;
 
 export type BackupMode = "directory" | "file" | "manual";
@@ -47,7 +47,7 @@ export type BackupEnvelope = {
   schemaVersion: typeof BACKUP_SCHEMA_VERSION;
   createdAt: string;
   snapshotRevision: string;
-  owner: { userId: number; username: string };
+  owner: { userId: number; username: string; storeId?: number };
   counts: BackupCounts;
   data: BackupData;
   integrity: { algorithm: "SHA-256"; digest: string };

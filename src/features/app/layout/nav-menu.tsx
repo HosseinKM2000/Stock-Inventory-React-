@@ -40,7 +40,7 @@ const NavMenu = ({ hidden = false }: Props) => {
   });
   const { user } = useAuth();
   const items = primaryNavigationItems(user);
-  const canAddProduct = accessState.canWrite();
+  const canAddProduct = accessState.canWrite() && (accessState.hasStorePermission?.("products.create") ?? true);
   const beforeAction = items.slice(0, 2);
   const afterAction = items.slice(2);
   return (

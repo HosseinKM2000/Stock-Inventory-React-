@@ -16,6 +16,8 @@ export type IndustryInput = {
 export type Category = {
   id: number;
   local_user_id?: number;
+  local_store_id?: number;
+  local_key?: string;
   name: string;
   description: string;
   created_at: string;
@@ -31,6 +33,8 @@ export type CategoryInput = {
 export type Label = {
   id: number;
   local_user_id?: number;
+  local_store_id?: number;
+  local_key?: string;
   name: string;
   normalized_name: string;
   version?: number;

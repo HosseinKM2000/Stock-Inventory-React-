@@ -54,6 +54,14 @@ export function ProductCard({
   useEntitlementAccess();
   const navigate = useNavigate();
   const canWrite = accessState.canWrite();
+  const hasPermission = (permission: string) => accessState.hasStorePermission?.(permission) ?? true;
+  const canEdit = canWrite && (
+    hasPermission("products.edit")
+    || hasPermission("products.price.change")
+    || hasPermission("products.quantity.change")
+  );
+  const canDelete = canWrite && hasPermission("products.delete");
+  const canAdjustQuantity = canWrite && hasPermission("products.quantity.change");
   const status = STATUS_META[product.status];
   const packaging = packagingOf(product.catalog_product);
   const packageBreakdown = packaging.isPackaged
@@ -196,30 +204,30 @@ export function ProductCard({
             </Badge>
             {showActions && !selectionMode && <Flex gap="2" justify="end" data-product-action className="inventory-card-actions inventory-card-mobile-actions">
               <IconButton type="button" size="2" variant="soft" aria-label={`کپی نام و قیمت ${name}`} onClick={(event) => { event.stopPropagation(); void copy(); }}><CopyIcon /></IconButton>
-              <Link to="/inventory/edit" search={{ id: product.id }} onClick={() => onEdit?.(product)}>
+              {canEdit && <Link to="/inventory/edit" search={{ id: product.id }} onClick={() => onEdit?.(product)}>
                 <Button size="2" variant="soft" color="amber" className="inventory-card-edit-button" aria-label={`ویرایش ${name}`}><Pencil1Icon width={20} height={20} /></Button>
-              </Link>
-              <Button
+              </Link>}
+              {canDelete && <Button
                 size="2" color="red" variant="soft" loading={deleting}
-                disabled={!canWrite || product.is_catalog_backed}
+                disabled={product.is_catalog_backed}
                 title={product.is_catalog_backed ? "محصولات کاتالوگی قابل حذف نیستند؛ آن‌ها را مخفی کنید." : undefined}
                 onClick={() => onDelete?.(product.id)} aria-label={`حذف ${name}`}
-              ><TrashIcon width={23} height={23} /></Button>
+              ><TrashIcon width={23} height={23} /></Button>}
             </Flex>}
           </Flex>
         </Flex>
         {showActions && !selectionMode && <div className="inventory-card-controls" data-product-action>
-          {showQuickStock && <div className="inventory-card-quick shrink-0 border-[var(--gray-a5)] bg-[var(--gray-a2)]">
+          {showQuickStock && canAdjustQuantity && <div className="inventory-card-quick shrink-0 border-[var(--gray-a5)] bg-[var(--gray-a2)]">
             <QuickStockAdjustment key={`${product.id}-${product.catalog_product?.is_packaged}-${product.catalog_product?.pack_size ?? "none"}`} product={product} />
           </div>}
           <Flex align="center" gap="3" className="inventory-card-desktop-end">
             <Badge color={status.color} className="inventory-card-desktop-status shrink-0">{status.label}</Badge>
             <Flex gap="2" className="inventory-card-actions">
               <IconButton type="button" size="2" variant="soft" aria-label={`کپی نام و قیمت ${name}`} onClick={(event) => { event.stopPropagation(); void copy(); }}><CopyIcon /></IconButton>
-              <Link to="/inventory/edit" search={{ id: product.id }} onClick={() => onEdit?.(product)}>
+              {canEdit && <Link to="/inventory/edit" search={{ id: product.id }} onClick={() => onEdit?.(product)}>
                 <Button size="2" variant="soft" color="amber" aria-label={`ویرایش ${name}`}><Pencil1Icon width={20} height={20} /></Button>
-              </Link>
-              <Button size="2" color="red" variant="soft" loading={deleting} disabled={!canWrite || product.is_catalog_backed} onClick={() => onDelete?.(product.id)} aria-label={`حذف ${name}`}><TrashIcon width={23} height={23} /></Button>
+              </Link>}
+              {canDelete && <Button size="2" color="red" variant="soft" loading={deleting} disabled={product.is_catalog_backed} onClick={() => onDelete?.(product.id)} aria-label={`حذف ${name}`}><TrashIcon width={23} height={23} /></Button>}
             </Flex>
           </Flex>
         </div>}

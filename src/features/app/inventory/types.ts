@@ -27,6 +27,8 @@ export type Product = {
   id: number;
 
   local_user_id?: number;
+  local_store_id?: number;
+  local_key?: string;
 
   catalog_product_id: number;
 

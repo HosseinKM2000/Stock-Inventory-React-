@@ -43,6 +43,13 @@ export function useLogin() {
       setToken(data.access_token);
       transitionToAccount(queryClient, data.user);
 
+      if (data.user.temporary_password_required) {
+        queryClient.setQueryData(authKeys.me, data.user);
+        toast.warning("برای ادامه رمز عبور موقت را تغییر دهید");
+        await navigate({ to: "/setting/security" });
+        return;
+      }
+
       await entitlementService.verify();
 
       await syncMetadataStorage.set("product-sync-cursor", 0);
@@ -116,10 +123,14 @@ export function useUpdateProfile() {
 }
 
 export function useUpdatePassword() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: updatePassword,
 
-    onSuccess: () => {
+    onSuccess: async () => {
+      const user = await getMe();
+      accessState.saveUser(user);
+      queryClient.setQueryData(authKeys.me, user);
       toast.success("رمز عبور تغییر کرد");
     },
   });
