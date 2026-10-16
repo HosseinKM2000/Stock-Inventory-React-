@@ -94,7 +94,7 @@ function LoginComponent() {
           </Button>
         </Box>
 
-        <Link asChild size="2" color="indigo">
+        <Link asChild size="2" color="violet">
           <RouterLink to="/auth/register">هنوز حسابی ندارید؟</RouterLink>
         </Link>
       </Flex>

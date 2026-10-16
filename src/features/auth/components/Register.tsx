@@ -155,7 +155,7 @@ function RegisterComponent() {
             ثبت
           </Button>
         </Box>
-        <Link asChild size={"2"} color="indigo">
+        <Link asChild size={"2"} color="violet">
           <RouterLink to="/auth/login">قبلا وارد شده اید !</RouterLink>
         </Link>
       </Flex>

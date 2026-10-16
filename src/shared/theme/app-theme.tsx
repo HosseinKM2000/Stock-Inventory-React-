@@ -31,7 +31,7 @@ export function AppTheme({ children }: PropsWithChildren) {
     document.documentElement.dataset.appearance = resolved;
     document.querySelector('meta[name="theme-color"]')?.setAttribute(
       "content",
-      resolved === "dark" ? "#171326" : "#ffffff",
+      resolved === "dark" ? "#171326" : "#e6e0ef",
     );
   }, [resolved]);
 

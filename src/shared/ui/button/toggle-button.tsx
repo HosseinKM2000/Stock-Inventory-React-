@@ -47,7 +47,7 @@ export function SwitchInput({
   disabled,
   size = "2",
   defaultChecked,
-  color = "indigo",
+  color = "violet",
   onCheckedChange,
   ...props
 }: SwitchInputProps) {
