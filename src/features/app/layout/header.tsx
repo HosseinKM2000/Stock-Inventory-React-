@@ -55,7 +55,7 @@ const Header = () => {
   return (
     <header
       dir="ltr"
-      className="app-header grid min-h-16 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b border-b-foreground/10 px-2 sm:px-5"
+      className="app-header grid min-h-16 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b px-2 backdrop-blur-2xl sm:px-5"
     >
       <Flex align="center" justify="start" gap="2" className="app-header-left min-w-0">
         <BackupShortcut />

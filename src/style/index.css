@@ -65,8 +65,18 @@ body,
   box-shadow: 0 -8px 24px color-mix(in srgb, var(--app-overlay) 45%, transparent);
 }
 
+.app-header {
+  flex: 0 0 auto;
+  color: var(--gray-12);
+  border-color: var(--gray-a6);
+  background: color-mix(in srgb, var(--color-panel-solid) 92%, transparent);
+  box-shadow: 0 8px 24px color-mix(in srgb, var(--app-overlay) 45%, transparent);
+}
+
 :root[data-appearance="light"] .app-bottom-navigation-surface,
-.radix-themes.light .app-bottom-navigation-surface {
+:root[data-appearance="light"] .app-header,
+.radix-themes.light .app-bottom-navigation-surface,
+.radix-themes.light .app-header {
   box-shadow: none;
 }
 
@@ -518,11 +528,6 @@ body,
   margin: 0;
   font-size: 0.8125rem;
   font-variant-numeric: tabular-nums;
-}
-
-.radix-themes.dark .app-header {
-  border-color: var(--app-border-subtle);
-  background: var(--app-surface-section);
 }
 
 .radix-themes.dark .rt-Card {
