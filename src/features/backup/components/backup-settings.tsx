@@ -83,13 +83,13 @@ export function BackupSettings() {
 
   const inspectFile = (file: File | null) => run(async () => {
     if (!file || !user) return;
-    setPreview(await previewBackupFile(file, user.id));
+    setPreview(await previewBackupFile(file, user.id, user.store_id ?? user.id));
   });
 
   const chooseRestoreFile = () => run(async () => {
     if (!user) return;
     const file = await chooseBackupFile();
-    if (file) setPreview(await previewBackupFile(file, user.id));
+    if (file) setPreview(await previewBackupFile(file, user.id, user.store_id ?? user.id));
     else inputRef.current?.click();
   });
 

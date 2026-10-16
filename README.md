@@ -1,5 +1,7 @@
 # Tanzim
 
+Store workspace, personnel, permission, offline-revocation, activity, and backup invariants are documented in [docs/store-personnel-architecture.md](docs/store-personnel-architecture.md).
+
 Offline-first inventory management built with React, TypeScript, Vite,
 TanStack Router/Query, Radix Themes, FastAPI, SQLAlchemy, and PostgreSQL.
 

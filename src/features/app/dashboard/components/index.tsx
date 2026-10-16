@@ -10,7 +10,7 @@ import {
   Text,
 } from "@radix-ui/themes";
 
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { useEffect } from "react";
 import { accessState } from "@/shared/access/access-state";
 import {
@@ -20,10 +20,15 @@ import {
 import { dashboardCards } from "../data/dashboard-cards";
 import { useDashboardStats } from "../mutations/use-dashboard";
 import type { DashboardStats } from "../types";
+import { useQuery } from "@tanstack/react-query";
+import { personnelApi } from "@/features/personnel/api";
+import { isAdmin } from "@/shared/access/authorization";
 
 const DashboardComponent = () => {
   const navigate = useNavigate();
-  const userId = accessState.user()?.id;
+  const user = accessState.user();
+  const userId = user?.id;
+  const isOwner = user?.is_store_owner === true || isAdmin(user);
 
   const { data: stats, isLoading, isError } = useDashboardStats();
 
@@ -56,6 +61,7 @@ const DashboardComponent = () => {
       )}
 
       <Grid columns={{ initial: "1", sm: "2", lg: "4" }} gap="4" mt="5">
+        {isOwner ? <TodayActivityCard /> : null}
         {dashboardCards.map((card) => (
           <Card
             key={card.id}
@@ -108,5 +114,10 @@ const DashboardComponent = () => {
     </main>
   );
 };
+
+function TodayActivityCard() {
+  const activity = useQuery({ queryKey: ["store-activity-today"], queryFn: personnelApi.todayActivity });
+  return <Card asChild size="2"><Link to="/tools/activity" className="block"><Text as="div" size="2" color="gray">فعالیت امروز مجموعه</Text><Text as="div" mt="1" size="5" weight="bold">{activity.data?.count ?? 0}</Text><Text as="div" mt="2" size="1" color="gray">مشاهده تاریخچه</Text></Link></Card>;
+}
 
 export default DashboardComponent;

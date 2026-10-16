@@ -3,6 +3,7 @@ import type { SyncQueueItem } from "@/shared/lib/infrastructure/storage/types";
 import { accessState } from "@/shared/access/access-state";
 
 const ownerId = () => accessState.user()?.id;
+const storeId = () => { const user = accessState.user(); return user ? user.store_id ?? user.id : undefined; };
 
 function scopedId(id: string) {
   const owner = ownerId();
@@ -18,6 +19,7 @@ export const queueStorage = {
       ...item,
       id: scopedId(item.id),
       ownerUserId: owner,
+      storeId: storeId() ?? undefined,
     });
   },
 
@@ -25,15 +27,15 @@ export const queueStorage = {
     const owner = ownerId();
     if (!owner) return undefined;
     const current = await db.syncQueue.get(scopedId(id));
-    if (current?.ownerUserId === owner) return current;
+    if (current?.ownerUserId === owner && current.storeId === storeId()) return current;
     const legacy = await db.syncQueue.get(id);
-    return legacy?.ownerUserId === owner ? legacy : undefined;
+    return legacy?.ownerUserId === owner && (legacy.storeId == null || legacy.storeId === storeId()) ? legacy : undefined;
   },
 
   async getAll() {
     const owner = ownerId();
     if (!owner) return [];
-    return db.syncQueue.where("ownerUserId").equals(owner).sortBy("createdAt");
+    return (await db.syncQueue.where("ownerUserId").equals(owner).toArray()).filter((item) => item.storeId == null || item.storeId === storeId()).sort((a, b) => a.createdAt - b.createdAt);
   },
 
   async getForEntity(entity: string, entityId: number) {

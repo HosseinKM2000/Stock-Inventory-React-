@@ -177,6 +177,7 @@ class InventoryService {
 
   async create(product: Product): Promise<Product> {
     accessState.requireWrite();
+    accessState.requireStorePermission?.("products.create");
     accessState.requireInventoryCapacity((await inventoryRepository.getAll()).length);
     const record = sanitize(product);
 
@@ -193,6 +194,8 @@ class InventoryService {
 
   async createMany(products: Product[]): Promise<Product[]> {
     accessState.requireWrite();
+    accessState.requireStorePermission?.("products.create");
+    accessState.requireStorePermission?.("products.bulk");
     const existing = (await inventoryRepository.getAll()).length;
     accessState.requireInventoryCapacity(existing + products.length);
     const records = products.map(sanitize);
@@ -207,6 +210,10 @@ class InventoryService {
 
   async bulkUpdate(ids: readonly number[], intent: BulkProductIntent): Promise<Product[]> {
     accessState.requireWrite();
+    accessState.requireStorePermission?.("products.bulk");
+    if (intent.priceIncrease !== undefined) accessState.requireStorePermission?.("products.price.change");
+    if (intent.categoryId !== undefined) accessState.requireStorePermission?.("categories.manage");
+    if (intent.lowStockAlert !== undefined || intent.lowStockThreshold !== undefined) accessState.requireStorePermission?.("products.edit");
     const uniqueIds = [...new Set(ids)];
     if (uniqueIds.length === 0) throw new Error("هیچ محصولی انتخاب نشده است");
     if (intent.priceIncrease !== undefined &&
@@ -251,6 +258,9 @@ class InventoryService {
 
   async update(id: number, input: ProductInput): Promise<Product> {
     accessState.requireWrite();
+    if (input.quantity !== undefined) accessState.requireStorePermission?.("products.quantity.change");
+    if (input.price !== undefined) accessState.requireStorePermission?.("products.price.change");
+    if (Object.keys(input).some((key) => key !== "quantity" && key !== "price")) accessState.requireStorePermission?.("products.edit");
     const current = await inventoryRepository.get(id);
 
     if (!current) {
@@ -322,6 +332,7 @@ class InventoryService {
 
   async remove(id: number): Promise<void> {
     accessState.requireWrite();
+    accessState.requireStorePermission?.("products.delete");
     const current = await inventoryRepository.get(id);
 
     if (!current) {
@@ -350,6 +361,8 @@ class InventoryService {
 
   async bulkRemove(ids: readonly number[]): Promise<number[]> {
     accessState.requireWrite();
+    accessState.requireStorePermission?.("products.bulk");
+    accessState.requireStorePermission?.("products.delete");
     const uniqueIds = [...new Set(ids)];
     if (uniqueIds.length === 0) {
       throw new Error("هیچ محصولی برای حذف انتخاب نشده است");

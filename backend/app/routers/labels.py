@@ -10,5 +10,5 @@ router = APIRouter(prefix="/labels", tags=["labels"])
 @router.get("", response_model=list[LabelOut])
 def list_labels(current_user: CurrentLabelUser, db: DbSession) -> list[Label]:
     return list(db.scalars(
-        select(Label).where(Label.user_id == current_user.id).order_by(Label.name, Label.id)
+        select(Label).where(Label.user_id == current_user.data_owner_id).order_by(Label.name, Label.id)
     ))

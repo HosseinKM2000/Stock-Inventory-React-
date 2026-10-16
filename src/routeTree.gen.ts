@@ -25,6 +25,7 @@ import { Route as ToolsHelpRouteImport } from './routes/tools/help'
 import { Route as ToolsExportRouteImport } from './routes/tools/export'
 import { Route as ToolsCategoriesRouteImport } from './routes/tools/categories'
 import { Route as ToolsCatalogRouteImport } from './routes/tools/catalog'
+import { Route as ToolsActivityRouteImport } from './routes/tools/activity'
 import { Route as SettingUsersRouteImport } from './routes/setting/users'
 import { Route as SettingSyncRouteImport } from './routes/setting/sync'
 import { Route as SettingSubscriptionManagementRouteImport } from './routes/setting/subscription-management'
@@ -32,6 +33,7 @@ import { Route as SettingSubscriptionRouteImport } from './routes/setting/subscr
 import { Route as SettingSecurityRouteImport } from './routes/setting/security'
 import { Route as SettingProfileRouteImport } from './routes/setting/profile'
 import { Route as SettingProductsRouteImport } from './routes/setting/products'
+import { Route as SettingPersonnelRouteImport } from './routes/setting/personnel'
 import { Route as SettingIndustryRouteImport } from './routes/setting/industry'
 import { Route as SettingExportRouteImport } from './routes/setting/export'
 import { Route as SettingCategoriesRouteImport } from './routes/setting/categories'
@@ -144,6 +146,11 @@ const ToolsCatalogRoute = ToolsCatalogRouteImport.update({
   path: '/catalog',
   getParentRoute: () => ToolsRouteRoute,
 } as any)
+const ToolsActivityRoute = ToolsActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => ToolsRouteRoute,
+} as any)
 const SettingUsersRoute = SettingUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -178,6 +185,11 @@ const SettingProfileRoute = SettingProfileRouteImport.update({
 const SettingProductsRoute = SettingProductsRouteImport.update({
   id: '/products',
   path: '/products',
+  getParentRoute: () => SettingRouteRoute,
+} as any)
+const SettingPersonnelRoute = SettingPersonnelRouteImport.update({
+  id: '/personnel',
+  path: '/personnel',
   getParentRoute: () => SettingRouteRoute,
 } as any)
 const SettingIndustryRoute = SettingIndustryRouteImport.update({
@@ -374,6 +386,7 @@ export interface FileRoutesByFullPath {
   '/setting/categories': typeof SettingCategoriesRoute
   '/setting/export': typeof SettingExportRoute
   '/setting/industry': typeof SettingIndustryRoute
+  '/setting/personnel': typeof SettingPersonnelRoute
   '/setting/products': typeof SettingProductsRoute
   '/setting/profile': typeof SettingProfileRoute
   '/setting/security': typeof SettingSecurityRoute
@@ -381,6 +394,7 @@ export interface FileRoutesByFullPath {
   '/setting/subscription-management': typeof SettingSubscriptionManagementRoute
   '/setting/sync': typeof SettingSyncRoute
   '/setting/users': typeof SettingUsersRoute
+  '/tools/activity': typeof ToolsActivityRoute
   '/tools/catalog': typeof ToolsCatalogRoute
   '/tools/categories': typeof ToolsCategoriesRoute
   '/tools/export': typeof ToolsExportRoute
@@ -425,6 +439,7 @@ export interface FileRoutesByTo {
   '/setting/categories': typeof SettingCategoriesRoute
   '/setting/export': typeof SettingExportRoute
   '/setting/industry': typeof SettingIndustryRoute
+  '/setting/personnel': typeof SettingPersonnelRoute
   '/setting/products': typeof SettingProductsRoute
   '/setting/profile': typeof SettingProfileRoute
   '/setting/security': typeof SettingSecurityRoute
@@ -432,6 +447,7 @@ export interface FileRoutesByTo {
   '/setting/subscription-management': typeof SettingSubscriptionManagementRoute
   '/setting/sync': typeof SettingSyncRoute
   '/setting/users': typeof SettingUsersRoute
+  '/tools/activity': typeof ToolsActivityRoute
   '/tools/catalog': typeof ToolsCatalogRoute
   '/tools/categories': typeof ToolsCategoriesRoute
   '/tools/export': typeof ToolsExportRoute
@@ -483,6 +499,7 @@ export interface FileRoutesById {
   '/setting/categories': typeof SettingCategoriesRoute
   '/setting/export': typeof SettingExportRoute
   '/setting/industry': typeof SettingIndustryRoute
+  '/setting/personnel': typeof SettingPersonnelRoute
   '/setting/products': typeof SettingProductsRoute
   '/setting/profile': typeof SettingProfileRoute
   '/setting/security': typeof SettingSecurityRoute
@@ -490,6 +507,7 @@ export interface FileRoutesById {
   '/setting/subscription-management': typeof SettingSubscriptionManagementRoute
   '/setting/sync': typeof SettingSyncRoute
   '/setting/users': typeof SettingUsersRoute
+  '/tools/activity': typeof ToolsActivityRoute
   '/tools/catalog': typeof ToolsCatalogRoute
   '/tools/categories': typeof ToolsCategoriesRoute
   '/tools/export': typeof ToolsExportRoute
@@ -541,6 +559,7 @@ export interface FileRouteTypes {
     | '/setting/categories'
     | '/setting/export'
     | '/setting/industry'
+    | '/setting/personnel'
     | '/setting/products'
     | '/setting/profile'
     | '/setting/security'
@@ -548,6 +567,7 @@ export interface FileRouteTypes {
     | '/setting/subscription-management'
     | '/setting/sync'
     | '/setting/users'
+    | '/tools/activity'
     | '/tools/catalog'
     | '/tools/categories'
     | '/tools/export'
@@ -592,6 +612,7 @@ export interface FileRouteTypes {
     | '/setting/categories'
     | '/setting/export'
     | '/setting/industry'
+    | '/setting/personnel'
     | '/setting/products'
     | '/setting/profile'
     | '/setting/security'
@@ -599,6 +620,7 @@ export interface FileRouteTypes {
     | '/setting/subscription-management'
     | '/setting/sync'
     | '/setting/users'
+    | '/tools/activity'
     | '/tools/catalog'
     | '/tools/categories'
     | '/tools/export'
@@ -649,6 +671,7 @@ export interface FileRouteTypes {
     | '/setting/categories'
     | '/setting/export'
     | '/setting/industry'
+    | '/setting/personnel'
     | '/setting/products'
     | '/setting/profile'
     | '/setting/security'
@@ -656,6 +679,7 @@ export interface FileRouteTypes {
     | '/setting/subscription-management'
     | '/setting/sync'
     | '/setting/users'
+    | '/tools/activity'
     | '/tools/catalog'
     | '/tools/categories'
     | '/tools/export'
@@ -809,6 +833,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ToolsCatalogRouteImport
       parentRoute: typeof ToolsRouteRoute
     }
+    '/tools/activity': {
+      id: '/tools/activity'
+      path: '/activity'
+      fullPath: '/tools/activity'
+      preLoaderRoute: typeof ToolsActivityRouteImport
+      parentRoute: typeof ToolsRouteRoute
+    }
     '/setting/users': {
       id: '/setting/users'
       path: '/users'
@@ -856,6 +887,13 @@ declare module '@tanstack/react-router' {
       path: '/products'
       fullPath: '/setting/products'
       preLoaderRoute: typeof SettingProductsRouteImport
+      parentRoute: typeof SettingRouteRoute
+    }
+    '/setting/personnel': {
+      id: '/setting/personnel'
+      path: '/personnel'
+      fullPath: '/setting/personnel'
+      preLoaderRoute: typeof SettingPersonnelRouteImport
       parentRoute: typeof SettingRouteRoute
     }
     '/setting/industry': {
@@ -1215,6 +1253,7 @@ interface SettingRouteRouteChildren {
   SettingCategoriesRoute: typeof SettingCategoriesRoute
   SettingExportRoute: typeof SettingExportRoute
   SettingIndustryRoute: typeof SettingIndustryRoute
+  SettingPersonnelRoute: typeof SettingPersonnelRoute
   SettingProductsRoute: typeof SettingProductsRoute
   SettingProfileRoute: typeof SettingProfileRoute
   SettingSecurityRoute: typeof SettingSecurityRoute
@@ -1232,6 +1271,7 @@ const SettingRouteRouteChildren: SettingRouteRouteChildren = {
   SettingCategoriesRoute: SettingCategoriesRoute,
   SettingExportRoute: SettingExportRoute,
   SettingIndustryRoute: SettingIndustryRoute,
+  SettingPersonnelRoute: SettingPersonnelRoute,
   SettingProductsRoute: SettingProductsRoute,
   SettingProfileRoute: SettingProfileRoute,
   SettingSecurityRoute: SettingSecurityRoute,
@@ -1247,6 +1287,7 @@ const SettingRouteRouteWithChildren = SettingRouteRoute._addFileChildren(
 )
 
 interface ToolsRouteRouteChildren {
+  ToolsActivityRoute: typeof ToolsActivityRoute
   ToolsCatalogRoute: typeof ToolsCatalogRoute
   ToolsCategoriesRoute: typeof ToolsCategoriesRoute
   ToolsExportRoute: typeof ToolsExportRoute
@@ -1258,6 +1299,7 @@ interface ToolsRouteRouteChildren {
 }
 
 const ToolsRouteRouteChildren: ToolsRouteRouteChildren = {
+  ToolsActivityRoute: ToolsActivityRoute,
   ToolsCatalogRoute: ToolsCatalogRoute,
   ToolsCategoriesRoute: ToolsCategoriesRoute,
   ToolsExportRoute: ToolsExportRoute,

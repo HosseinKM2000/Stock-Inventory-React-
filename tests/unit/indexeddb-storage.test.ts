@@ -58,6 +58,19 @@ describe("IndexedDB repositories", () => {
     expect((await inventoryStorage.getAll()).map((item) => item.id)).toEqual([101]);
   });
 
+  it("keeps separate projections for two people in the same store", async () => {
+    accessState.saveUser({ ...user(11), store_id: 700, is_store_owner: true });
+    await inventoryStorage.save(product({ id: 55, quantity: 10 }));
+
+    accessState.saveUser({ ...user(12), store_id: 700, is_store_owner: false, store_permissions: ["products.view"] });
+    expect(await inventoryStorage.get(55)).toBeUndefined();
+    await inventoryStorage.save(product({ id: 55, quantity: 8 }));
+
+    accessState.saveUser({ ...user(11), store_id: 700, is_store_owner: true });
+    expect(await inventoryStorage.get(55)).toMatchObject({ quantity: 10 });
+    expect(await db.inventoryItems.where("id").equals(55).count()).toBe(2);
+  });
+
   it("keeps a bulk-edited product and its outbox payload durable across restart", async () => {
     accessState.saveUser({ ...user(1), is_admin: true, role: "ADMIN" });
     await inventoryStorage.save(product({

@@ -1,4 +1,5 @@
 import type { User } from "@/features/auth/types";
+import { isAdmin } from "@/shared/access/authorization";
 import { isLocalImage } from "@/shared/lib/infrastructure/media/image.service";
 import { imageRepository } from "@/shared/lib/infrastructure/media/image.repository";
 import { db } from "@/shared/lib/infrastructure/storage/db";
@@ -60,25 +61,25 @@ async function readImage(path: string): Promise<BackupImage | BackupUnavailableI
   }
 }
 
-async function captureRecords(userId: number) {
+async function captureRecords(userId: number, storeId: number) {
   return db.transaction(
     "r",
     [db.inventoryItems, db.categories, db.labels, db.syncQueue, db.syncMetadata],
     async () => {
       const [products, categories, labels, pendingOperations, reconciliation] = await Promise.all([
-        db.inventoryItems.where("local_user_id").equals(userId).toArray(),
-        db.categories.where("local_user_id").equals(userId).toArray(),
-        db.labels.where("local_user_id").equals(userId).toArray(),
-        db.syncQueue.where("ownerUserId").equals(userId).toArray(),
-        db.syncMetadata.filter((item) => item.key.startsWith(`${userId}:`)).toArray(),
+        db.inventoryItems.where("[local_user_id+local_store_id]").equals([userId, storeId]).toArray(),
+        db.categories.where("[local_user_id+local_store_id]").equals([userId, storeId]).toArray(),
+        db.labels.where("[local_user_id+local_store_id]").equals([userId, storeId]).toArray(),
+        db.syncQueue.where("ownerUserId").equals(userId).filter((item) => item.storeId == null || item.storeId === storeId).toArray(),
+        db.syncMetadata.filter((item) => item.key.startsWith(`${userId}:${storeId}:`)).toArray(),
       ]);
       return { products, categories, labels, pendingOperations, reconciliation };
     },
   );
 }
 
-export async function captureBackupData(userId: number, includeImageBytes: boolean): Promise<BackupData> {
-  const records = await captureRecords(userId);
+export async function captureBackupData(userId: number, includeImageBytes: boolean, storeId = userId): Promise<BackupData> {
+  const records = await captureRecords(userId, storeId);
   const preferences = readPreferences(userId);
   const paths = new Set<string>();
   for (const product of records.products) {
@@ -112,9 +113,10 @@ export async function currentBackupRevision(userId: number) {
 }
 
 export async function createBackupSnapshot(user: User) {
-  const data = await captureBackupData(user.id, true);
+  if (!isAdmin(user) && user.is_store_owner === false) throw new Error("BACKUP_STORE_OWNER_REQUIRED");
+  const data = await captureBackupData(user.id, true, user.store_id ?? user.id);
   return buildBackupEnvelope({
-    owner: { userId: user.id, username: user.username },
+    owner: { userId: user.id, username: user.username, storeId: user.store_id ?? user.id },
     data,
   });
 }

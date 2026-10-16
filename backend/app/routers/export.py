@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload
 
 from ..deps import CurrentUser, DbSession, require_capability
+from ..services.store_authorization import StorePermission, require_store_permission
 from ..models import InventoryItem, InventoryTransaction
 from ..schemas import InventoryOut
 from ..services.tool_policy import require_tool
@@ -24,10 +25,11 @@ def export_inventory_json(
     db: DbSession,
 ):
     require_capability(db, current_user, "export.server")
+    require_store_permission(db, current_user, StorePermission.EXPORT_USE)
     require_tool(db, current_user, "export")
     items = db.scalars(
         select(InventoryItem).options(joinedload(InventoryItem.catalog_product)).where(
-            InventoryItem.user_id == current_user.id,
+            InventoryItem.user_id == current_user.data_owner_id,
             InventoryItem.deleted_at.is_(None),
         ).order_by(InventoryItem.created_at.desc(), InventoryItem.id.desc())
     ).all()
@@ -44,10 +46,11 @@ def export_inventory_csv(
     db: DbSession,
 ):
     require_capability(db, current_user, "export.server")
+    require_store_permission(db, current_user, StorePermission.EXPORT_USE)
     require_tool(db, current_user, "export")
     items = db.scalars(
         select(InventoryItem).where(
-            InventoryItem.user_id == current_user.id,
+            InventoryItem.user_id == current_user.data_owner_id,
             InventoryItem.deleted_at.is_(None),
         ).order_by(InventoryItem.created_at.desc(), InventoryItem.id.desc())
     ).all()
@@ -99,10 +102,11 @@ def export_transactions_csv(
     db: DbSession,
 ):
     require_capability(db, current_user, "export.server")
+    require_store_permission(db, current_user, StorePermission.EXPORT_USE)
     require_tool(db, current_user, "export")
     transactions = db.scalars(
         select(InventoryTransaction).where(
-            InventoryTransaction.user_id == current_user.id
+            InventoryTransaction.user_id == current_user.data_owner_id
         ).order_by(
             InventoryTransaction.created_at.desc(),
             InventoryTransaction.id.desc(),

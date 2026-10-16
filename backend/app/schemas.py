@@ -87,6 +87,15 @@ class UserOut(BaseModel):
     industry_id: int | None = None
     created_at: datetime
     industry: IndustrySimpleOut | None = None
+    store_id: int | None = None
+    membership_id: int | None = None
+    store_role_id: int | None = None
+    store_role_name: str | None = None
+    store_permissions: list[str] = Field(default_factory=list)
+    is_store_owner: bool = False
+    temporary_password_required: bool = False
+    credentials_notice_viewed: bool = True
+    membership_authorization_checked_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -94,6 +103,85 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserOut
+
+
+class StoreRoleCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    permissions: list[str] = Field(default_factory=list)
+
+
+class StoreRoleUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    permissions: list[str] | None = None
+
+
+class StoreRoleOut(BaseModel):
+    id: int
+    name: str
+    permissions: list[str]
+    assigned_count: int = 0
+
+
+class PersonnelCreate(BaseModel):
+    first_name: str = Field(min_length=1, max_length=120)
+    last_name: str = Field(min_length=1, max_length=120)
+    username: str | None = Field(default=None, min_length=3, max_length=120)
+    role_id: int
+
+
+class PersonnelUpdate(BaseModel):
+    role_id: int | None = None
+    active: bool | None = None
+
+
+class PersonnelOut(BaseModel):
+    membership_id: int
+    user_id: int
+    first_name: str
+    last_name: str
+    username: str
+    role_id: int
+    role_name: str
+    active: bool
+    temporary_password_required: bool
+    credentials_notice_viewed: bool
+    created_at: datetime
+    last_activity_at: datetime | None = None
+
+
+class PersonnelCreated(PersonnelOut):
+    temporary_password: str
+
+
+class PersonnelCapacityOut(BaseModel):
+    enabled: bool
+    used: int
+    limit: int | None
+    available: int | None
+
+
+class ActivityOut(BaseModel):
+    id: int
+    actor_user_id: int
+    actor_membership_id: int
+    actor_display_name: str
+    actor_role_name: str
+    operation_id: str
+    target_entity: str
+    target_id: str | None
+    action: str
+    before: dict[str, Any] | None
+    after: dict[str, Any] | None
+    outcome: str
+    client_occurred_at: datetime | None
+    accepted_at: datetime
+
+
+class ActivityPage(BaseModel):
+    items: list[ActivityOut]
+    total: int
+    page: int
+    page_size: int
 
 
 # =========================================================
@@ -418,6 +506,7 @@ class SyncOperationIn(BaseModel):
     operation: Literal["CREATE", "UPDATE", "DELETE"]
     payload: dict[str, Any] | None = None
     base_version: int | None = Field(default=None, ge=1)
+    client_occurred_at: datetime | None = None
 
 
 class SyncBatchRequest(BaseModel):

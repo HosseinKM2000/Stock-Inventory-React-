@@ -14,6 +14,15 @@ export type User = {
   subscription_started_at: string | null;
   subscription_expires_at: string | null;
   created_at: string;
+  store_id?: number | null;
+  membership_id?: number | null;
+  store_role_id?: number | null;
+  store_role_name?: string | null;
+  store_permissions?: string[];
+  is_store_owner?: boolean;
+  temporary_password_required?: boolean;
+  credentials_notice_viewed?: boolean;
+  membership_authorization_checked_at?: string | null;
 };
 
 export type AdminUser = User & {

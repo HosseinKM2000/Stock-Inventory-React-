@@ -123,6 +123,101 @@ class User(Base):
     cascade="all, delete-orphan",
     )
 
+    store_memberships: Mapped[list["StoreMembership"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+
+
+class Store(Base):
+    __tablename__ = "stores"
+
+    id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True)
+    name: Mapped[str] = mapped_column(String(160))
+    owner_user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), unique=True, index=True
+    )
+    plan: Mapped[str] = mapped_column(String(30), default="free")
+    subscription_started_at: Mapped[datetime | None] = mapped_column(UTC_DATETIME, nullable=True)
+    subscription_expires_at: Mapped[datetime | None] = mapped_column(UTC_DATETIME, nullable=True)
+    personnel_limit_override: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now, onupdate=_now)
+
+    owner: Mapped["User"] = relationship(foreign_keys=[owner_user_id])
+    memberships: Mapped[list["StoreMembership"]] = relationship(
+        back_populates="store", cascade="all, delete-orphan"
+    )
+    roles: Mapped[list["StoreRole"]] = relationship(
+        back_populates="store", cascade="all, delete-orphan"
+    )
+
+
+class StoreRole(Base):
+    __tablename__ = "store_roles"
+    __table_args__ = (UniqueConstraint("store_id", "name", name="uq_store_roles_store_name"),)
+
+    id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True)
+    store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), index=True)
+    name: Mapped[str] = mapped_column(String(100))
+    permissions_json: Mapped[str] = mapped_column(Text, default="[]")
+    created_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now, onupdate=_now)
+
+    store: Mapped["Store"] = relationship(back_populates="roles")
+    memberships: Mapped[list["StoreMembership"]] = relationship(back_populates="role")
+
+
+class StoreMembership(Base):
+    __tablename__ = "store_memberships"
+    __table_args__ = (
+        UniqueConstraint("store_id", "user_id", name="uq_store_memberships_store_user"),
+        CheckConstraint("status IN ('active', 'inactive')", name="ck_store_memberships_status"),
+        CheckConstraint(
+            "(is_owner AND role_id IS NULL) OR (NOT is_owner AND role_id IS NOT NULL)",
+            name="ck_store_memberships_owner_role",
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True)
+    store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), index=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), index=True)
+    role_id: Mapped[int | None] = mapped_column(ForeignKey("store_roles.id", ondelete="RESTRICT"), nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String(20), default="active", index=True)
+    is_owner: Mapped[bool] = mapped_column(Boolean, default=False)
+    temporary_password_required: Mapped[bool] = mapped_column(Boolean, default=False)
+    credentials_notice_viewed_at: Mapped[datetime | None] = mapped_column(UTC_DATETIME, nullable=True)
+    authorization_checked_at: Mapped[datetime | None] = mapped_column(UTC_DATETIME, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now, onupdate=_now)
+
+    store: Mapped["Store"] = relationship(back_populates="memberships")
+    user: Mapped["User"] = relationship(back_populates="store_memberships")
+    role: Mapped["StoreRole | None"] = relationship(back_populates="memberships")
+
+
+class StoreActivity(Base):
+    __tablename__ = "store_activity"
+    __table_args__ = (
+        UniqueConstraint("store_id", "operation_id", name="uq_store_activity_operation"),
+        Index("ix_store_activity_store_accepted", "store_id", "accepted_at"),
+    )
+
+    id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True)
+    store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), index=True)
+    actor_user_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    actor_membership_id: Mapped[int] = mapped_column(BigInteger, index=True)
+    actor_display_name: Mapped[str] = mapped_column(String(250))
+    actor_role_name: Mapped[str] = mapped_column(String(100))
+    operation_id: Mapped[str] = mapped_column(String(80))
+    target_entity: Mapped[str] = mapped_column(String(50), index=True)
+    target_id: Mapped[str | None] = mapped_column(String(80), nullable=True)
+    action: Mapped[str] = mapped_column(String(80), index=True)
+    before_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    after_json: Mapped[str | None] = mapped_column(Text, nullable=True)
+    outcome: Mapped[str] = mapped_column(String(20), index=True)
+    client_occurred_at: Mapped[datetime | None] = mapped_column(UTC_DATETIME, nullable=True)
+    accepted_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now, index=True)
+
 
 class UserSession(Base):
     __tablename__ = "user_sessions"
@@ -181,6 +276,7 @@ class Category(Base):
     )
 
     id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True)
+    store_id: Mapped[int | None] = mapped_column(ForeignKey("stores.id"), nullable=True, index=True)
 
     name: Mapped[str] = mapped_column(String(120))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -205,6 +301,7 @@ class Label(Base):
         UniqueConstraint("user_id", "normalized_name", name="uq_labels_user_normalized_name"),
     )
     id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True)
+    store_id: Mapped[int | None] = mapped_column(ForeignKey("stores.id"), nullable=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     name: Mapped[str] = mapped_column(String(60))
     normalized_name: Mapped[str] = mapped_column(String(60))
@@ -322,6 +419,7 @@ class InventoryItem(Base):
     )
 
     id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True)
+    store_id: Mapped[int | None] = mapped_column(ForeignKey("stores.id"), nullable=True, index=True)
 
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id"),
@@ -427,6 +525,8 @@ class SyncOperation(Base):
     )
 
     id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True)
+    store_id: Mapped[int | None] = mapped_column(ForeignKey("stores.id"), nullable=True, index=True)
+    actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     operation_id: Mapped[str] = mapped_column(String(64), index=True)
     result_payload: Mapped[str] = mapped_column(Text)
@@ -440,6 +540,8 @@ class SyncChange(Base):
     )
 
     id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True)
+    store_id: Mapped[int | None] = mapped_column(ForeignKey("stores.id"), nullable=True, index=True)
+    actor_user_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     entity: Mapped[str] = mapped_column(String(40), index=True)
     entity_id: Mapped[int] = mapped_column(BigInteger, index=True)
@@ -482,6 +584,7 @@ class CustomProduct(Base):
     __tablename__ = "custom_products"
 
     id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True)
+    store_id: Mapped[int | None] = mapped_column(ForeignKey("stores.id"), nullable=True, index=True)
 
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id"),
@@ -514,6 +617,8 @@ class InventoryTransaction(Base):
     __tablename__ = "inventory_transactions"
 
     id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True)
+    store_id: Mapped[int | None] = mapped_column(ForeignKey("stores.id"), nullable=True, index=True)
+    actor_user_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
 
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id"),

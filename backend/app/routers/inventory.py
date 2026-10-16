@@ -8,7 +8,7 @@ from ..services.inventory_service import (
     update_inventory_item as apply_inventory_update,
 )
 
-from ..deps import CurrentUser, CurrentWritableUser, DbSession
+from ..deps import CurrentProductReader, CurrentWritableUser, DbSession
 from ..models import InventoryItem, InventoryTransaction
 from ..schemas import (
     InventoryBulkSync,
@@ -26,13 +26,13 @@ router = APIRouter(prefix="/inventory", tags=["inventory"])
 
 @router.get("/trash", response_model=list[InventoryOut])
 def trash_inventory(
-    current_user: CurrentUser,
+    current_user: CurrentProductReader,
     db: DbSession,
 ) -> list[InventoryItem]:
     stmt = (
         select(InventoryItem)
         .where(
-            InventoryItem.user_id == current_user.id,
+            InventoryItem.user_id == current_user.data_owner_id,
             InventoryItem.deleted_at.is_not(None),
         )
         .order_by(InventoryItem.created_at.desc(), InventoryItem.id.desc())
@@ -45,7 +45,7 @@ def trash_inventory(
 
 @router.get("", response_model=InventoryListResponse)
 def list_inventory(
-    current_user: CurrentUser,
+    current_user: CurrentProductReader,
     db: DbSession,
     page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=200),
@@ -53,7 +53,7 @@ def list_inventory(
     base_query = (
         select(InventoryItem)
         .where(
-            InventoryItem.user_id == current_user.id,
+            InventoryItem.user_id == current_user.data_owner_id,
             InventoryItem.deleted_at.is_(None),
             InventoryItem.is_hidden.is_(False),
         )
@@ -88,13 +88,13 @@ def list_inventory(
 @router.get("/{item_id}", response_model=InventoryOut)
 def get_inventory_item(
     item_id: int,
-    current_user: CurrentUser,
+    current_user: CurrentProductReader,
     db: DbSession,
 ) -> InventoryItem:
     return get_inventory_item_or_404(
         db,
         item_id,
-        current_user.id,
+        current_user.data_owner_id,
     )
 
 
@@ -108,7 +108,7 @@ def update_inventory_item(
     item = get_inventory_item_or_404(
         db,
         item_id,
-        current_user.id,
+        current_user.data_owner_id,
     )
 
     apply_inventory_update(
@@ -131,7 +131,7 @@ def delete_inventory_item(
     item = get_inventory_item_or_404(
         db,
         item_id,
-        current_user.id,
+        current_user.data_owner_id,
     )
 
     if item.is_catalog_backed:
@@ -155,7 +155,7 @@ def create_transaction(
     item = get_inventory_item_or_404(
         db,
         item_id,
-        current_user.id,
+        current_user.data_owner_id,
     )
 
     before_quantity = item.quantity
@@ -175,7 +175,9 @@ def create_transaction(
     after_quantity = item.quantity
 
     transaction = InventoryTransaction(
-        user_id=current_user.id,
+        store_id=current_user.store_id,
+        actor_user_id=current_user.id,
+        user_id=current_user.data_owner_id,
         inventory_item_id=item.id,
         type=payload.type,
         quantity=payload.quantity,
@@ -194,13 +196,13 @@ def create_transaction(
 @router.get("/{item_id}/transactions", response_model=list[TransactionOut])
 def list_transactions(
     item_id: int,
-    current_user: CurrentUser,
+    current_user: CurrentProductReader,
     db: DbSession,
 ) -> list[InventoryTransaction]:
     get_inventory_item_or_404(
         db,
         item_id,
-        current_user.id,
+        current_user.data_owner_id,
     )
 
     stmt = (
@@ -226,7 +228,7 @@ def hide_inventory_item(
     item = get_inventory_item_or_404(
         db,
         item_id,
-        current_user.id,
+        current_user.data_owner_id,
     )
 
     item.is_hidden = True
@@ -246,7 +248,7 @@ def restore_inventory_item(
     item = get_inventory_item_or_404(
         db,
         item_id,
-        current_user.id,
+        current_user.data_owner_id,
     )
 
     item.is_hidden = False
@@ -267,7 +269,7 @@ def force_delete_inventory_item(
     item = get_inventory_item_or_404(
         db,
         item_id,
-        current_user.id,
+        current_user.data_owner_id,
     )
 
     if item.is_catalog_backed:
@@ -296,7 +298,7 @@ def bulk_sync_inventory(
         if item is None:
             continue
 
-        if item.user_id != current_user.id:
+        if item.user_id != current_user.data_owner_id:
             continue
 
         if item.deleted_at is not None:

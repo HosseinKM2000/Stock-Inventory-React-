@@ -116,16 +116,16 @@ describe("backup restoration", () => {
 
     await backupRestoreService.apply({ envelope, sourceName: "archive.tanzimbackup" }, user);
 
-    expect(await db.inventoryItems.get(70)).toMatchObject({ quantity: 14, category_id: 8, label_ids: [9] });
-    expect(await db.categories.get(8)).toMatchObject({ name: "نوشیدنی", local_user_id: 7 });
-    expect(await db.labels.get(9)).toMatchObject({ name: "چای", local_user_id: 7 });
-    expect(await db.inventoryItems.get(990)).toBeDefined();
+    expect(await db.inventoryItems.where("id").equals(70).first()).toMatchObject({ quantity: 14, category_id: 8, label_ids: [9] });
+    expect(await db.categories.where("id").equals(8).first()).toMatchObject({ name: "نوشیدنی", local_user_id: 7 });
+    expect(await db.labels.where("id").equals(9).first()).toMatchObject({ name: "چای", local_user_id: 7 });
+    expect(await db.inventoryItems.where("id").equals(990).first()).toBeDefined();
     const queue = await db.syncQueue.where("ownerUserId").equals(7).toArray();
     expect(queue).toHaveLength(1);
     expect(queue[0]).toMatchObject({ status: "conflict", lastError: "RESTORED_BACKUP_REVIEW_REQUIRED" });
     expect(queue[0].operationId).not.toBe("historical-operation");
     expect(await db.syncMetadata.get("7:cursor")).toBeUndefined();
-    expect(await db.syncMetadata.get("7:restore-reconciliation-required")).toBeDefined();
+    expect(await db.syncMetadata.get("7:7:restore-reconciliation-required")).toBeDefined();
     expect((await backupRepository.get(7))?.restoreRequiresReview).toBe(true);
     expect(mocks.restoreImage).toHaveBeenCalledOnce();
     await expect((mocks.restoreImage.mock.calls[0][1] as Blob).text()).resolves.toBe("pixels");

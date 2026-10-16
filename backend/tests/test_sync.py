@@ -66,6 +66,7 @@ class SyncApiTest(unittest.TestCase):
         cls.headers = {
             "Authorization": f"Bearer {signup.json()['access_token']}",
             "X-Device-Fingerprint": "sync-test-device",
+            "X-Client-Data-Schema": "2",
         }
         admin_login = cls.client.post(
             "/api/auth/login",
@@ -284,6 +285,7 @@ class SyncApiTest(unittest.TestCase):
         other_headers = {
             "Authorization": f"Bearer {signup.json()['access_token']}",
             "X-Device-Fingerprint": "label-tenant-device",
+            "X-Client-Data-Schema": "2",
         }
         labels = self.client.get("/api/labels", headers=other_headers)
         self.assertEqual(labels.status_code, 200, labels.text)
@@ -613,6 +615,7 @@ class SyncApiTest(unittest.TestCase):
         second_headers = {
             "Authorization": f"Bearer {second_signup.json()['access_token']}",
             "X-Device-Fingerprint": "catalog-existing-device",
+            "X-Client-Data-Schema": "2",
         }
         selected_second = self.client.patch(
             "/api/auth/industry",
@@ -902,6 +905,7 @@ class SyncApiTest(unittest.TestCase):
         new_headers = {
             "Authorization": f"Bearer {new_signup.json()['access_token']}",
             "X-Device-Fingerprint": "catalog-new-device",
+            "X-Client-Data-Schema": "2",
         }
         new_selected = self.client.patch(
             "/api/auth/industry",
@@ -1346,6 +1350,7 @@ class SyncApiTest(unittest.TestCase):
         other_headers = {
             "Authorization": f"Bearer {signup.json()['access_token']}",
             "X-Device-Fingerprint": "second-tenant-device",
+            "X-Client-Data-Schema": "2",
         }
         response = self.client.patch(
             "/api/categories/1800000000001",

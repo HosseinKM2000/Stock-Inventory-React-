@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from ..models import User
 from ..schemas import LoginRequest, TokenResponse, UserOut, SignupRequest, UserUpdate
 from .plan_policy import can_add_device
+from .store_service import attach_store_context, create_owner_store
 
 from ..security import (
     create_access_token,
@@ -59,6 +60,7 @@ def signup(
 
     db.add(user)
     db.flush()
+    create_owner_store(db, user)
 
     token = create_access_token(user.id)
 
@@ -72,6 +74,7 @@ def signup(
     db.commit()
     db.refresh(user)
 
+    attach_store_context(db, user)
     return TokenResponse(
     access_token=token,
     token_type="bearer",
@@ -158,6 +161,7 @@ def login(
 
     db.commit()
     db.refresh(user)
+    attach_store_context(db, user)
 
     return TokenResponse(
         access_token=token,
@@ -212,6 +216,10 @@ def update_password(
         raise HTTPException(status_code=400, detail="NEW_PASSWORD_MUST_DIFFER")
 
     user.hashed_password = hash_password(new_password)
+
+    context = attach_store_context(db, user)
+    if context and context.membership.temporary_password_required:
+        context.membership.temporary_password_required = False
 
     # A credential change invalidates every other device while preserving the
     # verified session that performed the change.

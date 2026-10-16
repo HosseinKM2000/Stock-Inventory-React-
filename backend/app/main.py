@@ -2,13 +2,12 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
 
 from .config import settings
 from sqlalchemy import text
 from .database import engine
 from .exceptions import global_exception_handler
-from .routers import admin, auth, categories, dashboard, plans, backup, industries, products, inventory, export, transactions, custom_products, catalog_products, sync, labels
+from .routers import admin, auth, categories, dashboard, plans, backup, industries, products, inventory, export, transactions, custom_products, catalog_products, sync, labels, personnel, files
 
 
 @asynccontextmanager
@@ -45,8 +44,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
-
 api = "/api"
 app.include_router(auth.router, prefix=api)
 app.include_router(plans.router, prefix=api)
@@ -63,6 +60,8 @@ app.include_router(industries.router, prefix=api)
 app.include_router(catalog_products.router, prefix=api)
 app.include_router(sync.router, prefix=api)
 app.include_router(labels.router, prefix=api)
+app.include_router(personnel.router, prefix=api)
+app.include_router(files.router, prefix=api)
 
 
 @app.get("/api/health")

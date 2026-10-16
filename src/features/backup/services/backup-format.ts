@@ -64,7 +64,7 @@ export async function buildBackupEnvelope(input: {
     schemaVersion: BACKUP_SCHEMA_VERSION,
     createdAt: input.createdAt ?? new Date().toISOString(),
     snapshotRevision,
-    owner: input.owner,
+    owner: { ...input.owner, storeId: input.owner.storeId ?? input.owner.userId },
     counts: {
       products: input.data.products.length,
       categories: input.data.categories.length,
@@ -97,7 +97,7 @@ function hasValidDataShape(value: unknown): value is BackupData {
     Array.isArray(value.unavailableImages);
 }
 
-export async function parseBackupEnvelope(raw: string, expectedUserId: number): Promise<BackupEnvelope> {
+export async function parseBackupEnvelope(raw: string, expectedUserId: number, expectedStoreId = expectedUserId): Promise<BackupEnvelope> {
   let parsed: unknown;
   try {
     parsed = JSON.parse(raw);
@@ -105,11 +105,12 @@ export async function parseBackupEnvelope(raw: string, expectedUserId: number): 
     throw new Error("BACKUP_INVALID_JSON");
   }
   if (!isRecord(parsed) || parsed.format !== BACKUP_FORMAT) throw new Error("BACKUP_FORMAT_INVALID");
-  if (parsed.formatVersion !== BACKUP_FORMAT_VERSION || parsed.schemaVersion !== BACKUP_SCHEMA_VERSION) {
+  if (parsed.formatVersion !== BACKUP_FORMAT_VERSION || (parsed.schemaVersion !== 1 && parsed.schemaVersion !== BACKUP_SCHEMA_VERSION)) {
     throw new Error("BACKUP_SCHEMA_UNSUPPORTED");
   }
   const envelope = parsed as unknown as BackupEnvelope;
   if (envelope.owner?.userId !== expectedUserId) throw new Error("BACKUP_OWNER_MISMATCH");
+  if (envelope.schemaVersion >= 2 && envelope.owner.storeId !== expectedStoreId) throw new Error("BACKUP_STORE_MISMATCH");
   if (!hasValidDataShape(envelope.data) || !envelope.integrity?.digest || envelope.integrity.algorithm !== "SHA-256") {
     throw new Error("BACKUP_STRUCTURE_INVALID");
   }
