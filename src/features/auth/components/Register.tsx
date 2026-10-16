@@ -148,7 +148,6 @@ function RegisterComponent() {
         </Box>
         <Box className="w-[90%] sm:w-90 h-fit">
           <Button
-            intent="positive"
             type="submit"
             style={{ width: "100%" }}
             loading={registerMutation.isPending}

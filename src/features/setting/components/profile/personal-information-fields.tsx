@@ -139,7 +139,7 @@ const PersonalInformationFields = () => {
         </Grid>
 
         <Grid mt="6">
-          <Button intent="positive" type="submit" loading={updateProfile.isPending}>
+          <Button type="submit" loading={updateProfile.isPending}>
             ویرایش
           </Button>
         </Grid>

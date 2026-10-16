@@ -130,7 +130,7 @@ export function BackupSettings() {
             </Flex>
             <Text as="div" size="1" color="gray" mt="1">آخرین ذخیره موفق: {dateTime(settings?.lastSuccessfulAt)}</Text>
           </Box>
-          <Button intent="positive" loading={working || status.busy} onClick={() => void saveNow()} leftIcon={<FileIcon />}>
+          <Button loading={working || status.busy} onClick={() => void saveNow()} leftIcon={<FileIcon />}>
             ذخیره اکنون
           </Button>
         </Flex>
@@ -207,7 +207,7 @@ export function BackupSettings() {
             <Callout.Icon><ExclamationTriangleIcon /></Callout.Icon>
             <Callout.Text>
               همگام‌سازی پس از بازیابی متوقف است. داده‌ها و تعارض‌های صف را بررسی کنید.
-              <Button intent="positive" size="2" variant="soft" ml="2" loading={working} onClick={() => void resume()}>بررسی شد؛ ادامه همگام‌سازی</Button>
+              <Button size="2" variant="soft" ml="2" loading={working} onClick={() => void resume()}>بررسی شد؛ ادامه همگام‌سازی</Button>
             </Callout.Text>
           </Callout.Root>
         ) : null}

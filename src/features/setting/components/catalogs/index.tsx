@@ -76,7 +76,7 @@ const Catalogs = () => {
 
         <CatalogFormDialog
           mode="create"
-          trigger={<Button intent="positive"><PlusIcon />افزودن محصول</Button>}
+          trigger={<Button><PlusIcon />افزودن محصول</Button>}
         />
       </Flex>
 

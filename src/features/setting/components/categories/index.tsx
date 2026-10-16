@@ -57,7 +57,7 @@ const CategoriesCards = () => {
           <CategoryFormDialog
             mode="create"
             trigger={
-              <Button intent="positive">
+              <Button>
                 <PlusIcon />
                 افزودن دسته بندی
               </Button>

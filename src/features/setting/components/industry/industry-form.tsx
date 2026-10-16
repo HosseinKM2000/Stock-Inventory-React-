@@ -3,8 +3,7 @@ import { preventEventHandler } from "@/shared/lib/prevent-event";
 import { FormField } from "@/shared/ui/form/field/form-field";
 import { Form } from "@/shared/ui/form/form";
 import { SelectInput } from "@/shared/ui/form/input/select-input";
-import { Box, Callout, Flex, Link, Text } from "@radix-ui/themes";
-import { Button } from "@/shared/ui/button/button";
+import { Box, Button, Callout, Flex, Link, Text } from "@radix-ui/themes";
 import { useState } from "react";
 import { useIndustries, useSetIndustry } from "../../mutations/use-industry";
 import { ApiError } from "@/shared/api/api-error";
@@ -83,7 +82,6 @@ function IndustryForm({ embedded = false }: { embedded?: boolean }) {
           </Box>
           <Box className="w-[90%] sm:w-90">
             <Button
-              intent="positive"
               type="submit"
               style={{ width: "100%" }}
               loading={setIndustryMutation.isPending}

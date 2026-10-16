@@ -677,8 +677,28 @@ body,
 }
 
 .app-toaster .app-toast .app-toast-action {
-  color: var(--accent-contrast);
-  background: var(--accent-9);
+  color: var(--green-11);
+  border: 1px solid var(--green-8);
+  background: color-mix(in srgb, var(--color-panel-solid) 96%, var(--green-3));
+  box-shadow: none;
+}
+
+.app-toaster .app-toast[data-type="warning"] .app-toast-action {
+  color: var(--amber-11);
+  border-color: var(--amber-8);
+  background: color-mix(in srgb, var(--color-panel-solid) 96%, var(--amber-3));
+}
+
+.app-toaster .app-toast[data-type="error"] .app-toast-action {
+  color: var(--red-11);
+  border-color: var(--red-8);
+  background: color-mix(in srgb, var(--color-panel-solid) 96%, var(--red-3));
+}
+
+.app-toaster .app-toast[data-type="info"] .app-toast-action {
+  color: var(--accent-11);
+  border-color: var(--accent-8);
+  background: color-mix(in srgb, var(--color-panel-solid) 96%, var(--accent-3));
 }
 
 .app-toaster .app-toast .app-toast-cancel {
@@ -847,17 +867,33 @@ body,
 }
 
 .rt-Button[data-intent="positive"] {
+  color: var(--green-11);
   border: 1px solid var(--green-8);
-  box-shadow:
-    0 0 0 2px var(--green-a3),
-    0 6px 16px color-mix(in srgb, var(--green-9) 14%, transparent);
+  background: color-mix(in srgb, var(--color-panel-solid) 96%, var(--green-3));
+  box-shadow: none;
 }
 
 .rt-Button[data-intent="positive"]:hover {
+  color: var(--green-12);
   border-color: var(--green-9);
-  box-shadow:
-    0 0 0 3px var(--green-a4),
-    0 8px 20px color-mix(in srgb, var(--green-9) 20%, transparent);
+  background: color-mix(in srgb, var(--color-panel-solid) 91%, var(--green-4));
+  box-shadow: none;
+}
+
+.rt-Button[data-intent="positive"]:is([data-accent-color="amber"], .rt-r-accent-color-amber) {
+  color: var(--amber-11);
+  border-color: var(--amber-8);
+  background: color-mix(in srgb, var(--color-panel-solid) 96%, var(--amber-3));
+}
+
+.rt-Button[data-intent="positive"]:is([data-accent-color="amber"], .rt-r-accent-color-amber):hover {
+  color: var(--amber-12);
+  border-color: var(--amber-9);
+  background: color-mix(in srgb, var(--color-panel-solid) 91%, var(--amber-4));
+}
+
+.rt-Button[data-intent="positive"]:is([data-accent-color="amber"], .rt-r-accent-color-amber):focus-visible {
+  outline-color: var(--amber-a7);
 }
 
 .rt-Button[data-intent="positive"]:focus-visible {
@@ -868,7 +904,7 @@ body,
 .rt-Button[data-intent="positive"]:disabled,
 .rt-Button[data-intent="positive"][data-disabled] {
   border-color: var(--green-a6);
-  box-shadow: 0 0 0 1px var(--green-a2);
+  box-shadow: none;
 }
 
 .action-confirm-dialog {
@@ -1034,7 +1070,7 @@ body,
 }
 
 .pwa-install-primary-action {
-  box-shadow: 0 8px 18px color-mix(in srgb, var(--accent-9) 22%, transparent);
+  box-shadow: none;
 }
 
 .pwa-install-promotion-close {
