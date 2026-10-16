@@ -1,5 +1,5 @@
 import { Cross1Icon, DownloadIcon } from "@radix-ui/react-icons";
-import { Callout, Dialog, Flex, IconButton, Tooltip } from "@radix-ui/themes";
+import { Box, Dialog, Flex, IconButton, Text, Tooltip } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import { Button } from "@/shared/ui/button/button";
 import { useAuth } from "@/shared/auth/use-auth";
@@ -159,35 +159,37 @@ export function PwaInstallPromotion({ visible = true }: { visible?: boolean } = 
       open={controller.instructionsOpen}
       onOpenChange={controller.setInstructionsOpen}
     >
-      <Callout.Root
+      <aside
         dir="rtl"
-        color="violet"
         role="status"
         aria-live="polite"
         className="pwa-install-promotion fixed z-[60] w-[min(25rem,calc(100dvw-2rem))]"
       >
-        <Callout.Text>
-          افزودن تنطیم به صفحهٔ اصلی، دسترسی سریع‌تر و استفادهٔ آفلاین مطمئن‌تر را فراهم می‌کند.
-        </Callout.Text>
-        <Flex mt="3" gap="2" justify="end" wrap="wrap">
-          <Button onClick={() => { void controller.install(); }}>
-            <DownloadIcon />
-            نصب برنامه
-          </Button>
-          <Button variant="soft" color="gray" onClick={controller.dismiss}>
-            بعداً
-          </Button>
-        </Flex>
-        <IconButton
+        <span className="pwa-install-promotion-icon" aria-hidden="true"><DownloadIcon width="22" height="22" /></span>
+        <Box className="pwa-install-promotion-content">
+          <Text as="div" size="3" weight="bold" className="pwa-install-promotion-title">تنظیم را به دستگاه اضافه کنید</Text>
+          <Text as="p" size="2" color="gray" mt="1" className="pwa-install-promotion-description">
+            دسترسی سریع‌تر و استفادهٔ آفلاین مطمئن‌تر، بدون نیاز به باز کردن مرورگر.
+          </Text>
+          <Flex mt="4" gap="2" className="pwa-install-promotion-actions">
+            <Button onClick={() => { void controller.install(); }} className="pwa-install-primary-action">
+              <DownloadIcon />
+              نصب برنامه
+            </Button>
+            <Button variant="soft" color="gray" onClick={controller.dismiss}>
+              بعداً
+            </Button>
+          </Flex>
+        </Box>
+        <button
+          type="button"
           aria-label="بستن پیشنهاد نصب"
-          variant="ghost"
-          color="gray"
-          className="absolute left-1 top-1"
+          className="pwa-install-promotion-close"
           onClick={controller.dismiss}
         >
           <Cross1Icon />
-        </IconButton>
-      </Callout.Root>
+        </button>
+      </aside>
       <Dialog.Content maxWidth="420px" dir="rtl">
         <Dialog.Title>افزودن به صفحهٔ اصلی</Dialog.Title>
         <Dialog.Description>
