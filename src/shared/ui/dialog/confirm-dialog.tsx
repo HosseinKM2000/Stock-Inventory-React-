@@ -77,6 +77,7 @@ export function ConfirmDialog({
         <Box className="action-confirm-actions">
           <Button
             color={colors[variant]}
+            intent={variant === "danger" ? undefined : "positive"}
             loading={loading}
             disabled={disabled}
             onClick={onConfirm}

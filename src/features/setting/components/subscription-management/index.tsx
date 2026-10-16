@@ -36,7 +36,7 @@ export default function SubscriptionManagement() {
     <Box>
       <Flex justify="between" align="center" gap="3" wrap="wrap">
         <Box><Text size="6" weight="bold">مدیریت اشتراک‌ها</Text><Text as="div" size="2" color="gray" mt="1">قیمت‌ها به تومان نمایش داده می‌شوند و تغییر قابلیت‌ها فوراً در مجوزهای سرور اعمال می‌شود.</Text></Box>
-        <PlanDialog trigger={<Button><PlusIcon />طرح جدید</Button>} />
+        <PlanDialog trigger={<Button intent="positive"><PlusIcon />طرح جدید</Button>} />
       </Flex>
       <Grid columns={{ initial: "1", md: "2", xl: "3" }} gap="4" mt="5">
         {(plans.data ?? []).map((plan) => {

@@ -30,6 +30,6 @@ export function DevicePolicyEditor({ user }: { user: AdminUser }) {
     <Select.Root value={mode} onValueChange={(value) => setMode(value as typeof mode)} disabled={mutation.isPending}><Select.Trigger aria-label={`سیاست دستگاه ${user.username}`} /><Select.Content><Select.Item value="inherit">ارث‌بری از طرح</Select.Item><Select.Item value="unlimited">نامحدود</Select.Item><Select.Item value="limited">محدود</Select.Item></Select.Content></Select.Root>
     {mode === "limited" && <TextField.Root type="number" min="1" inputMode="numeric" value={limit} placeholder="حداکثر دستگاه فعال" onChange={(event) => setLimit(event.target.value)} />}
     {mode === "limited" && parsed !== null && parsed < user.active_session_count && <Callout.Root color="amber" size="1"><Callout.Text>نشست فعلی حذف نمی‌شود؛ ورود دستگاه جدید تا کاهش نشست‌ها رد خواهد شد.</Callout.Text></Callout.Root>}
-    <Button size="1" variant="soft" disabled={!valid} loading={mutation.isPending} onClick={() => void save()}>ذخیره سیاست دستگاه</Button>
+    <Button intent="positive" size="1" variant="soft" disabled={!valid} loading={mutation.isPending} onClick={() => void save()}>ذخیره سیاست دستگاه</Button>
   </Flex>;
 }

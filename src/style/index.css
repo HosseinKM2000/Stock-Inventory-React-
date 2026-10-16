@@ -824,20 +824,58 @@ body,
 .rt-DialogContent,
 .rt-AlertDialogContent {
   box-sizing: border-box;
-  inline-size: min(var(--dialog-content-width, 100%), calc(100vw - 2rem));
-  inline-size: min(var(--dialog-content-width, 100%), calc(100dvw - 2rem));
-  max-inline-size: calc(100dvw - 2rem) !important;
+  inline-size: min(var(--max-width, 100%), calc(100vw - 2rem));
+  inline-size: min(var(--max-width, 100%), calc(100dvw - 2rem));
+  max-inline-size: min(var(--max-width, 100%), calc(100dvw - 2rem)) !important;
   max-block-size: calc(100dvh - 2rem);
   overflow-y: auto;
   overscroll-behavior: contain;
   overflow-wrap: anywhere;
 }
 
+:is(.rt-DialogContent, .rt-AlertDialogContent):not(.app-image-dialog) {
+  padding: clamp(22px, 2vw, 28px) !important;
+}
+
+:is(.rt-DialogContent, .rt-AlertDialogContent) > .rt-Heading:not(.sr-only),
+:is(.rt-DialogTitle, .rt-AlertDialogTitle):not(.sr-only) {
+  margin-bottom: 16px;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.55;
+  letter-spacing: -.01em;
+}
+
+.rt-Button[data-intent="positive"] {
+  border: 1px solid var(--green-8);
+  box-shadow:
+    0 0 0 2px var(--green-a3),
+    0 6px 16px color-mix(in srgb, var(--green-9) 14%, transparent);
+}
+
+.rt-Button[data-intent="positive"]:hover {
+  border-color: var(--green-9);
+  box-shadow:
+    0 0 0 3px var(--green-a4),
+    0 8px 20px color-mix(in srgb, var(--green-9) 20%, transparent);
+}
+
+.rt-Button[data-intent="positive"]:focus-visible {
+  outline: 3px solid var(--green-a6);
+  outline-offset: 2px;
+}
+
+.rt-Button[data-intent="positive"]:disabled,
+.rt-Button[data-intent="positive"][data-disabled] {
+  border-color: var(--green-a6);
+  box-shadow: 0 0 0 1px var(--green-a2);
+}
+
 .action-confirm-dialog {
   width: min(25rem, calc(100dvw - 1rem)) !important;
   max-width: min(25rem, calc(100dvw - 1rem)) !important;
   max-height: calc(100dvh - 1rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
-  padding: 18px 16px 14px !important;
+  padding: 26px 22px 20px !important;
   border: 1px solid var(--gray-a5);
   border-radius: 24px !important;
   text-align: center;
@@ -1703,7 +1741,7 @@ body,
 
   .rt-DialogContent,
   .rt-AlertDialogContent {
-    padding: 12px !important;
+    padding: 18px 14px !important;
   }
 
   .rt-Card,

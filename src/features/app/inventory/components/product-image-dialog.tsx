@@ -20,7 +20,7 @@ export function ProductImageDialog({ product, onOpenChange }: Props) {
     <Dialog.Root open={product !== null} onOpenChange={onOpenChange}>
       <Dialog.Content
         aria-describedby={undefined}
-        className="h-[calc(100dvh-2rem)]! w-[calc(100vw-2rem)]! max-w-[72rem]! overflow-hidden bg-black/95! p-0!"
+        className="app-image-dialog h-[calc(100dvh-2rem)]! w-[calc(100vw-2rem)]! max-w-[72rem]! overflow-hidden bg-black/95! p-0!"
       >
         <Dialog.Title className="sr-only">تصویر {name}</Dialog.Title>
         <Dialog.Close>

@@ -145,7 +145,7 @@ export default function PlanDialog({ plan, trigger }: Props) {
             </Grid>
           </Card>
         </Flex>
-        <Flex justify="end" gap="2" mt="5" wrap="wrap-reverse"><Dialog.Close><Button variant="soft" color="gray">انصراف</Button></Dialog.Close><Button loading={pending} onClick={review}>{plan ? "بررسی تغییرات" : "بررسی و ایجاد"}</Button></Flex>
+        <Flex justify="end" gap="2" mt="5" wrap="wrap-reverse"><Dialog.Close><Button variant="soft" color="gray">انصراف</Button></Dialog.Close><Button intent="positive" loading={pending} onClick={review}>{plan ? "بررسی تغییرات" : "بررسی و ایجاد"}</Button></Flex>
       </Dialog.Content>
     </Dialog.Root>
     <ConfirmDialog

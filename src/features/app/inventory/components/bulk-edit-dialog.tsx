@@ -113,7 +113,7 @@ export function BulkEditDialog({ open, selectedIds, onOpenChange, onComplete }: 
       </Flex>
       <Flex justify="end" gap="2" mt="5" wrap="wrap-reverse">
         <Dialog.Close><Button variant="soft" color="gray" disabled={mutation.isPending}>انصراف</Button></Dialog.Close>
-        <Button disabled={!effective} loading={mutation.isPending} onClick={() => void submit()}>اعمال تغییرات</Button>
+        <Button intent="positive" disabled={!effective} loading={mutation.isPending} onClick={() => void submit()}>اعمال تغییرات</Button>
       </Flex>
     </Dialog.Content>
   </Dialog.Root>;

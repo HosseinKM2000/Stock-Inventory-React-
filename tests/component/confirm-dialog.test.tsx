@@ -28,7 +28,9 @@ describe("ConfirmDialog", () => {
     expect(screen.getByTestId("stock-icon")).toBeInTheDocument();
     expect(screen.getByText("۶ ← ۷")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "تأیید" }));
+    const confirm = screen.getByRole("button", { name: "تأیید" });
+    expect(confirm).toHaveAttribute("data-intent", "positive");
+    fireEvent.click(confirm);
     expect(onConfirm).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole("button", { name: "انصراف" }));

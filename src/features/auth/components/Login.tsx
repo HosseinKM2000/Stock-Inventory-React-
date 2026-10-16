@@ -86,6 +86,7 @@ function LoginComponent() {
 
         <Box className="w-[90%] sm:w-90">
           <Button
+            intent="positive"
             type="submit"
             style={{ width: "100%" }}
             loading={loginMutation.isPending}

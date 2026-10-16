@@ -161,7 +161,7 @@ export default function IndustryFormDialog({ mode, industry, trigger }: Props) {
             </Button>
           </Dialog.Close>
 
-          <Button loading={mutation.isPending} onClick={form.submit}>
+          <Button intent="positive" loading={mutation.isPending} onClick={form.submit}>
             {mode === "create" ? "ایجاد" : "ذخیره"}
           </Button>
         </Flex>

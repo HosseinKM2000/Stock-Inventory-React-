@@ -172,7 +172,7 @@ export function PwaInstallPromotion({ visible = true }: { visible?: boolean } = 
             دسترسی سریع‌تر و استفادهٔ آفلاین مطمئن‌تر، بدون نیاز به باز کردن مرورگر.
           </Text>
           <Flex mt="4" gap="2" className="pwa-install-promotion-actions">
-            <Button onClick={() => { void controller.install(); }} className="pwa-install-primary-action">
+            <Button intent="positive" onClick={() => { void controller.install(); }} className="pwa-install-primary-action">
               <DownloadIcon />
               نصب برنامه
             </Button>

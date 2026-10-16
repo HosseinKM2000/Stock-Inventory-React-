@@ -57,7 +57,7 @@ export default function LabelsPage() {
             <Text as="label" size="2" weight="medium">{editing == null ? "برچسب جدید" : "ویرایش برچسب"}</Text>
             <TextField.Root mt="2" value={name} maxLength={60} placeholder="مثلاً پرفروش" onChange={(e) => setName(e.target.value)} />
           </Box>
-          <Button disabled={!name.trim()} loading={create.isPending || update.isPending} onClick={() => void submit()}>
+          <Button intent="positive" disabled={!name.trim()} loading={create.isPending || update.isPending} onClick={() => void submit()}>
             <PlusIcon /> {editing == null ? "افزودن" : "ذخیره"}
           </Button>
           {editing != null && <Button variant="soft" onClick={() => { setEditing(null); setName(""); }}>انصراف</Button>}

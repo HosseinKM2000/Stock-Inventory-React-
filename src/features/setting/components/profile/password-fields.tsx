@@ -145,6 +145,7 @@ const PasswordFields = () => {
 
         <Grid width="100%" mt="6">
           <Button
+            intent="positive"
             type="submit"
             loading={updatePassword.isPending}
           >

@@ -160,6 +160,7 @@ const CategoryFormDialog = ({ mode, category, trigger }: Props) => {
 
           <Button
             color={accent}
+            intent="positive"
             variant="surface"
             loading={mutation.isPending}
             onClick={form.submit}

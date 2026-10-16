@@ -302,6 +302,7 @@ export default function CatalogFormDialog({
           </Dialog.Close>
 
           <Button
+            intent="positive"
             disabled={industriesLoading || industryItems.length === 0}
             loading={mutation.isPending}
             onClick={form.submit}

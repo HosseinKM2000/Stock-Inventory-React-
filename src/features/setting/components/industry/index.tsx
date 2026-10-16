@@ -22,7 +22,7 @@ const Industries = () => {
         <IndustryFormDialog
           mode="create"
           trigger={
-            <Button>
+            <Button intent="positive">
               <PlusIcon />
               افزودن حوزه کاری
             </Button>

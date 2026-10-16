@@ -92,7 +92,7 @@ export function BackupShortcut() {
           <Dialog.Close>
             <Button variant="soft" color="gray">فعلاً نه</Button>
           </Dialog.Close>
-          <Button loading={settingUp} onClick={() => void setup()}>
+          <Button intent="positive" loading={settingUp} onClick={() => void setup()}>
             ذخیره فایل پشتیبان
           </Button>
         </Flex>

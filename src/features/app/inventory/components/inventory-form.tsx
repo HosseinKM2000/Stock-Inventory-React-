@@ -454,7 +454,7 @@ export function ProductForm({
 
         {mode !== "view" && (
           <Grid mt="6" className="product-form-actions">
-            <Button type="submit" loading={submitting} className="product-form-primary-action">
+            <Button intent="positive" type="submit" loading={submitting} className="product-form-primary-action">
               {mode === "create" ? "افزودن" : "ثبت تغییرات"}
             </Button>
 
