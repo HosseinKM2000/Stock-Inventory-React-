@@ -117,7 +117,7 @@ const DashboardProducts = ({ filter }: DashboardProductsProps) => {
         title="محصول حذف شود؟"
         description={
           productToDelete
-            ? `آیا از حذف «${productToDelete.custom_label ?? productToDelete.catalog_product?.name ?? "این محصول"}» مطمئن هستید؟`
+            ? `«${productToDelete.custom_label ?? productToDelete.catalog_product?.name ?? "این محصول"}» از موجودی حذف می‌شود.`
             : ""
         }
         confirmLabel="حذف محصول"

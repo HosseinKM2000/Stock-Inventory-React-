@@ -815,6 +815,12 @@ body,
 
 /* Radix uses fixed desktop widths for dialogs. Clamp the shared primitive to
    the visual viewport so padding remains inside narrow mobile screens. */
+.rt-BaseDialogScrollPadding {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+}
+
 .rt-DialogContent,
 .rt-AlertDialogContent {
   box-sizing: border-box;
@@ -824,6 +830,128 @@ body,
   max-block-size: calc(100dvh - 2rem);
   overflow-y: auto;
   overscroll-behavior: contain;
+  overflow-wrap: anywhere;
+}
+
+.action-confirm-dialog {
+  width: min(25rem, calc(100dvw - 1rem)) !important;
+  max-width: min(25rem, calc(100dvw - 1rem)) !important;
+  max-height: calc(100dvh - 1rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  padding: 18px 16px 14px !important;
+  border: 1px solid var(--gray-a5);
+  border-radius: 24px !important;
+  text-align: center;
+  box-shadow: 0 24px 70px color-mix(in srgb, var(--app-overlay) 34%, transparent);
+}
+
+.action-confirm-icon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  margin: 0 auto 12px;
+  place-items: center;
+  color: var(--amber-11);
+  border-radius: 15px;
+  background: var(--amber-a3);
+}
+
+.action-confirm-dialog[data-variant="danger"] .action-confirm-icon {
+  color: var(--red-11);
+  background: var(--red-a3);
+}
+
+.action-confirm-dialog[data-variant="success"] .action-confirm-icon {
+  color: var(--green-11);
+  background: var(--green-a3);
+}
+
+.action-confirm-title {
+  margin: 0 !important;
+  font-size: 17px !important;
+  line-height: 1.55 !important;
+  text-align: center;
+}
+
+.action-confirm-description {
+  max-width: 34ch;
+  margin: 4px auto 0 !important;
+  line-height: 1.7;
+  text-align: center;
+}
+
+.action-confirm-details {
+  min-width: 0;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--gray-a4);
+  border-radius: 16px;
+  background: var(--gray-a2);
+}
+
+.action-confirm-actions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.action-confirm-actions > *,
+.action-confirm-actions .rt-Button {
+  width: 100%;
+  min-width: 0;
+  min-height: 42px;
+  justify-content: center;
+}
+
+.stock-confirm-summary {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 42px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.stock-confirm-summary > div:not(.stock-confirm-change) {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.stock-confirm-summary span {
+  color: var(--gray-11);
+  font-size: 12px;
+}
+
+.stock-confirm-summary strong {
+  color: var(--gray-12);
+  font-size: 19px;
+}
+
+.stock-confirm-change {
+  display: grid;
+  place-items: center;
+  gap: 2px;
+  color: var(--green-11);
+}
+
+.stock-confirm-change span {
+  min-width: 30px;
+  padding: 2px 6px;
+  color: inherit;
+  border-radius: 999px;
+  background: var(--green-a3);
+  font-weight: 700;
+}
+
+.stock-confirm-change b {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.stock-confirm-summary > small {
+  grid-column: 1 / -1;
+  color: var(--gray-11);
 }
 
 .pwa-install-promotion {
@@ -1567,10 +1695,10 @@ body,
   .rt-PopoverContent,
   .rt-DialogContent,
   .rt-AlertDialogContent {
-    width: calc(100vw - 8px) !important;
+    width: calc(100vw - 32px) !important;
     min-width: 0 !important;
-    max-width: calc(100vw - 8px) !important;
-    max-height: calc(100dvh - 8px) !important;
+    max-width: calc(100vw - 32px) !important;
+    max-height: calc(100dvh - 16px) !important;
   }
 
   .rt-DialogContent,

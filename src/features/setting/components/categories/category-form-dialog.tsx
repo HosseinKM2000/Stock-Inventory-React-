@@ -15,6 +15,7 @@ import {
 
 import { useAppForm } from "@/shared/lib/form/use-app-form";
 import { categorySchema } from "../../validators/category.schema";
+import { toast } from "sonner";
 
 type Props = {
   mode: "create" | "edit";
@@ -51,6 +52,10 @@ const CategoryFormDialog = ({ mode, category, trigger }: Props) => {
           onSuccess() {
             setOpen(false);
             form.reset();
+            toast.success("دسته‌بندی ایجاد شد");
+          },
+          onError(error) {
+            toast.error(error instanceof Error ? error.message : "ایجاد دسته‌بندی ناموفق بود");
           },
         });
 
@@ -68,6 +73,10 @@ const CategoryFormDialog = ({ mode, category, trigger }: Props) => {
           onSuccess() {
             setOpen(false);
             form.reset();
+            toast.success("دسته‌بندی ویرایش شد");
+          },
+          onError(error) {
+            toast.error(error instanceof Error ? error.message : "ویرایش دسته‌بندی ناموفق بود");
           },
         },
       );

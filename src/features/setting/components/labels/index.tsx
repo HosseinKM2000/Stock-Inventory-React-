@@ -3,6 +3,8 @@ import { BookmarkIcon, Cross2Icon, Pencil1Icon, PlusIcon } from "@radix-ui/react
 import { Box, Callout, Card, Flex, IconButton, Spinner, Text, TextField } from "@radix-ui/themes";
 import { Button } from "@/shared/ui/button/button";
 import { useCreateLabel, useDeleteLabel, useLabels, useUpdateLabel } from "../../mutations/use-labels";
+import { ConfirmDialog } from "@/shared/ui/dialog/confirm-dialog";
+import { toast } from "sonner";
 
 export default function LabelsPage() {
   const { data: labels = [], isLoading } = useLabels();
@@ -11,12 +13,34 @@ export default function LabelsPage() {
   const remove = useDeleteLabel();
   const [name, setName] = useState("");
   const [editing, setEditing] = useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
   const error = create.error ?? update.error ?? remove.error;
 
   const submit = async () => {
-    if (editing == null) await create.mutateAsync({ name });
-    else await update.mutateAsync({ id: editing, name });
-    setName(""); setEditing(null);
+    try {
+      if (editing == null) {
+        await create.mutateAsync({ name });
+        toast.success("برچسب ایجاد شد");
+      } else {
+        await update.mutateAsync({ id: editing, name });
+        toast.success("برچسب ویرایش شد");
+      }
+      setName("");
+      setEditing(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "ذخیره برچسب ناموفق بود");
+    }
+  };
+
+  const deleteLabel = async () => {
+    if (!deleteTarget) return;
+    try {
+      await remove.mutateAsync(deleteTarget.id);
+      toast.success(`برچسب «${deleteTarget.name}» حذف شد`);
+      setDeleteTarget(null);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "حذف برچسب ناموفق بود");
+    }
   };
 
   return (
@@ -50,13 +74,24 @@ export default function LabelsPage() {
                 <Flex align="center" gap="3"><Box className="card-title-icon"><BookmarkIcon /></Box><Text weight="medium">{label.name}</Text></Flex>
                 <Flex gap="2">
                   <IconButton variant="soft" aria-label={`ویرایش ${label.name}`} onClick={() => { setEditing(label.id); setName(label.name); }}><Pencil1Icon /></IconButton>
-                  <IconButton color="red" variant="soft" aria-label={`حذف ${label.name}`} onClick={() => { if (confirm(`برچسب «${label.name}» حذف شود؟`)) void remove.mutateAsync(label.id); }}><Cross2Icon /></IconButton>
+                  <IconButton color="red" variant="soft" aria-label={`حذف ${label.name}`} onClick={() => setDeleteTarget({ id: label.id, name: label.name })}><Cross2Icon /></IconButton>
                 </Flex>
               </Flex>
             </Card>
           ))}
         </Flex>
       )}
+      <ConfirmDialog
+        open={deleteTarget !== null}
+        onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}
+        title="حذف برچسب؟"
+        description={deleteTarget ? `«${deleteTarget.name}» از برچسب‌ها حذف می‌شود.` : ""}
+        confirmLabel="حذف"
+        cancelLabel="لغو"
+        variant="danger"
+        loading={remove.isPending}
+        onConfirm={() => { void deleteLabel(); }}
+      />
     </Box>
   );
 }

@@ -37,7 +37,7 @@ export default function DeleteIndustryDialog({
         open={open}
         onOpenChange={setOpen}
         title="حذف حوزه کاری"
-        description={`حوزه کاری «${industry.name}» حذف می‌شود. اگر محصول کاتالوگی به آن وابسته باشد، سرور از حذف جلوگیری خواهد کرد.`}
+        description={`«${industry.name}» از حوزه‌های کاری حذف می‌شود.`}
         confirmLabel="حذف حوزه کاری"
         variant="danger"
         loading={deleteMutation.isPending}

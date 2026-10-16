@@ -1,4 +1,9 @@
-import { AlertDialog, Flex, Text } from "@radix-ui/themes";
+import {
+  CheckIcon,
+  ExclamationTriangleIcon,
+  TrashIcon,
+} from "@radix-ui/react-icons";
+import { AlertDialog, Box, Text } from "@radix-ui/themes";
 import type { ReactNode } from "react";
 
 import { Button } from "@/shared/ui/button/button";
@@ -10,6 +15,8 @@ type ConfirmDialogProps = {
   onOpenChange: (open: boolean) => void;
   title: ReactNode;
   description: ReactNode;
+  icon?: ReactNode;
+  details?: ReactNode;
   confirmLabel?: string;
   cancelLabel?: string;
   variant?: ConfirmVariant;
@@ -24,11 +31,19 @@ const colors = {
   success: "green",
 } as const;
 
+const defaultIcons = {
+  danger: <TrashIcon width="22" height="22" />,
+  warning: <ExclamationTriangleIcon width="22" height="22" />,
+  success: <CheckIcon width="22" height="22" />,
+} as const;
+
 export function ConfirmDialog({
   open,
   onOpenChange,
   title,
   description,
+  icon,
+  details,
   confirmLabel = "تأیید",
   cancelLabel = "انصراف",
   variant = "warning",
@@ -46,27 +61,35 @@ export function ConfirmDialog({
       <AlertDialog.Content
         dir="rtl"
         maxWidth="460px"
-        className="w-[calc(100vw-2rem)] max-h-[calc(100dvh-2rem)] overflow-y-auto"
+        className="action-confirm-dialog"
+        data-variant={variant}
       >
-        <AlertDialog.Title color={colors[variant]}>{title}</AlertDialog.Title>
-        <AlertDialog.Description size="2">
+        <Box className="action-confirm-icon" aria-hidden="true">
+          {icon ?? defaultIcons[variant]}
+        </Box>
+        <AlertDialog.Title className="action-confirm-title" color={colors[variant]}>
+          {title}
+        </AlertDialog.Title>
+        <AlertDialog.Description className="action-confirm-description" size="2">
           <Text as="span" color="gray">{description}</Text>
         </AlertDialog.Description>
-        <Flex gap="3" mt="5" justify="end" wrap="wrap-reverse">
-          <AlertDialog.Cancel>
-            <Button variant="soft" color="gray" disabled={loading}>
-              {cancelLabel}
-            </Button>
-          </AlertDialog.Cancel>
+        {details ? <Box className="action-confirm-details">{details}</Box> : null}
+        <Box className="action-confirm-actions">
           <Button
             color={colors[variant]}
             loading={loading}
             disabled={disabled}
             onClick={onConfirm}
           >
+            <CheckIcon aria-hidden="true" />
             {confirmLabel}
           </Button>
-        </Flex>
+          <AlertDialog.Cancel>
+            <Button variant="soft" color="gray" disabled={loading}>
+              {cancelLabel}
+            </Button>
+          </AlertDialog.Cancel>
+        </Box>
       </AlertDialog.Content>
     </AlertDialog.Root>
   );

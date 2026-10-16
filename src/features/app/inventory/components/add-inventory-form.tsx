@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useCreateProduct } from "../mutations/use-products";
 import { ProductForm } from "./inventory-form";
 import type { Product } from "../types";
+import { toast } from "sonner";
 
 const AddProductForm = () => {
   const navigate = useNavigate();
@@ -19,7 +20,13 @@ const AddProductForm = () => {
       }
       onSubmit={(input) =>
         createProduct.mutate(input as Product, {
-          onSuccess: () => navigate({ to: "/inventory/list" }),
+          onSuccess: () => {
+            toast.success("محصول ایجاد شد");
+            void navigate({ to: "/inventory/list" });
+          },
+          onError: (error) => {
+            toast.error(error instanceof Error ? error.message : "ایجاد محصول ناموفق بود");
+          },
         })
       }
     />

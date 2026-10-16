@@ -281,7 +281,7 @@ const InventoryList = () => {
         open={bulkDeleteOpen}
         onOpenChange={setBulkDeleteOpen}
         title="محصولات انتخاب‌شده حذف شوند؟"
-        description={`با تأیید، ${selectedIds.size.toLocaleString("fa-IR")} محصول انتخاب‌شده از موجودی حذف می‌شود و این تغییر پس از همگام‌سازی روی سرور نیز اعمال خواهد شد.`}
+        description={`${selectedIds.size.toLocaleString("fa-IR")} محصول انتخاب‌شده از موجودی حذف می‌شود.`}
         confirmLabel={`حذف ${selectedIds.size.toLocaleString("fa-IR")} محصول`}
         cancelLabel="لغو"
         variant="danger"
@@ -292,7 +292,7 @@ const InventoryList = () => {
         open={productToDelete !== null}
         onOpenChange={(open) => { if (!open) setProductToDelete(null); }}
         title="محصول حذف شود؟"
-        description={productToDelete ? `آیا از حذف «${productToDelete.custom_label ?? productToDelete.catalog_product?.name ?? "این محصول"}» مطمئن هستید؟` : ""}
+        description={productToDelete ? `«${productToDelete.custom_label ?? productToDelete.catalog_product?.name ?? "این محصول"}» از موجودی حذف می‌شود.` : ""}
         confirmLabel="حذف محصول"
         cancelLabel="لغو"
         variant="danger"

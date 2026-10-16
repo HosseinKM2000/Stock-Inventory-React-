@@ -153,9 +153,9 @@ const CategoriesCards = () => {
       <ConfirmDialog
         open={refreshOpen}
         onOpenChange={setRefreshOpen}
-        title="تازه‌سازی دسته‌بندی‌ها از سرور"
-        description="ابتدا تغییرات محلی همگام می‌شوند؛ سپس نسخه معتبر دسته‌بندی‌های سرور به‌صورت یکجا جایگزین نسخه محلی می‌شود."
-        confirmLabel="تازه‌سازی از سرور"
+        title="دسته‌بندی‌ها تازه‌سازی شوند؟"
+        description="نسخهٔ سرور جایگزین دسته‌بندی‌های فعلی می‌شود."
+        confirmLabel="تازه‌سازی"
         variant="warning"
         loading={refreshMutation.isPending}
         onConfirm={() => { void refresh(); }}

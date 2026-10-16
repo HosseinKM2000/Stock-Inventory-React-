@@ -55,7 +55,15 @@ const EditProductForm = ({ id }: EditProductFormProps) => {
         onSubmit={(input) =>
           updateProduct.mutate(
             { id, input },
-            { onSuccess: () => navigate({ to: "/inventory/list" }) },
+            {
+              onSuccess: () => {
+                toast.success(`«${name}» ویرایش شد`);
+                void navigate({ to: "/inventory/list" });
+              },
+              onError: (error) => {
+                toast.error(error instanceof Error ? error.message : "ویرایش محصول ناموفق بود");
+              },
+            },
           )
         }
         onDelete={() => setConfirmingDelete(true)}
@@ -64,7 +72,7 @@ const EditProductForm = ({ id }: EditProductFormProps) => {
         open={confirmingDelete}
         onOpenChange={setConfirmingDelete}
         title="محصول حذف شود؟"
-        description={`آیا از حذف «${name}» مطمئن هستید؟ این تغییر پس از همگام‌سازی روی سرور نیز اعمال می‌شود.`}
+        description={`«${name}» از موجودی حذف می‌شود.`}
         confirmLabel="حذف محصول"
         cancelLabel="لغو"
         variant="danger"

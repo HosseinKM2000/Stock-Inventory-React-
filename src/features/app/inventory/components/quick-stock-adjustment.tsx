@@ -1,4 +1,4 @@
-import { MinusIcon, PlusIcon } from "@radix-ui/react-icons";
+import { CubeIcon, MinusIcon, PlusIcon } from "@radix-ui/react-icons";
 import { Flex, Text } from "@radix-ui/themes";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { accessState } from "@/shared/access/access-state";
 import { useEntitlementAccess } from "@/shared/access/use-entitlement";
 import { Button } from "@/shared/ui/button/button";
+import { ConfirmDialog } from "@/shared/ui/dialog/confirm-dialog";
 import { useQuickStockAdjustment } from "../hooks/use-quick-stock-adjustment";
 import { useAdjustProductQuantity } from "../mutations/use-products";
 import type { Product } from "../types";
@@ -31,8 +32,8 @@ export function QuickStockAdjustment({ product }: Props) {
     useState<QuantityOperationMode>("unit");
   const [pendingDelta, setPendingDelta] = useState(0);
   const [awaitingDecision, setAwaitingDecision] = useState(false);
+  const [confirmationOpen, setConfirmationOpen] = useState(false);
   const pendingDeltaRef = useRef(0);
-  const notificationId = useRef<string | number | null>(null);
   const confirmationTimer = useRef<number | null>(null);
   const mutation = useAdjustProductQuantity();
   const canWrite = accessState.canAccess() && accessState.canWrite();
@@ -58,7 +59,7 @@ export function QuickStockAdjustment({ product }: Props) {
     pendingDeltaRef.current = 0;
     setPendingDelta(0);
     setAwaitingDecision(false);
-    notificationId.current = null;
+    setConfirmationOpen(false);
   };
 
   const applyStep = (amount: -1 | 1) => {
@@ -99,39 +100,13 @@ export function QuickStockAdjustment({ product }: Props) {
 
   const requestConfirmation = () => {
     const delta = pendingDeltaRef.current;
-    if (delta === 0 || notificationId.current !== null) {
+    if (delta === 0 || awaitingDecision) {
       if (delta === 0) resetPreview();
       return;
     }
 
-    const finalQuantity = product.quantity + delta;
-    let decisionMade = false;
     setAwaitingDecision(true);
-
-    notificationId.current = toast("تغییر موجودی تأیید شود؟", {
-      description: `${product.quantity.toLocaleString("fa-IR")} → ${finalQuantity.toLocaleString("fa-IR")} (${delta > 0 ? "+" : ""}${delta.toLocaleString("fa-IR")}${effectiveMode === "pack" ? `، ${(Math.abs(delta) / operationStep).toLocaleString("fa-IR")} بسته` : ""})`,
-      duration: Infinity,
-      dismissible: true,
-      closeButton: false,
-      action: {
-        label: "تأیید",
-        onClick: () => {
-          decisionMade = true;
-          notificationId.current = null;
-          confirm(delta);
-        },
-      },
-      cancel: {
-        label: "لغو",
-        onClick: () => {
-          decisionMade = true;
-          resetPreview();
-        },
-      },
-      onDismiss: () => {
-        if (!decisionMade) resetPreview();
-      },
-    });
+    setConfirmationOpen(true);
   };
 
   const scheduleConfirmation = () => {
@@ -153,9 +128,6 @@ export function QuickStockAdjustment({ product }: Props) {
       if (confirmationTimer.current !== null) {
         window.clearTimeout(confirmationTimer.current);
       }
-      if (notificationId.current !== null) {
-        toast.dismiss(notificationId.current);
-      }
     };
   }, []);
 
@@ -172,6 +144,7 @@ export function QuickStockAdjustment({ product }: Props) {
   const changing = decrement.repeating || increment.repeating;
 
   return (
+    <>
     <Flex
       direction="column"
       gap="2"
@@ -261,5 +234,41 @@ export function QuickStockAdjustment({ product }: Props) {
         </Button>
       </Flex>
     </Flex>
+    <ConfirmDialog
+      open={confirmationOpen}
+      onOpenChange={(next) => {
+        if (!next) resetPreview();
+      }}
+      title="تغییر موجودی تأیید شود؟"
+      description="آیا از تغییر سریع این کالا اطمینان دارید؟"
+      icon={<CubeIcon width="22" height="22" />}
+      details={
+        <div className="stock-confirm-summary" aria-label="خلاصه تغییر موجودی">
+          <div>
+            <span>موجودی فعلی</span>
+            <strong>{product.quantity.toLocaleString("fa-IR")}</strong>
+          </div>
+          <div className="stock-confirm-change" aria-label={`تغییر ${pendingDelta.toLocaleString("fa-IR")}`}>
+            <span>{pendingDelta > 0 ? "+" : ""}{pendingDelta.toLocaleString("fa-IR")}</span>
+            <b aria-hidden="true">←</b>
+          </div>
+          <div>
+            <span>موجودی جدید</span>
+            <strong>{previewQuantity.toLocaleString("fa-IR")}</strong>
+          </div>
+          {effectiveMode === "pack" ? (
+            <small>
+              {(Math.abs(pendingDelta) / operationStep).toLocaleString("fa-IR")} بسته
+            </small>
+          ) : null}
+        </div>
+      }
+      confirmLabel="تأیید"
+      cancelLabel="لغو"
+      variant="warning"
+      loading={mutation.isPending}
+      onConfirm={() => confirm(pendingDeltaRef.current)}
+    />
+    </>
   );
 }

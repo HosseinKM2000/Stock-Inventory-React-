@@ -56,9 +56,9 @@ export default function ProductSettings() {
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title="دریافت محصولات از سرور"
-        description="ابتدا تغییرات محلی ارسال می‌شوند و سپس نسخه معتبر محصولات و کاتالوگ سرور با داده محلی تطبیق داده می‌شود. این عملیات فقط در حالت آنلاین انجام می‌شود."
-        confirmLabel="دریافت از سرور"
+        title="محصولات تازه‌سازی شوند؟"
+        description="نسخهٔ معتبر سرور با محصولات فعلی تطبیق داده می‌شود."
+        confirmLabel="تازه‌سازی"
         variant="warning"
         loading={refresh.isPending}
         onConfirm={() =>
