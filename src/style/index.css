@@ -1392,14 +1392,25 @@ body,
 
 @media (max-width: 639px) {
   .app-toaster .app-toast {
+    width: min(26rem, calc(100dvw - 1rem)) !important;
+    margin-inline: auto;
     min-height: 68px;
     flex-wrap: wrap;
   }
 
+  .app-toaster .app-toast-content {
+    flex: 1 1 calc(100% - 52px);
+  }
+
+  .app-toaster .app-toast:not(:has(.app-toast-icon)) .app-toast-content {
+    flex-basis: 100%;
+  }
+
   .app-toaster .app-toast :is([data-button], [data-cancel]) {
-    width: calc(100% - 52px);
+    width: auto;
     min-height: 38px;
-    margin-inline-start: 52px;
+    margin-inline: 0;
+    flex: 1 1 calc(50% - 6px);
     justify-content: center;
   }
 
@@ -1622,11 +1633,6 @@ body,
     width: 36px;
     height: 36px;
     border-radius: 11px;
-  }
-
-  .app-toaster .app-toast :is([data-button], [data-cancel]) {
-    width: calc(100% - 46px);
-    margin-inline-start: 46px;
   }
 
   .app-notification-layout {
