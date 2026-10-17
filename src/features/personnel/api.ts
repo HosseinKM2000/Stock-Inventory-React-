@@ -33,6 +33,7 @@ export const permissionOptions = [
   ["products.view", "مشاهده محصولات"], ["products.create", "ایجاد محصول"], ["products.edit", "ویرایش جزئیات محصول"],
   ["products.quantity.change", "تغییر موجودی"], ["products.price.change", "تغییر قیمت"], ["products.delete", "حذف محصول"],
   ["categories.manage", "مدیریت دسته‌ها"], ["labels.manage", "مدیریت برچسب‌ها"], ["products.bulk", "عملیات گروهی"],
+  ["barcodes.lookup", "مشاهده و اسکن بارکد"], ["barcodes.manage", "مدیریت بارکد"], ["labels.print", "چاپ لیبل"],
   ["dashboard.view", "مشاهده داشبورد"], ["tools.import", "ورود اطلاعات"], ["tools.export", "خروجی"],
   ["tools.catalog", "کاتالوگ"], ["tools.backup", "پشتیبان‌گیری"], ["tools.restore", "بازیابی"],
 ] as const;

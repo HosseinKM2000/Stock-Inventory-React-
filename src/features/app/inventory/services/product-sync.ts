@@ -70,7 +70,7 @@ async function push(items: SyncQueueItem[]): Promise<SyncHandlerResult[]> {
 
     if (result.record) {
       const local = await inventoryRepository.get(item.entityId);
-      await inventoryRepository.save(localRepresentation(result.record, local));
+      await inventoryRepository.save(localRepresentation(result.record as Product, local));
     }
 
     output.push({

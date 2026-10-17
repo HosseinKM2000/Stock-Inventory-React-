@@ -57,7 +57,8 @@ export async function buildBackupEnvelope(input: {
   data: BackupData;
   createdAt?: string;
 }): Promise<BackupEnvelope> {
-  const snapshotRevision = await revisionForBackupData(input.data);
+  const data: BackupData = { ...input.data, barcodes: input.data.barcodes ?? [], inventoryMovements: input.data.inventoryMovements ?? [] };
+  const snapshotRevision = await revisionForBackupData(data);
   const unsigned: Omit<BackupEnvelope, "integrity"> = {
     format: BACKUP_FORMAT,
     formatVersion: BACKUP_FORMAT_VERSION,
@@ -66,14 +67,16 @@ export async function buildBackupEnvelope(input: {
     snapshotRevision,
     owner: { ...input.owner, storeId: input.owner.storeId ?? input.owner.userId },
     counts: {
-      products: input.data.products.length,
-      categories: input.data.categories.length,
-      labels: input.data.labels.length,
-      pendingOperations: input.data.pendingOperations.length,
-      images: input.data.images.length,
-      unavailableImages: input.data.unavailableImages.length,
+      products: data.products.length,
+      categories: data.categories.length,
+      labels: data.labels.length,
+      barcodes: data.barcodes?.length ?? 0,
+      inventoryMovements: data.inventoryMovements?.length ?? 0,
+      pendingOperations: data.pendingOperations.length,
+      images: data.images.length,
+      unavailableImages: data.unavailableImages.length,
     },
-    data: input.data,
+    data,
   };
   return {
     ...unsigned,
@@ -85,11 +88,13 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function hasValidDataShape(value: unknown): value is BackupData {
+function hasValidDataShape(value: unknown) {
   if (!isRecord(value)) return false;
   return Array.isArray(value.products) &&
     Array.isArray(value.categories) &&
     Array.isArray(value.labels) &&
+    (value.barcodes === undefined || Array.isArray(value.barcodes)) &&
+    (value.inventoryMovements === undefined || Array.isArray(value.inventoryMovements)) &&
     Array.isArray(value.pendingOperations) &&
     Array.isArray(value.reconciliation) &&
     isRecord(value.preferences) &&
@@ -105,7 +110,7 @@ export async function parseBackupEnvelope(raw: string, expectedUserId: number, e
     throw new Error("BACKUP_INVALID_JSON");
   }
   if (!isRecord(parsed) || parsed.format !== BACKUP_FORMAT) throw new Error("BACKUP_FORMAT_INVALID");
-  if (parsed.formatVersion !== BACKUP_FORMAT_VERSION || (parsed.schemaVersion !== 1 && parsed.schemaVersion !== BACKUP_SCHEMA_VERSION)) {
+  if (parsed.formatVersion !== BACKUP_FORMAT_VERSION || ![1, 2, BACKUP_SCHEMA_VERSION].includes(Number(parsed.schemaVersion))) {
     throw new Error("BACKUP_SCHEMA_UNSUPPORTED");
   }
   const envelope = parsed as unknown as BackupEnvelope;
@@ -118,6 +123,7 @@ export async function parseBackupEnvelope(raw: string, expectedUserId: number, e
     products: envelope.data.products.length,
     categories: envelope.data.categories.length,
     labels: envelope.data.labels.length,
+    ...(envelope.schemaVersion >= 3 ? { barcodes: envelope.data.barcodes?.length ?? 0, inventoryMovements: envelope.data.inventoryMovements?.length ?? 0 } : {}),
     pendingOperations: envelope.data.pendingOperations.length,
     images: envelope.data.images.length,
     unavailableImages: envelope.data.unavailableImages.length,
@@ -129,7 +135,7 @@ export async function parseBackupEnvelope(raw: string, expectedUserId: number, e
   if (await revisionForBackupData(envelope.data) !== envelope.snapshotRevision) {
     throw new Error("BACKUP_REVISION_INVALID");
   }
-  return envelope;
+  return { ...envelope, data: { ...envelope.data, barcodes: envelope.data.barcodes ?? [], inventoryMovements: envelope.data.inventoryMovements ?? [] } };
 }
 
 export function serializeBackupEnvelope(envelope: BackupEnvelope) {

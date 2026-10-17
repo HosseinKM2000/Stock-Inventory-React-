@@ -42,8 +42,8 @@ def create_owner_store(db: Session, user: User) -> StoreContext:
     db.add(store)
     db.flush()
     templates = {
-        "سرپرست": ["products.view", "products.create", "products.edit", "products.quantity.change", "products.price.change", "categories.manage", "labels.manage", "products.bulk", "dashboard.view", "tools.import", "tools.export", "tools.catalog"],
-        "اپراتور موجودی": ["products.view", "products.create", "products.edit", "products.quantity.change", "categories.manage", "labels.manage", "dashboard.view"],
+        "سرپرست": ["products.view", "products.create", "products.edit", "products.quantity.change", "products.price.change", "categories.manage", "labels.manage", "products.bulk", "barcodes.lookup", "barcodes.manage", "labels.print", "dashboard.view", "tools.import", "tools.export", "tools.catalog"],
+        "اپراتور موجودی": ["products.view", "products.create", "products.edit", "products.quantity.change", "categories.manage", "labels.manage", "barcodes.lookup", "dashboard.view"],
         "ویرایشگر قیمت": ["products.view", "products.price.change", "dashboard.view"],
         "مشاهده‌گر": ["products.view", "dashboard.view"],
     }

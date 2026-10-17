@@ -22,8 +22,13 @@ import { getPackagingBreakdown, validPackSize } from "../domain/packaging";
 import { useLabels } from "@/features/setting/mutations/use-labels";
 import { LowStockThresholdField } from "./low-stock-threshold-field";
 import { formatJalaliDateTime } from "@/shared/lib/date/jalali";
+import { BarcodeManager } from "@/features/barcode/components/barcode-manager";
+import { generateInternalBarcode } from "@/features/barcode/domain/barcode";
+import { barcodeRepository } from "@/features/barcode/services/barcode-repository";
+import type { BarcodeMeaning, BarcodeSource } from "@/features/barcode/types";
 
 type ProductFormMode = "create" | "edit" | "view";
+export type PendingBarcodeInput = { value: string; source: BarcodeSource; meaning: BarcodeMeaning; scanQuantity: number };
 
 const priceFormatter = new Intl.NumberFormat("en-US", {
   maximumFractionDigits: 0,
@@ -52,7 +57,7 @@ type ProductFormProps = {
 
   errorMessage?: string | null;
 
-  onSubmit?(product: Product): void;
+  onSubmit?(product: Product, pendingBarcodes: PendingBarcodeInput[]): void;
 
   onDelete?(): void;
 };
@@ -72,6 +77,9 @@ export function ProductForm({
   const [displayPrice, setDisplayPrice] = useState(() =>
     initial ? formatPrice(initial.price) : "",
   );
+  const [pendingBarcodes, setPendingBarcodes] = useState<PendingBarcodeInput[]>([]);
+  const [pendingBarcodeValue, setPendingBarcodeValue] = useState("");
+  const [pendingBarcodeMeaning, setPendingBarcodeMeaning] = useState<BarcodeMeaning>("unit");
 
   const form = useAppForm({
     schema: productSchema,
@@ -88,7 +96,7 @@ export function ProductForm({
         catalog_product: catalogProduct,
 
         image_url: values.image_url ?? null,
-      });
+      }, pendingBarcodes);
     },
   });
 
@@ -449,6 +457,31 @@ export function ProductForm({
               </Card>
             </Grid>
           </Box>
+
+          {initial ? <BarcodeManager product={initial} readOnly={readOnly} /> : (
+            <Card size="3" className="rounded-3xl md:col-span-3">
+              <Text as="div" weight="bold">بارکد محصول (اختیاری)</Text>
+              <Text as="div" size="2" color="gray" mt="1">کد را اسکن/وارد کنید یا یک شناسه داخلی بسازید. ثبت نهایی همراه ساخت محصول انجام می‌شود.</Text>
+              <Grid columns={{ initial: "1", sm: "3" }} gap="3" mt="4">
+                <TextInput value={pendingBarcodeValue} placeholder="بارکد" dir="ltr" onChange={(event) => setPendingBarcodeValue(event.target.value)} />
+                <SelectInput value={pendingBarcodeMeaning} onValueChange={(next) => setPendingBarcodeMeaning(next as BarcodeMeaning)} options={[{ label: "یک واحد", value: "unit" }, { label: "یک بسته", value: "package" }]} />
+                <Flex gap="2">
+                  <Button type="button" variant="outline" color="green" disabled={!pendingBarcodeValue.trim()} onClick={() => {
+                    const scanQuantity = pendingBarcodeMeaning === "package" ? Number(packaging.pack_size) : 1;
+                    if (!Number.isSafeInteger(scanQuantity) || scanQuantity < 1) return toast.error("ابتدا تعداد واحد هر بسته را مشخص کنید");
+                    setPendingBarcodes((current) => [...current, { value: pendingBarcodeValue, source: "manufacturer", meaning: pendingBarcodeMeaning, scanQuantity }]);
+                    setPendingBarcodeValue("");
+                  }}>افزودن بارکد</Button>
+                  <Button type="button" variant="soft" onClick={() => void generateInternalBarcode({ exists: async (candidate) => (await barcodeRepository.findByValue(candidate)).length > 0 }).then((generated) => {
+                    const scanQuantity = pendingBarcodeMeaning === "package" ? Number(packaging.pack_size) : 1;
+                    if (!Number.isSafeInteger(scanQuantity) || scanQuantity < 1) return toast.error("ابتدا تعداد واحد هر بسته را مشخص کنید");
+                    setPendingBarcodes((current) => [...current, { value: generated, source: "tanzim", meaning: pendingBarcodeMeaning, scanQuantity }]);
+                  })}>ساخت کد</Button>
+                </Flex>
+              </Grid>
+              {pendingBarcodes.length ? <Flex direction="column" gap="2" mt="3">{pendingBarcodes.map((item, index) => <Flex key={`${item.value}-${index}`} justify="between" className="rounded-xl bg-[var(--gray-2)] p-3"><Text dir="ltr">{item.value}</Text><Button type="button" size="1" color="red" variant="ghost" onClick={() => setPendingBarcodes((current) => current.filter((_, currentIndex) => currentIndex !== index))}>حذف</Button></Flex>)}</Flex> : null}
+            </Card>
+          )}
 
         </Grid>
 

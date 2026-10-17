@@ -8,6 +8,7 @@ import type { LocalInventoryItem } from "@/features/app/inventory/storage/types"
 import type { Category } from "@/features/setting/types";
 import type { Label } from "@/features/setting/types";
 import type { BackupSettings } from "@/features/backup/types";
+import type { InventoryMovement, ProductBarcode } from "@/features/barcode/types";
 
 
 class AppDatabase extends Dexie {
@@ -28,6 +29,8 @@ class AppDatabase extends Dexie {
   labels!: EntityTable<Label, "local_key">;
 
   backupSettings!: EntityTable<BackupSettings, "userId">;
+  barcodes!: EntityTable<ProductBarcode, "local_key">;
+  inventoryMovements!: EntityTable<InventoryMovement, "local_key">;
 
 
   constructor() {
@@ -192,6 +195,17 @@ class AppDatabase extends Dexie {
       });
     });
 
+    this.version(9).stores({
+      inventoryItems: "local_key, id, [local_user_id+local_store_id], catalog_product_id, category_id, updated_at",
+      syncQueue: "id, ownerUserId, storeId, operationId, entity, entityId, status, nextAttemptAt, createdAt, updatedAt",
+      syncMetadata: "key, updatedAt",
+      categories: "local_key, id, [local_user_id+local_store_id], name, updated_at",
+      labels: "local_key, id, [local_user_id+local_store_id], normalized_name, updated_at",
+      backupSettings: "userId, mode, nextAttemptAt",
+      barcodes: "local_key, id, [local_user_id+local_store_id], [local_user_id+local_store_id+value], product_id, value, updated_at",
+      inventoryMovements: "local_key, id, [local_user_id+local_store_id], operation_id, product_id, reverses_operation_id, created_at",
+    });
+
     const ensureLocalKey = (_primaryKey: unknown, item: { id: number; local_user_id?: number; local_store_id?: number; local_key?: string }) => {
       const actor = item.local_user_id;
       const store = item.local_store_id ?? actor;
@@ -201,6 +215,8 @@ class AppDatabase extends Dexie {
     this.inventoryItems.hook("creating", ensureLocalKey);
     this.categories.hook("creating", ensureLocalKey);
     this.labels.hook("creating", ensureLocalKey);
+    this.barcodes.hook("creating", ensureLocalKey);
+    this.inventoryMovements.hook("creating", ensureLocalKey);
   }
 }
 

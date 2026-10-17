@@ -13,6 +13,9 @@ SUBSCRIPTION_CAPABILITIES = frozenset({
     "import.xlsx",
     "labels.write",
     "personnel",
+    "barcode.lookup",
+    "barcode.manage",
+    "label.print",
 })
 
 
@@ -28,7 +31,8 @@ PLAN_CATALOG: dict[str, dict[str, Any]] = {
         "capabilities": {"inventory.read": True, "inventory.write": True,
             "categories.write": True, "export.local": True,
             "export.server": True, "backup": False, "inventory.bulk_edit": True,
-            "import.xlsx": True, "labels.write": True, "personnel": False},
+            "import.xlsx": True, "labels.write": True, "personnel": False,
+            "barcode.lookup": True, "barcode.manage": True, "label.print": True},
     },
     "starter": {
         "label": "Starter",
@@ -39,7 +43,8 @@ PLAN_CATALOG: dict[str, dict[str, Any]] = {
         "capabilities": {"inventory.read": True, "inventory.write": True,
             "categories.write": True, "export.local": True,
             "export.server": True, "backup": True, "inventory.bulk_edit": True,
-            "import.xlsx": True, "labels.write": True, "personnel": False},
+            "import.xlsx": True, "labels.write": True, "personnel": False,
+            "barcode.lookup": True, "barcode.manage": True, "label.print": True},
     },
     "pro": {
         "label": "Pro",
@@ -50,7 +55,8 @@ PLAN_CATALOG: dict[str, dict[str, Any]] = {
         "capabilities": {"inventory.read": True, "inventory.write": True,
             "categories.write": True, "export.local": True,
             "export.server": True, "backup": True, "inventory.bulk_edit": True,
-            "import.xlsx": True, "labels.write": True, "personnel": False},
+            "import.xlsx": True, "labels.write": True, "personnel": False,
+            "barcode.lookup": True, "barcode.manage": True, "label.print": True},
     },
     "vip": {
         "label": "VIP",
@@ -61,7 +67,8 @@ PLAN_CATALOG: dict[str, dict[str, Any]] = {
         "capabilities": {"inventory.read": True, "inventory.write": True,
             "categories.write": True, "export.local": True,
             "export.server": True, "backup": True, "inventory.bulk_edit": True,
-            "import.xlsx": True, "labels.write": True, "personnel": True},
+            "import.xlsx": True, "labels.write": True, "personnel": True,
+            "barcode.lookup": True, "barcode.manage": True, "label.print": True},
     },
 }
 

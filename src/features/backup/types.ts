@@ -1,10 +1,11 @@
 import type { Product } from "@/features/app/inventory/types";
 import type { Category, Label } from "@/features/setting/types";
 import type { SyncMetadataItem, SyncQueueItem } from "@/shared/lib/infrastructure/storage/types";
+import type { InventoryMovement, ProductBarcode } from "@/features/barcode/types";
 
 export const BACKUP_FORMAT = "tanzim-local-backup" as const;
 export const BACKUP_FORMAT_VERSION = 1 as const;
-export const BACKUP_SCHEMA_VERSION = 2 as const;
+export const BACKUP_SCHEMA_VERSION = 3 as const;
 export const DEFAULT_BACKUP_INTERVAL_MS = 5 * 60_000;
 
 export type BackupMode = "directory" | "file" | "manual";
@@ -25,6 +26,8 @@ export type BackupData = {
   products: Product[];
   categories: Category[];
   labels: Label[];
+  barcodes?: ProductBarcode[];
+  inventoryMovements?: InventoryMovement[];
   pendingOperations: SyncQueueItem[];
   reconciliation: SyncMetadataItem[];
   preferences: Record<string, string>;
@@ -36,6 +39,8 @@ export type BackupCounts = {
   products: number;
   categories: number;
   labels: number;
+  barcodes: number;
+  inventoryMovements: number;
   pendingOperations: number;
   images: number;
   unavailableImages: number;

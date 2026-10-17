@@ -25,6 +25,9 @@ class StorePermission(str, Enum):
     BACKUP_USE = "tools.backup"
     RESTORE_USE = "tools.restore"
     ACTIVITY_VIEW = "activity.view"
+    BARCODE_LOOKUP = "barcodes.lookup"
+    BARCODE_MANAGE = "barcodes.manage"
+    LABEL_PRINT = "labels.print"
 
 
 ALL_STORE_PERMISSIONS = frozenset(item.value for item in StorePermission)
@@ -39,6 +42,9 @@ PERMISSION_DEPENDENCIES: dict[str, frozenset[str]] = {
     StorePermission.EXPORT_USE.value: frozenset({StorePermission.PRODUCTS_VIEW.value}),
     StorePermission.BACKUP_USE.value: frozenset({StorePermission.PRODUCTS_VIEW.value}),
     StorePermission.RESTORE_USE.value: frozenset({StorePermission.BACKUP_USE.value}),
+    StorePermission.BARCODE_LOOKUP.value: frozenset({StorePermission.PRODUCTS_VIEW.value}),
+    StorePermission.BARCODE_MANAGE.value: frozenset({StorePermission.BARCODE_LOOKUP.value, StorePermission.PRODUCTS_EDIT.value}),
+    StorePermission.LABEL_PRINT.value: frozenset({StorePermission.BARCODE_LOOKUP.value}),
 }
 
 

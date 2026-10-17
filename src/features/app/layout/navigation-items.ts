@@ -2,11 +2,11 @@ import type { User } from "@/features/auth/types";
 import { isAdmin } from "@/shared/access/authorization";
 import { accessState } from "@/shared/access/access-state";
 import type { DomainToolId } from "@/shared/access/tools";
-import { ActivityLogIcon, ArchiveIcon, BookmarkIcon, ClipboardIcon, CubeIcon, DashboardIcon, DownloadIcon, GearIcon, LayersIcon, LockClosedIcon, MixIcon, MixerHorizontalIcon, PersonIcon, QuestionMarkCircledIcon, ReloadIcon, StarIcon, UploadIcon } from "@radix-ui/react-icons";
+import { ActivityLogIcon, ArchiveIcon, BookmarkIcon, ClipboardIcon, CubeIcon, DashboardIcon, DownloadIcon, GearIcon, LayersIcon, LockClosedIcon, MagnifyingGlassIcon, MixIcon, MixerHorizontalIcon, PersonIcon, QuestionMarkCircledIcon, ReloadIcon, StarIcon, UploadIcon } from "@radix-ui/react-icons";
 import type { ComponentType } from "react";
 
 export type NavigationGroup = "primary" | "settings" | "tools" | "management";
-export type NavigationRoute = "/dashboard" | "/inventory/list" | "/setting" | "/setting/sync" | "/setting/profile" | "/setting/security" | "/setting/appearance" | "/setting/backup" | "/setting/industry" | "/setting/subscription" | "/setting/personnel" | "/tools" | "/tools/categories" | "/tools/export" | "/tools/catalog" | "/tools/recovery" | "/tools/import" | "/tools/labels" | "/tools/help" | "/tools/activity" | "/management" | "/management/subscriptions" | "/management/users" | "/management/catalogs" | "/management/industries";
+export type NavigationRoute = "/dashboard" | "/inventory/list" | "/setting" | "/setting/sync" | "/setting/profile" | "/setting/security" | "/setting/appearance" | "/setting/backup" | "/setting/industry" | "/setting/subscription" | "/setting/personnel" | "/tools" | "/tools/scanner" | "/tools/categories" | "/tools/export" | "/tools/catalog" | "/tools/recovery" | "/tools/import" | "/tools/labels" | "/tools/help" | "/tools/activity" | "/management" | "/management/subscriptions" | "/management/users" | "/management/catalogs" | "/management/industries";
 type NavigationIcon = ComponentType<{ width?: number | string; height?: number | string }>;
 
 export type NavigationItem = { id: string; label: string; description?: string; to: NavigationRoute; icon: NavigationIcon; group: NavigationGroup; adminOnly?: boolean; ownerOnly?: boolean; storePermission?: string; requiresOnline?: boolean; toolId?: DomainToolId };
@@ -30,6 +30,7 @@ export const settingsNavigationItems = [
 ] as const satisfies readonly NavigationItem[];
 
 export const toolsNavigationItems = [
+  { id: "scanner", toolId: "scanner", storePermission: "barcodes.lookup", label: "اسکنر", description: "جست‌وجو و عملیات امن موجودی با دوربین یا بارکدخوان", to: "/tools/scanner", icon: MagnifyingGlassIcon, group: "tools" },
   { id: "activity", label: "فعالیت مجموعه", description: "تغییرات تأییدشده و ردشده با نام انجام‌دهنده", to: "/tools/activity", icon: ActivityLogIcon, group: "tools", ownerOnly: true, requiresOnline: true },
   { id: "help", label: "راهنمای برنامه", description: "راهنمای کوتاه و مرحله‌به‌مرحله همه بخش‌های برنامه", to: "/tools/help", icon: QuestionMarkCircledIcon, group: "tools" },
   { id: "import", toolId: "import", storePermission: "tools.import", label: "ورود از اکسل", description: "بررسی و ورود گروهی محصولات از فایل xlsx، با ذخیره محلی و پشتیبانی آفلاین", to: "/tools/import", icon: UploadIcon, group: "tools" },

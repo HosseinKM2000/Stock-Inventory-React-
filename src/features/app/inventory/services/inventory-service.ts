@@ -9,6 +9,8 @@ import type { Product, ProductInput, ProductListParams } from "../types";
 import { validPackSize } from "../domain/packaging";
 import { labelStorage } from "@/shared/lib/infrastructure/storage/label-storage";
 import { isProductEligible } from "../domain/product-eligibility";
+import { barcodeLookupCandidates, inferSymbology } from "@/features/barcode/domain/barcode";
+import { barcodeRepository } from "@/features/barcode/services/barcode-repository";
 
 export type BulkProductIntent = {
   categoryId?: number | null;
@@ -108,6 +110,9 @@ class InventoryService {
     if (params.search) {
       const search = normalizeProductSearch(params.search);
       const labels = new Map((await labelStorage.getAll()).map((label) => [label.id, normalizeProductSearch(label.name)]));
+      const barcodeCandidates = barcodeLookupCandidates(params.search, inferSymbology(params.search));
+      const barcodeProductIds = new Set((await Promise.all(barcodeCandidates.map((value) => barcodeRepository.findByValue(value))))
+        .flat().filter((barcode) => barcode.is_active).map((barcode) => barcode.product_id));
 
       products = products.filter((product) => {
         const name = normalizeProductSearch(product.catalog_product?.name ?? "");
@@ -115,7 +120,7 @@ class InventoryService {
         const label = normalizeProductSearch(product.custom_label ?? "");
 
         const labelMatch = product.label_ids?.some((id) => labels.get(id)?.includes(search)) ?? false;
-        return name.includes(search) || label.includes(search) || labelMatch;
+        return name.includes(search) || label.includes(search) || labelMatch || barcodeProductIds.has(product.id);
       });
     }
 
