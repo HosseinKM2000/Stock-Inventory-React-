@@ -1,14 +1,12 @@
-import { ArrowRightIcon, PersonIcon } from "@radix-ui/react-icons";
+import { ArrowRightIcon } from "@radix-ui/react-icons";
 import { Flex, IconButton, Text } from "@radix-ui/themes";
-import { Link, useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
+import { useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef } from "react";
 
 import { NotificationPanel } from "@/features/notifications/components/notification-panel";
 import { BackupShortcut } from "@/features/backup/components/backup-shortcut";
 import { contextualBackFallback, contextualSection } from "@/shared/lib/navigation/contextual-back";
 import ConnectionStatus from "./connection-status";
-import { useAuth } from "@/shared/auth/use-auth";
-import { isAdmin } from "@/shared/access/authorization";
 
 const CURRENT_PATH_KEY = "tanzim-navigation-current-path";
 
@@ -27,7 +25,6 @@ const Header = () => {
   const pathname = useRouterState({ select: (state) => state.location.pathname });
   const previousPath = useRef(readPreviousPath(pathname));
   const section = contextualSection(pathname);
-  const { user } = useAuth();
 
   useEffect(() => {
     try {
@@ -59,16 +56,10 @@ const Header = () => {
     >
       <Flex align="center" justify="start" gap="2" className="app-header-left min-w-0">
         <BackupShortcut />
+        <NotificationPanel />
         {section && (
           <IconButton size="3" color="gray" variant="ghost" aria-label="بازگشت" onClick={goBack}>
             <ArrowRightIcon width="22" height="22" />
-          </IconButton>
-        )}
-        {isAdmin(user) && (
-          <IconButton asChild size="3" color="gray" variant="ghost">
-            <Link to="/management" aria-label="مدیریت">
-              <PersonIcon width="22" height="22" />
-            </Link>
           </IconButton>
         )}
       </Flex>
@@ -78,7 +69,6 @@ const Header = () => {
       </Text>
 
       <Flex align="center" justify="end" gap={{ initial: "2", sm: "4" }} className="app-header-right min-w-0">
-        <NotificationPanel />
         <div className="app-header-sync-status min-w-0">
           <ConnectionStatus />
         </div>

@@ -60,8 +60,13 @@ test("standard navigation separates Settings and Tools with contextual back beha
   const header = page.locator(".app-header");
   const leftControls = header.locator(".app-header-left");
   const rightControls = header.locator(".app-header-right");
+  const backupShortcut = leftControls.getByRole("button", { name: /فایل پشتیبان/ });
+  const notificationShortcut = leftControls.getByRole("button", { name: /اعلان‌ها|هشدار فعال/ });
   await expect(leftControls.getByRole("link", { name: "تنظیمات" })).toHaveCount(0);
-  await expect(rightControls.locator("button").first()).toBeVisible();
+  await expect(backupShortcut).toBeVisible();
+  await expect(notificationShortcut).toBeVisible();
+  await expect(rightControls.getByRole("button", { name: /اعلان‌ها|هشدار فعال/ })).toHaveCount(0);
+  expect((await notificationShortcut.boundingBox())!.x).toBeGreaterThan((await backupShortcut.boundingBox())!.x);
   expect((await leftControls.boundingBox())!.x).toBeLessThan((await rightControls.boundingBox())!.x);
   await expect(page.getByRole("button", { name: "بازگشت" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /منو/ })).toHaveCount(0);
@@ -102,11 +107,18 @@ test("contextual back uses safe fallbacks for direct descendants and access page
   await expect(page).toHaveURL(/\/dashboard$/);
 });
 
-test("administrators receive Management without contextual back controls", async ({ page }) => {
+test("administrators receive a fixed Management shortcut above the menu without contextual back controls", async ({ page }) => {
   await seedAuthenticatedUser(page, "ADMIN");
   await page.goto("/dashboard");
-  await expect(page.getByRole("navigation", { name: "ناوبری اصلی" }).getByRole("link", { name: "مدیریت" })).toHaveCount(0);
-  await expect(page.locator(".app-header-left").getByRole("link", { name: "مدیریت" })).toBeVisible();
+  const navigation = page.getByRole("navigation", { name: "ناوبری اصلی" });
+  const managementShortcut = navigation.getByRole("link", { name: "مدیریت" });
+  await expect(managementShortcut).toBeVisible();
+  await expect(managementShortcut).toHaveClass(/app-admin-shortcut/);
+  await expect(page.locator(".app-header").getByRole("link", { name: "مدیریت" })).toHaveCount(0);
+
+  const shortcutBox = await managementShortcut.boundingBox();
+  const navigationBox = await navigation.boundingBox();
+  expect(shortcutBox!.y + shortcutBox!.height).toBeLessThanOrEqual(navigationBox!.y + 1);
 
   await page.goto("/management");
   await expect(page.getByRole("heading", { name: "مدیریت" })).toBeVisible();
@@ -146,6 +158,16 @@ test("sync status links expose responsive details", async ({ page }) => {
   await expect(header.locator("[aria-label='باز کردن جزئیات همگام‌سازی']")).toHaveCount(0);
 
   await expect(header.locator(".sync-status-label")).toHaveCount(0);
+
+  for (const viewport of [{ width: 320, height: 568 }, { width: 1440, height: 900 }]) {
+    await page.setViewportSize(viewport);
+    const badgeBox = await header.locator(".sync-status-badge").boundingBox();
+    const iconBox = await header.locator(".sync-status-icon").boundingBox();
+    const badgeCenter = { x: badgeBox!.x + badgeBox!.width / 2, y: badgeBox!.y + badgeBox!.height / 2 };
+    const iconCenter = { x: iconBox!.x + iconBox!.width / 2, y: iconBox!.y + iconBox!.height / 2 };
+    expect(Math.abs(badgeCenter.x - iconCenter.x), `${viewport.width}px horizontal center`).toBeLessThanOrEqual(1);
+    expect(Math.abs(badgeCenter.y - iconCenter.y), `${viewport.width}px vertical center`).toBeLessThanOrEqual(1);
+  }
 });
 
 test("domain policy hides a tool and protects its direct route while Help remains available", async ({ page }) => {

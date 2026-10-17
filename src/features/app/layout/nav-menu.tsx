@@ -3,8 +3,9 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import { primaryNavigationItems } from "./navigation-items";
 import { isPathActive } from "@/shared/lib/navigation/is-path-active";
 import { useAuth } from "@/shared/auth/use-auth";
-import { PlusIcon } from "@radix-ui/react-icons";
+import { PersonIcon, PlusIcon } from "@radix-ui/react-icons";
 import { accessState } from "@/shared/access/access-state";
+import { isAdmin } from "@/shared/access/authorization";
 import { useEntitlementAccess } from "@/shared/access/use-entitlement";
 import type { NavigationItem } from "./navigation-items";
 
@@ -59,6 +60,17 @@ const NavMenu = ({ hidden = false }: Props) => {
       aria-hidden={hidden}
       aria-label="ناوبری اصلی"
     >
+      {isAdmin(user) && (
+        <Link
+          to="/management"
+          aria-label="مدیریت"
+          aria-current={isPathActive(pathname, "/management") ? "page" : undefined}
+          data-active={isPathActive(pathname, "/management")}
+          className="app-admin-shortcut"
+        >
+          <PersonIcon width="22" height="22" aria-hidden="true" />
+        </Link>
+      )}
       <Flex
         align="center"
         justify="center"
