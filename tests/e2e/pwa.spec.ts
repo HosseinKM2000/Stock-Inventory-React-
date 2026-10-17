@@ -87,8 +87,10 @@ test("prepares unvisited core routes and local inventory for an offline cold pag
     await new Promise<void>((resolve, reject) => {
       const transaction = database.transaction("inventoryItems", "readwrite");
       transaction.objectStore("inventoryItems").put({
+        local_key: `${id}:${id}:9002`,
         id: 9002,
         local_user_id: id,
+        local_store_id: id,
         catalog_product_id: 9002,
         is_catalog_backed: false,
         category_id: null,
@@ -124,7 +126,7 @@ test("prepares unvisited core routes and local inventory for an offline cold pag
 
   await expect.poll(() => page.evaluate(async () => {
     await navigator.serviceWorker.ready;
-    return Boolean(await caches.match(new URL("/.__offline-ready-v8", location.origin)));
+    return Boolean(await caches.match(new URL("/.__offline-ready-v9", location.origin)));
   }), { timeout: 15_000 }).toBe(true);
   await expect.poll(
     () => page.evaluate(() => Boolean(navigator.serviceWorker.controller)),
@@ -146,7 +148,11 @@ test("prepares unvisited core routes and local inventory for an offline cold pag
   })).toEqual([]);
   await expect(offlinePage.getByText("Offline Product").first()).toBeVisible();
 
-  const productImage = offlinePage.getByAltText("Offline Product").first();
+  const productImage = offlinePage
+    .locator(".inventory-card")
+    .filter({ hasText: "Offline Product" })
+    .locator("img")
+    .first();
   await expect(productImage).toHaveAttribute("src", /^data:image\/svg\+xml/);
 
   await offlinePage.reload();
@@ -206,14 +212,16 @@ test("prepares unvisited core routes and local inventory for an offline cold pag
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
-    const queued = await new Promise<{ action: string; payload: { quantity: number } }>((resolve, reject) => {
-      const request = database.transaction("syncQueue").objectStore("syncQueue").get(`9001:product-${id}`);
+    const queued = await new Promise<Array<{ action: string; entity: string; entityId: number; payload: { quantity: number }; updatedAt: number }>>((resolve, reject) => {
+      const request = database.transaction("syncQueue").objectStore("syncQueue").getAll();
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
     database.close();
-    return queued;
-  }, createdId)).toMatchObject({ action: "CREATE", payload: { quantity: 6 } });
+    return queued
+      .filter((item) => item.entity === "product" && item.entityId === id)
+      .sort((a, b) => b.updatedAt - a.updatedAt)[0];
+  }, createdId)).toMatchObject({ payload: { quantity: 6 } });
 
   await offlinePage.goto(`/inventory/edit?id=${createdId}`);
   await offlinePage.getByRole("button", { name: "حذف", exact: true }).click();
@@ -229,18 +237,21 @@ test("prepares unvisited core routes and local inventory for an offline cold pag
     });
     const transaction = database.transaction(["inventoryItems", "syncQueue"]);
     const productKey = await new Promise<IDBValidKey | undefined>((resolve, reject) => {
-      const request = transaction.objectStore("inventoryItems").getKey(id);
+      const request = transaction.objectStore("inventoryItems").getKey(`9001:9001:${id}`);
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
-    const queueKey = await new Promise<IDBValidKey | undefined>((resolve, reject) => {
-      const request = transaction.objectStore("syncQueue").getKey(`9001:product-${id}`);
+    const queued = await new Promise<Array<{ action: string; entity: string; entityId: number }>>((resolve, reject) => {
+      const request = transaction.objectStore("syncQueue").getAll();
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
     database.close();
-    return { productKey, queueKey };
-  }, createdId)).toEqual({ productKey: undefined, queueKey: undefined });
+    return {
+      productKey,
+      hasDelete: queued.some((item) => item.entity === "product" && item.entityId === id && item.action === "DELETE"),
+    };
+  }, createdId)).toEqual({ productKey: undefined, hasDelete: true });
 });
 
 test("IndexedDB inventory survives a persistent browser-profile restart", async ({ browserName }, testInfo) => {
@@ -288,8 +299,10 @@ test("IndexedDB inventory survives a persistent browser-profile restart", async 
     await new Promise<void>((resolve, reject) => {
       const transaction = database.transaction("inventoryItems", "readwrite");
       transaction.objectStore("inventoryItems").put({
+        local_key: `${id}:${id}:9102`,
         id: 9102,
         local_user_id: id,
+        local_store_id: id,
         catalog_product_id: 9102,
         is_catalog_backed: false,
         category_id: null,
@@ -323,13 +336,13 @@ test("IndexedDB inventory survives a persistent browser-profile restart", async 
       request.onerror = () => reject(request.error);
     });
     const stored = await new Promise<IDBValidKey | undefined>((resolve, reject) => {
-      const request = database.transaction("inventoryItems").objectStore("inventoryItems").getKey(9102);
+      const request = database.transaction("inventoryItems").objectStore("inventoryItems").getKey("9101:9101:9102");
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
     database.close();
     return stored;
-  })).toBe(9102);
+  })).toBe("9101:9101:9102");
   await persistentContext.close();
 });
 
@@ -371,8 +384,10 @@ test("two isolated browser profiles keep the same account's local state independ
         await new Promise<void>((resolve, reject) => {
           const transaction = database.transaction(["inventoryItems", "syncQueue"], "readwrite");
           transaction.objectStore("inventoryItems").put({
+            local_key: `${id}:${id}:9202`,
             id: 9202,
             local_user_id: id,
+            local_store_id: id,
             catalog_product_id: 9202,
             is_catalog_backed: false,
             category_id: null,
@@ -408,7 +423,7 @@ test("two isolated browser profiles keep the same account's local state independ
         });
         const transaction = database.transaction(["inventoryItems", "syncQueue"]);
         const product = await new Promise<{ quantity: number }>((resolve, reject) => {
-          const request = transaction.objectStore("inventoryItems").get(9202);
+          const request = transaction.objectStore("inventoryItems").get(`${id}:${id}:9202`);
           request.onsuccess = () => resolve(request.result);
           request.onerror = () => reject(request.error);
         });

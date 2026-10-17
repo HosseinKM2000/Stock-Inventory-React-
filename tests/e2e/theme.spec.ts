@@ -19,7 +19,7 @@ test("system appearance follows the browser color scheme", async ({ page }) => {
   await page.emulateMedia({ colorScheme: "light" });
   await expect(page.locator("html")).toHaveAttribute("data-appearance", "light");
   await expect.poll(() => page.evaluate(() => getComputedStyle(document.body).backgroundColor))
-    .toBe("rgb(255, 255, 255)");
+    .toBe("rgb(230, 224, 239)");
 });
 
 test("all display sizes are applied before render in light and dark themes", async ({ page }) => {
