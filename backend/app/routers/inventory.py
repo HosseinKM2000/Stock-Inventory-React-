@@ -10,6 +10,7 @@ from ..services.inventory_service import (
 
 from ..deps import CurrentProductReader, CurrentWritableUser, DbSession
 from ..models import InventoryItem, InventoryTransaction
+from ..services.store_authorization import StorePermission, require_store_permission, project_inventory_item
 from ..schemas import (
     InventoryBulkSync,
     InventoryOut,
@@ -28,7 +29,7 @@ router = APIRouter(prefix="/inventory", tags=["inventory"])
 def trash_inventory(
     current_user: CurrentProductReader,
     db: DbSession,
-) -> list[InventoryItem]:
+) -> list[dict]:
     stmt = (
         select(InventoryItem)
         .where(
@@ -38,7 +39,7 @@ def trash_inventory(
         .order_by(InventoryItem.created_at.desc(), InventoryItem.id.desc())
     )
 
-    return list(db.scalars(stmt))
+    return [project_inventory_item(db, current_user, item) for item in db.scalars(stmt)]
 
 
 
@@ -77,7 +78,7 @@ def list_inventory(
     )
 
     return InventoryListResponse(
-        items=items,
+        items=[project_inventory_item(db, current_user, item) for item in items],
         meta=InventoryMeta(
             page=page,
             limit=limit,
@@ -90,12 +91,12 @@ def get_inventory_item(
     item_id: int,
     current_user: CurrentProductReader,
     db: DbSession,
-) -> InventoryItem:
-    return get_inventory_item_or_404(
+) -> dict:
+    return project_inventory_item(db, current_user, get_inventory_item_or_404(
         db,
         item_id,
         current_user.data_owner_id,
-    )
+    ))
 
 
 @router.patch("/{item_id}", response_model=InventoryOut)
@@ -105,6 +106,15 @@ def update_inventory_item(
     current_user: CurrentWritableUser,
     db: DbSession,
 ) -> InventoryItem:
+    fields = payload.model_fields_set
+    if fields & {"price", "sale_price"}:
+        require_store_permission(db, current_user, StorePermission.SALE_PRICE_CHANGE)
+    if "purchase_price" in fields:
+        require_store_permission(db, current_user, StorePermission.PURCHASE_PRICE_CHANGE)
+    if "quantity" in fields:
+        require_store_permission(db, current_user, StorePermission.QUANTITY_CHANGE)
+    if fields - {"price", "sale_price", "purchase_price", "quantity"}:
+        require_store_permission(db, current_user, StorePermission.PRODUCTS_EDIT)
     item = get_inventory_item_or_404(
         db,
         item_id,
@@ -119,7 +129,7 @@ def update_inventory_item(
     db.commit()
     db.refresh(item)
 
-    return item
+    return project_inventory_item(db, current_user, item)
 
 
 @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -224,7 +234,7 @@ def hide_inventory_item(
     item_id: int,
     current_user: CurrentWritableUser,
     db: DbSession,
-) -> InventoryItem:
+) -> dict:
     item = get_inventory_item_or_404(
         db,
         item_id,
@@ -236,7 +246,7 @@ def hide_inventory_item(
     db.commit()
     db.refresh(item)
 
-    return item
+    return project_inventory_item(db, current_user, item)
 
 
 @router.patch("/{item_id}/restore", response_model=InventoryOut)
@@ -244,7 +254,7 @@ def restore_inventory_item(
     item_id: int,
     current_user: CurrentWritableUser,
     db: DbSession,
-) -> InventoryItem:
+) -> dict:
     item = get_inventory_item_or_404(
         db,
         item_id,
@@ -257,7 +267,7 @@ def restore_inventory_item(
     db.commit()
     db.refresh(item)
 
-    return item
+    return project_inventory_item(db, current_user, item)
 
 
 @router.delete("/{item_id}/force", response_model=MessageResponse)
@@ -306,6 +316,7 @@ def bulk_sync_inventory(
 
         item.quantity = sync_item.quantity
         item.price = sync_item.price
+        item.sale_price = sync_item.price
         item.custom_label = sync_item.custom_label
         item.note = sync_item.note
 

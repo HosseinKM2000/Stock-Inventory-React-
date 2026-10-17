@@ -132,4 +132,12 @@ describe("offline subscription access", () => {
     expect(accessState.hasStorePermission("products.delete")).toBe(true);
     expect(accessState.hasStorePermission("tools.backup")).toBe(true);
   });
+
+  it("denies new purchase and finance permissions for legacy users without membership metadata", async () => {
+    const { accessState } = await import("@/shared/access/access-state");
+    accessState.saveUser({ ...user, is_store_owner: undefined, store_permissions: undefined });
+    expect(accessState.hasStorePermission("products.view")).toBe(true);
+    expect(accessState.hasStorePermission("products.purchase_price.view")).toBe(false);
+    expect(accessState.hasStorePermission("finance.view")).toBe(false);
+  });
 });

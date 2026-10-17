@@ -5,6 +5,7 @@ from ..deps import CurrentUser, DbSession, require_backup_access
 from ..services.store_service import owner_store_context
 from ..models import InventoryItem
 from ..schemas import InventoryOut
+from ..services.store_authorization import project_inventory_item
 
 router = APIRouter(prefix="/backup", tags=["backup"])
 
@@ -26,7 +27,7 @@ def get_backup(
         .order_by(InventoryItem.created_at.desc(), InventoryItem.id.desc())
     )
 
-    return list(db.scalars(stmt))
+    return [project_inventory_item(db, current_user, item) for item in db.scalars(stmt)]
 
 
 @router.post("/restore")

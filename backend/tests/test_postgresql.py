@@ -96,9 +96,11 @@ def signup(client: TestClient):
 def test_migration_reaches_head_with_all_expected_tables(migrated_empty_database):
     assert EXPECTED_TABLES <= set(inspect(engine).get_table_names())
     with engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261017_0006"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261017_0007"
         columns = {column["name"] for column in inspect(engine).get_columns("industries")}
         assert "tools_json" in columns
+        inventory_columns = {column["name"] for column in inspect(engine).get_columns("inventory_items")}
+        assert {"sale_price", "purchase_price"} <= inventory_columns
 
 
 @pytest.mark.postgres

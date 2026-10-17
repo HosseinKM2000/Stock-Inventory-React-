@@ -170,7 +170,11 @@ function isRecoverableProductPayload(
     return false;
   }
 
-  return (item.payload as { id?: unknown }).id === item.entityId;
+  const payload = item.payload as Partial<Product>;
+  return payload.id === item.entityId
+    && typeof payload.quantity === "number"
+    && typeof payload.catalog_product_id === "number"
+    && payload.catalog_product != null;
 }
 
 /** Restores records removed by older clients after a PRODUCT_NOT_FOUND reply. */

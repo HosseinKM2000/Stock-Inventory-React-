@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 
 from ..config import settings
 from ..deps import CurrentProductCreator, CurrentProductDeleter, CurrentProductReader, DbSession, require_capability
-from ..services.store_authorization import StorePermission, require_store_permission
+from ..services.store_authorization import StorePermission, require_store_permission, project_inventory_item
 from ..models import CatalogProduct, Category, InventoryItem
 from sqlalchemy.orm import joinedload
 from ..schemas import InventoryOut, PaginatedInventory, InventoryStats, PaginationMeta
@@ -129,7 +129,7 @@ def list_products(
     paginated = products[start:end]
 
     return PaginatedInventory(
-    items=paginated,
+    items=[project_inventory_item(db, current_user, item) for item in paginated],
     meta=PaginationMeta(
         total=total,
         page=page,
@@ -145,6 +145,8 @@ async def create_product(
     name: Annotated[str, Form(min_length=1)],
     quantity: Annotated[int, Form(ge=0)] = 0,
     price: Annotated[int, Form(ge=0)] = 0,
+    sale_price: Annotated[int | None, Form(ge=0)] = None,
+    purchase_price: Annotated[int | None, Form(ge=0)] = None,
     description: Annotated[str | None, Form()] = None,
     unit: Annotated[str | None, Form()] = None,
     category_id: Annotated[int | None, Form()] = None,
@@ -155,6 +157,8 @@ async def create_product(
     image: Annotated[UploadFile | None, File()] = None,
 ) -> InventoryItem:
     require_capability(db, current_user, "inventory.write")
+    if purchase_price is not None:
+        require_store_permission(db, current_user, StorePermission.PURCHASE_PRICE_CHANGE)
     _validate_category(db, category_id, current_user.data_owner_id)
     is_packaged, pack_size = _validated_packaging(is_packaged, pack_size)
 
@@ -183,7 +187,9 @@ async def create_product(
         custom_label=name,
         note=description,
         quantity=quantity,
-        price=price,
+        price=sale_price if sale_price is not None else price,
+        sale_price=sale_price if sale_price is not None else price,
+        purchase_price=purchase_price,
         low_stock_threshold=low_stock_threshold,
         low_stock_alert=low_stock_alert,
         category_id=category_id,
@@ -194,7 +200,7 @@ async def create_product(
     db.add(product)
     db.commit()
     db.refresh(product)
-    return product
+    return project_inventory_item(db, current_user, product)
 
 
 @router.patch("/{product_id}", response_model=InventoryOut)
@@ -205,6 +211,8 @@ async def update_product(
     name: Annotated[str | None, Form()] = None,
     quantity: Annotated[int | None, Form(ge=0)] = None,
     price: Annotated[int | None, Form(ge=0)] = None,
+    sale_price: Annotated[int | None, Form(ge=0)] = None,
+    purchase_price: Annotated[int | None, Form(ge=0)] = None,
     description: Annotated[str | None, Form()] = None,
     unit: Annotated[str | None, Form()] = None,
     category_id: Annotated[int | None, Form()] = None,
@@ -221,8 +229,10 @@ async def update_product(
         require_store_permission(db, current_user, StorePermission.PRODUCTS_EDIT)
     if quantity is not None:
         require_store_permission(db, current_user, StorePermission.QUANTITY_CHANGE)
-    if price is not None:
-        require_store_permission(db, current_user, StorePermission.PRICE_CHANGE)
+    if price is not None or sale_price is not None:
+        require_store_permission(db, current_user, StorePermission.SALE_PRICE_CHANGE)
+    if purchase_price is not None:
+        require_store_permission(db, current_user, StorePermission.PURCHASE_PRICE_CHANGE)
     product = _get_owned_product(db, product_id, current_user.data_owner_id)
 
     if is_packaged is not None or pack_size is not None:
@@ -256,6 +266,12 @@ async def update_product(
     for field, value in updates.items():
         if value is not None:
             setattr(product, field, value)
+    effective_sale_price = sale_price if sale_price is not None else price
+    if effective_sale_price is not None:
+        product.sale_price = effective_sale_price
+        product.price = effective_sale_price
+    if purchase_price is not None:
+        product.purchase_price = purchase_price
 
     if image is not None:
         _delete_image(product.image_url)
@@ -266,7 +282,7 @@ async def update_product(
 
     db.commit()
     db.refresh(product)
-    return product
+    return project_inventory_item(db, current_user, product)
 
 
 @router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -340,7 +356,7 @@ def low_stock_alerts(
         and p.quantity <= p.low_stock_threshold
     ]
 
-    return alerts
+    return [project_inventory_item(db, current_user, item) for item in alerts]
 
 
 @router.get("/alerts/count")
@@ -368,5 +384,5 @@ def alerts_count(
 @router.get("/{product_id}", response_model=InventoryOut)
 def get_product(
     product_id: int, current_user: CurrentProductReader, db: DbSession
-) -> InventoryItem:
-    return _get_owned_product(db, product_id, current_user.data_owner_id)
+) -> dict:
+    return project_inventory_item(db, current_user, _get_owned_product(db, product_id, current_user.data_owner_id))

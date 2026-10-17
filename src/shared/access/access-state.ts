@@ -46,6 +46,11 @@ const LEGACY_ENTITLEMENT_KEY = "inventory-entitlement";
 const ENTITLEMENT_PREFIX = "inventory-entitlement-v2:";
 const EXPIRING_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
 const EXPIRED_CAPABILITIES = new Set(["inventory.read"]);
+const EXPLICIT_STORE_CONTEXT_PERMISSIONS = new Set([
+  "products.purchase_price.view",
+  "products.purchase_price.change",
+  "finance.view",
+]);
 export const PERSONNEL_AUTHORIZATION_VALIDITY_MS = 24 * 60 * 60 * 1000;
 const listeners = new Set<() => void>();
 
@@ -198,8 +203,17 @@ export const accessState = {
     const user = this.user();
     if (!user) return false;
     if (isAdmin(user)) return user.is_active !== false;
-    if (user.is_store_owner === undefined && user.store_permissions === undefined) return true;
-    return Boolean(user.is_store_owner || user.store_permissions?.includes(permission));
+    if (
+      EXPLICIT_STORE_CONTEXT_PERMISSIONS.has(permission)
+      && user.membership_id == null
+      && !user.store_permissions?.includes(permission)
+    ) {
+      return false;
+    }
+    if (user.is_store_owner || user.store_permissions?.includes(permission)) return true;
+    if (permission === "products.sale_price.view" && user.store_permissions?.includes("products.view")) return true;
+    if (permission === "products.sale_price.change" && user.store_permissions?.includes("products.price.change")) return true;
+    return false;
   },
   requireStorePermission(permission: string) {
     if (!this.hasStorePermission(permission)) throw new Error(`PERMISSION_REQUIRED:${permission}`);

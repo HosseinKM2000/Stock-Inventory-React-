@@ -126,7 +126,7 @@ test("prepares unvisited core routes and local inventory for an offline cold pag
 
   await expect.poll(() => page.evaluate(async () => {
     await navigator.serviceWorker.ready;
-    return Boolean(await caches.match(new URL("/.__offline-ready-v9", location.origin)));
+    return Boolean(await caches.match(new URL("/.__offline-ready-v10", location.origin)));
   }), { timeout: 15_000 }).toBe(true);
   await expect.poll(
     () => page.evaluate(() => Boolean(navigator.serviceWorker.controller)),

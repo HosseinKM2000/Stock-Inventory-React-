@@ -44,6 +44,12 @@ export type Product = {
 
   price: number;
 
+  /** Canonical optional sale price. `price` remains its legacy wire alias. */
+  sale_price?: number | null;
+
+  /** Optional acquisition cost in integer toman. */
+  purchase_price?: number | null;
+
   /** Distinguishes absent/corrupt legacy prices from a valid zero price. */
   price_missing?: boolean;
 
@@ -104,6 +110,8 @@ export type ProductListParams = {
 export type ProductInput = {
   name?: string;
   price?: number;
+  sale_price?: number | null;
+  purchase_price?: number | null;
   quantity?: number;
   image?: File | null;
   unit?: string | null;
@@ -115,6 +123,11 @@ export type ProductInput = {
   low_stock_threshold?: number;
   is_packaged?: boolean;
   pack_size?: number | null;
+  custom_label?: string | null;
+  note?: string | null;
+  image_url?: string | null;
+  is_hidden?: boolean;
+  catalog_product?: CatalogProduct;
 };
 
 export const PRODUCT_UNITS = [

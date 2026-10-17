@@ -77,7 +77,7 @@ export const backupRestoreService = {
   },
 
   async apply(preview: BackupPreview, user: User) {
-    if (!isAdmin(user) && user.is_store_owner === false) throw new Error("BACKUP_STORE_OWNER_REQUIRED");
+    if (!isAdmin(user) && user.is_store_owner !== true) throw new Error("BACKUP_STORE_OWNER_REQUIRED");
     if (preview.envelope.owner.userId !== user.id) throw new Error("BACKUP_OWNER_MISMATCH");
     const restored = await withBackupRestore(user.id, async () => {
       syncService.pause("backup-restore-review", user.id);

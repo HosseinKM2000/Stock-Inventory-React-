@@ -35,11 +35,13 @@ function sanitize(product: Product): Product {
   // a corrupted record or a future import.
   const quantity = Number(product.quantity);
 
-  const price = Number(product.price);
-  const priceMissing =
-    product.price_missing === true ||
-    product.price == null ||
-    !Number.isFinite(price);
+  const legacyPrice = Number(product.price);
+  const saleCandidate = product.sale_price === undefined
+    ? (product.price_missing === true || product.price == null || !Number.isFinite(legacyPrice) ? null : legacyPrice)
+    : product.sale_price;
+  const salePrice = saleCandidate == null ? null : Number(saleCandidate);
+  const purchasePrice = product.purchase_price == null ? null : Number(product.purchase_price);
+  const priceMissing = salePrice == null || !Number.isSafeInteger(salePrice) || salePrice < 0;
 
   const threshold = Number(product.low_stock_threshold);
 
@@ -68,7 +70,11 @@ function sanitize(product: Product): Product {
 
     quantity: safeQuantity,
 
-    price: priceMissing ? 0 : Math.max(0, price),
+    price: priceMissing ? 0 : salePrice,
+
+    sale_price: priceMissing ? null : salePrice,
+
+    purchase_price: Number.isSafeInteger(purchasePrice) && purchasePrice! >= 0 ? purchasePrice : null,
 
     price_missing: priceMissing,
 
@@ -183,6 +189,7 @@ class InventoryService {
   async create(product: Product): Promise<Product> {
     accessState.requireWrite();
     accessState.requireStorePermission?.("products.create");
+    if (product.purchase_price != null) accessState.requireStorePermission?.("products.purchase_price.change");
     accessState.requireInventoryCapacity((await inventoryRepository.getAll()).length);
     const record = sanitize(product);
 
@@ -201,6 +208,7 @@ class InventoryService {
     accessState.requireWrite();
     accessState.requireStorePermission?.("products.create");
     accessState.requireStorePermission?.("products.bulk");
+    if (products.some((product) => product.purchase_price != null)) accessState.requireStorePermission?.("products.purchase_price.change");
     const existing = (await inventoryRepository.getAll()).length;
     accessState.requireInventoryCapacity(existing + products.length);
     const records = products.map(sanitize);
@@ -216,7 +224,7 @@ class InventoryService {
   async bulkUpdate(ids: readonly number[], intent: BulkProductIntent): Promise<Product[]> {
     accessState.requireWrite();
     accessState.requireStorePermission?.("products.bulk");
-    if (intent.priceIncrease !== undefined) accessState.requireStorePermission?.("products.price.change");
+    if (intent.priceIncrease !== undefined) accessState.requireStorePermission?.("products.sale_price.change");
     if (intent.categoryId !== undefined) accessState.requireStorePermission?.("categories.manage");
     if (intent.lowStockAlert !== undefined || intent.lowStockThreshold !== undefined) accessState.requireStorePermission?.("products.edit");
     const uniqueIds = [...new Set(ids)];
@@ -249,11 +257,12 @@ class InventoryService {
           ...(intent.lowStockAlert !== undefined ? { low_stock_alert: intent.lowStockAlert } : {}),
           ...(intent.lowStockThreshold !== undefined ? { low_stock_threshold: intent.lowStockThreshold } : {}),
           price,
+          sale_price: price,
           ...(intent.priceIncrease ? { price_missing: false } : {}),
           updated_at: new Date().toISOString(),
         });
         await inventoryRepository.save(next);
-        await queueService.enqueue(PRODUCT_ENTITY, id, productSyncAction(current), next);
+        await queueService.enqueue(PRODUCT_ENTITY, id, productSyncAction(current), current.version == null ? next : { id, version: current.version, sale_price: price, price });
         updated.push(next);
       }
       if (updated.length === 0) throw new Error("محصول انتخاب‌شده دیگر در دسترس نیست");
@@ -264,8 +273,9 @@ class InventoryService {
   async update(id: number, input: ProductInput): Promise<Product> {
     accessState.requireWrite();
     if (input.quantity !== undefined) accessState.requireStorePermission?.("products.quantity.change");
-    if (input.price !== undefined) accessState.requireStorePermission?.("products.price.change");
-    if (Object.keys(input).some((key) => key !== "quantity" && key !== "price")) accessState.requireStorePermission?.("products.edit");
+    if (input.price !== undefined || input.sale_price !== undefined) accessState.requireStorePermission?.("products.sale_price.change");
+    if (input.purchase_price !== undefined) accessState.requireStorePermission?.("products.purchase_price.change");
+    if (Object.keys(input).some((key) => !["quantity", "price", "sale_price", "purchase_price"].includes(key))) accessState.requireStorePermission?.("products.edit");
     const current = await inventoryRepository.get(id);
 
     if (!current) {
@@ -277,7 +287,9 @@ class InventoryService {
 
       ...input,
 
-      ...(input.price !== undefined ? { price_missing: false } : {}),
+      ...(input.sale_price !== undefined
+        ? { price: input.sale_price ?? 0, sale_price: input.sale_price, price_missing: input.sale_price == null }
+        : input.price !== undefined ? { sale_price: input.price, price_missing: false } : {}),
 
       updated_at: new Date().toISOString(),
     } as Product);
@@ -288,7 +300,10 @@ class InventoryService {
       const persisted = await inventoryRepository.get(id);
       if (!persisted) throw new Error("update failed");
 
-      await queueService.enqueue(PRODUCT_ENTITY, id, productSyncAction(current), persisted);
+      const payload = current.version == null
+        ? persisted
+        : { id, version: current.version, ...input, ...(input.sale_price !== undefined ? { price: input.sale_price ?? 0, price_missing: input.sale_price == null } : {}) };
+      await queueService.enqueue(PRODUCT_ENTITY, id, productSyncAction(current), payload);
       return persisted;
     });
 

@@ -16,6 +16,8 @@ from app.services import plan_policy
 from app.services.tool_policy import DEFAULT_TOOL_POLICY, normalize_tool_policy
 from app.demo_fixture import _assert_safe
 from app.services.jalali_date import format_jalali_datetime
+from app.services.store_authorization import StorePermission, normalize_permissions
+from app.routers.sync import _project_record
 
 
 def test_bcrypt_hashes_and_verifies_without_storing_plaintext() -> None:
@@ -36,6 +38,30 @@ def test_password_update_rejects_weak_passwords(password: str) -> None:
 def test_password_schema_enforces_bcrypt_utf8_limit() -> None:
     with pytest.raises(ValidationError, match="PASSWORD_TOO_LONG"):
         PasswordUpdate(current_password="CurrentPass123!", new_password="A1a" + "é" * 35)
+
+
+def test_financial_permissions_expand_to_required_read_dependencies() -> None:
+    permissions = normalize_permissions([StorePermission.FINANCE_VIEW.value])
+    assert StorePermission.PURCHASE_PRICE_VIEW.value in permissions
+    assert StorePermission.SALE_PRICE_VIEW.value in permissions
+    assert StorePermission.PRODUCTS_VIEW.value in permissions
+    assert StorePermission.DASHBOARD_VIEW.value in permissions
+
+
+def test_sync_projection_redacts_purchase_price_and_preserves_legacy_clients() -> None:
+    record = {"id": 1, "price": 120, "sale_price": 120, "purchase_price": 75, "price_missing": False}
+    viewer = frozenset({StorePermission.PRODUCTS_VIEW.value, StorePermission.SALE_PRICE_VIEW.value})
+    assert _project_record(record, viewer, 3) == {**record, "purchase_price": None}
+    assert _project_record(record, viewer, 2) == {"id": 1, "price": 120}
+
+
+def test_sync_projection_hides_sale_price_without_explicit_visibility() -> None:
+    record = {"id": 1, "price": 120, "sale_price": 120, "purchase_price": 75, "price_missing": False}
+    projected = _project_record(record, frozenset(), 3)
+    assert projected["sale_price"] is None
+    assert projected["price"] == 0
+    assert projected["price_missing"] is True
+    assert projected["purchase_price"] is None
 
 
 def test_catalog_packaging_contract_normalizes_or_rejects_invalid_metadata() -> None:

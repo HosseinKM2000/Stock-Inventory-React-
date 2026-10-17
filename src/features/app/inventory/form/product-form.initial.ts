@@ -20,6 +20,10 @@ export function createProductInitialValues(initial?: Product) {
 
     price: initial?.price ?? 0,
 
+    sale_price: initial?.sale_price ?? (initial?.price_missing ? null : initial?.price ?? null),
+
+    purchase_price: initial?.purchase_price ?? null,
+
     price_missing: initial?.price_missing ?? false,
 
     custom_label: initial?.custom_label ?? "",

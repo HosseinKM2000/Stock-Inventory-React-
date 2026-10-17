@@ -26,6 +26,7 @@ import { BarcodeManager } from "@/features/barcode/components/barcode-manager";
 import { generateInternalBarcode } from "@/features/barcode/domain/barcode";
 import { barcodeRepository } from "@/features/barcode/services/barcode-repository";
 import type { BarcodeMeaning, BarcodeSource } from "@/features/barcode/types";
+import { accessState } from "@/shared/access/access-state";
 
 type ProductFormMode = "create" | "edit" | "view";
 export type PendingBarcodeInput = { value: string; source: BarcodeSource; meaning: BarcodeMeaning; scanQuantity: number };
@@ -74,8 +75,11 @@ export function ProductForm({
   const { data: categories = [] } = useCategories();
   const { data: labels = [] } = useLabels();
   const readOnly = mode === "view";
-  const [displayPrice, setDisplayPrice] = useState(() =>
-    initial ? formatPrice(initial.price) : "",
+  const [displaySalePrice, setDisplaySalePrice] = useState(() =>
+    initial?.sale_price != null ? formatPrice(initial.sale_price) : initial && !initial.price_missing ? formatPrice(initial.price) : "",
+  );
+  const [displayPurchasePrice, setDisplayPurchasePrice] = useState(() =>
+    initial?.purchase_price != null ? formatPrice(initial.purchase_price) : "",
   );
   const [pendingBarcodes, setPendingBarcodes] = useState<PendingBarcodeInput[]>([]);
   const [pendingBarcodeValue, setPendingBarcodeValue] = useState("");
@@ -181,19 +185,36 @@ export function ProductForm({
     });
   };
 
-  const handlePriceChange = (event: ChangeEvent<HTMLInputElement>) => {
+  const handlePriceChange = (kind: "sale" | "purchase", event: ChangeEvent<HTMLInputElement>) => {
     const digits = normalizePriceDigits(event.target.value);
 
     if (!digits) {
-      setDisplayPrice("");
-      form.setValue("price", 0);
+      if (kind === "sale") {
+        setDisplaySalePrice("");
+        form.setValue("sale_price", null);
+        form.setValue("price", 0);
+      } else {
+        setDisplayPurchasePrice("");
+        form.setValue("purchase_price", null);
+      }
       return;
     }
 
     const price = Number(digits);
-    setDisplayPrice(formatPrice(price));
-    form.setValue("price", price);
+    if (!Number.isSafeInteger(price)) return;
+    if (kind === "sale") {
+      setDisplaySalePrice(formatPrice(price));
+      form.setValue("sale_price", price);
+      form.setValue("price", price);
+    } else {
+      setDisplayPurchasePrice(formatPrice(price));
+      form.setValue("purchase_price", price);
+    }
   };
+  const canViewSalePrice = accessState.hasStorePermission("products.sale_price.view");
+  const canEditSalePrice = accessState.hasStorePermission("products.sale_price.change") || (mode === "create" && accessState.hasStorePermission("products.create"));
+  const canViewPurchasePrice = accessState.hasStorePermission("products.purchase_price.view");
+  const canEditPurchasePrice = accessState.hasStorePermission("products.purchase_price.change");
 
   const modeLabel = mode === "create"
     ? "افزودن محصول"
@@ -304,21 +325,33 @@ export function ProductForm({
             />
           </FormField>
 
-          {/* Price */}
-
-          <FormField id="price" label="قیمت (تومان)" error={form.errors.price}>
+          {canViewSalePrice ? <FormField id="sale_price" label="قیمت فروش (تومان)" error={form.errors.sale_price}>
             <TextInput
-              id="price"
+              id="sale_price"
               size="3"
               type="text"
               inputMode="numeric"
-              name="price"
-              value={displayPrice}
-              placeholder="برای نمونه: ۱۰۰٬۰۰۰"
-              onChange={handlePriceChange}
-              disabled={readOnly}
+              name="sale_price"
+              value={displaySalePrice}
+              placeholder="خالی یعنی نامشخص"
+              onChange={(event) => handlePriceChange("sale", event)}
+              disabled={readOnly || !canEditSalePrice}
             />
-          </FormField>
+          </FormField> : null}
+
+          {canViewPurchasePrice ? <FormField id="purchase_price" label="قیمت خرید (تومان)" error={form.errors.purchase_price}>
+            <TextInput
+              id="purchase_price"
+              size="3"
+              type="text"
+              inputMode="numeric"
+              name="purchase_price"
+              value={displayPurchasePrice}
+              placeholder="خالی یعنی نامشخص"
+              onChange={(event) => handlePriceChange("purchase", event)}
+              disabled={readOnly || !canEditPurchasePrice}
+            />
+          </FormField> : null}
 
           <Box className="md:col-span-3">
             <FormField id="note" label="یادداشت">

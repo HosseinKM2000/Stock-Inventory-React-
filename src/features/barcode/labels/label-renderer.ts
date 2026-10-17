@@ -31,7 +31,8 @@ function renderOne(item: LabelItem, profile: LabelProfile, toSVG: SvgRenderer, s
   });
   const packageText = item.barcode.meaning === "package" && profile.showPackageQuantity
     ? `<div class="meta">هر اسکن: ${item.barcode.scan_quantity.toLocaleString("fa-IR")} واحد</div>` : "";
-  const price = profile.showPrice ? `<div class="price">${item.product.price.toLocaleString("fa-IR")} تومان</div>` : "";
+  const salePrice = item.product.sale_price ?? (item.product.price_missing ? null : item.product.price);
+  const price = profile.showPrice && salePrice != null ? `<div class="price">${salePrice.toLocaleString("fa-IR")} تومان</div>` : "";
   const store = profile.showStoreName && storeName ? `<div class="store">${escapeHtml(storeName)}</div>` : "";
   return `<article class="label" dir="rtl">${store}<div class="name">${escapeHtml(productName)}</div><div class="barcode" dir="ltr">${svg}</div><div class="value" dir="ltr">${escapeHtml(item.barcode.value)}</div>${packageText}${price}</article>`;
 }

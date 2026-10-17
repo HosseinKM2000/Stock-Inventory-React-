@@ -102,6 +102,21 @@ function hasValidDataShape(value: unknown) {
     Array.isArray(value.unavailableImages);
 }
 
+export function normalizeBackupProducts(products: BackupData["products"]): BackupData["products"] {
+  return products.map((product) => {
+    const salePrice = product.sale_price === undefined
+      ? (product.price_missing ? null : product.price)
+      : product.sale_price;
+    return {
+      ...product,
+      sale_price: salePrice,
+      purchase_price: product.purchase_price ?? null,
+      price: salePrice ?? 0,
+      price_missing: salePrice == null,
+    };
+  });
+}
+
 export async function parseBackupEnvelope(raw: string, expectedUserId: number, expectedStoreId = expectedUserId): Promise<BackupEnvelope> {
   let parsed: unknown;
   try {
@@ -110,7 +125,7 @@ export async function parseBackupEnvelope(raw: string, expectedUserId: number, e
     throw new Error("BACKUP_INVALID_JSON");
   }
   if (!isRecord(parsed) || parsed.format !== BACKUP_FORMAT) throw new Error("BACKUP_FORMAT_INVALID");
-  if (parsed.formatVersion !== BACKUP_FORMAT_VERSION || ![1, 2, BACKUP_SCHEMA_VERSION].includes(Number(parsed.schemaVersion))) {
+  if (parsed.formatVersion !== BACKUP_FORMAT_VERSION || ![1, 2, 3, BACKUP_SCHEMA_VERSION].includes(Number(parsed.schemaVersion))) {
     throw new Error("BACKUP_SCHEMA_UNSUPPORTED");
   }
   const envelope = parsed as unknown as BackupEnvelope;
@@ -135,7 +150,8 @@ export async function parseBackupEnvelope(raw: string, expectedUserId: number, e
   if (await revisionForBackupData(envelope.data) !== envelope.snapshotRevision) {
     throw new Error("BACKUP_REVISION_INVALID");
   }
-  return { ...envelope, data: { ...envelope.data, barcodes: envelope.data.barcodes ?? [], inventoryMovements: envelope.data.inventoryMovements ?? [] } };
+  const products = normalizeBackupProducts(envelope.data.products);
+  return { ...envelope, data: { ...envelope.data, products, barcodes: envelope.data.barcodes ?? [], inventoryMovements: envelope.data.inventoryMovements ?? [] } };
 }
 
 export function serializeBackupEnvelope(envelope: BackupEnvelope) {
