@@ -8,6 +8,7 @@ async function seedAuthenticatedUser(page: Page) {
       username: "dashboard-tester", email: null, phone: null,
       industry_id: 1, plan: "pro", is_active: true, is_admin: false,
       role: "USER", is_system_admin: false,
+      is_store_owner: false, store_permissions: ["dashboard.view", "products.view"],
       subscription_started_at: now,
       subscription_expires_at: "2099-01-01T00:00:00.000Z",
       created_at: now,
