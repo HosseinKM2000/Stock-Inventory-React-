@@ -50,7 +50,7 @@ The automated Playwright comparison was run with Desktop Chrome and Pixel 7 proj
 | Viewport | Verified layout |
 | --- | --- |
 | Pixel 7 project / 390 × 700 override | One-column filters and cards; no horizontal overflow; all three card modes retain their core information. |
-| 768 × 1024 responsive rule | Two-column grid mode; financial metrics use two columns. |
+| 768 × 1024 explicit Playwright viewport | Two-column product grid with no horizontal overflow; financial metrics use the same two-column responsive rule. |
 | Desktop Chrome / 1440 × 900 override | Search spans the filter row; category, sort, labels, and catalog toggle share four aligned columns. |
 | 1440 × 900 responsive rule | Three-column product grid; four-column financial metrics; comfortable-card actions stay inside the card. |
 

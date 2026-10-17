@@ -140,4 +140,14 @@ test("all three product card modes retain core information and fit narrow screen
     await expect(page.getByText("لامپ LED 12W", { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   }
+
+  await page.setViewportSize({ width: 768, height: 1024 });
+  const trigger = page.locator(".inventory-view-mode-select");
+  await trigger.click();
+  await page.getByRole("option", { name: "شبکه فشرده" }).click();
+  const columns = await page.locator(".inventory-compact-grid").evaluate((element) =>
+    getComputedStyle(element).gridTemplateColumns.split(" ").filter(Boolean).length,
+  );
+  expect(columns).toBe(2);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
