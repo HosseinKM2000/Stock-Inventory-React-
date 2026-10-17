@@ -19,6 +19,15 @@ async function push(items: SyncQueueItem[]): Promise<SyncHandlerResult[]> {
       if (record?.product) await inventoryRepository.save(record.product);
     } else {
       await movementRepository.save({ ...movement, sync_status: result.status === "conflict" ? "conflict" : "rejected", updated_at: new Date().toISOString() });
+      if (record?.product) await inventoryRepository.save(record.product);
+      else if (result.status === "fatal_error") {
+        const current = await inventoryRepository.get(movement.product_id);
+        if (current) {
+          const quantity = Math.max(0, current.quantity - movement.delta);
+          const status = quantity <= 0 ? "out_of_stock" : current.low_stock_threshold > 0 && quantity <= current.low_stock_threshold ? "low_stock" : "in_stock";
+          await inventoryRepository.save({ ...current, quantity, status, updated_at: new Date().toISOString() });
+        }
+      }
     }
     output.push({ itemId: item.id, status: result.status, error: result.error });
   }

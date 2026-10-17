@@ -4,6 +4,7 @@ import { apiFetch } from "@/shared/api/client";
 import { accessState } from "@/shared/access/access-state";
 import { networkService } from "@/shared/lib/infrastructure/network/network-service";
 import { formatJalaliDateTime } from "@/shared/lib/date/jalali";
+import { barcodeRepository } from "@/features/barcode/services/barcode-repository";
 
 export type ExportFormat = "xlsx" | "csv" | "pdf";
 
@@ -18,8 +19,9 @@ export type ExportOptions = {
   selectedIds?: number[];
 };
 
-const COLUMNS: { key: string; label: string; value(product: Product): string }[] =
+const COLUMNS: { key: string; label: string; value(product: Product, primaryBarcodes: ReadonlyMap<number, string>): string }[] =
   [
+    { key: "primary_barcode", label: "بارکد اصلی", value: (product, barcodes) => barcodes.get(product.id) ?? "" },
     { key: "id", label: "شناسه", value: (p) => String(p.id) },
     {
       key: "name",
@@ -39,11 +41,11 @@ function escapeCsv(value: string) {
   return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
-function toCsv(products: Product[]) {
+function toCsv(products: Product[], primaryBarcodes: ReadonlyMap<number, string>) {
   const header = COLUMNS.map((column) => column.label).join(",");
 
   const rows = products.map((product) =>
-    COLUMNS.map((column) => escapeCsv(column.value(product))).join(","),
+    COLUMNS.map((column) => escapeCsv(column.value(product, primaryBarcodes))).join(","),
   );
 
   // BOM keeps Excel from mangling the Persian labels.
@@ -57,14 +59,14 @@ function escapeHtml(value: string) {
     .replace(/>/g, "&gt;");
 }
 
-function toHtmlTable(products: Product[], title: string) {
+function toHtmlTable(products: Product[], title: string, primaryBarcodes: ReadonlyMap<number, string>) {
   const header = COLUMNS.map((column) => `<th>${column.label}</th>`).join("");
 
   const rows = products
     .map(
       (product) =>
         `<tr>${COLUMNS.map(
-          (column) => `<td>${escapeHtml(column.value(product))}</td>`,
+          (column) => `<td>${escapeHtml(column.value(product, primaryBarcodes))}</td>`,
         ).join("")}</tr>`,
     )
     .join("");
@@ -155,11 +157,20 @@ function applyScope(products: Product[], options: ExportOptions) {
   return products;
 }
 
-function buildFile(products: Product[], options: ExportOptions, title: string) {
+async function primaryBarcodeMap() {
+  const barcodes = await barcodeRepository.getAll();
+  const output = new Map<number, string>();
+  for (const barcode of barcodes.filter((item) => item.is_active).sort((left, right) => Number(right.is_default) - Number(left.is_default))) {
+    if (!output.has(barcode.product_id)) output.set(barcode.product_id, barcode.value);
+  }
+  return output;
+}
+
+function buildFile(products: Product[], options: ExportOptions, title: string, primaryBarcodes: ReadonlyMap<number, string>) {
   switch (options.format) {
     case "csv":
       return {
-        blob: new Blob([toCsv(products)], {
+        blob: new Blob([toCsv(products, primaryBarcodes)], {
           type: "text/csv;charset=utf-8",
         }),
         extension: "csv",
@@ -169,7 +180,7 @@ function buildFile(products: Product[], options: ExportOptions, title: string) {
       // Excel-compatible HTML table. The UI labels this honestly as .xls;
       // generating OOXML would require a spreadsheet dependency.
       return {
-        blob: new Blob([toHtmlTable(products, title)], {
+        blob: new Blob([toHtmlTable(products, title, primaryBarcodes)], {
           type: "application/vnd.ms-excel;charset=utf-8",
         }),
         extension: "xls",
@@ -177,7 +188,7 @@ function buildFile(products: Product[], options: ExportOptions, title: string) {
 
     case "pdf":
       return {
-        blob: new Blob([toHtmlTable(products, title)], {
+        blob: new Blob([toHtmlTable(products, title, primaryBarcodes)], {
           type: "text/html;charset=utf-8",
         }),
         extension: "html",
@@ -199,7 +210,7 @@ export const exportService = {
 
     const title = "خروجی داده های محلی";
 
-    const file = buildFile(products, options, title);
+    const file = buildFile(products, options, title, await primaryBarcodeMap());
 
     const stamp = new Date().toISOString().slice(0, 10);
 
@@ -241,7 +252,7 @@ export const exportService = {
 
     const title = "خروجی داده های سرور";
 
-    const file = buildFile(products, options, title);
+    const file = buildFile(products, options, title, await primaryBarcodeMap());
 
     if (options.format === "pdf") {
       printAsPdf(file.blob);

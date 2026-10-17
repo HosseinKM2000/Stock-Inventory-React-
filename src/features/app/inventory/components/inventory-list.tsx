@@ -11,6 +11,7 @@ import { ProductCard } from "./inventory-card";
 import { ProductImageDialog } from "./product-image-dialog";
 import { BulkEditDialog } from "./bulk-edit-dialog";
 import { BulkSelectionActions } from "./bulk-selection-actions";
+import { LabelPrintDialog } from "@/features/barcode/components/label-print-dialog";
 import type { Product, ProductSort } from "../types";
 import { useInventoryVirtual } from "../mutations/useInventoryVirtual";
 import {
@@ -27,6 +28,8 @@ import {
   inventoryListPreferences,
   type ProductViewMode,
 } from "../services/inventory-list-preferences";
+import { barcodeService } from "@/features/barcode/services/barcode-service";
+import { accessState } from "@/shared/access/access-state";
 
 const QUICK_STOCK_HINT_KEY = "inventory-quick-stock-hint-v3";
 const EMPTY_PRODUCTS: Product[] = [];
@@ -47,9 +50,12 @@ const InventoryList = () => {
   const [catalogProductsHidden, setCatalogProductsHidden] = useState(() => catalogVisibilityService.isHidden());
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [labelPrintOpen, setLabelPrintOpen] = useState(false);
+  const [barcodeMatchResult, setBarcodeMatchResult] = useState<{ key: string; hidden: boolean } | null>(null);
   const closeBulkOnAccountChange = useCallback(() => {
     setBulkOpen(false);
     setBulkDeleteOpen(false);
+    setLabelPrintOpen(false);
   }, []);
   const selection = useProductSelection(closeBulkOnAccountChange);
   const {
@@ -70,6 +76,9 @@ const InventoryList = () => {
     hide_catalog_products: catalogProductsHidden,
   });
   const products = data ?? EMPTY_PRODUCTS;
+  const barcodeFilterKey = `${search}|${categoryId ?? ""}|${selectedLabelIds.join(",")}|${catalogProductsHidden}`;
+  const barcodeMatchHidden = barcodeMatchResult?.key === barcodeFilterKey && barcodeMatchResult.hidden;
+  const canPrintLabels = accessState.canUse("label.print") && accessState.hasStorePermission("labels.print");
   const { parentRef, virtualizer } = useInventoryVirtual(
     viewMode === "grid" ? 0 : products.length,
     viewMode === "compact" ? 86 : 250,
@@ -97,6 +106,17 @@ const InventoryList = () => {
   useEffect(() => {
     inventoryListPreferences.update({ search, sort, categoryId, viewMode });
   }, [search, sort, categoryId, viewMode]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!search || (!categoryId && selectedLabelIds.length === 0 && !catalogProductsHidden)) {
+      return;
+    }
+    void barcodeService.resolve(search).then((resolution) => {
+      if (!cancelled) setBarcodeMatchResult({ key: barcodeFilterKey, hidden: resolution.status === "found" && !products.some((product) => product.id === resolution.productId) });
+    }).catch(() => { if (!cancelled) setBarcodeMatchResult({ key: barcodeFilterKey, hidden: false }); });
+    return () => { cancelled = true; };
+  }, [barcodeFilterKey, catalogProductsHidden, categoryId, products, search, selectedLabelIds]);
 
   useEffect(() => {
     if (restored.current || isLoading || products.length === 0) return;
@@ -229,6 +249,7 @@ const InventoryList = () => {
         />
         </aside>
         <Box className="inventory-list-results min-h-0 min-w-0">
+          {barcodeMatchHidden ? <Callout.Root color="amber" mb="3"><Callout.Text>بارکد دقیق پیدا شد، اما فیلترهای فعال محصول را پنهان کرده‌اند. برای نمایش، فیلتر دسته/برچسب یا محصولات کاتالوگی را پاک کنید.</Callout.Text></Callout.Root> : null}
           {isLoading && <Flex justify="center" align="center" className="h-full"><Spinner /></Flex>}
           {isError && <Callout.Root color="red"><Callout.Text>خطا در دریافت محصولات</Callout.Text></Callout.Root>}
           {!isLoading && !isError && products.length === 0 && <Flex justify="center" align="center" className="h-full"><Text color="gray">محصولی یافت نشد</Text></Flex>}
@@ -266,7 +287,9 @@ const InventoryList = () => {
         deleting={bulkDeleteProducts.isPending}
         onEdit={() => setBulkOpen(true)}
         onDelete={() => setBulkDeleteOpen(true)}
+        {...(canPrintLabels ? { onPrint: () => setLabelPrintOpen(true) } : {})}
       />}
+      <LabelPrintDialog open={labelPrintOpen} productIds={[...selectedIds]} onOpenChange={setLabelPrintOpen} />
       <BulkEditDialog
         open={bulkOpen}
         selectedIds={[...selectedIds]}

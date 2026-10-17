@@ -91,23 +91,29 @@ export const backupRestoreService = {
         const scope = restoreScope(user);
         await db.transaction(
           "rw",
-          [db.inventoryItems, db.categories, db.labels, db.syncQueue, db.syncMetadata],
+          [db.inventoryItems, db.categories, db.labels, db.barcodes, db.inventoryMovements, db.syncQueue, db.syncMetadata],
           async () => {
-            const [productIds, categoryIds, labelIds, queueIds] = await Promise.all([
+            const [productIds, categoryIds, labelIds, barcodeIds, movementIds, queueIds] = await Promise.all([
               db.inventoryItems.where("[local_user_id+local_store_id]").equals([user.id, scope.storeId]).primaryKeys(),
               db.categories.where("[local_user_id+local_store_id]").equals([user.id, scope.storeId]).primaryKeys(),
               db.labels.where("[local_user_id+local_store_id]").equals([user.id, scope.storeId]).primaryKeys(),
+              db.barcodes.where("[local_user_id+local_store_id]").equals([user.id, scope.storeId]).primaryKeys(),
+              db.inventoryMovements.where("[local_user_id+local_store_id]").equals([user.id, scope.storeId]).primaryKeys(),
               db.syncQueue.where("ownerUserId").equals(user.id).primaryKeys(),
             ]);
             await Promise.all([
               db.inventoryItems.bulkDelete(productIds),
               db.categories.bulkDelete(categoryIds),
               db.labels.bulkDelete(labelIds),
+              db.barcodes.bulkDelete(barcodeIds),
+              db.inventoryMovements.bulkDelete(movementIds),
               db.syncQueue.bulkDelete(queueIds),
             ]);
             await db.inventoryItems.bulkPut(data.products.map((item) => ({ ...item, local_user_id: user.id, local_store_id: scope.storeId, local_key: scope.key(item.id) })));
             await db.categories.bulkPut(data.categories.map((item) => ({ ...item, local_user_id: user.id, local_store_id: scope.storeId, local_key: scope.key(item.id) })));
             await db.labels.bulkPut(data.labels.map((item) => ({ ...item, local_user_id: user.id, local_store_id: scope.storeId, local_key: scope.key(item.id) })));
+            await db.barcodes.bulkPut((data.barcodes ?? []).map((item) => ({ ...item, store_id: scope.storeId, local_user_id: user.id, local_store_id: scope.storeId, local_key: scope.key(item.id) })));
+            await db.inventoryMovements.bulkPut((data.inventoryMovements ?? []).map((item) => ({ ...item, local_user_id: user.id, local_store_id: scope.storeId, local_key: scope.key(item.id) })));
             await db.syncQueue.bulkPut(restoredQueue(data.pendingOperations, user.id).map((item) => ({ ...item, storeId: scope.storeId })));
             await db.syncMetadata.put({
               key: `${user.id}:${scope.storeId}:restore-reconciliation-required`,

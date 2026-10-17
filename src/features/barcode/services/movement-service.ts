@@ -83,6 +83,7 @@ export const movementService = {
   async undo(operationId: string) {
     const original = await movementRepository.byOperationId(operationId);
     if (!original || original.sync_status === "rejected") throw new Error("عملیات اصلی برای بازگردانی در دسترس نیست");
+    if (original.sync_status === "conflict") throw new Error("عملیات ردشده قابل بازگردانی نیست");
     const movements = await movementRepository.getAll();
     if (movements.some((item) => item.reverses_operation_id === operationId)) throw new Error("این عملیات قبلاً بازگردانی شده است");
     const user = accessState.user();

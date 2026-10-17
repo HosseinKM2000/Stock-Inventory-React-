@@ -4,7 +4,7 @@ import io
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 from sqlalchemy import select
-from sqlalchemy.orm import joinedload
+from sqlalchemy.orm import joinedload, selectinload
 
 from ..deps import CurrentUser, DbSession, require_capability
 from ..services.store_authorization import StorePermission, require_store_permission
@@ -29,7 +29,7 @@ def export_inventory_json(
     require_tool(db, current_user, "export")
     items = db.scalars(
         select(InventoryItem).options(joinedload(InventoryItem.catalog_product)).where(
-            InventoryItem.user_id == current_user.data_owner_id,
+            InventoryItem.store_id == current_user.store_id,
             InventoryItem.deleted_at.is_(None),
         ).order_by(InventoryItem.created_at.desc(), InventoryItem.id.desc())
     ).all()
@@ -49,8 +49,8 @@ def export_inventory_csv(
     require_store_permission(db, current_user, StorePermission.EXPORT_USE)
     require_tool(db, current_user, "export")
     items = db.scalars(
-        select(InventoryItem).where(
-            InventoryItem.user_id == current_user.data_owner_id,
+        select(InventoryItem).options(selectinload(InventoryItem.barcodes)).where(
+            InventoryItem.store_id == current_user.store_id,
             InventoryItem.deleted_at.is_(None),
         ).order_by(InventoryItem.created_at.desc(), InventoryItem.id.desc())
     ).all()
@@ -61,6 +61,7 @@ def export_inventory_csv(
 
     writer.writerow([
         "ID",
+        "Primary Barcode",
         "Product Name",
         "Quantity",
         "Is Packaged",
@@ -72,8 +73,11 @@ def export_inventory_csv(
     ])
 
     for item in items:
+        active_barcodes = [barcode for barcode in item.barcodes if barcode.is_active]
+        primary_barcode = next((barcode.value for barcode in active_barcodes if barcode.is_default), active_barcodes[0].value if active_barcodes else "")
         writer.writerow([
             item.id,
+            primary_barcode,
             item.catalog_product.name if item.catalog_product else None,
             item.quantity,
             item.catalog_product.is_packaged if item.catalog_product else False,
@@ -106,7 +110,7 @@ def export_transactions_csv(
     require_tool(db, current_user, "export")
     transactions = db.scalars(
         select(InventoryTransaction).where(
-            InventoryTransaction.user_id == current_user.data_owner_id
+            InventoryTransaction.store_id == current_user.store_id
         ).order_by(
             InventoryTransaction.created_at.desc(),
             InventoryTransaction.id.desc(),

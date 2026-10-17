@@ -482,7 +482,7 @@ def _apply_inventory_movement(db: DbSession, user: User, operation: SyncOperatio
     if kind == "correction":
         expected = payload.get("before_quantity")
         if expected != before:
-            return SyncOperationResult(operation_id=operation.operation_id, status="conflict", entity_id=operation.entity_id, error="CORRECTION_STALE")
+            return SyncOperationResult(operation_id=operation.operation_id, status="conflict", entity_id=operation.entity_id, record={"product": _serialize(item)}, error="CORRECTION_STALE")
         if isinstance(correction_quantity, bool) or not isinstance(correction_quantity, int) or correction_quantity < 0:
             raise ValueError("CORRECTION_QUANTITY_INVALID")
         after = correction_quantity
@@ -491,7 +491,7 @@ def _apply_inventory_movement(db: DbSession, user: User, operation: SyncOperatio
     else:
         after = before + delta
     if after < 0:
-        return SyncOperationResult(operation_id=operation.operation_id, status="conflict", entity_id=operation.entity_id, error="INSUFFICIENT_STOCK")
+        return SyncOperationResult(operation_id=operation.operation_id, status="conflict", entity_id=operation.entity_id, record={"product": _serialize(item)}, error="INSUFFICIENT_STOCK")
 
     reverses = payload.get("reverses_operation_id")
     if kind == "reversal":
@@ -508,7 +508,7 @@ def _apply_inventory_movement(db: DbSession, user: User, operation: SyncOperatio
             InventoryMovement.reverses_operation_id == reverses,
         ))
         if already_reversed is not None:
-            return SyncOperationResult(operation_id=operation.operation_id, status="conflict", entity_id=operation.entity_id, error="MOVEMENT_ALREADY_REVERSED")
+            return SyncOperationResult(operation_id=operation.operation_id, status="conflict", entity_id=operation.entity_id, record={"product": _serialize(item)}, error="MOVEMENT_ALREADY_REVERSED")
 
     barcode_id = payload.get("barcode_id")
     scan_quantity = payload.get("scan_quantity", 1)

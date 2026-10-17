@@ -5,9 +5,9 @@ import { accessState } from "@/shared/access/access-state";
 import type { DomainToolId } from "@/shared/access/tools";
 
 const protectedTools: Record<string, DomainToolId> = {
-  import: "import", labels: "labels", categories: "categories", export: "export", catalog: "catalog", recovery: "recovery",
+  import: "import", labels: "labels", categories: "categories", export: "export", catalog: "catalog", recovery: "recovery", scanner: "scanner",
 };
-const toolPermissions: Record<string, string> = { import: "tools.import", labels: "labels.manage", categories: "categories.manage", export: "tools.export", catalog: "tools.catalog" };
+const toolPermissions: Record<string, string> = { import: "tools.import", labels: "labels.manage", categories: "categories.manage", export: "tools.export", catalog: "tools.catalog", scanner: "barcodes.lookup" };
 
 export const Route = createFileRoute("/tools")({
   beforeLoad: ({ location }) => {

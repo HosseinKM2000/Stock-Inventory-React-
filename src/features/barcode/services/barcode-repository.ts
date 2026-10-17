@@ -3,7 +3,7 @@ import { db } from "@/shared/lib/infrastructure/storage/db";
 import type { ProductBarcode } from "../types";
 
 function scope() {
-  const user = accessState.user();
+  const user = accessState.user?.();
   return user ? { actor: user.id, store: user.store_id ?? user.id } : null;
 }
 
