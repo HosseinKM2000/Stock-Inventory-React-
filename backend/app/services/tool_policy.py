@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from ..models import Industry, User
 from .authorization_service import is_admin
 
-TOOL_IDS = ("import", "labels", "categories", "export", "catalog", "recovery")
+TOOL_IDS = ("import", "labels", "categories", "export", "catalog", "recovery", "scanner")
 DEFAULT_TOOL_POLICY = {tool_id: True for tool_id in TOOL_IDS}
 
 

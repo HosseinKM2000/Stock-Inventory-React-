@@ -5,6 +5,7 @@ export const DOMAIN_TOOLS = [
   { id: "export", label: "خروجی" },
   { id: "catalog", label: "کاتالوگ" },
   { id: "recovery", label: "بازیابی" },
+  { id: "scanner", label: "اسکنر" },
 ] as const;
 
 export type DomainToolId = typeof DOMAIN_TOOLS[number]["id"];

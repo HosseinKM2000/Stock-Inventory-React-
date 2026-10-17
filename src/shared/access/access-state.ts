@@ -220,6 +220,7 @@ export const accessState = {
     if (tool === "labels") return this.canUse("labels.write");
     if (tool === "categories") return this.canUse("categories.write");
     if (tool === "export") return this.canUse("export.local") || this.canUse("export.server");
+    if (tool === "scanner") return this.canUse("barcode.lookup");
     return this.canUse("inventory.read");
   },
   requireTool(tool: DomainToolId) {

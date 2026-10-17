@@ -74,14 +74,21 @@ export const queueService = {
     entityId: number,
     action: QueueAction,
     payload: unknown,
+    options: { operationId?: string } = {},
   ) {
     const existing = await queueStorage.getForEntity(entity, entityId);
     const pending = existing.find(
       (item) => item.status === "pending" || item.status === "retryable_error",
     );
+    const inFlight = existing.find((item) => item.status === "in_flight");
     const id = pending?.id ?? queueId(entity, entityId, existing.length ? `:${crypto.randomUUID()}` : "");
 
-    const result = consolidate(pending, action, payload);
+    // Once a CREATE has crossed the claim boundary it may already exist on the
+    // server. A later DELETE must survive as a follow-up operation, even when
+    // another pending CREATE/UPDATE exists for the same local entity.
+    const result = action === "DELETE" && inFlight
+      ? { action: "DELETE" as const, payload }
+      : consolidate(pending, action, payload);
 
     if (!result) {
       await queueStorage.remove(id);
@@ -99,9 +106,9 @@ export const queueService = {
       ownerUserId: accessState.user()?.id,
 
       operationId:
-        pending?.status === "pending" || pending?.status === "retryable_error"
+        options.operationId ?? (pending?.status === "pending" || pending?.status === "retryable_error"
           ? pending.operationId
-          : crypto.randomUUID(),
+          : crypto.randomUUID()),
 
       entity,
 
@@ -122,6 +129,7 @@ export const queueService = {
       nextAttemptAt: now,
     });
     void requestBackgroundSync();
+    return options.operationId ?? pending?.operationId;
   },
 
   async getAll() {

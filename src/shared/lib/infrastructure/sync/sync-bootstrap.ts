@@ -6,6 +6,8 @@ import {
 } from "@/features/app/inventory/services/product-sync";
 import { registerCategorySync } from "@/features/setting/services/category-sync";
 import { registerLabelSync } from "@/features/setting/services/label-sync";
+import { registerBarcodeSync } from "@/features/barcode/services/barcode-sync";
+import { registerMovementSync } from "@/features/barcode/services/movement-sync";
 import { labelKeys } from "@/features/setting/mutations/use-labels";
 import { categoryKeys } from "@/features/setting/query/query-keys";
 import { exportKeys } from "@/features/setting/query/query-keys";
@@ -32,6 +34,8 @@ export function startSync() {
   registerProductSync();
   registerCategorySync();
   registerLabelSync();
+  registerBarcodeSync();
+  registerMovementSync();
 
   recovery = recoverMissingProductConflicts()
     .then((restored) => {

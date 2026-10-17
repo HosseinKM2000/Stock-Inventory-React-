@@ -1,5 +1,6 @@
 import json
 import uuid
+import re
 from pathlib import Path
 from typing import Annotated
 
@@ -13,8 +14,10 @@ from ..models import (
     CatalogProduct,
     Category,
     InventoryItem,
+    InventoryMovement,
     InventoryTransaction,
     Label,
+    ProductBarcode,
     SyncChange,
     SyncOperation,
     User,
@@ -27,6 +30,9 @@ from ..services.store_authorization import StorePermission, effective_permission
 from ..services.store_service import active_store_context
 from ..schemas import (
     InventoryOut,
+    InventoryMovementOut,
+    BarcodeOut,
+    BarcodeSnapshot,
     SyncBatchRequest,
     SyncBatchResponse,
     SyncChangeOut,
@@ -56,7 +62,11 @@ def _require_store_aware_client(value: int | None) -> None:
 def _authorize_operation(db: DbSession, user: User, operation: SyncOperationIn) -> None:
     permissions = effective_permissions(active_store_context(db, user))
     required: set[str]
-    if operation.entity == "label":
+    if operation.entity == "barcode":
+        required = {StorePermission.BARCODE_MANAGE.value}
+    elif operation.entity == "inventory_movement":
+        required = {StorePermission.BARCODE_LOOKUP.value, StorePermission.QUANTITY_CHANGE.value}
+    elif operation.entity == "label":
         required = {StorePermission.LABELS_MANAGE.value}
     elif operation.entity == "category":
         required = {StorePermission.CATEGORIES_MANAGE.value}
@@ -78,7 +88,11 @@ def _authorize_operation(db: DbSession, user: User, operation: SyncOperationIn) 
     missing = required - permissions
     if missing:
         raise ValueError(f"PERMISSION_REQUIRED:{sorted(missing)[0]}")
-    if not entitlement_for_user(db, user)["capabilities"].get("inventory.write", False):
+    capabilities = entitlement_for_user(db, user)["capabilities"]
+    feature = "barcode.manage" if operation.entity == "barcode" else "barcode.lookup" if operation.entity == "inventory_movement" else "inventory.write"
+    if not capabilities.get(feature, False):
+        raise ValueError(f"CAPABILITY_REQUIRED:{feature}")
+    if not capabilities.get("inventory.write", False):
         raise ValueError("CAPABILITY_REQUIRED:inventory.write")
 
 
@@ -306,6 +320,261 @@ def _apply_category(db: DbSession, user_id: int, operation: SyncOperationIn) -> 
     )
 
 
+_CODE128_ASCII = re.compile(r"^[\x20-\x7E]+$")
+_BARCODE_LENGTHS = {"ean13": 13, "ean8": 8, "upca": 12, "upce": 8}
+
+
+def _numeric_checksum(value: str) -> bool:
+    digits = [int(value) for value in value]
+    check = digits.pop()
+    total = sum(digit * (3 if position % 2 == 0 else 1) for position, digit in enumerate(reversed(digits)))
+    return (10 - total % 10) % 10 == check
+
+
+def _expand_upce(value: str) -> str | None:
+    if len(value) != 8 or not value.isdigit() or value[0] not in {"0", "1"}:
+        return None
+    number_system, body, check = value[0], value[1:7], value[7]
+    last = body[5]
+    if last in "012":
+        return f"{number_system}{body[:2]}{last}0000{body[2:5]}{check}"
+    if last == "3":
+        return f"{number_system}{body[:3]}00000{body[3:5]}{check}"
+    if last == "4":
+        return f"{number_system}{body[:4]}00000{body[4]}{check}"
+    return f"{number_system}{body[:5]}0000{last}{check}"
+
+
+def _barcode_candidates(value: str, symbology: str) -> set[str]:
+    values = {value}
+    if symbology == "upca":
+        values.add(f"0{value}")
+    elif symbology == "ean13" and value.startswith("0") and _numeric_checksum(value[1:]):
+        values.add(value[1:])
+    return values
+
+
+def _validate_barcode(value: object, symbology: object) -> tuple[str, str]:
+    if not isinstance(value, str) or not value or len(value) > 64:
+        raise ValueError("BARCODE_VALUE_INVALID")
+    if not isinstance(symbology, str) or symbology not in {"code128", "ean13", "ean8", "upca", "upce", "unknown"}:
+        raise ValueError("BARCODE_SYMBOLOGY_INVALID")
+    if symbology in {"code128", "unknown"}:
+        if _CODE128_ASCII.fullmatch(value) is None:
+            raise ValueError("BARCODE_CHARSET_INVALID")
+    elif not value.isascii() or not value.isdigit() or len(value) != _BARCODE_LENGTHS[symbology]:
+        raise ValueError("BARCODE_FORMAT_INVALID")
+    else:
+        checksum_value = _expand_upce(value) if symbology == "upce" else value
+        if checksum_value is None or not _numeric_checksum(checksum_value):
+            raise ValueError("BARCODE_CHECKSUM_INVALID")
+    return value, symbology
+
+
+def _apply_barcode(db: DbSession, user: User, operation: SyncOperationIn) -> SyncOperationResult:
+    barcode = db.scalar(select(ProductBarcode).where(
+        ProductBarcode.id == operation.entity_id,
+        ProductBarcode.store_id == user.store_id,
+    ))
+    if operation.operation == "DELETE":
+        if barcode is not None:
+            db.delete(barcode)
+        return SyncOperationResult(operation_id=operation.operation_id, status="applied", entity_id=operation.entity_id)
+
+    payload = operation.payload or {}
+    value, symbology = _validate_barcode(payload.get("value"), payload.get("symbology", "code128"))
+    product_id = payload.get("product_id")
+    if isinstance(product_id, bool) or not isinstance(product_id, int):
+        raise ValueError("BARCODE_PRODUCT_INVALID")
+    product = db.scalar(select(InventoryItem).where(
+        InventoryItem.id == product_id,
+        InventoryItem.store_id == user.store_id,
+        InventoryItem.deleted_at.is_(None),
+    ))
+    if product is None:
+        raise ValueError("BARCODE_PRODUCT_NOT_FOUND")
+    duplicate = db.scalar(select(ProductBarcode).where(
+        ProductBarcode.store_id == user.store_id,
+        ProductBarcode.value.in_(_barcode_candidates(value, symbology)),
+        ProductBarcode.id != operation.entity_id,
+    ))
+    if duplicate is not None:
+        return SyncOperationResult(operation_id=operation.operation_id, status="conflict", entity_id=operation.entity_id, error="BARCODE_ALREADY_ASSIGNED")
+    created = barcode is None
+    if created:
+        if operation.operation == "UPDATE":
+            raise ValueError("BARCODE_NOT_FOUND")
+        barcode = ProductBarcode(id=operation.entity_id, store_id=user.store_id, product_id=product.id, value=value, source="manufacturer")
+        db.add(barcode)
+    elif operation.base_version is not None and barcode.version != operation.base_version:
+        return SyncOperationResult(operation_id=operation.operation_id, status="conflict", entity_id=barcode.id, record=BarcodeOut.model_validate(barcode).model_dump(mode="json"), error="Server record has a newer version")
+
+    source = payload.get("source")
+    meaning = payload.get("meaning")
+    scan_quantity = payload.get("scan_quantity")
+    if source not in {"manufacturer", "tanzim"}:
+        raise ValueError("BARCODE_SOURCE_INVALID")
+    if meaning not in {"unit", "package"}:
+        raise ValueError("BARCODE_MEANING_INVALID")
+    if isinstance(scan_quantity, bool) or not isinstance(scan_quantity, int) or scan_quantity < 1:
+        raise ValueError("BARCODE_SCAN_QUANTITY_INVALID")
+    if meaning == "unit" and scan_quantity != 1:
+        raise ValueError("UNIT_BARCODE_QUANTITY_INVALID")
+    if source == "tanzim" and (symbology != "code128" or not value.startswith("TZ-")):
+        raise ValueError("INTERNAL_BARCODE_INVALID")
+
+    barcode.product_id = product.id
+    barcode.value = value
+    barcode.source = source
+    barcode.symbology = symbology
+    barcode.meaning = meaning
+    barcode.scan_quantity = scan_quantity
+    barcode.is_active = bool(payload.get("is_active", True))
+    barcode.is_default = bool(payload.get("is_default", False))
+    barcode.version = 1 if created else barcode.version + 1
+    if barcode.is_default:
+        for current in db.scalars(select(ProductBarcode).where(
+            ProductBarcode.store_id == user.store_id,
+            ProductBarcode.product_id == product.id,
+            ProductBarcode.id != barcode.id,
+            ProductBarcode.is_default.is_(True),
+        )):
+            current.is_default = False
+            current.version += 1
+    db.flush()
+    return SyncOperationResult(
+        operation_id=operation.operation_id,
+        status="applied",
+        entity_id=barcode.id,
+        record=BarcodeOut.model_validate(barcode).model_dump(mode="json"),
+    )
+
+
+def _apply_inventory_movement(db: DbSession, user: User, operation: SyncOperationIn) -> SyncOperationResult:
+    if operation.operation != "CREATE":
+        raise ValueError("INVENTORY_MOVEMENT_IMMUTABLE")
+    payload = operation.payload or {}
+    product_id = payload.get("product_id")
+    delta = payload.get("delta")
+    kind = payload.get("kind")
+    if isinstance(product_id, bool) or not isinstance(product_id, int):
+        raise ValueError("MOVEMENT_PRODUCT_INVALID")
+    if isinstance(delta, bool) or not isinstance(delta, int) or delta == 0:
+        raise ValueError("MOVEMENT_DELTA_INVALID")
+    if kind not in {"receive", "issue", "correction", "reversal"}:
+        raise ValueError("MOVEMENT_KIND_INVALID")
+    if (kind == "receive" and delta < 0) or (kind == "issue" and delta > 0):
+        raise ValueError("MOVEMENT_DIRECTION_INVALID")
+
+    item = db.scalar(
+        select(InventoryItem)
+        .options(joinedload(InventoryItem.catalog_product), selectinload(InventoryItem.labels))
+        .where(InventoryItem.id == product_id, InventoryItem.store_id == user.store_id, InventoryItem.deleted_at.is_(None))
+        .with_for_update()
+    )
+    if item is None:
+        raise ValueError("PRODUCT_NOT_FOUND")
+    if item.is_hidden:
+        raise ValueError("PRODUCT_HIDDEN")
+
+    before = item.quantity
+    correction_quantity = payload.get("correction_quantity")
+    if kind == "correction":
+        expected = payload.get("before_quantity")
+        if expected != before:
+            return SyncOperationResult(operation_id=operation.operation_id, status="conflict", entity_id=operation.entity_id, record={"product": _serialize(item)}, error="CORRECTION_STALE")
+        if isinstance(correction_quantity, bool) or not isinstance(correction_quantity, int) or correction_quantity < 0:
+            raise ValueError("CORRECTION_QUANTITY_INVALID")
+        after = correction_quantity
+        if after - before != delta:
+            raise ValueError("CORRECTION_DELTA_INVALID")
+    else:
+        after = before + delta
+    if after < 0:
+        return SyncOperationResult(operation_id=operation.operation_id, status="conflict", entity_id=operation.entity_id, record={"product": _serialize(item)}, error="INSUFFICIENT_STOCK")
+
+    reverses = payload.get("reverses_operation_id")
+    if kind == "reversal":
+        if not isinstance(reverses, str):
+            raise ValueError("REVERSAL_REFERENCE_REQUIRED")
+        original = db.scalar(select(InventoryMovement).where(
+            InventoryMovement.store_id == user.store_id,
+            InventoryMovement.operation_id == reverses,
+        ))
+        if original is None or original.product_id != item.id or delta != -original.delta:
+            raise ValueError("REVERSAL_REFERENCE_INVALID")
+        already_reversed = db.scalar(select(InventoryMovement).where(
+            InventoryMovement.store_id == user.store_id,
+            InventoryMovement.reverses_operation_id == reverses,
+        ))
+        if already_reversed is not None:
+            return SyncOperationResult(operation_id=operation.operation_id, status="conflict", entity_id=operation.entity_id, record={"product": _serialize(item)}, error="MOVEMENT_ALREADY_REVERSED")
+
+    barcode_id = payload.get("barcode_id")
+    scan_quantity = payload.get("scan_quantity", 1)
+    if isinstance(scan_quantity, bool) or not isinstance(scan_quantity, int) or scan_quantity < 1:
+        raise ValueError("MOVEMENT_SCAN_QUANTITY_INVALID")
+    barcode = None
+    if barcode_id is not None:
+        barcode = db.scalar(select(ProductBarcode).where(
+            ProductBarcode.id == barcode_id,
+            ProductBarcode.store_id == user.store_id,
+            ProductBarcode.product_id == item.id,
+            ProductBarcode.is_active.is_(True),
+        ))
+        if barcode is None:
+            raise ValueError("BARCODE_NOT_AVAILABLE")
+        if barcode.value != payload.get("barcode_value") or barcode.scan_quantity != scan_quantity:
+            raise ValueError("BARCODE_MEANING_MISMATCH")
+
+    context = active_store_context(db, user)
+    movement = InventoryMovement(
+        id=operation.entity_id,
+        store_id=context.store.id,
+        product_id=item.id,
+        actor_user_id=user.id,
+        actor_membership_id=context.membership.id,
+        operation_id=operation.operation_id,
+        kind=kind,
+        delta=delta,
+        correction_quantity=correction_quantity if kind == "correction" else None,
+        scan_source=payload.get("scan_source") if payload.get("scan_source") in {"manual", "hardware", "camera"} else "manual",
+        barcode_id=barcode.id if barcode else None,
+        barcode_value=barcode.value if barcode else None,
+        scan_quantity=scan_quantity,
+        before_quantity=before,
+        after_quantity=after,
+        reverses_operation_id=reverses,
+        client_occurred_at=operation.client_occurred_at,
+    )
+    db.add(movement)
+    item.quantity = after
+    item.version = (item.version or 1) + 1
+    db.add(InventoryTransaction(
+        store_id=context.store.id,
+        actor_user_id=user.id,
+        user_id=user.data_owner_id,
+        inventory_item_id=item.id,
+        type="stock_in" if delta > 0 else "stock_out",
+        quantity=abs(delta),
+        before_quantity=before,
+        after_quantity=after,
+        note=f"barcode:{kind}",
+    ))
+    db.flush()
+    record = _serialize(item)
+    _record_change(db, user.data_owner_id, item.id, "UPSERT", record)
+    return SyncOperationResult(
+        operation_id=operation.operation_id,
+        status="applied",
+        entity_id=movement.id,
+        record={
+            "movement": InventoryMovementOut.model_validate(movement).model_dump(mode="json"),
+            "product": record,
+        },
+    )
+
+
 def _record_quantity_change(
     db: DbSession,
     user_id: int,
@@ -396,6 +665,35 @@ async def push_batch(
             record_store_activity(db, current_user, action=f"sync.{operation.operation.lower()}", target_entity=operation.entity, target_id=operation.entity_id, operation_id=operation.operation_id, outcome="rejected", client_occurred_at=operation.client_occurred_at)
             db.add(SyncOperation(store_id=current_user.store_id, actor_user_id=current_user.id, user_id=current_user.data_owner_id, operation_id=operation.operation_id, result_payload=result.model_dump_json()))
             db.commit(); results.append(result); continue
+
+        if operation.entity in {"barcode", "inventory_movement"}:
+            try:
+                if operation.entity == "barcode":
+                    result = _apply_barcode(db, current_user, operation)
+                else:
+                    result = _apply_inventory_movement(db, current_user, operation)
+            except ValueError as error:
+                db.rollback()
+                result = SyncOperationResult(operation_id=operation.operation_id, status="fatal_error", entity_id=operation.entity_id, error=str(error))
+            action = (
+                f"barcode.{operation.operation.lower()}"
+                if operation.entity == "barcode"
+                else f"inventory.scan.{(operation.payload or {}).get('kind', 'change')}"
+            )
+            record_store_activity(
+                db,
+                current_user,
+                action=action,
+                target_entity=operation.entity,
+                target_id=operation.entity_id,
+                operation_id=operation.operation_id,
+                outcome="applied" if result.status == "applied" else ("conflict" if result.status == "conflict" else "rejected"),
+                client_occurred_at=operation.client_occurred_at,
+            )
+            db.add(SyncOperation(store_id=current_user.store_id, actor_user_id=current_user.id, user_id=current_user.data_owner_id, operation_id=operation.operation_id, result_payload=result.model_dump_json()))
+            db.commit()
+            results.append(result)
+            continue
 
         if operation.entity in {"label", "category"}:
             try:
@@ -545,6 +843,22 @@ async def push_batch(
         select(func.max(SyncChange.id)).where(SyncChange.user_id == current_user.data_owner_id)
     ) or 0
     return SyncBatchResponse(results=results, cursor=cursor)
+
+
+@router.get("/barcodes", response_model=BarcodeSnapshot)
+def barcode_snapshot(
+    current_user: CurrentProductReader,
+    db: DbSession,
+    client_data_schema: Annotated[int | None, Header(alias="X-Client-Data-Schema")] = None,
+) -> BarcodeSnapshot:
+    _require_store_aware_client(client_data_schema)
+    permissions = effective_permissions(active_store_context(db, current_user))
+    if StorePermission.BARCODE_LOOKUP.value not in permissions:
+        raise HTTPException(status_code=403, detail=f"PERMISSION_REQUIRED:{StorePermission.BARCODE_LOOKUP.value}")
+    if not entitlement_for_user(db, current_user)["capabilities"].get("barcode.lookup", False):
+        raise HTTPException(status_code=403, detail="CAPABILITY_REQUIRED:barcode.lookup")
+    items = list(db.scalars(select(ProductBarcode).where(ProductBarcode.store_id == current_user.store_id)))
+    return BarcodeSnapshot(items=[BarcodeOut.model_validate(item) for item in items])
 
 
 @router.get("/changes", response_model=SyncChangesResponse)

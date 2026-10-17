@@ -14,7 +14,16 @@ from .authorization_service import is_admin
 
 def seed_default_plans(db: Session) -> None:
     for plan_id, definition in PLAN_CATALOG.items():
-        if db.get(SubscriptionPlan, plan_id) is not None:
+        existing = db.get(SubscriptionPlan, plan_id)
+        if existing is not None:
+            features = parse_json_object(existing.features_json)
+            changed = False
+            for key, enabled in definition["capabilities"].items():
+                if key not in features:
+                    features[key] = enabled
+                    changed = True
+            if changed:
+                existing.features_json = json.dumps(features)
             continue
         db.add(
             SubscriptionPlan(

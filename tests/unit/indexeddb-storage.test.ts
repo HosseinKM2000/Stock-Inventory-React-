@@ -171,6 +171,24 @@ describe("IndexedDB repositories", () => {
       .toEqual({ quantity: 2 });
   });
 
+  it("keeps a delete behind an in-flight create even after a newer edit", async () => {
+    accessState.saveUser(user(1));
+    await queueService.enqueue("product", 100, "CREATE", { quantity: 1 });
+    const original = (await queueService.getDue())[0];
+    await queueService.markInFlight(original);
+    await queueService.enqueue("product", 100, "UPDATE", { quantity: 2 });
+
+    await queueService.enqueue("product", 100, "DELETE", null);
+
+    const operations = await queueService.getForEntity("product", 100);
+    expect(operations).toHaveLength(2);
+    expect(operations.find((item) => item.status === "in_flight")?.action).toBe("CREATE");
+    expect(operations.find((item) => item.status === "pending")).toMatchObject({
+      action: "DELETE",
+      payload: null,
+    });
+  });
+
   it("rolls back the local record when the matching outbox write fails", async () => {
     accessState.saveUser(user(1));
 
