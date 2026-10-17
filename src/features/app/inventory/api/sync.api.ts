@@ -10,7 +10,7 @@ export type SyncResult = {
   operation_id: string;
   status: "applied" | "conflict" | "fatal_error";
   entity_id: number;
-  record: Product | null;
+  record: Product | Record<string, unknown> | null;
   error: string | null;
 };
 
@@ -91,4 +91,8 @@ export async function pushJsonBatch(items: SyncQueueItem[]) {
 
 export function pullProductChanges(cursor: number) {
   return apiFetch<SyncChangesResponse>(`/sync/changes?cursor=${cursor}`);
+}
+
+export function fetchBarcodeSnapshot() {
+  return apiFetch<{ items: import("@/features/barcode/types").ProductBarcode[] }>("/sync/barcodes");
 }

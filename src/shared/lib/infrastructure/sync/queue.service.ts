@@ -74,6 +74,7 @@ export const queueService = {
     entityId: number,
     action: QueueAction,
     payload: unknown,
+    options: { operationId?: string } = {},
   ) {
     const existing = await queueStorage.getForEntity(entity, entityId);
     const pending = existing.find(
@@ -99,9 +100,9 @@ export const queueService = {
       ownerUserId: accessState.user()?.id,
 
       operationId:
-        pending?.status === "pending" || pending?.status === "retryable_error"
+        options.operationId ?? (pending?.status === "pending" || pending?.status === "retryable_error"
           ? pending.operationId
-          : crypto.randomUUID(),
+          : crypto.randomUUID()),
 
       entity,
 
@@ -122,6 +123,7 @@ export const queueService = {
       nextAttemptAt: now,
     });
     void requestBackgroundSync();
+    return options.operationId ?? pending?.operationId;
   },
 
   async getAll() {

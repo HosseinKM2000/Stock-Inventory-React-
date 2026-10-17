@@ -23,7 +23,7 @@ export type InboundSyncHandler = () => Promise<void>;
 const handlers = new Map<string, SyncHandler>();
 const inboundHandlers = new Map<string, InboundSyncHandler>();
 const BATCH_SIZE = 100;
-const ENTITY_ORDER = ["label", "category", "product"];
+const ENTITY_ORDER = ["label", "category", "product", "barcode", "inventory_movement"];
 
 let running: Promise<void> | null = null;
 let onSettled: (() => void) | null = null;

@@ -20,7 +20,9 @@ from app.models import (
     CatalogProduct,
     Industry,
     InventoryItem,
+    InventoryMovement,
     InventoryTransaction,
+    ProductBarcode,
     SyncChange,
     User,
     UserSession,
@@ -104,6 +106,88 @@ class SyncApiTest(unittest.TestCase):
             data={"operations_json": json.dumps({"operations": operations})},
             files=files,
         )
+
+    def test_barcode_and_inventory_movements_are_store_scoped_and_idempotent(self) -> None:
+        product_id = 1_700_000_090_001
+        barcode_id = 1_700_000_090_002
+        movement_id = 1_700_000_090_003
+        create_product = {
+            "operation_id": "barcode-product-create",
+            "entity": "product",
+            "entity_id": product_id,
+            "operation": "CREATE",
+            "payload": {
+                "quantity": 4,
+                "price": 100,
+                "custom_label": "Barcode product",
+                "low_stock_threshold": 1,
+                "low_stock_alert": True,
+                "is_hidden": False,
+                "catalog_product": {"id": 0, "name": "Barcode product"},
+            },
+        }
+        self.assertEqual(self.push([create_product]).json()["results"][0]["status"], "applied")
+        create_barcode = {
+            "operation_id": "barcode-create",
+            "entity": "barcode",
+            "entity_id": barcode_id,
+            "operation": "CREATE",
+            "payload": {
+                "product_id": product_id,
+                "value": "TZ-TEST90",
+                "source": "tanzim",
+                "symbology": "code128",
+                "meaning": "package",
+                "scan_quantity": 3,
+                "is_active": True,
+                "is_default": True,
+            },
+        }
+        barcode_result = self.push([create_barcode])
+        self.assertEqual(barcode_result.json()["results"][0]["status"], "applied")
+
+        receive = {
+            "operation_id": "movement-receive",
+            "entity": "inventory_movement",
+            "entity_id": movement_id,
+            "operation": "CREATE",
+            "payload": {
+                "product_id": product_id,
+                "kind": "receive",
+                "delta": 3,
+                "scan_source": "hardware",
+                "barcode_id": barcode_id,
+                "barcode_value": "TZ-TEST90",
+                "scan_quantity": 3,
+                "before_quantity": 4,
+            },
+        }
+        first = self.push([receive])
+        self.assertEqual(first.json()["results"][0]["status"], "applied")
+        self.assertEqual(first.json()["results"][0]["record"]["product"]["quantity"], 7)
+        replay = self.push([receive])
+        self.assertEqual(replay.json()["results"], first.json()["results"])
+
+        insufficient = self.push([{
+            **receive,
+            "operation_id": "movement-insufficient",
+            "entity_id": movement_id + 1,
+            "payload": {**receive["payload"], "kind": "issue", "delta": -30},
+        }])
+        self.assertEqual(insufficient.json()["results"][0]["status"], "conflict")
+        self.assertEqual(insufficient.json()["results"][0]["error"], "INSUFFICIENT_STOCK")
+
+        stale_correction = self.push([{
+            **receive,
+            "operation_id": "movement-stale-correction",
+            "entity_id": movement_id + 2,
+            "payload": {**receive["payload"], "kind": "correction", "delta": 5, "before_quantity": 4, "correction_quantity": 9},
+        }])
+        self.assertEqual(stale_correction.json()["results"][0]["error"], "CORRECTION_STALE")
+        with SessionLocal() as db:
+            self.assertEqual(db.get(InventoryItem, product_id).quantity, 7)
+            self.assertEqual(db.query(InventoryMovement).filter_by(operation_id="movement-receive").count(), 1)
+            self.assertEqual(db.get(ProductBarcode, barcode_id).store_id, db.get(InventoryItem, product_id).store_id)
 
     def test_batch_is_idempotent_and_conflicts_are_explicit(self) -> None:
         entity_id = 1_700_000_000_001

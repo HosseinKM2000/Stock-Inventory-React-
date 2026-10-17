@@ -32,6 +32,8 @@
     "@tanstack/react-virtual": "^3.14.5",
     "@tanstack/router-devtools": "^1.166.13",
     "@tanstack/router-vite-plugin": "^1.166.50",
+    "@zxing/browser": "^0.2.1",
+    "bwip-js": "^4.11.4",
     "dexie": "^4.4.4",
     "embla-carousel-react": "^8.6.0",
     "keycloak-js": "^26.2.4",

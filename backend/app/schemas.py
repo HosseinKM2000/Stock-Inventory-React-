@@ -499,9 +499,52 @@ class InventoryBulkSync(BaseModel):
     items: list[InventorySyncItem]
 
 
+class BarcodeOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    store_id: int
+    product_id: int
+    value: str
+    source: Literal["manufacturer", "tanzim"]
+    symbology: Literal["code128", "ean13", "ean8", "upca", "upce", "unknown"]
+    meaning: Literal["unit", "package"]
+    scan_quantity: int
+    is_active: bool
+    is_default: bool
+    version: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class BarcodeSnapshot(BaseModel):
+    items: list[BarcodeOut]
+
+
+class InventoryMovementOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    operation_id: str
+    product_id: int
+    actor_user_id: int
+    actor_membership_id: int
+    kind: Literal["receive", "issue", "correction", "reversal"]
+    delta: int
+    correction_quantity: int | None
+    scan_source: Literal["manual", "hardware", "camera"]
+    barcode_id: int | None
+    barcode_value: str | None
+    scan_quantity: int
+    before_quantity: int
+    after_quantity: int
+    reverses_operation_id: str | None
+    created_at: datetime
+
+
 class SyncOperationIn(BaseModel):
     operation_id: str = Field(min_length=1, max_length=64)
-    entity: Literal["product", "category", "label"]
+    entity: Literal["product", "category", "label", "barcode", "inventory_movement"]
     entity_id: int
     operation: Literal["CREATE", "UPDATE", "DELETE"]
     payload: dict[str, Any] | None = None

@@ -500,6 +500,11 @@ class InventoryItem(Base):
         secondary="inventory_item_labels", back_populates="inventory_items"
     )
 
+    barcodes: Mapped[list["ProductBarcode"]] = relationship(
+        back_populates="inventory_item",
+        cascade="all, delete-orphan",
+    )
+
     @property
     def label_ids(self) -> list[int]:
         return [label.id for label in self.labels]
@@ -516,6 +521,63 @@ class InventoryItem(Base):
             return "low_stock"
 
         return "in_stock"
+
+
+class ProductBarcode(Base):
+    __tablename__ = "product_barcodes"
+    __table_args__ = (
+        UniqueConstraint("store_id", "value", name="uq_product_barcodes_store_value"),
+        CheckConstraint("source IN ('manufacturer', 'tanzim')", name="ck_product_barcodes_source"),
+        CheckConstraint("meaning IN ('unit', 'package')", name="ck_product_barcodes_meaning"),
+        CheckConstraint("scan_quantity > 0", name="ck_product_barcodes_scan_quantity"),
+        Index("ix_product_barcodes_store_active_value", "store_id", "is_active", "value"),
+    )
+
+    id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True)
+    store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[int] = mapped_column("inventory_item_id", ForeignKey("inventory_items.id", ondelete="CASCADE"), index=True)
+    value: Mapped[str] = mapped_column(String(64))
+    source: Mapped[str] = mapped_column(String(20))
+    symbology: Mapped[str] = mapped_column(String(20), default="code128")
+    meaning: Mapped[str] = mapped_column(String(20), default="unit")
+    scan_quantity: Mapped[int] = mapped_column(BigInteger, default=1)
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_default: Mapped[bool] = mapped_column(Boolean, default=False)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now, onupdate=_now)
+
+    inventory_item: Mapped["InventoryItem"] = relationship(back_populates="barcodes")
+
+
+class InventoryMovement(Base):
+    __tablename__ = "inventory_movements"
+    __table_args__ = (
+        UniqueConstraint("store_id", "operation_id", name="uq_inventory_movements_store_operation"),
+        UniqueConstraint("store_id", "reverses_operation_id", name="uq_inventory_movements_store_reversal"),
+        CheckConstraint("kind IN ('receive', 'issue', 'correction', 'reversal')", name="ck_inventory_movements_kind"),
+        CheckConstraint("delta <> 0", name="ck_inventory_movements_delta"),
+        CheckConstraint("before_quantity >= 0 AND after_quantity >= 0", name="ck_inventory_movements_nonnegative"),
+    )
+
+    id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True)
+    store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("inventory_items.id", ondelete="CASCADE"), index=True)
+    actor_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    actor_membership_id: Mapped[int] = mapped_column(ForeignKey("store_memberships.id"), index=True)
+    operation_id: Mapped[str] = mapped_column(String(64))
+    kind: Mapped[str] = mapped_column(String(20))
+    delta: Mapped[int] = mapped_column(BigInteger)
+    correction_quantity: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    scan_source: Mapped[str] = mapped_column(String(20))
+    barcode_id: Mapped[int | None] = mapped_column(ForeignKey("product_barcodes.id", ondelete="SET NULL"), nullable=True)
+    barcode_value: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    scan_quantity: Mapped[int] = mapped_column(BigInteger, default=1)
+    before_quantity: Mapped[int] = mapped_column(BigInteger)
+    after_quantity: Mapped[int] = mapped_column(BigInteger)
+    reverses_operation_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    client_occurred_at: Mapped[datetime | None] = mapped_column(UTC_DATETIME, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now)
 
 
 class SyncOperation(Base):
