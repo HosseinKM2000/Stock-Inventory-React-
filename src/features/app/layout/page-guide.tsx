@@ -1,4 +1,4 @@
-import { ChevronLeftIcon } from "@radix-ui/react-icons";
+import { ChevronLeftIcon, CubeIcon, GearIcon, InfoCircledIcon } from "@radix-ui/react-icons";
 import { Link } from "@tanstack/react-router";
 import type { ComponentType } from "react";
 
@@ -14,25 +14,29 @@ type Props = {
 
 export function PageGuide({ section, sectionTo, title, description, icon: Icon }: Props) {
   const root = title === section;
+  const SectionIcon = sectionTo === "/setting" ? GearIcon : CubeIcon;
+  const context = root ? `صفحه اصلی ${section}` : `صفحه زیرمجموعه ${section}`;
 
   return (
-    <header className="page-guide" dir="rtl">
+    <header className="page-guide" dir="rtl" data-root={root}>
       <div className="page-guide-heading">
-        {root ? (
-          <span className="page-guide-section-icon" aria-hidden="true"><Icon width="19" height="19" /></span>
-        ) : (
-          <>
-            <Link to={sectionTo} className="page-guide-section">
-              <span>{section}</span>
-              <span className="page-guide-section-icon" aria-hidden="true"><Icon width="19" height="19" /></span>
-            </Link>
-            <ChevronLeftIcon className="page-guide-chevron" aria-hidden="true" />
-          </>
-        )}
-        <h1 className="page-guide-title">{title}</h1>
+        <span className="page-guide-page-icon" aria-hidden="true"><Icon width="22" height="22" /></span>
+        <div className="page-guide-title-row">
+          {!root ? (
+            <nav className="page-guide-breadcrumb" aria-label="مسیر صفحه">
+              <Link to={sectionTo} className="page-guide-section">
+                <SectionIcon width="17" height="17" aria-hidden="true" />
+                <span>{section}</span>
+              </Link>
+              <ChevronLeftIcon className="page-guide-chevron" aria-hidden="true" />
+              <h1 className="page-guide-title">{title}</h1>
+            </nav>
+          ) : <h1 className="page-guide-title">{title}</h1>}
+        </div>
+        <span className="page-guide-context">{context}</span>
       </div>
       <div className="page-guide-description">
-        <span className="page-guide-description-icon" aria-hidden="true"><Icon width="22" height="22" /></span>
+        <InfoCircledIcon className="page-guide-description-icon" width="20" height="20" aria-hidden="true" />
         <p>{description}</p>
       </div>
     </header>

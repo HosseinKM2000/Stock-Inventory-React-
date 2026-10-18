@@ -2869,68 +2869,90 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
 .help-section summary { cursor: pointer; font-weight: 700; }
 .sync-status-idle-dot { width: 10px; height: 10px; border-radius: 999px; background: currentColor; box-shadow: 0 0 0 4px var(--gray-a4); }
 
-/* Compact, lightly angular application language. */
+/* Neutral settings/tools guide, shared by section roots and descendants. */
 .page-guide {
   display: grid;
-  gap: .65rem;
+  gap: .7rem;
   width: 100%;
   margin-bottom: 1rem;
-}
-
-.page-guide-heading,
-.page-guide-description {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  border: 1px solid color-mix(in srgb, var(--accent-8) 12%, var(--gray-a4));
-  background: color-mix(in srgb, var(--color-panel-solid) 96%, var(--accent-2));
-  box-shadow: 0 5px 16px color-mix(in srgb, var(--accent-9) 5%, transparent);
+  padding: .8rem;
+  border: 1px solid var(--gray-a5);
+  border-radius: var(--app-radius-card);
+  background: var(--color-panel-solid);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--app-overlay) 7%, transparent);
 }
 
 .page-guide-heading {
-  min-height: 3.25rem;
-  gap: .5rem;
-  padding: .45rem .65rem;
-  border-radius: var(--app-radius-card);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  min-width: 0;
+  min-height: 3rem;
+  align-items: center;
+  gap: .75rem;
+  padding-inline: .15rem;
+}
+
+.page-guide-page-icon {
+  display: grid;
+  width: 2.75rem;
+  height: 2.75rem;
+  place-items: center;
+  color: var(--gray-12);
+  border: 1px solid var(--gray-a5);
+  border-radius: var(--app-radius-control);
+  background: var(--gray-a3);
+}
+
+.page-guide-title-row {
+  min-width: 0;
+}
+
+.page-guide-breadcrumb {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: .55rem;
 }
 
 .page-guide-section {
   display: inline-flex;
-  min-height: 2.35rem;
+  min-width: 0;
   align-items: center;
-  gap: .45rem;
-  padding: .25rem .35rem .25rem .65rem;
-  color: var(--accent-11);
-  border: 1px solid var(--accent-a4);
-  border-radius: 8px;
-  background: var(--accent-a3);
+  gap: .4rem;
+  color: var(--gray-11);
   font-size: .9rem;
-  font-weight: 700;
+  font-weight: 500;
   text-decoration: none;
 }
 
-.page-guide-section-icon,
-.page-guide-description-icon {
-  display: grid;
-  flex: 0 0 auto;
-  place-items: center;
-  color: var(--accent-11);
-  background: var(--accent-a4);
+.page-guide-section:hover {
+  color: var(--gray-12);
 }
 
-.page-guide-section-icon { width: 2rem; height: 2rem; border-radius: 7px; }
 .page-guide-chevron { flex: 0 0 auto; color: var(--gray-8); }
-.page-guide-title { min-width: 0; margin: 0; overflow: hidden; color: var(--gray-12); font-size: clamp(1.05rem, 2.5vw, 1.35rem); font-weight: 600; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.page-guide-title { min-width: 0; margin: 0; overflow: hidden; color: var(--gray-12); font-size: clamp(1.05rem, 2.5vw, 1.35rem); font-weight: 600; line-height: 1.4; text-overflow: ellipsis; white-space: nowrap; }
+
+.page-guide-context {
+  color: var(--gray-9);
+  font-size: .8rem;
+  line-height: 1.5;
+  white-space: nowrap;
+}
 
 .page-guide-description {
-  min-height: 3.75rem;
-  gap: .7rem;
-  padding: .7rem .8rem;
-  border-radius: var(--app-radius-card);
+  display: flex;
+  min-width: 0;
+  min-height: 3rem;
+  align-items: center;
+  gap: .65rem;
+  padding: .6rem .75rem;
+  border: 1px solid var(--gray-a4);
+  border-radius: var(--app-radius-control);
+  background: var(--gray-a2);
 }
 
-.page-guide-description-icon { width: 2.5rem; height: 2.5rem; border-radius: 8px; }
-.page-guide-description p { max-width: 72ch; margin: 0; color: var(--gray-10); font-size: .88rem; line-height: 1.75; }
+.page-guide-description-icon { flex: 0 0 auto; color: var(--gray-10); }
+.page-guide-description p { max-width: 80ch; margin: 0; color: var(--gray-11); font-size: .88rem; line-height: 1.75; }
 
 .quick-access-menu { border-radius: var(--app-radius-card); }
 
@@ -3002,13 +3024,14 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
   .inventory-grid-title { font-size: .72rem; line-height: 1.25; }
   .inventory-grid-quantity { font-size: .66rem; }
   .inventory-grid-status-dot { inset-block-start: .3rem; inset-inline-end: .3rem; width: .55rem; height: .55rem; border-width: 1.5px; }
-  .page-guide { gap: .45rem; margin-bottom: .75rem; }
-  .page-guide-heading { min-height: 2.8rem; padding: .3rem .4rem; border-radius: 9px; }
-  .page-guide-section { min-height: 2.1rem; padding: .15rem .25rem .15rem .5rem; border-radius: 7px; font-size: .8rem; }
-  .page-guide-section-icon { width: 1.75rem; height: 1.75rem; border-radius: 6px; }
+  .page-guide { gap: .5rem; margin-bottom: .75rem; padding: .55rem; }
+  .page-guide-heading { grid-template-columns: auto minmax(0, 1fr); min-height: 2.6rem; gap: .55rem; padding-inline: 0; }
+  .page-guide-page-icon { width: 2.35rem; height: 2.35rem; }
   .page-guide-title { font-size: 1rem; }
-  .page-guide-description { min-height: 3.25rem; gap: .55rem; padding: .55rem .65rem; border-radius: 8px; }
-  .page-guide-description-icon { width: 2.15rem; height: 2.15rem; border-radius: 7px; }
+  .page-guide-section { font-size: .78rem; }
+  .page-guide-context { grid-column: 1 / -1; margin-top: -.2rem; padding-inline-start: 2.9rem; font-size: .72rem; white-space: normal; }
+  .page-guide-description { min-height: 3rem; gap: .5rem; padding: .5rem .6rem; }
+  .page-guide-description-icon { width: 18px; height: 18px; }
   .page-guide-description p { font-size: .78rem; line-height: 1.65; }
 }
 

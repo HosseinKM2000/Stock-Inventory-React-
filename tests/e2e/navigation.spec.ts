@@ -108,6 +108,60 @@ test("contextual back uses safe fallbacks for direct descendants and access page
   await expect(page).toHaveURL(/\/dashboard$/);
 });
 
+test("settings and tools share a neutral responsive guide for roots and descendants", async ({ page }) => {
+  await seedAuthenticatedUser(page, "USER");
+  const rootStyles: Array<{ iconColor: string; iconBackground: string; descriptionBackground: string }> = [];
+
+  for (const path of ["/setting", "/tools"] as const) {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(path);
+    const guide = page.locator(".page-guide");
+    await expect(guide).toHaveAttribute("data-root", "true");
+    await expect(guide.locator(".page-guide-context")).toBeVisible();
+    rootStyles.push(await guide.evaluate((element) => {
+      const icon = element.querySelector<HTMLElement>(".page-guide-page-icon")!;
+      const description = element.querySelector<HTMLElement>(".page-guide-description")!;
+      return {
+        iconColor: getComputedStyle(icon).color,
+        iconBackground: getComputedStyle(icon).backgroundColor,
+        descriptionBackground: getComputedStyle(description).backgroundColor,
+      };
+    }));
+  }
+  expect(rootStyles[0]).toEqual(rootStyles[1]);
+
+  await page.goto("/tools/export");
+  const descendant = page.locator(".page-guide");
+  await expect(descendant).toHaveAttribute("data-root", "false");
+  await expect(descendant.locator(".page-guide-section")).toHaveAttribute("href", "/tools");
+  await expect(descendant.locator(".page-guide-breadcrumb")).toBeVisible();
+
+  for (const viewport of [{ width: 320, height: 568 }, { width: 768, height: 700 }, { width: 1440, height: 900 }]) {
+    await page.setViewportSize(viewport);
+    const boxes = await descendant.evaluate((element) => {
+      const guide = element.getBoundingClientRect();
+      const heading = element.querySelector<HTMLElement>(".page-guide-heading")!.getBoundingClientRect();
+      const description = element.querySelector<HTMLElement>(".page-guide-description")!.getBoundingClientRect();
+      return {
+        guide: { left: guide.left, right: guide.right },
+        headingBottom: heading.bottom,
+        descriptionTop: description.top,
+      };
+    });
+    expect(boxes.guide.left, `${viewport.width}px guide left`).toBeGreaterThanOrEqual(0);
+    expect(boxes.guide.right, `${viewport.width}px guide right`).toBeLessThanOrEqual(viewport.width);
+    expect(boxes.descriptionTop, `${viewport.width}px row order`).toBeGreaterThan(boxes.headingBottom);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+  }
+
+  await page.evaluate(() => {
+    localStorage.setItem("inventory-appearance", "dark");
+    window.dispatchEvent(new CustomEvent("appearance-change", { detail: "dark" }));
+  });
+  await expect(page.locator("html")).toHaveAttribute("data-appearance", "dark");
+  await expect(descendant.locator(".page-guide-title")).toBeVisible();
+});
+
 test("administrators receive a fixed Management shortcut above the menu without contextual back controls", async ({ page }) => {
   await seedAuthenticatedUser(page, "ADMIN");
   await page.goto("/dashboard");
