@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Box, Callout, Flex, Select, Spinner, Text } from "@radix-ui/themes";
+import { Box, Callout, Flex, Spinner, Text } from "@radix-ui/themes";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import { toast } from "sonner";
 
@@ -33,12 +33,6 @@ import { accessState } from "@/shared/access/access-state";
 
 const QUICK_STOCK_HINT_KEY = "inventory-quick-stock-hint-v3";
 const EMPTY_PRODUCTS: Product[] = [];
-const VIEW_MODES: Array<{ value: ProductViewMode; label: string }> = [
-  { value: "comfortable", label: "نمای راحت" },
-  { value: "compact", label: "نمای فشرده" },
-  { value: "grid", label: "شبکه فشرده" },
-];
-
 const InventoryList = () => {
   const initial = inventoryListPreferences.read();
   const [search, setSearch] = useState(initial.search);
@@ -205,29 +199,12 @@ const InventoryList = () => {
 
   return (
     <Flex direction="column" className="inventory-list-shell h-full min-h-0 overflow-hidden p-4 gap-4">
-      <Flex align="center" gap="2" wrap="wrap" className="inventory-toolbar min-w-0">
-        {selectionMode && <Flex align="center" gap="2" role="status" aria-live="polite">
+      {selectionMode ? <Flex align="center" gap="2" wrap="wrap" className="inventory-toolbar min-w-0">
+        <Flex align="center" gap="2" role="status" aria-live="polite">
           <Text weight="bold">{selectedIds.size.toLocaleString("fa-IR")} انتخاب</Text>
           <Button type="button" size="2" variant="soft" color="gray" aria-label="خروج از حالت انتخاب" onClick={selection.clear}><Cross2Icon /> پاک‌کردن</Button>
-        </Flex>}
-        <Select.Root
-          value={viewMode}
-          onValueChange={(value) => {
-            setViewMode(value as ProductViewMode);
-            parentRef.current?.scrollTo({ top: 0 });
-          }}
-        >
-          <Select.Trigger
-            aria-label="نحوه نمایش محصولات"
-            className="inventory-view-mode-select ms-auto min-w-0"
-          />
-          <Select.Content>
-            {VIEW_MODES.map(({ value, label }) => (
-              <Select.Item key={value} value={value}>{label}</Select.Item>
-            ))}
-          </Select.Content>
-        </Select.Root>
-      </Flex>
+        </Flex>
+      </Flex> : null}
 
       <div className="inventory-list-workspace flex-1 min-h-0">
         <aside className="inventory-filter-sidebar min-h-0" aria-label="فیلترهای محصولات">
@@ -246,6 +223,11 @@ const InventoryList = () => {
           onClearLabels={clearLabels}
           catalogProductsHidden={catalogProductsHidden}
           onCatalogVisibilityChange={updateCatalogVisibility}
+          viewMode={viewMode}
+          onViewModeChange={(value) => {
+            setViewMode(value);
+            parentRef.current?.scrollTo({ top: 0 });
+          }}
         />
         </aside>
         <Box className="inventory-list-results min-h-0 min-w-0">

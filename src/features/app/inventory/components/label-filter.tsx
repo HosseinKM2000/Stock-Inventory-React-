@@ -30,11 +30,10 @@ export function LabelFilter({ labels, selectedIds, onToggle, onRemove, onClear }
   return <Flex direction="column" gap="2" width="100%">
     <Popover.Root onOpenChange={(open) => { if (!open) setSearch(""); }}>
       <Popover.Trigger>
-        <Button type="button" variant="soft" className="w-full justify-between" aria-label="فیلتر محصولات بر اساس برچسب">
+        <Button type="button" variant="soft" className="inventory-filter-button inventory-label-filter-trigger" aria-label="فیلتر محصولات بر اساس برچسب">
           <span>برچسب‌ها</span>
-          <Text size="1" color={selectedIds.length ? undefined : "gray"}>
-            {selectedIds.length ? `${selectedIds.length.toLocaleString("fa-IR")} انتخاب` : "همه"}
-          </Text>
+          {selectedIds.length ? <Text size="1">{selectedIds.length.toLocaleString("fa-IR")}</Text> : null}
+          <span className="inventory-filter-chevron" aria-hidden="true" />
         </Button>
       </Popover.Trigger>
       <Popover.Content width="min(320px, calc(100vw - 2rem))" dir="rtl">

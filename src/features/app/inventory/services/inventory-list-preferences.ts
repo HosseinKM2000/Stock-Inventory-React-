@@ -31,7 +31,7 @@ function readViewMode(): ProductViewMode {
   } catch {
     // Storage is optional in private browsing contexts.
   }
-  return "comfortable";
+  return "grid";
 }
 
 export const inventoryListPreferences = {
