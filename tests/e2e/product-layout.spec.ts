@@ -95,7 +95,10 @@ test("product filters use one responsive panel across desktop and mobile", async
   await search.fill("چای سبز");
   await page.setViewportSize({ width: 1024, height: 768 });
   expect((await sidebar.boundingBox())!.x).toBeGreaterThan((await results.boundingBox())!.x);
-  await page.setViewportSize({ width: 390, height: 700 });
+  await page.addStyleTag({
+    content: ".inventory-filter-heading{display:flex!important}.inventory-filter-row{display:grid!important}",
+  });
+  await page.setViewportSize({ width: 375, height: 700 });
   await expect(panel).toHaveCount(1);
   await expect(search).toHaveValue("چای سبز");
   await expect(page.getByRole("heading", { name: "جستجو و فیلتر" })).toBeHidden();
@@ -116,6 +119,10 @@ test("product filters use one responsive panel across desktop and mobile", async
   await expect(dialog.getByRole("switch", { name: "مخفی کردن محصولات کاتالوگ در پنجره فیلترها" })).toBeVisible();
   await dialog.getByRole("button", { name: "بستن", exact: true }).click();
   await expect(dialog).toBeHidden();
+  await expect(panel.locator(":scope > .inventory-filter-row")).toBeHidden();
+  await expect(panel.locator(".inventory-filter-heading")).toBeHidden();
+  await expect(filterTrigger).toBeVisible();
+  expect(await panel.locator(".inventory-filter-topline").evaluate((element) => getComputedStyle(element).flexWrap)).toBe("nowrap");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 

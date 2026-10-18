@@ -600,8 +600,8 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
 
   .inventory-filter-topline { direction: rtl; }
 
-  .inventory-filter-heading {
-    display: flex;
+  .inventory-filter-panel > .inventory-filter-topline .inventory-filter-heading {
+    display: flex !important;
     min-width: 0;
     align-items: center;
     gap: .65rem;
@@ -623,7 +623,8 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
 
   .inventory-search-input { height: 4.25rem !important; }
 
-  .inventory-filter-row {
+  .inventory-filter-panel > .inventory-filter-row {
+    display: grid !important;
     direction: rtl;
     grid-template-areas:
       "category"
@@ -676,9 +677,13 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
   .inventory-filter-topline {
     direction: ltr;
     align-items: stretch;
+    flex-wrap: nowrap;
   }
 
-  .inventory-filter-row { display: none; }
+  .inventory-filter-panel > .inventory-filter-topline .inventory-filter-heading,
+  .inventory-filter-panel > .inventory-filter-row {
+    display: none !important;
+  }
 
   .inventory-view-switcher {
     width: auto;

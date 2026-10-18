@@ -1,8 +1,8 @@
-const CACHE_NAME = "tanzim-app-v10";
+const CACHE_NAME = "tanzim-app-v11";
 const OWNED_CACHE_PREFIXES = ["tanzim-", "inventory-shell-"];
 const scopeUrl = new URL(self.registration.scope);
 const scoped = (path) => new URL(path, scopeUrl).toString();
-const READY_MARKER = scoped(".__offline-ready-v10");
+const READY_MARKER = scoped(".__offline-ready-v11");
 const APP_SHELL = [
   "./",
   "index.html",

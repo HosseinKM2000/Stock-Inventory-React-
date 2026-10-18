@@ -126,7 +126,7 @@ test("prepares unvisited core routes and local inventory for an offline cold pag
 
   await expect.poll(() => page.evaluate(async () => {
     await navigator.serviceWorker.ready;
-    return Boolean(await caches.match(new URL("/.__offline-ready-v10", location.origin)));
+    return Boolean(await caches.match(new URL("/.__offline-ready-v11", location.origin)));
   }), { timeout: 15_000 }).toBe(true);
   await expect.poll(
     () => page.evaluate(() => Boolean(navigator.serviceWorker.controller)),
@@ -168,7 +168,7 @@ test("prepares unvisited core routes and local inventory for an offline cold pag
   await offlinePage.goto("/inventory/add");
   await offlinePage.locator('input[name="custom_label"]').fill("Offline CRUD Product");
   await offlinePage.locator('input[name="quantity"]').fill("3");
-  await offlinePage.locator('input[name="price"]').fill("250");
+  await offlinePage.locator('input[name="sale_price"]').fill("250");
   await offlinePage.locator('form button[type="submit"]').click();
   await expect(offlinePage).toHaveURL(/\/inventory\/list/);
   await expect(offlinePage.getByText("Offline CRUD Product").first()).toBeVisible();
