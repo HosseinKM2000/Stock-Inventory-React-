@@ -153,19 +153,24 @@ test("all three product card modes retain core information and fit narrow screen
   await seedProduct(page);
   await page.setViewportSize({ width: 390, height: 700 });
   await page.goto("/inventory/list");
+
+  await page.getByRole("button", { name: "نمای راحت", exact: true }).click();
+  const comfortableCard = page.locator(".inventory-card");
+  const mediaBox = (await comfortableCard.locator(".inventory-card-media").boundingBox())!;
+  expect(mediaBox.width / mediaBox.height).toBeGreaterThan(2.4);
+  await expect(comfortableCard.locator(".inventory-card-image-status")).toContainText("کم موجود");
+  await expect(comfortableCard.locator(".inventory-card-mobile-meta")).toContainText("Tanzim Demo");
+  await expect(comfortableCard.locator(".inventory-card-price")).toContainText("۳۵۰٬۰۰۰");
+  await expect(comfortableCard.locator(".quick-stock-control")).toBeVisible();
   for (const [label, selector] of [["نمای راحت", ".inventory-card-layout"], ["نمای فشرده", ".inventory-card--compact"], ["شبکه فشرده", ".inventory-card--grid"]] as const) {
-    const trigger = page.locator(".inventory-view-mode-select");
-    await trigger.click();
-    await page.getByRole("option", { name: label }).click();
+    await page.getByRole("button", { name: label, exact: true }).click();
     await expect(page.locator(selector)).toHaveCount(1);
     await expect(page.getByText("لامپ LED 12W", { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   }
 
   await page.setViewportSize({ width: 768, height: 1024 });
-  const trigger = page.locator(".inventory-view-mode-select");
-  await trigger.click();
-  await page.getByRole("option", { name: "شبکه فشرده" }).click();
+  await page.getByRole("button", { name: "شبکه فشرده", exact: true }).click();
   const columns = await page.locator(".inventory-compact-grid").evaluate((element) =>
     getComputedStyle(element).gridTemplateColumns.split(" ").filter(Boolean).length,
   );

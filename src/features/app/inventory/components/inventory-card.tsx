@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Badge, Card, Flex, IconButton, Text } from "@radix-ui/themes";
-import { Check, Copy, Package, Pencil, ShoppingCart, Trash2 } from "lucide-react";
+import { Barcode, Check, Copy, Package, Pencil, ShoppingCart, Store, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -203,29 +203,35 @@ export function ProductCard({
       {...longPress}
     >
       <Flex className="inventory-card-layout min-w-0" dir="rtl">
-        {image("inventory-card-image shrink-0")}
+        <div className="inventory-card-media">
+          {image("inventory-card-image shrink-0")}
+          {!selectionMode && <Badge color={status.color} className="inventory-card-image-status">{status.label}<Package size={16} aria-hidden="true" /></Badge>}
+        </div>
         <Flex direction="column" justify="between" className="inventory-card-content min-w-0 flex-1 p-3 sm:p-4">
-          <Flex justify="between" align="start" gap="2" className="min-w-0">
-            <Flex direction="column" gap="1" className="min-w-0 flex-1">
+          <div className="inventory-card-identity min-w-0">
+            <Flex justify="between" align="start" gap="2" className="min-w-0">
               <Text weight="bold" size="3" className="break-words text-lg!">{name}</Text>
-              {product.catalog_product?.brand && <Text size="1" color="gray" className="break-words">{product.catalog_product.brand}</Text>}
+              {selectionMode ? <Flex align="center" justify="center" data-selected={selected} className="inventory-selection-mark h-8 w-8 shrink-0 rounded-full border" aria-hidden="true">{selected && <Check size={16} />}</Flex> : <Badge color={status.color} className="inventory-card-mobile-status shrink-0">{status.label}</Badge>}
             </Flex>
-            {selectionMode ? <Flex align="center" justify="center" data-selected={selected} className="inventory-selection-mark h-8 w-8 shrink-0 rounded-full border" aria-hidden="true">{selected && <Check size={16} />}</Flex> : <Badge color={status.color} className="inventory-card-mobile-status shrink-0">{status.label}</Badge>}
-          </Flex>
-          <Text size="2" color="gray" className="line-clamp-2 break-words">
+            <Flex direction="column" gap="1" className="inventory-card-mobile-meta">
+              {product.catalog_product?.brand && <Text size="2" color="gray" className="break-words"><Store size={16} aria-hidden="true" />{product.catalog_product.brand}</Text>}
+              <Text size="2" color="gray" dir="ltr" className="inventory-card-code"><span>#{product.id}</span><Barcode size={18} aria-hidden="true" /></Text>
+            </Flex>
+          </div>
+          <Text size="2" color="gray" className="inventory-card-description line-clamp-2 break-words">
             {product.note ?? product.catalog_product?.description ?? "بدون توضیح"}
           </Text>
           {packageBreakdown && (
-            <Flex gap="3" wrap="wrap">
+            <Flex gap="3" wrap="wrap" className="inventory-card-stock-details">
               <Text size="2"><Text color="gray">بسته: </Text>{packageBreakdown.completePackages.toLocaleString("fa-IR")}</Text>
               <Text size="2"><Text color="gray">تعداد کل: </Text>{product.quantity.toLocaleString("fa-IR")}</Text>
             </Flex>
           )}
-          {!packageBreakdown && <Text size="2" color="gray"><Package size={16} className="inline-block align-middle" /> {product.quantity.toLocaleString("fa-IR")} عدد</Text>}
+          {!packageBreakdown && <Text size="2" color="gray" className="inventory-card-stock-details"><Package size={16} className="inline-block align-middle" /> {product.quantity.toLocaleString("fa-IR")} عدد</Text>}
           <Flex justify="between" gap="3" className="inventory-card-footer min-w-0">
             <Flex gap="2" wrap="wrap" className="min-w-0">
-              {canViewSalePrice && <Badge size="3" color="green" className="inventory-card-price max-w-full overflow-hidden"><ShoppingCart size={15} aria-hidden="true" />{salePrice == null ? "قیمت فروش ثبت نشده" : `${salePrice.toLocaleString("fa-IR")} تومان`}</Badge>}
-              {canViewPurchasePrice && <Badge size="2" color="blue">خرید: {product.purchase_price == null ? "نامشخص" : `${product.purchase_price.toLocaleString("fa-IR")} تومان`}</Badge>}
+              {canViewSalePrice && <Badge size="3" color="green" className="inventory-card-price max-w-full overflow-hidden"><ShoppingCart size={15} aria-hidden="true" />{salePrice == null ? "قیمت ثبت نشده" : <><strong>{salePrice.toLocaleString("fa-IR")}</strong><span>تومان</span></>}</Badge>}
+              {canViewPurchasePrice && <Badge size="2" color="blue" className="inventory-card-purchase-price">خرید: {product.purchase_price == null ? "نامشخص" : `${product.purchase_price.toLocaleString("fa-IR")} تومان`}</Badge>}
             </Flex>
             {showActions && !selectionMode && <Flex gap="2" justify="end" data-product-action className="inventory-card-actions inventory-card-mobile-actions">
               <IconButton type="button" size="2" variant="soft" aria-label={`کپی نام و قیمت ${name}`} onClick={(event) => { event.stopPropagation(); void copy(); }}><Copy size={17} /></IconButton>

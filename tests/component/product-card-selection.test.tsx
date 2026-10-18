@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { Theme } from "@radix-ui/themes";
 import { describe, expect, it, vi } from "vitest";
 import { product } from "../helpers/product";
@@ -30,6 +30,31 @@ describe("product-card selection interaction", () => {
     expect(screen.getByText("چای")).toBeInTheDocument();
     expect(screen.getAllByText(/۶/).length).toBeGreaterThan(0);
     expect(container.querySelector(viewMode === "comfortable" ? ".inventory-card-layout" : `.inventory-card--${viewMode}`)).toBeTruthy();
+  });
+
+  it("exposes the complete comfortable-card structure used by narrow layouts", () => {
+    const item = product({
+      id: 10,
+      custom_label: "لامپ LED 12W",
+      image_url: "opfs://products/lamp.webp",
+      quantity: 6,
+      sale_price: 350_000,
+      status: "low_stock",
+    });
+    item.catalog_product = { ...item.catalog_product!, brand: "Tanzim Demo" };
+
+    const { container } = renderCard({ product: item, viewMode: "comfortable" });
+
+    expect(container.querySelector(".inventory-card-media .inventory-card-image-status")).toHaveTextContent("کم موجود");
+    expect(container.querySelector(".inventory-card-identity")).toHaveTextContent("لامپ LED 12W");
+    expect(container.querySelector(".inventory-card-mobile-meta")).toHaveTextContent("Tanzim Demo");
+    expect(container.querySelector(".inventory-card-code")).toHaveTextContent("#10");
+    expect(container.querySelector(".inventory-card-price strong")).toHaveTextContent("۳۵۰٬۰۰۰");
+    const actions = within(container.querySelector(".inventory-card-mobile-actions")!);
+    expect(actions.getByRole("button", { name: "کپی نام و قیمت لامپ LED 12W" })).toBeInTheDocument();
+    expect(actions.getByRole("button", { name: "ویرایش لامپ LED 12W" })).toBeInTheDocument();
+    expect(actions.getByRole("button", { name: "حذف لامپ LED 12W" })).toBeInTheDocument();
+    expect(container.querySelector(".inventory-card-controls")).toBeTruthy();
   });
 
   it("enters selection on long press and suppresses the following click", () => {
