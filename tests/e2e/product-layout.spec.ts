@@ -18,7 +18,7 @@ async function seedOfflineUser(page: Page) {
       role: "USER",
       is_system_admin: false,
       is_store_owner: false,
-      store_permissions: ["products.view", "products.create", "products.edit", "products.quantity.change", "products.sale_price.view", "products.sale_price.change"],
+      store_permissions: ["products.view", "products.create", "products.edit", "products.delete", "products.quantity.change", "products.sale_price.view", "products.sale_price.change"],
       subscription_started_at: now,
       subscription_expires_at: "2099-01-01T00:00:00.000Z",
       created_at: now,
@@ -156,8 +156,41 @@ test("all three product card modes retain core information and fit narrow screen
 
   await page.getByRole("button", { name: "نمای راحت", exact: true }).click();
   const comfortableCard = page.locator(".inventory-card");
+  const cardBox = (await comfortableCard.boundingBox())!;
   const mediaBox = (await comfortableCard.locator(".inventory-card-media").boundingBox())!;
+  const statusBox = (await comfortableCard.locator(".inventory-card-image-status").boundingBox())!;
+  const actionBoxes = await comfortableCard.locator(".inventory-card-mobile-actions button").evaluateAll((buttons) =>
+    buttons.map((button) => {
+      const box = button.getBoundingClientRect();
+      return { width: box.width, height: box.height };
+    }),
+  );
+  const quickBoxes = await comfortableCard.locator(".quick-stock-control > *").evaluateAll((controls) =>
+    controls.map((control) => {
+      const box = control.getBoundingClientRect();
+      return { width: box.width, height: box.height };
+    }),
+  );
+  expect(cardBox.width / cardBox.height).toBeGreaterThan(1.16);
+  expect(cardBox.width / cardBox.height).toBeLessThan(1.25);
+  expect(mediaBox.width / cardBox.width).toBeGreaterThan(0.92);
+  expect(mediaBox.width / cardBox.width).toBeLessThan(0.95);
   expect(mediaBox.width / mediaBox.height).toBeGreaterThan(2.4);
+  expect(mediaBox.width / mediaBox.height).toBeLessThan(2.82);
+  expect(statusBox.width / mediaBox.width).toBeGreaterThan(0.22);
+  expect(statusBox.width / mediaBox.width).toBeLessThan(0.3);
+  expect(actionBoxes).toHaveLength(3);
+  for (const actionBox of actionBoxes) {
+    expect(actionBox.width / cardBox.width).toBeGreaterThan(0.09);
+    expect(actionBox.width / cardBox.width).toBeLessThan(0.14);
+    expect(actionBox.height / cardBox.width).toBeLessThan(0.12);
+  }
+  expect(quickBoxes[0].width / cardBox.width).toBeGreaterThan(0.32);
+  expect(quickBoxes[0].width / cardBox.width).toBeLessThan(0.36);
+  expect(quickBoxes[1].width / cardBox.width).toBeGreaterThan(0.2);
+  expect(quickBoxes[1].width / cardBox.width).toBeLessThan(0.23);
+  expect(quickBoxes[2].width / cardBox.width).toBeGreaterThan(0.32);
+  expect(quickBoxes[2].width / cardBox.width).toBeLessThan(0.36);
   await expect(comfortableCard.locator(".inventory-card-image-status")).toContainText("کم موجود");
   await expect(comfortableCard.locator(".inventory-card-mobile-meta")).toContainText("Tanzim Demo");
   await expect(comfortableCard.locator(".inventory-card-price")).toContainText("۳۵۰٬۰۰۰");

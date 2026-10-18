@@ -48,7 +48,7 @@ describe("product-card selection interaction", () => {
     expect(container.querySelector(".inventory-card-media .inventory-card-image-status")).toHaveTextContent("کم موجود");
     expect(container.querySelector(".inventory-card-identity")).toHaveTextContent("لامپ LED 12W");
     expect(container.querySelector(".inventory-card-mobile-meta")).toHaveTextContent("Tanzim Demo");
-    expect(container.querySelector(".inventory-card-code")).toHaveTextContent("#10");
+    expect(container.querySelector(".inventory-card-code")).toHaveTextContent("TZ-010");
     expect(container.querySelector(".inventory-card-price strong")).toHaveTextContent("۳۵۰٬۰۰۰");
     const actions = within(container.querySelector(".inventory-card-mobile-actions")!);
     expect(actions.getByRole("button", { name: "کپی نام و قیمت لامپ LED 12W" })).toBeInTheDocument();

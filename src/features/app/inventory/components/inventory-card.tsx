@@ -191,7 +191,7 @@ export function ProductCard({
       tabIndex={0}
       aria-pressed={selectionMode ? selected : undefined}
       aria-label={selectionMode ? `${selected ? "لغو انتخاب" : "انتخاب"} ${name}` : `انتخاب ${name} با نگه‌داشتن`}
-      className={`inventory-card h-auto overflow-hidden transition-all duration-200 ${showActions ? "" : "inventory-card--readonly"} ${selected ? "inventory-card--selected" : ""}`}
+      className={`inventory-card inventory-card--comfortable h-auto overflow-hidden transition-all duration-200 ${showActions ? "" : "inventory-card--readonly"} ${selected ? "inventory-card--selected" : ""}`}
       onClick={() => { if (selectionMode) onToggleSelection?.(product); }}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -215,7 +215,7 @@ export function ProductCard({
             </Flex>
             <Flex direction="column" gap="1" className="inventory-card-mobile-meta">
               {product.catalog_product?.brand && <Text size="2" color="gray" className="break-words"><Store size={16} aria-hidden="true" />{product.catalog_product.brand}</Text>}
-              <Text size="2" color="gray" dir="ltr" className="inventory-card-code"><span>#{product.id}</span><Barcode size={18} aria-hidden="true" /></Text>
+              <Text size="2" color="gray" dir="ltr" className="inventory-card-code"><span>TZ-{String(product.id).padStart(3, "0")}</span><Barcode size={18} aria-hidden="true" /></Text>
             </Flex>
           </div>
           <Text size="2" color="gray" className="inventory-card-description line-clamp-2 break-words">
