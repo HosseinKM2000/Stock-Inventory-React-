@@ -10,6 +10,7 @@ import {
   List,
   Search,
   Share2,
+  SlidersHorizontal,
   Tag,
   X,
 } from "lucide-react";
@@ -95,6 +96,11 @@ export default function FilterPanel({
             ))}
           </Select.Content>
         </Select.Root>
+
+        <div className="inventory-filter-heading">
+          <SlidersHorizontal size={27} strokeWidth={1.8} aria-hidden="true" />
+          <h2>جستجو و فیلتر</h2>
+        </div>
 
         <div className="inventory-view-switcher" role="group" aria-label="انتخاب چیدمان محصولات">
           {VIEW_MODES.map(({ value, label, Icon }) => (

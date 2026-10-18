@@ -227,6 +227,8 @@ body,
   gap: 1rem;
 }
 
+.inventory-filter-heading { display: none; }
+
 .inventory-view-mode-select {
   width: 12.25rem;
   height: 3.5rem !important;
@@ -403,8 +405,8 @@ body,
   inset-inline-end: 1rem;
   width: .72rem;
   height: .72rem;
-  border-inline-end: 2px solid currentColor;
-  border-block-end: 2px solid currentColor;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
   transform: rotate(45deg) translateY(-25%);
 }
 
@@ -444,17 +446,84 @@ body,
 
 @media (min-width: 1024px) {
   .inventory-list-workspace {
-    direction: rtl;
-    grid-template-areas: "filters" "results";
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto minmax(0, 1fr);
+    direction: ltr;
+    grid-template-areas: "results filters";
+    grid-template-columns: minmax(0, 1fr) minmax(22rem, 28rem);
+    grid-template-rows: minmax(0, 1fr);
     gap: 1.25rem;
   }
 
   .inventory-filter-sidebar {
     direction: rtl;
-    overflow: visible;
+    overflow-y: auto;
     padding: 0;
+  }
+
+  .inventory-filter-panel {
+    gap: 1.1rem;
+    min-height: 100%;
+    align-content: start;
+    padding: 1.35rem;
+  }
+
+  .inventory-filter-topline { direction: rtl; }
+
+  .inventory-view-mode-select { display: none !important; }
+
+  .inventory-filter-heading {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    gap: .65rem;
+    color: var(--inventory-ink);
+  }
+
+  .inventory-filter-heading h2 {
+    margin: 0;
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+
+  .inventory-view-switcher {
+    width: 11.75rem;
+    flex: 0 1 11.75rem;
+  }
+
+  .inventory-search-input { height: 4.25rem !important; }
+
+  .inventory-filter-row {
+    direction: rtl;
+    grid-template-areas:
+      "category"
+      "sort"
+      "labels"
+      "catalog";
+    grid-template-columns: minmax(0, 1fr);
+    gap: 1rem;
+  }
+
+  .inventory-filter-control,
+  .inventory-catalog-filter {
+    min-height: 4.35rem;
+  }
+
+  .inventory-filter-control { direction: rtl; }
+
+  .inventory-filter-select,
+  .inventory-filter-button {
+    min-height: 4.25rem !important;
+    font-size: 1.05rem !important;
+  }
+
+  .inventory-filter-button { direction: rtl; }
+  .inventory-catalog-filter { direction: rtl; }
+
+  .inventory-filter-select .rt-SelectIcon {
+    position: absolute;
+    left: 1rem;
+    margin: 0;
   }
 
   .inventory-list-results {
