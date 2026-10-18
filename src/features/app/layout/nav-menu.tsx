@@ -1,4 +1,4 @@
-import { Box, Flex, Text } from "@radix-ui/themes";
+import { Box, Text } from "@radix-ui/themes";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { primaryNavigationItems } from "./navigation-items";
 import { isPathActive } from "@/shared/lib/navigation/is-path-active";
@@ -20,7 +20,7 @@ function NavigationLink({ item, active }: { item: NavigationItem; active: boolea
     <Link
       to={item.to}
       data-active={active}
-      className="app-bottom-navigation-item relative flex min-w-0 flex-1 flex-col items-center justify-center rounded-2xl px-3 py-2 transition-all duration-200 ease-out active:scale-95 md:w-52 md:flex-none"
+      className="app-bottom-navigation-item relative flex min-w-0 flex-col items-center justify-center px-2 py-2 transition-all duration-200 ease-out active:scale-95"
     >
       <Box className={`absolute -top-2 left-1/2 -translate-x-1/2 transition-all duration-300 ${active ? "opacity-100" : "opacity-0"}`}>
         <Box className="app-navigation-indicator h-[3px] w-12 rounded-full" />
@@ -60,6 +60,7 @@ const NavMenu = ({ hidden = false }: Props) => {
         overflow-visible
       "
       data-hidden={hidden || keyboardOpen}
+      data-has-primary-action={canAddProduct}
       aria-hidden={hidden || keyboardOpen}
       aria-label="ناوبری اصلی"
     >
@@ -74,9 +75,7 @@ const NavMenu = ({ hidden = false }: Props) => {
           <PersonIcon width="22" height="22" aria-hidden="true" />
         </Link>
       )}
-      <Flex
-        align="center"
-        justify="center"
+      <Box
         className="
           app-bottom-navigation-surface
           relative
@@ -95,7 +94,7 @@ const NavMenu = ({ hidden = false }: Props) => {
         {canAddProduct && (
           <Link
             to="/inventory/add"
-            className="app-bottom-navigation-add relative flex min-w-0 flex-1 items-center justify-center md:w-24 md:flex-none"
+            className="app-bottom-navigation-add relative min-w-0"
             aria-label="افزودن محصول"
           >
             <span className="app-bottom-navigation-add-button" aria-hidden="true">
@@ -106,7 +105,7 @@ const NavMenu = ({ hidden = false }: Props) => {
         {afterAction.map((item) => (
           <NavigationLink key={item.to} item={item} active={isPathActive(pathname, item.to)} />
         ))}
-      </Flex>
+      </Box>
     </nav>
   );
 };

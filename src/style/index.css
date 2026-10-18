@@ -42,6 +42,7 @@ body,
   --app-bottom-navigation-measured-height: calc(var(--app-bottom-navigation-height) + env(safe-area-inset-bottom, 0px));
   --app-content-bottom-inset: calc(var(--app-bottom-navigation-measured-height) + var(--app-bottom-navigation-overlap) + .75rem);
   --app-add-product-button-size: 74px;
+  --app-add-product-button-rendered-size: min(var(--app-add-product-button-size), clamp(64px, 20vw, 82px));
   --product-create-accent: #6e56cf;
   --product-create-accent-soft: rgb(110 86 207 / 12%);
   --product-edit-accent: #3e63dd;
@@ -111,12 +112,20 @@ html { font-size: 16px; }
 }
 
 .app-bottom-navigation-surface {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 9rem));
+  align-items: stretch;
+  justify-content: center;
   width: 100%;
   margin: 0;
   border-width: 1px 0 0;
   border-color: var(--gray-a6);
   background: color-mix(in srgb, var(--color-panel-solid) 92%, transparent);
   box-shadow: 0 -8px 24px color-mix(in srgb, var(--app-overlay) 45%, transparent);
+}
+
+.app-bottom-navigation[data-has-primary-action="true"] .app-bottom-navigation-surface {
+  grid-template-columns: repeat(5, minmax(0, 9rem));
 }
 
 .app-admin-shortcut {
@@ -170,35 +179,51 @@ html { font-size: 16px; }
 }
 
 .app-bottom-navigation-item {
+  width: 100%;
+  min-width: 0;
   color: var(--gray-11);
+  border-radius: var(--app-radius-control);
 }
 
 .app-bottom-navigation-add {
+  z-index: 1;
+  display: grid;
+  width: 100%;
+  min-width: 0;
   align-self: stretch;
+  place-items: center;
   color: var(--accent-contrast);
   outline: none;
 }
 
 .app-bottom-navigation-add-button {
+  position: absolute;
+  top: 50%;
+  left: 50%;
   display: grid;
-  width: var(--app-add-product-button-size);
-  height: var(--app-add-product-button-size);
+  box-sizing: border-box;
+  width: var(--app-add-product-button-rendered-size);
+  min-width: var(--app-add-product-button-rendered-size);
+  height: var(--app-add-product-button-rendered-size);
+  min-height: var(--app-add-product-button-rendered-size);
+  aspect-ratio: 1;
+  flex: 0 0 var(--app-add-product-button-rendered-size);
   place-items: center;
   border: 6px solid var(--color-panel-solid);
   border-radius: 999px;
   background: var(--accent-9);
   box-shadow: 0 5px 14px color-mix(in srgb, var(--app-overlay) 42%, transparent);
-  transform: translateY(calc(-1 * var(--app-bottom-navigation-overlap)));
+  transform: translate(-50%, calc(-50% - var(--app-bottom-navigation-overlap)));
   transition: transform 150ms ease, background-color 150ms ease;
 }
 
 .app-bottom-navigation-add:hover .app-bottom-navigation-add-button {
   background: var(--accent-10);
-  transform: translateY(calc(-1 * var(--app-bottom-navigation-overlap) - 2px));
+  transform: translate(-50%, calc(-50% - var(--app-bottom-navigation-overlap) - 2px));
 }
 
 .app-bottom-navigation-add:active .app-bottom-navigation-add-button {
-  transform: translateY(calc(-1 * var(--app-bottom-navigation-overlap) + 3px)) scale(.96);
+  transform: translate(-50%, calc(-50% - var(--app-bottom-navigation-overlap) + 3px)) scale(.96);
 }
 
 .product-form {
@@ -2601,7 +2626,11 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
     height: 36px;
   }
 
-  .app-responsive-page,
+  .app-responsive-page {
+    padding-inline: 8px !important;
+    padding-top: 8px !important;
+  }
+
   .inventory-list-shell {
     padding: 8px !important;
   }
@@ -2815,7 +2844,7 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
 .app-responsive-page {
   padding-inline: var(--app-page-padding) !important;
   padding-top: var(--app-page-padding) !important;
-  padding-bottom: var(--app-content-bottom-inset);
+  padding-bottom: var(--app-content-bottom-inset) !important;
 }
 :root[data-display-size="large"] .rt-Button,
 :root[data-display-size="large"] .rt-TextFieldRoot,

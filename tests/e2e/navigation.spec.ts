@@ -144,6 +144,59 @@ test("application navigation has no horizontal overflow at narrow and desktop wi
   }
 });
 
+test("bottom navigation stays ordered and circular without covering the final page action", async ({ page }) => {
+  await seedAuthenticatedUser(page, "USER");
+  await page.addInitScript(() => localStorage.setItem("inventory-display-size", "large"));
+
+  for (const viewport of [
+    { width: 320, height: 480 },
+    { width: 390, height: 700 },
+    { width: 768, height: 640 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/setting");
+
+    const main = page.locator("main.app-shell-content");
+    const logout = main.locator("button").last();
+    await expect(logout).toHaveCount(1);
+    await main.evaluate((element) => element.scrollTo({ top: element.scrollHeight }));
+    await expect(logout).toBeInViewport();
+
+    const metrics = await page.evaluate(() => {
+      const mainElement = document.querySelector<HTMLElement>("main.app-shell-content")!;
+      const navigationElement = document.querySelector<HTMLElement>(".app-bottom-navigation")!;
+      const surfaceElement = document.querySelector<HTMLElement>(".app-bottom-navigation-surface")!;
+      const addElement = document.querySelector<HTMLElement>(".app-bottom-navigation-add-button")!;
+      const logoutElement = [...mainElement.querySelectorAll<HTMLElement>("button")].at(-1)!;
+      const navigationBox = navigationElement.getBoundingClientRect();
+      const surfaceBox = surfaceElement.getBoundingClientRect();
+      const addBox = addElement.getBoundingClientRect();
+      const logoutBox = logoutElement.getBoundingClientRect();
+      const itemBoxes = [...surfaceElement.children].map((element) => {
+        const box = element.getBoundingClientRect();
+        return { left: box.left, right: box.right };
+      });
+      return {
+        paddingBottom: Number.parseFloat(getComputedStyle(mainElement).paddingBottom),
+        navigationHeight: navigationBox.height,
+        navigationTop: navigationBox.top,
+        surface: { left: surfaceBox.left, right: surfaceBox.right },
+        add: { width: addBox.width, height: addBox.height },
+        logoutBottom: logoutBox.bottom,
+        itemBoxes,
+      };
+    });
+
+    expect(metrics.paddingBottom, `${viewport.width}px bottom inset`).toBeGreaterThan(metrics.navigationHeight);
+    expect(metrics.logoutBottom, `${viewport.width}px final action`).toBeLessThanOrEqual(metrics.navigationTop);
+    expect(Math.abs(metrics.add.width - metrics.add.height), `${viewport.width}px add shape`).toBeLessThanOrEqual(1);
+    for (const item of metrics.itemBoxes) {
+      expect(item.left, `${viewport.width}px item left`).toBeGreaterThanOrEqual(metrics.surface.left - 1);
+      expect(item.right, `${viewport.width}px item right`).toBeLessThanOrEqual(metrics.surface.right + 1);
+    }
+  }
+});
+
 test("shared navigation inset keeps final form actions reachable in short viewports and large text", async ({ page }) => {
   await seedAuthenticatedUser(page, "USER");
   await page.addInitScript(() => localStorage.setItem("inventory-display-size", "large"));
