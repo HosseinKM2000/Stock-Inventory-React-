@@ -166,14 +166,14 @@ export function ProductCard({
             {selectionMode && <Flex align="center" justify="center" data-selected={selected} className="inventory-selection-mark absolute left-3 top-3 h-8 w-8 rounded-full border" aria-hidden="true">{selected && <Check size={16} />}</Flex>}
           </div>
         ) : (
-          <Flex align="center" gap="3" className="inventory-compact-card min-w-0">
+          <Flex align="center" gap="3" className="inventory-compact-card min-w-0" dir="rtl">
             {image("inventory-compact-image h-20 w-20 shrink-0 rounded-xl")}
-            <Flex direction="column" gap="2" className="min-w-0 flex-1">
-              <Text weight="bold" size="3" className="truncate">{name}</Text>
-              <Flex gap="2" align="center" wrap="wrap">
-                <Text size="2" color="gray">{product.quantity.toLocaleString("fa-IR")} عدد</Text>
-                <Badge size="1" color={status.color}>{status.label}</Badge>
-                {canViewSalePrice && <Text size="2" weight="bold" color="green">{salePrice == null ? "بدون قیمت" : `${salePrice.toLocaleString("fa-IR")} تومان`}</Text>}
+            <Flex direction="column" gap="2" className="inventory-compact-info min-w-0 flex-1">
+              <Text weight="bold" size="3" className="inventory-compact-title truncate">{name}</Text>
+              <Flex gap="2" align="center" wrap="wrap" className="inventory-compact-facts">
+                <Text size="2" color="gray" className="inventory-compact-quantity">{product.quantity.toLocaleString("fa-IR")}<span className="inventory-compact-unit"> عدد</span></Text>
+                <Badge size="1" color={status.color} className="inventory-compact-status">{status.label}</Badge>
+                {canViewSalePrice && <Text size="2" weight="bold" color="green" className="inventory-compact-price">{salePrice == null ? "بدون قیمت" : `${salePrice.toLocaleString("fa-IR")} تومان`}</Text>}
               </Flex>
             </Flex>
             {showQuickStock && canAdjustQuantity && !selectionMode && <div className="inventory-compact-quick" data-product-action onClick={(event) => event.stopPropagation()}><QuickStockAdjustment product={product} /></div>}

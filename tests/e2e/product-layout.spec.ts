@@ -195,12 +195,71 @@ test("all three product card modes retain core information and fit narrow screen
   await expect(comfortableCard.locator(".inventory-card-mobile-meta")).toContainText("Tanzim Demo");
   await expect(comfortableCard.locator(".inventory-card-price")).toContainText("۳۵۰٬۰۰۰");
   await expect(comfortableCard.locator(".quick-stock-control")).toBeVisible();
+
+  await page.getByRole("button", { name: "نمای فشرده", exact: true }).click();
+  const compactCard = page.locator(".inventory-card--compact");
+  const compactBox = (await compactCard.boundingBox())!;
+  const compactImageBox = (await compactCard.locator(".inventory-compact-image").boundingBox())!;
+  const compactQuickBox = (await compactCard.locator(".inventory-compact-quick").boundingBox())!;
+  const compactInfoBox = (await compactCard.locator(".inventory-compact-info").boundingBox())!;
+  const compactFactBoxes = await compactCard.locator(".inventory-compact-facts > *").evaluateAll((facts) =>
+    facts.filter((fact) => getComputedStyle(fact).display !== "none").map((fact) => {
+      const box = fact.getBoundingClientRect();
+      return { left: box.left, right: box.right };
+    }),
+  );
+  const compactButtons = await compactCard.locator(".quick-stock-button").evaluateAll((buttons) =>
+    buttons.map((button) => {
+      const box = button.getBoundingClientRect();
+      return { width: box.width, height: box.height };
+    }),
+  );
+  const compactControls = await compactCard.locator(".quick-stock-control > *").evaluateAll((controls) =>
+    controls.map((control) => {
+      const box = control.getBoundingClientRect();
+      return { left: box.left, right: box.right };
+    }).sort((first, second) => first.left - second.left),
+  );
+  expect(compactBox.width / compactBox.height).toBeGreaterThan(3.8);
+  expect(compactBox.width / compactBox.height).toBeLessThan(5.4);
+  expect(compactImageBox.width / compactImageBox.height).toBeGreaterThan(0.95);
+  expect(compactImageBox.width / compactImageBox.height).toBeLessThan(1.05);
+  expect(Math.abs((compactQuickBox.y + compactQuickBox.height / 2) - (compactBox.y + compactBox.height / 2))).toBeLessThan(10);
+  for (const fact of compactFactBoxes) {
+    expect(fact.left).toBeGreaterThanOrEqual(compactInfoBox.x);
+    expect(fact.right).toBeLessThanOrEqual(compactInfoBox.x + compactInfoBox.width);
+  }
+  for (const button of compactButtons) {
+    expect(button.width).toBeGreaterThanOrEqual(44);
+    expect(button.height).toBeGreaterThanOrEqual(44);
+  }
+  expect(compactControls[0].left).toBeGreaterThanOrEqual(compactQuickBox.x);
+  expect(compactControls.at(-1)!.right).toBeLessThanOrEqual(compactQuickBox.x + compactQuickBox.width);
+  for (let index = 1; index < compactControls.length; index += 1) {
+    expect(compactControls[index].left).toBeGreaterThanOrEqual(compactControls[index - 1].right);
+  }
   for (const [label, selector] of [["نمای راحت", ".inventory-card-layout"], ["نمای فشرده", ".inventory-card--compact"], ["شبکه فشرده", ".inventory-card--grid"]] as const) {
     await page.getByRole("button", { name: label, exact: true }).click();
     await expect(page.locator(selector)).toHaveCount(1);
     await expect(page.getByText("لامپ LED 12W", { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   }
+
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.getByRole("button", { name: "نمای فشرده", exact: true }).click();
+  const narrowCompactCard = page.locator(".inventory-card--compact");
+  const narrowQuickBox = (await narrowCompactCard.locator(".inventory-compact-quick").boundingBox())!;
+  const narrowControls = await narrowCompactCard.locator(".quick-stock-control > *").evaluateAll((controls) =>
+    controls.map((control) => {
+      const box = control.getBoundingClientRect();
+      return { left: box.left, right: box.right, width: box.width };
+    }).sort((first, second) => first.left - second.left),
+  );
+  expect(narrowControls[0].left).toBeGreaterThanOrEqual(narrowQuickBox.x);
+  expect(narrowControls.at(-1)!.right).toBeLessThanOrEqual(narrowQuickBox.x + narrowQuickBox.width);
+  expect(narrowControls[0].width).toBeGreaterThanOrEqual(44);
+  expect(narrowControls.at(-1)!.width).toBeGreaterThanOrEqual(44);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 
   await page.setViewportSize({ width: 768, height: 1024 });
   await page.getByRole("button", { name: "شبکه فشرده", exact: true }).click();

@@ -2782,3 +2782,164 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
 .help-section details { margin-top: 14px; border-top: 1px solid var(--gray-a5); padding-top: 12px; }
 .help-section summary { cursor: pointer; font-weight: 700; }
 .sync-status-idle-dot { width: 10px; height: 10px; border-radius: 999px; background: currentColor; box-shadow: 0 0 0 4px var(--gray-a4); }
+
+@media (max-width: 639px) {
+  .inventory-card--compact {
+    padding: 0 !important;
+    border-color: color-mix(in srgb, var(--accent-8) 12%, var(--gray-a4));
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--color-panel-solid) 98%, var(--accent-2));
+    box-shadow: 0 10px 28px color-mix(in srgb, var(--indigo-a8) 7%, transparent);
+  }
+
+  .inventory-card--compact .inventory-compact-card {
+    display: grid !important;
+    grid-template-columns: clamp(52px, 16cqi, 60px) minmax(0, 1fr) clamp(146px, 41.2cqi, 154px);
+    align-items: center !important;
+    gap: clamp(6px, 2.1cqi, 8px);
+    min-height: 80px;
+    padding: 8px;
+    flex-wrap: nowrap;
+  }
+
+  .inventory-card--compact .inventory-compact-card:not(:has(.inventory-compact-quick)) {
+    grid-template-columns: clamp(52px, 16cqi, 60px) minmax(0, 1fr) auto;
+  }
+
+  .inventory-card--compact .inventory-compact-image {
+    grid-column: 1;
+    width: clamp(52px, 16cqi, 60px);
+    height: clamp(52px, 16cqi, 60px);
+    border-radius: 10px;
+  }
+
+  .inventory-card--compact .inventory-compact-info {
+    grid-column: 2;
+    gap: 5px;
+    align-self: center;
+  }
+
+  .inventory-card--compact .inventory-compact-title {
+    font-size: clamp(14px, 4.2cqi, 17px);
+    line-height: 1.35;
+  }
+
+  .inventory-card--compact .inventory-compact-facts {
+    gap: 6px;
+    flex-wrap: nowrap;
+  }
+
+  .inventory-card--compact .inventory-compact-quantity {
+    flex: none;
+    color: var(--gray-10);
+    font-size: clamp(12px, 3.4cqi, 14px);
+    white-space: nowrap;
+  }
+
+  .inventory-card--compact .inventory-compact-status {
+    min-height: 28px;
+    padding-inline: 8px;
+    border-radius: 9px;
+    flex: none;
+    font-size: clamp(11px, 3.1cqi, 12px);
+    font-weight: 800;
+  }
+
+  .inventory-card--compact .inventory-compact-status[data-accent-color="yellow"] {
+    color: var(--amber-11);
+    background: color-mix(in srgb, var(--amber-3) 92%, white) !important;
+  }
+
+  .inventory-card--compact .inventory-compact-price {
+    display: none;
+  }
+
+  .inventory-card--compact .inventory-compact-quick {
+    grid-column: 3;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding-inline-start: 8px;
+    border-inline-start: 1px solid var(--gray-a5);
+  }
+
+  .inventory-card--compact .quick-stock-wrapper {
+    gap: 4px;
+  }
+
+  .inventory-card--compact .quick-stock-mode {
+    padding: 0;
+  }
+
+  .inventory-card.inventory-card--compact .quick-stock-control {
+    display: grid !important;
+    grid-template-columns: minmax(44px, 1fr) 42px minmax(44px, 1fr);
+    width: 100%;
+    min-height: 48px;
+    padding: 0 !important;
+    gap: 5px !important;
+    direction: rtl;
+  }
+
+  .inventory-card.inventory-card--compact .quick-stock-button {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    height: 48px !important;
+    min-height: 48px !important;
+    border-radius: 11px;
+  }
+
+  .inventory-card--compact .quick-stock-button:first-child {
+    color: var(--green-11);
+    border: 1px solid var(--green-a5);
+    background: color-mix(in srgb, var(--green-a4) 78%, transparent);
+  }
+
+  .inventory-card--compact .quick-stock-button:last-child {
+    color: var(--red-10);
+    border: 1px solid var(--red-a5);
+    background: color-mix(in srgb, var(--red-a4) 78%, transparent);
+  }
+
+  .inventory-card--compact .quick-stock-button svg {
+    width: 20px;
+    height: 20px;
+  }
+
+  .inventory-card.inventory-card--compact .quick-stock-quantity {
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 48px;
+    border: 1px solid var(--gray-a5);
+    border-radius: 11px;
+    background: var(--gray-a2);
+    font-size: 20px;
+    flex: none;
+  }
+
+  .inventory-card--compact .quick-stock-count {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 359px) {
+  .inventory-card--compact .inventory-compact-unit {
+    display: none;
+  }
+
+  .inventory-card--compact .inventory-compact-facts {
+    gap: 3px;
+  }
+
+  .inventory-card--compact .inventory-compact-status {
+    min-height: 26px;
+    padding-inline: 5px;
+    font-size: 10.5px;
+  }
+
+  .inventory-card.inventory-card--compact .quick-stock-control {
+    grid-template-columns: minmax(44px, 1fr) 40px minmax(44px, 1fr);
+    gap: 4px !important;
+  }
+}
