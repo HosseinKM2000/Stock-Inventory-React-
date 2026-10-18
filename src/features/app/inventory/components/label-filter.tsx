@@ -11,9 +11,10 @@ type Props = {
   onToggle(id: number): void;
   onRemove(id: number): void;
   onClear(): void;
+  emptyLabel?: string;
 };
 
-export function LabelFilter({ labels, selectedIds, onToggle, onRemove, onClear }: Props) {
+export function LabelFilter({ labels, selectedIds, onToggle, onRemove, onClear, emptyLabel = "برچسب‌ها" }: Props) {
   const [search, setSearch] = useState("");
   const selected = useMemo(() => new Set(selectedIds), [selectedIds]);
   const visibleLabels = useMemo(() => {
@@ -31,7 +32,7 @@ export function LabelFilter({ labels, selectedIds, onToggle, onRemove, onClear }
     <Popover.Root onOpenChange={(open) => { if (!open) setSearch(""); }}>
       <Popover.Trigger>
         <Button type="button" variant="soft" className="inventory-filter-button inventory-label-filter-trigger" aria-label="فیلتر محصولات بر اساس برچسب">
-          <span>برچسب‌ها</span>
+          <span>{selectedIds.length ? "برچسب‌ها" : emptyLabel}</span>
           {selectedIds.length ? <Text size="1">{selectedIds.length.toLocaleString("fa-IR")}</Text> : null}
           <span className="inventory-filter-chevron" aria-hidden="true" />
         </Button>

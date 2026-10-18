@@ -82,6 +82,7 @@ test("product filters use one responsive panel across desktop and mobile", async
   const desktopResultsBox = (await results.boundingBox())!;
   expect(desktopSidebarBox.x).toBeGreaterThan(desktopResultsBox.x);
   await expect(page.getByRole("heading", { name: "جستجو و فیلتر" })).toBeVisible();
+  await expect(page.getByRole("button", { name: "فیلترها" })).toBeHidden();
   const searchBox = (await page.getByRole("textbox", { name: "جستجوی محصول" }).boundingBox())!;
   const controls = panel.locator(".inventory-filter-control, .inventory-catalog-filter");
   const positions = await Promise.all(Array.from({ length: 4 }, async (_, index) => (await controls.nth(index).boundingBox())!));
@@ -98,7 +99,19 @@ test("product filters use one responsive panel across desktop and mobile", async
   await expect(panel).toHaveCount(1);
   await expect(search).toHaveValue("چای سبز");
   await expect(page.getByRole("heading", { name: "جستجو و فیلتر" })).toBeHidden();
+  const filterTrigger = page.getByRole("button", { name: "فیلترها" });
+  await expect(filterTrigger).toBeVisible();
+  expect((await search.boundingBox())!.y).toBeLessThan((await filterTrigger.boundingBox())!.y);
   expect((await sidebar.boundingBox())!.y).toBeLessThan((await results.boundingBox())!.y);
+  await filterTrigger.click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await expect(dialog.getByText("دسته‌بندی", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("مرتب‌سازی", { exact: true })).toBeVisible();
+  await expect(dialog.getByText("برچسب‌ها", { exact: true })).toBeVisible();
+  await expect(dialog.getByRole("switch", { name: "مخفی کردن محصولات کاتالوگ در پنجره فیلترها" })).toBeVisible();
+  await dialog.getByRole("button", { name: "بستن", exact: true }).click();
+  await expect(dialog).toBeHidden();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 
