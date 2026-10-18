@@ -41,3 +41,58 @@ test("all display sizes are applied before render in light and dark themes", asy
     }
   }
 });
+
+test("display presets scale application typography and controls with Vazirmatn", async ({ page }) => {
+  const measurements: Array<{ body: number; button: number; control: number }> = [];
+
+  for (const size of ["compact", "normal", "large"] as const) {
+    await page.addInitScript((value) => localStorage.setItem("inventory-display-size", value), size);
+    await page.goto("/auth/login");
+    await page.reload();
+    await expect(page.locator("button[type='submit']")).toBeVisible();
+    await page.evaluate(() => document.fonts.load("400 16px Vazirmatn"));
+    const values = await page.evaluate(() => {
+      const button = document.querySelector<HTMLElement>("button");
+      if (!button) throw new Error("Login button is missing");
+      const body = getComputedStyle(document.body);
+      const control = getComputedStyle(button);
+      return {
+        body: Number.parseFloat(body.fontSize),
+        button: Number.parseFloat(control.fontSize),
+        control: button.getBoundingClientRect().height,
+        family: body.fontFamily,
+        loadedFaces: [...document.fonts].filter((face) => face.family.includes("Vazirmatn") && face.status === "loaded").length,
+      };
+    });
+    expect(values.family).toContain("Vazirmatn");
+    expect(values.loadedFaces).toBe(1);
+    measurements.push(values);
+  }
+
+  expect(measurements[0].body).toBeLessThan(measurements[1].body);
+  expect(measurements[1].body).toBeLessThan(measurements[2].body);
+  expect(measurements[0].button).toBeLessThan(measurements[1].button);
+  expect(measurements[1].button).toBeLessThan(measurements[2].button);
+  expect(measurements[0].control).toBeLessThan(measurements[2].control);
+  const fontRequests = await page.evaluate(() => [...new Set(performance.getEntriesByType("resource")
+    .map((entry) => entry.name)
+    .filter((name) => name.includes("Vazirmatn-Variable.woff2")))]);
+  expect(fontRequests).toHaveLength(1);
+});
+
+test("display size changes immediately and survives reload", async ({ page }) => {
+  await page.goto("/auth/login");
+  await expect(page.locator("button[type='submit']")).toBeVisible();
+  const normal = await page.evaluate(() => Number.parseFloat(getComputedStyle(document.body).fontSize));
+
+  await page.evaluate(() => {
+    localStorage.setItem("inventory-display-size", "compact");
+    document.documentElement.dataset.displaySize = "compact";
+    window.dispatchEvent(new CustomEvent("display-size-change", { detail: "compact" }));
+  });
+  await expect(page.locator("html")).toHaveAttribute("data-display-size", "compact");
+  await expect.poll(() => page.evaluate(() => Number.parseFloat(getComputedStyle(document.body).fontSize))).toBeLessThan(normal);
+
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-display-size", "compact");
+});

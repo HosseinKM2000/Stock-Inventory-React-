@@ -15,8 +15,10 @@ export const browserPrintTransport: PrintTransport = {
       const target = frame.contentWindow;
       if (!target) return cleanup();
       target.addEventListener("afterprint", cleanup, { once: true });
-      target.focus();
-      target.print();
+      void target.document.fonts.ready.then(() => {
+        target.focus();
+        target.print();
+      });
       window.setTimeout(cleanup, 60_000);
     };
   },

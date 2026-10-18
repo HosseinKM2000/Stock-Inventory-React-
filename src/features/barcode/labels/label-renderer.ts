@@ -41,9 +41,11 @@ export async function renderLabelDocument(items: LabelItem[], profile: LabelProf
   const { default: bwipjs } = await import("bwip-js/browser");
   const labels = items.flatMap((item) => Array.from({ length: item.copies }, () => renderOne(item, profile, bwipjs.toSVG, storeName))).join("");
   const pageSize = profile.kind === "thermal" ? `${profile.widthMm}mm ${profile.heightMm}mm` : "A4";
+  const fontUrl = new URL("/fonts/vazirmatn/Vazirmatn-Variable.woff2", window.location.origin).href;
   return `<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><title>لیبل محصولات تنظیم</title><style>
 @page{size:${pageSize};margin:${profile.kind === "thermal" ? "0" : `${profile.marginMm}mm`}}
-*{box-sizing:border-box}html,body{margin:0;padding:0;font-family:Manrope,Tahoma,Arial,sans-serif;color:#17151f}
+@font-face{font-family:Vazirmatn;src:url('${fontUrl}') format('woff2-variations');font-style:normal;font-weight:100 900;font-display:block}
+*{box-sizing:border-box}html,body{margin:0;padding:0;font-family:Vazirmatn,Tahoma,Arial,sans-serif;color:#17151f}
 .sheet{display:grid;grid-template-columns:repeat(${profile.columns},${profile.widthMm}mm);gap:${profile.verticalGapMm}mm ${profile.horizontalGapMm}mm;align-content:start;justify-content:${profile.kind === "a4" ? "center" : "start"}}
 .label{width:${profile.widthMm}mm;height:${profile.heightMm}mm;padding:${profile.marginMm}mm;overflow:hidden;break-inside:avoid;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
 .name{font-size:10pt;font-weight:700;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.store,.meta{font-size:7pt}.price{font-size:8pt;font-weight:700}.value{font:7pt ui-monospace,Consolas,monospace;letter-spacing:.05em}.barcode{width:100%;min-height:7mm}.barcode svg{display:block;width:100%;height:auto;max-height:${Math.max(8, profile.heightMm * 0.38)}mm}

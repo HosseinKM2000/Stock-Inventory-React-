@@ -144,6 +144,50 @@ test("application navigation has no horizontal overflow at narrow and desktop wi
   }
 });
 
+test("shared navigation inset keeps final form actions reachable in short viewports and large text", async ({ page }) => {
+  await seedAuthenticatedUser(page, "USER");
+  await page.addInitScript(() => localStorage.setItem("inventory-display-size", "large"));
+  await page.setViewportSize({ width: 320, height: 480 });
+  await page.goto("/inventory/add");
+
+  const main = page.locator("main.app-shell-content");
+  const submit = page.locator("form button[type='submit']");
+  await expect(submit).toBeVisible();
+  await main.evaluate((element) => element.scrollTo({ top: element.scrollHeight }));
+  await expect(submit).toBeInViewport();
+
+  const metrics = await page.evaluate(() => {
+    const root = getComputedStyle(document.documentElement);
+    const mainElement = document.querySelector<HTMLElement>("main.app-shell-content")!;
+    const navElement = document.querySelector<HTMLElement>(".app-bottom-navigation")!;
+    const submitElement = document.querySelector<HTMLElement>("form button[type='submit']")!;
+    const navRect = navElement.getBoundingClientRect();
+    const submitRect = submitElement.getBoundingClientRect();
+    return {
+      measured: Number.parseFloat(root.getPropertyValue("--app-bottom-navigation-measured-height")),
+      padding: Number.parseFloat(getComputedStyle(mainElement).paddingBottom),
+      nav: { y: navRect.y, height: navRect.height },
+      submit: { bottom: submitRect.bottom },
+    };
+  });
+  expect(metrics.measured).toBeGreaterThanOrEqual(metrics.nav.height);
+  expect(metrics.padding).toBeGreaterThan(metrics.nav.height);
+  expect(metrics.submit.bottom).toBeLessThanOrEqual(metrics.nav.y);
+
+  await page.setViewportSize({ width: 640, height: 360 });
+  await main.evaluate((element) => element.scrollTo({ top: element.scrollHeight }));
+  await expect(submit).toBeInViewport();
+
+  await page.evaluate(() => {
+    localStorage.setItem("inventory-display-size", "compact");
+    document.documentElement.dataset.displaySize = "compact";
+    window.dispatchEvent(new CustomEvent("display-size-change", { detail: "compact" }));
+  });
+  await expect.poll(() => page.evaluate(() => Number.parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue("--app-bottom-navigation-measured-height"),
+  ))).toBeLessThan(metrics.measured);
+});
+
 test("sync status links expose responsive details", async ({ page }) => {
   await seedAuthenticatedUser(page, "USER");
   await page.goto("/setting/sync");

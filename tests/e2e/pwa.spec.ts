@@ -126,8 +126,11 @@ test("prepares unvisited core routes and local inventory for an offline cold pag
 
   await expect.poll(() => page.evaluate(async () => {
     await navigator.serviceWorker.ready;
-    return Boolean(await caches.match(new URL("/.__offline-ready-v11", location.origin)));
+    return Boolean(await caches.match(new URL("/.__offline-ready-v12", location.origin)));
   }), { timeout: 15_000 }).toBe(true);
+  expect(await page.evaluate(async () => Boolean(
+    await caches.match(new URL("/fonts/vazirmatn/Vazirmatn-Variable.woff2", location.origin)),
+  ))).toBe(true);
   await expect.poll(
     () => page.evaluate(() => Boolean(navigator.serviceWorker.controller)),
     { timeout: 15_000 },

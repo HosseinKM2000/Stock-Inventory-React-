@@ -1,8 +1,8 @@
-const CACHE_NAME = "tanzim-app-v11";
+const CACHE_NAME = "tanzim-app-v12";
 const OWNED_CACHE_PREFIXES = ["tanzim-", "inventory-shell-"];
 const scopeUrl = new URL(self.registration.scope);
 const scoped = (path) => new URL(path, scopeUrl).toString();
-const READY_MARKER = scoped(".__offline-ready-v11");
+const READY_MARKER = scoped(".__offline-ready-v12");
 const APP_SHELL = [
   "./",
   "index.html",
@@ -13,6 +13,7 @@ const APP_SHELL = [
   "pwa-icon-maskable-512.png",
   "apple-touch-icon.png",
   "manifest.webmanifest",
+  "fonts/vazirmatn/Vazirmatn-Variable.woff2",
 ].map(scoped);
 
 async function manifestAssets() {

@@ -13,7 +13,7 @@ const RouterDevtools = import.meta.env.DEV
   : null;
 
 const routerDevtoolsToggleProps = {
-  style: { bottom: "calc(var(--app-bottom-navigation-height) + 1rem)" },
+  style: { bottom: "var(--app-content-bottom-inset)" },
 };
 
 export const Route = createRootRoute({

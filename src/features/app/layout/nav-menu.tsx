@@ -8,6 +8,7 @@ import { accessState } from "@/shared/access/access-state";
 import { isAdmin } from "@/shared/access/authorization";
 import { useEntitlementAccess } from "@/shared/access/use-entitlement";
 import type { NavigationItem } from "./navigation-items";
+import { useNavigationLayout } from "./use-navigation-layout";
 
 type Props = {
   hidden?: boolean;
@@ -35,6 +36,7 @@ function NavigationLink({ item, active }: { item: NavigationItem; active: boolea
 }
 
 const NavMenu = ({ hidden = false }: Props) => {
+  const { navigationRef, keyboardOpen } = useNavigationLayout();
   useEntitlementAccess();
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
@@ -46,6 +48,7 @@ const NavMenu = ({ hidden = false }: Props) => {
   const afterAction = items.slice(2);
   return (
     <nav
+      ref={navigationRef}
       dir="rtl"
       className="
         app-bottom-navigation
@@ -56,8 +59,8 @@ const NavMenu = ({ hidden = false }: Props) => {
         block!
         overflow-visible
       "
-      data-hidden={hidden}
-      aria-hidden={hidden}
+      data-hidden={hidden || keyboardOpen}
+      aria-hidden={hidden || keyboardOpen}
       aria-label="ناوبری اصلی"
     >
       {isAdmin(user) && (

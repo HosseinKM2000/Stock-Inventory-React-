@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "./tokens/colors.css";
+@import "./tokens/fonts.css";
 
 body {
   margin: 0;
@@ -7,6 +8,9 @@ body {
   min-width: 0;
   background: var(--app-background);
   color: var(--app-foreground);
+  font-family: var(--app-font-family);
+  font-size: var(--app-text-body);
+  line-height: var(--app-line-body);
 }
 
 html,
@@ -17,14 +21,68 @@ body,
 }
 
 :root {
+  --app-font-family: "Vazirmatn", Tahoma, Arial, sans-serif;
+  --app-font-scale: 1;
+  --app-text-body: 1rem;
+  --app-text-secondary: .875rem;
+  --app-text-label: .875rem;
+  --app-text-button: .875rem;
+  --app-text-product: 1rem;
+  --app-text-section: 1.25rem;
+  --app-text-page: 1.5rem;
+  --app-text-metric: 1.5rem;
+  --app-line-body: 1.65;
+  --app-space-section: 1rem;
+  --app-space-card: .875rem;
+  --app-radius-card: 10px;
+  --app-radius-control: 8px;
+  --app-page-padding: 14px;
   --app-bottom-navigation-height: 76px;
   --app-bottom-navigation-overlap: 22px;
+  --app-bottom-navigation-measured-height: calc(var(--app-bottom-navigation-height) + env(safe-area-inset-bottom, 0px));
+  --app-content-bottom-inset: calc(var(--app-bottom-navigation-measured-height) + var(--app-bottom-navigation-overlap) + .75rem);
   --app-add-product-button-size: 74px;
   --product-create-accent: #6e56cf;
   --product-create-accent-soft: rgb(110 86 207 / 12%);
   --product-edit-accent: #3e63dd;
   --product-edit-accent-soft: rgb(62 99 221 / 12%);
 }
+
+html { font-size: 16px; }
+:root[data-display-size="compact"] { font-size: 14.72px; }
+:root[data-display-size="large"] { font-size: 17.92px; }
+
+.radix-themes {
+  --default-font-family: var(--app-font-family);
+  --heading-font-family: var(--app-font-family);
+  --font-size-1: .75rem;
+  --font-size-2: .875rem;
+  --font-size-3: 1rem;
+  --font-size-4: 1.125rem;
+  --font-size-5: 1.25rem;
+  --font-size-6: 1.5rem;
+  --font-size-7: 1.875rem;
+  --font-size-8: 2.25rem;
+  --font-size-9: 3rem;
+  --line-height-1: 1rem;
+  --line-height-2: 1.25rem;
+  --line-height-3: 1.5rem;
+  --line-height-4: 1.625rem;
+  --line-height-5: 1.75rem;
+  --line-height-6: 2rem;
+  --line-height-7: 2.25rem;
+  --line-height-8: 2.5rem;
+  --line-height-9: 3.25rem;
+  font-family: var(--app-font-family);
+}
+
+:where(button, input, textarea, select) { font: inherit; }
+.app-text-secondary { font-size: var(--app-text-secondary); }
+.app-field-label { font-size: var(--app-text-label); font-weight: 500; }
+.app-product-name { font-size: var(--app-text-product); font-weight: 500; }
+.app-section-title { font-size: var(--app-text-section); font-weight: 600; }
+.app-page-title { font-size: var(--app-text-page); font-weight: 600; }
+.app-metric { font-size: var(--app-text-metric); font-weight: 700; }
 
 :root[data-appearance="dark"],
 .radix-themes.dark {
@@ -36,12 +94,8 @@ body,
 
 .app-shell-content {
   background: var(--app-background);
-  padding-bottom: calc(
-    var(--app-bottom-navigation-height) + var(--app-bottom-navigation-overlap) + env(safe-area-inset-bottom, 0px)
-  );
-  scroll-padding-bottom: calc(
-    var(--app-bottom-navigation-height) + var(--app-bottom-navigation-overlap) + env(safe-area-inset-bottom, 0px)
-  );
+  padding-bottom: var(--app-content-bottom-inset);
+  scroll-padding-bottom: var(--app-content-bottom-inset);
   scroll-padding-top: 1rem;
 }
 
@@ -49,7 +103,7 @@ body,
   inset-inline: 0;
   bottom: 0;
   box-sizing: border-box;
-  min-height: var(--app-bottom-navigation-height);
+  min-height: calc(var(--app-bottom-navigation-height) + env(safe-area-inset-bottom, 0px));
   margin: 0;
   padding: 0 0 env(safe-area-inset-bottom, 0px);
   color: var(--gray-12);
@@ -68,10 +122,7 @@ body,
 .app-admin-shortcut {
   position: fixed;
   right: max(12px, env(safe-area-inset-right, 0px));
-  bottom: calc(
-    var(--app-bottom-navigation-height) + var(--app-bottom-navigation-overlap) +
-      env(safe-area-inset-bottom, 0px) + 12px
-  );
+  bottom: calc(var(--app-content-bottom-inset) + .25rem);
   z-index: 51;
   display: grid;
   width: 44px;
@@ -570,9 +621,7 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
 }
 
 .bulk-selection-actions {
-  bottom: calc(
-    var(--app-bottom-navigation-height) + var(--app-bottom-navigation-overlap) + env(safe-area-inset-bottom, 0px) + .75rem
-  );
+  bottom: var(--app-content-bottom-inset);
   max-width: calc(100dvw - 2rem);
 }
 
@@ -788,7 +837,7 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
   border: 1px solid var(--gray-a5);
   border-radius: 999px;
   background: var(--gray-a2);
-  font-size: 12px;
+  font-size: .75rem;
   font-weight: 600;
   line-height: 1;
   text-decoration: none;
@@ -985,7 +1034,7 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
   color: var(--accent-contrast);
   border-radius: 999px;
   background: var(--accent-9);
-  font-size: 12px;
+  font-size: .75rem;
   font-weight: 700;
 }
 
@@ -1164,14 +1213,14 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
 
 .app-toaster .app-toast-title {
   color: currentColor;
-  font-size: 14px;
+  font-size: .875rem;
   font-weight: 700;
   line-height: 1.55;
 }
 
 .app-toaster .app-toast-description {
   color: color-mix(in srgb, currentColor 76%, transparent);
-  font-size: 12px;
+  font-size: .75rem;
   line-height: 1.65;
 }
 
@@ -1408,8 +1457,8 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
 :is(.rt-DialogContent, .rt-AlertDialogContent) > .rt-Heading:not(.sr-only),
 :is(.rt-DialogTitle, .rt-AlertDialogTitle):not(.sr-only) {
   margin-bottom: 16px;
-  font-size: 18px;
-  font-weight: 800;
+  font-size: 1.125rem;
+  font-weight: 600;
   line-height: 1.55;
   letter-spacing: -.01em;
 }
@@ -1489,7 +1538,7 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
 
 .action-confirm-title {
   margin: 0 !important;
-  font-size: 17px !important;
+  font-size: 1.0625rem !important;
   line-height: 1.55 !important;
   text-align: center;
 }
@@ -1542,12 +1591,12 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
 
 .stock-confirm-summary span {
   color: var(--gray-11);
-  font-size: 12px;
+  font-size: .75rem;
 }
 
 .stock-confirm-summary strong {
   color: var(--gray-12);
-  font-size: 19px;
+  font-size: 1.1875rem;
 }
 
 .stock-confirm-change {
@@ -1567,7 +1616,7 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
 }
 
 .stock-confirm-change b {
-  font-size: 18px;
+  font-size: 1.125rem;
   line-height: 1;
 }
 
@@ -1826,8 +1875,8 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
   border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
   border-radius: 12px;
   box-shadow: 0 8px 24px color-mix(in srgb, currentColor 12%, transparent);
-  font-size: 15px;
-  font-weight: 800;
+  font-size: .9375rem;
+  font-weight: 600;
   backdrop-filter: blur(12px);
 }
 
@@ -1926,7 +1975,7 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
   gap: 5px;
   padding: 0 !important;
   background: transparent !important;
-  font-size: 13px;
+  font-size: .8125rem;
 }
 
 .inventory-card-price svg {
@@ -1935,7 +1984,7 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
 
 .inventory-card-price strong {
   font-size: clamp(1.35rem, 7cqi, 1.75rem);
-  font-weight: 900;
+  font-weight: 700;
   line-height: 1;
 }
 
@@ -2053,7 +2102,7 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
   border-radius: 999px;
   background: var(--color-panel-solid);
   box-shadow: var(--shadow-2);
-  font-size: 12px;
+  font-size: .75rem;
   font-weight: 700;
   pointer-events: none;
   animation: quick-stock-delta-pop 180ms ease-out both;
@@ -2083,7 +2132,7 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
     gap: 6px;
     padding-inline: 7px;
     border-radius: 7px;
-    font-size: 12.5px;
+    font-size: .78125rem;
     box-shadow: 0 5px 14px color-mix(in srgb, currentColor 10%, transparent);
     backdrop-filter: none;
   }
@@ -2109,7 +2158,7 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
   }
 
   .inventory-card-identity > .rt-Flex > .rt-Text {
-    font-size: 18px !important;
+    font-size: 1.125rem !important;
     line-height: 1.35;
   }
 
@@ -2119,7 +2168,7 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
 
   .inventory-card-mobile-meta .rt-Text {
     gap: 6px;
-    font-size: 14px;
+    font-size: .875rem;
     line-height: 1.4;
   }
 
@@ -2137,7 +2186,7 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
   }
 
   .inventory-card-price strong {
-    font-size: 22px;
+    font-size: 1.375rem;
   }
 
   .inventory-card-mobile-actions {
@@ -2201,7 +2250,7 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
   }
 
   .quick-stock-count {
-    font-size: 22px;
+    font-size: 1.375rem;
   }
 }
 
@@ -2491,12 +2540,7 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
   .pwa-install-promotion {
     inset-inline: .5rem;
     top: auto;
-    bottom: calc(
-      var(--app-bottom-navigation-height) +
-      var(--app-bottom-navigation-overlap) +
-      .75rem +
-      env(safe-area-inset-bottom, 0px)
-    );
+    bottom: var(--app-content-bottom-inset);
     width: auto !important;
     max-inline-size: none;
     grid-template-columns: 40px minmax(0, 1fr);
@@ -2549,7 +2593,7 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
 
   .app-header-title {
     max-width: none;
-    font-size: 15px;
+    font-size: .9375rem;
   }
 
   .app-header .rt-IconButton {
@@ -2600,7 +2644,7 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
   .inventory-card:not(.inventory-card--comfortable) .inventory-card-price {
     max-width: 100%;
     padding-inline: 8px;
-    font-size: 12px;
+    font-size: .75rem;
   }
 
   .inventory-card:not(.inventory-card--comfortable) .quick-stock-control {
@@ -2669,7 +2713,7 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
   .app-bottom-navigation-label {
     max-width: 100%;
     overflow: hidden;
-    font-size: 10px;
+    font-size: .625rem;
     line-height: 1.2;
     text-align: center;
     text-overflow: ellipsis;
@@ -2740,16 +2784,18 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
   .sync-status-ring { animation-duration: 1ms !important; }
 }
 
-/* Display-size presets use tokens, never transforms or browser zoom. */
+/* Display-size presets are typography-led; components consume semantic tokens. */
 :root {
-  --app-font-scale: 1;
   --app-space-scale: 1;
-  --app-page-padding: 16px;
 }
 :root[data-display-size="compact"] {
   --app-font-scale: .92;
   --app-space-scale: .86;
   --app-page-padding: 12px;
+  --app-space-section: .75rem;
+  --app-space-card: .7rem;
+  --app-radius-card: 8px;
+  --app-radius-control: 7px;
   --app-bottom-navigation-height: 72px;
   --app-bottom-navigation-overlap: 20px;
   --app-add-product-button-size: 70px;
@@ -2757,16 +2803,19 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
 :root[data-display-size="large"] {
   --app-font-scale: 1.12;
   --app-space-scale: 1.14;
-  --app-page-padding: 20px;
+  --app-page-padding: 16px;
+  --app-space-section: 1.25rem;
+  --app-space-card: 1rem;
+  --app-radius-card: 12px;
+  --app-radius-control: 9px;
   --app-bottom-navigation-height: 84px;
   --app-bottom-navigation-overlap: 24px;
   --app-add-product-button-size: 82px;
 }
-:root[data-display-size="compact"] .radix-themes { --default-font-size: 15px; }
-:root[data-display-size="large"] .radix-themes { --default-font-size: 18px; }
 .app-responsive-page {
   padding-inline: var(--app-page-padding) !important;
   padding-top: var(--app-page-padding) !important;
+  padding-bottom: var(--app-content-bottom-inset);
 }
 :root[data-display-size="large"] .rt-Button,
 :root[data-display-size="large"] .rt-TextFieldRoot,
@@ -2774,9 +2823,9 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
 :root[data-display-size="large"] .app-bottom-navigation-item { min-height: 60px; }
 
 @media (min-width: 768px) {
-  :root { --app-page-padding: 40px; }
-  :root[data-display-size="compact"] { --app-page-padding: 32px; }
-  :root[data-display-size="large"] { --app-page-padding: 48px; }
+  :root { --app-page-padding: 28px; }
+  :root[data-display-size="compact"] { --app-page-padding: 24px; }
+  :root[data-display-size="large"] { --app-page-padding: 32px; }
 }
 
 .help-page-heading { padding: 8px 2px 18px; }
@@ -2813,7 +2862,7 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
   min-height: 3.25rem;
   gap: .5rem;
   padding: .45rem .65rem;
-  border-radius: 11px;
+  border-radius: var(--app-radius-card);
 }
 
 .page-guide-section {
@@ -2842,19 +2891,19 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
 
 .page-guide-section-icon { width: 2rem; height: 2rem; border-radius: 7px; }
 .page-guide-chevron { flex: 0 0 auto; color: var(--gray-8); }
-.page-guide-title { min-width: 0; margin: 0; overflow: hidden; color: var(--gray-12); font-size: clamp(1.05rem, 2.5vw, 1.35rem); font-weight: 800; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
+.page-guide-title { min-width: 0; margin: 0; overflow: hidden; color: var(--gray-12); font-size: clamp(1.05rem, 2.5vw, 1.35rem); font-weight: 600; line-height: 1.35; text-overflow: ellipsis; white-space: nowrap; }
 
 .page-guide-description {
   min-height: 3.75rem;
   gap: .7rem;
   padding: .7rem .8rem;
-  border-radius: 10px;
+  border-radius: var(--app-radius-card);
 }
 
 .page-guide-description-icon { width: 2.5rem; height: 2.5rem; border-radius: 8px; }
 .page-guide-description p { max-width: 72ch; margin: 0; color: var(--gray-10); font-size: .88rem; line-height: 1.75; }
 
-.quick-access-menu { border-radius: 10px; }
+.quick-access-menu { border-radius: var(--app-radius-card); }
 
 .inventory-grid-status-dot {
   position: absolute;
@@ -2993,7 +3042,7 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
     border-radius: 9px;
     flex: none;
     font-size: clamp(11px, 3.1cqi, 12px);
-    font-weight: 800;
+    font-weight: 600;
   }
 
   .inventory-card--compact .inventory-compact-status[data-accent-color="yellow"] {
@@ -3065,12 +3114,12 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
     border: 1px solid var(--gray-a5);
     border-radius: 11px;
     background: var(--gray-a2);
-    font-size: 20px;
+    font-size: 1.25rem;
     flex: none;
   }
 
   .inventory-card--compact .quick-stock-count {
-    font-size: 20px;
+    font-size: 1.25rem;
   }
 }
 
@@ -3086,7 +3135,7 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
   .inventory-card--compact .inventory-compact-status {
     min-height: 26px;
     padding-inline: 5px;
-    font-size: 10.5px;
+    font-size: .65625rem;
   }
 
   .inventory-card.inventory-card--compact .quick-stock-control {

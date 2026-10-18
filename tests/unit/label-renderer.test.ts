@@ -14,6 +14,8 @@ describe("label renderer", () => {
     expect(html).toContain("width:50mm;height:30mm");
     expect(html).toContain("<svg");
     expect(html).toContain("پیچ صنعتی");
+    expect(html).toContain("font-family:Vazirmatn");
+    expect(html).toContain("Vazirmatn-Variable.woff2");
     expect(html.match(/<article/g)).toHaveLength(2);
   });
 

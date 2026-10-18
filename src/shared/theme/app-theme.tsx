@@ -30,6 +30,12 @@ const toastClassNames = {
   cancelButton: "app-toast-cancel",
 };
 
+const displayScaling: Record<DisplaySize, "90%" | "100%" | "110%"> = {
+  compact: "90%",
+  normal: "100%",
+  large: "110%",
+};
+
 export function AppTheme({ children }: PropsWithChildren) {
   const [appearance, update] = useState<Appearance>(getAppearance);
   const [systemDark, setSystemDark] = useState(() => matchMedia("(prefers-color-scheme: dark)").matches);
@@ -66,7 +72,7 @@ export function AppTheme({ children }: PropsWithChildren) {
   }, [displaySize]);
 
   return (
-    <Theme appearance={resolved} accentColor="violet" radius="small">
+    <Theme appearance={resolved} accentColor="violet" radius="small" scaling={displayScaling[displaySize]}>
       <div id="app-theme-portal-root" dir="rtl">
         <Toaster
           className="app-toaster"

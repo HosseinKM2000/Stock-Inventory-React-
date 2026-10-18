@@ -80,10 +80,14 @@ function toHtmlTable(products: Product[], title: string, primaryBarcodes: Readon
     )
     .join("");
 
+  const fontUrl = window.location.origin && window.location.origin !== "null"
+    ? `${window.location.origin}/fonts/vazirmatn/Vazirmatn-Variable.woff2`
+    : "/fonts/vazirmatn/Vazirmatn-Variable.woff2";
   return `<!doctype html><html dir="rtl" lang="fa"><head><meta charset="utf-8" />
 <title>${title}</title>
 <style>
-body{font-family:sans-serif;padding:16px}
+@font-face{font-family:Vazirmatn;src:url('${fontUrl}') format('woff2-variations');font-style:normal;font-weight:100 900;font-display:block}
+body{font-family:Vazirmatn,Tahoma,Arial,sans-serif;padding:16px}
 table{border-collapse:collapse;width:100%}
 th,td{border:1px solid #999;padding:6px;text-align:right;font-size:12px}
 th{background:#eee}
@@ -130,8 +134,10 @@ function printAsPdf(blob: Blob) {
     }
 
     printWindow.addEventListener("afterprint", cleanup, { once: true });
-    printWindow.focus();
-    printWindow.print();
+    void printWindow.document.fonts.ready.then(() => {
+      printWindow.focus();
+      printWindow.print();
+    });
 
     // Some browsers do not emit afterprint when the dialog is cancelled.
     window.setTimeout(cleanup, 60_000);

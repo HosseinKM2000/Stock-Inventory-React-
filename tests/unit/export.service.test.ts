@@ -42,6 +42,15 @@ describe("export selection and availability", () => {
     await expect(exportService.exportLocal({ format: "csv", scope: "low_stock" })).resolves.toBe(2);
   });
 
+  it("embeds the local Vazirmatn face in printable table exports", async () => {
+    mocks.getAll.mockResolvedValue([product({ custom_label: "محصول فارسی" })]);
+    await exportService.exportLocal({ format: "xlsx", scope: "all" });
+    const blob = vi.mocked(URL.createObjectURL).mock.calls[0][0] as Blob;
+    const html = await blob.text();
+    expect(html).toContain("font-family:Vazirmatn");
+    expect(html).toContain("Vazirmatn-Variable.woff2");
+  });
+
   it("blocks server export while offline before making a request", async () => {
     mocks.isOffline.mockReturnValue(true);
     await expect(exportService.exportServer({ format: "csv", scope: "all" })).rejects.toBeInstanceOf(ServerExportUnavailableError);
