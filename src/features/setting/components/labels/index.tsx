@@ -5,6 +5,7 @@ import { Button } from "@/shared/ui/button/button";
 import { useCreateLabel, useDeleteLabel, useLabels, useUpdateLabel } from "../../mutations/use-labels";
 import { ConfirmDialog } from "@/shared/ui/dialog/confirm-dialog";
 import { toast } from "sonner";
+import { PageGuide } from "@/features/app/layout/page-guide";
 
 export default function LabelsPage() {
   const { data: labels = [], isLoading } = useLabels();
@@ -45,12 +46,7 @@ export default function LabelsPage() {
 
   return (
     <Box dir="rtl" className="space-y-6">
-      <Box>
-        <Text as="div" size="6" weight="bold">برچسب‌ها</Text>
-        <Text as="p" size="2" color="gray" mt="2" className="leading-6">
-          برای گروه‌بندی منعطف محصولات چند برچسب بسازید. برچسب‌ها متعلق به حساب شما هستند و تغییرات حتی در حالت آفلاین ذخیره می‌شوند.
-        </Text>
-      </Box>
+      <PageGuide section="ابزارها" sectionTo="/tools" title="برچسب‌ها" description="برای گروه‌بندی منعطف محصولات چند برچسب بسازید. برچسب‌ها متعلق به حساب شما هستند و تغییرات حتی در حالت آفلاین ذخیره می‌شوند." icon={BookmarkIcon} />
       <Card size="3">
         <Flex gap="3" align="end" wrap="wrap">
           <Box className="grow">

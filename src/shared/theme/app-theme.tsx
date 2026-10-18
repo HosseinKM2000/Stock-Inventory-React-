@@ -66,7 +66,7 @@ export function AppTheme({ children }: PropsWithChildren) {
   }, [displaySize]);
 
   return (
-    <Theme appearance={resolved} accentColor="violet">
+    <Theme appearance={resolved} accentColor="violet" radius="small">
       <div id="app-theme-portal-root" dir="rtl">
         <Toaster
           className="app-toaster"

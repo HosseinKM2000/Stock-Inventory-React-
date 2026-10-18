@@ -12,6 +12,7 @@ import { ReloadIcon } from "@radix-ui/react-icons";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/shared/ui/dialog/confirm-dialog";
+import { PageGuide } from "@/features/app/layout/page-guide";
 
 const CategoriesCards = () => {
   const { data: categories = [], isLoading, isError, error } = useCategories();
@@ -36,14 +37,7 @@ const CategoriesCards = () => {
   return (
     <Box className="space-y-6">
       <Flex justify="between" align="center" gap="3" wrap="wrap">
-        <Box>
-          <Text as="div" size="6" weight="bold">
-            دسته بندی ها
-          </Text>
-          <Text as="div" size="2" color="gray" mt="1">
-            دسته‌بندی‌های موجودی را روی دستگاه مدیریت کنید و در صورت نیاز نسخه معتبر سرور را دریافت کنید.
-          </Text>
-        </Box>
+        <div className="min-w-0 flex-1"><PageGuide section="ابزارها" sectionTo="/tools" title="دسته‌بندی‌ها" description="دسته‌بندی‌های موجودی را روی دستگاه مدیریت کنید و در صورت نیاز نسخه معتبر سرور را دریافت کنید." icon={LayersIcon} /></div>
 
         <Flex gap="2" wrap="wrap" className="w-full sm:w-auto">
           <Button

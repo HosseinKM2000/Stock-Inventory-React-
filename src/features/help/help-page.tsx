@@ -1,4 +1,6 @@
 import { isAdmin } from "@/shared/access/authorization";
+import { QuestionMarkCircledIcon } from "@radix-ui/react-icons";
+import { PageGuide } from "@/features/app/layout/page-guide";
 import { useAuth } from "@/shared/auth/use-auth";
 import { Link } from "@tanstack/react-router";
 import { Box, Card, Flex, Text } from "@radix-ui/themes";
@@ -8,7 +10,7 @@ export function HelpPage() {
   const { user } = useAuth();
   const sections = helpSections.filter((section) => !section.adminOnly || isAdmin(user));
   return <Box dir="rtl" className="help-page mx-auto w-full max-w-4xl">
-    <header className="help-page-heading"><h1><Text size="7" weight="bold">راهنمای برنامه</Text></h1><Text as="p" color="gray" mt="2">پاسخ کوتاه و مرحله‌به‌مرحله برای کار با تنظیم.</Text></header>
+    <PageGuide section="ابزارها" sectionTo="/tools" title="راهنمای برنامه" description="پاسخ کوتاه و مرحله‌به‌مرحله برای کار با تنظیم." icon={QuestionMarkCircledIcon} />
     <nav aria-label="بخش‌های راهنما" className="help-quick-nav">
       {sections.map((section) => <a key={section.id} href={`#${section.id}`}>{section.title}</a>)}
     </nav>

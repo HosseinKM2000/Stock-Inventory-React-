@@ -46,10 +46,10 @@ test("backup shortcut and settings remain usable on desktop and narrow screens",
   await page.goto("/dashboard");
 
   const backupButton = page.locator(".app-header-left").getByRole("button", { name: /فایل پشتیبان/ });
-  const notificationButton = page.locator(".app-header-left").getByRole("button", { name: /اعلان|هشدار/ });
+  const notificationButton = page.locator(".app-header-right").getByRole("button", { name: /اعلان|هشدار/ });
   await expect(backupButton).toBeVisible();
   await expect(notificationButton).toBeVisible();
-  expect((await backupButton.boundingBox())!.x).toBeLessThan((await notificationButton.boundingBox())!.x);
+  await expect(page.locator(".app-header-left .sync-status-badge")).toBeVisible();
 
   await backupButton.click();
   await expect(page.getByText(/برای اطمینان بیشتر/)).toBeVisible();

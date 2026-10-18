@@ -11,7 +11,7 @@ export function NotificationPanel() {
   return (
     <Popover.Root open={open} onOpenChange={setOpen}>
       <Popover.Trigger>
-        <IconButton size="3" variant="ghost" color="gray" aria-label={count ? `${count} هشدار فعال` : "اعلان‌ها"}>
+        <IconButton size="2" variant="ghost" color="gray" className="notification-trigger" aria-label={count ? `${count} هشدار فعال` : "اعلان‌ها"}>
           <span className="relative inline-flex h-5.5 w-5.5 items-center justify-center">
             <BellIcon width="22" height="22" />
             {count > 0 ? (

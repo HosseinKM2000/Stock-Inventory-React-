@@ -157,9 +157,12 @@ export function ProductCard({
           <div className="inventory-grid-card">
             <div className="inventory-grid-media">
               {image("h-full w-full rounded-xl")}
+              <span className="inventory-grid-status-dot" data-status={product.status} title={status.label}>
+                <span className="sr-only">{status.label}</span>
+              </span>
             </div>
             <Flex direction="column" align="center" className="inventory-grid-content min-w-0">
-              <Text weight="bold" className="inventory-grid-title line-clamp-2">{name}</Text>
+              <Text weight="bold" className="inventory-grid-title truncate">{name}</Text>
               <Text color="gray" className="inventory-grid-quantity">{product.quantity.toLocaleString("fa-IR")} عدد</Text>
             </Flex>
             {selectionMode && <Flex align="center" justify="center" data-selected={selected} className="inventory-selection-mark absolute left-3 top-3 h-8 w-8 rounded-full border" aria-hidden="true">{selected && <Check size={16} />}</Flex>}

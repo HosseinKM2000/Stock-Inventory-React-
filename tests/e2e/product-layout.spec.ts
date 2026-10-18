@@ -101,7 +101,11 @@ test("product filters use one responsive panel across desktop and mobile", async
   await expect(page.getByRole("heading", { name: "جستجو و فیلتر" })).toBeHidden();
   const filterTrigger = page.getByRole("button", { name: "فیلترها" });
   await expect(filterTrigger).toBeVisible();
-  expect((await search.boundingBox())!.y).toBeLessThan((await filterTrigger.boundingBox())!.y);
+  const mobileSearchBox = (await search.boundingBox())!;
+  const mobileFilterBox = (await filterTrigger.boundingBox())!;
+  expect(mobileSearchBox.y).toBeLessThan(mobileFilterBox.y);
+  expect(mobileSearchBox.height).toBeLessThanOrEqual(46);
+  expect(mobileFilterBox.height).toBeLessThanOrEqual(44);
   expect((await sidebar.boundingBox())!.y).toBeLessThan((await results.boundingBox())!.y);
   await filterTrigger.click();
   const dialog = page.getByRole("dialog");
@@ -254,6 +258,8 @@ test("all three product card modes retain core information and fit narrow screen
   await expect(gridCard.locator(".inventory-grid-title")).toHaveText("لامپ LED 12W");
   await expect(gridCard.locator(".inventory-grid-quantity")).toHaveText("۶ عدد");
   await expect(gridCard.locator(".inventory-grid-status")).toHaveCount(0);
+  await expect(gridCard.locator(".inventory-grid-status-dot[data-status='low_stock']")).toHaveCount(1);
+  expect(await gridCard.locator(".inventory-grid-title").evaluate((element) => getComputedStyle(element).whiteSpace)).toBe("nowrap");
 
   await page.setViewportSize({ width: 320, height: 700 });
   await page.getByRole("button", { name: "نمای فشرده", exact: true }).click();

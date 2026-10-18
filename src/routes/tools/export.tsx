@@ -1,16 +1,15 @@
 import ExportTools from "@/features/setting/components/export";
-import { Box, Text } from "@radix-ui/themes";
+import { Box } from "@radix-ui/themes";
 import { createFileRoute } from "@tanstack/react-router";
+import { DownloadIcon } from "@radix-ui/react-icons";
+import { PageGuide } from "@/features/app/layout/page-guide";
 
 export const Route = createFileRoute("/tools/export")({ component: ExportPage });
 
 function ExportPage() {
   return (
     <Box dir="rtl">
-      <h1 className="text-2xl font-bold">خروجی</h1>
-      <Text as="p" size="2" color="gray" mt="2" className="leading-6">
-        از داده‌های ذخیره‌شده روی دستگاه خروجی آفلاین بگیرید یا در حالت آنلاین فایل مبتنی بر داده‌های سرور دریافت کنید.
-      </Text>
+      <PageGuide section="ابزارها" sectionTo="/tools" title="خروجی" description="از داده‌های ذخیره‌شده روی دستگاه خروجی آفلاین بگیرید یا در حالت آنلاین فایل مبتنی بر داده‌های سرور دریافت کنید." icon={DownloadIcon} />
       <ExportTools />
     </Box>
   );

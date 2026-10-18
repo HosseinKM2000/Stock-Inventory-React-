@@ -31,6 +31,7 @@ import { chooseBackupFile, isPickerCancellation } from "../services/external-bac
 import { backupErrorMessage } from "../services/backup-error";
 import type { BackupPreview } from "../types";
 import { formatJalaliDateTime } from "@/shared/lib/date/jalali";
+import { PageGuide } from "@/features/app/layout/page-guide";
 
 const UNSUPPORTED = "در این مرورگر، ذخیره خودکار فایل پشتیبان پشتیبانی نمی‌شود.";
 
@@ -113,13 +114,7 @@ export function BackupSettings() {
 
   return (
     <Box dir="rtl" className="mx-auto w-full max-w-5xl">
-      <Flex align="center" gap="3" mb="2">
-        <ArchiveIcon width="26" height="26" />
-        <Heading as="h1" size="6">فایل پشتیبان محلی</Heading>
-      </Flex>
-      <Text as="p" size="2" color="gray" className="max-w-3xl leading-7">
-        یک نسخه کامل و رمزنگاری‌نشده از داده‌های قابل بازیابی حساب روی دستگاه خود نگه دارید. این فایل شامل رمز عبور، توکن ورود یا نقش‌های دسترسی نیست.
-      </Text>
+      <PageGuide section="تنظیمات" sectionTo="/setting" title="فایل پشتیبان محلی" description="یک نسخه کامل و رمزنگاری‌نشده از داده‌های قابل بازیابی حساب روی دستگاه خود نگه دارید. این فایل شامل رمز عبور، توکن ورود یا نقش‌های دسترسی نیست." icon={ArchiveIcon} />
 
       <Card mt="5" size="3">
         <Flex justify="between" align="center" gap="3" wrap="wrap">

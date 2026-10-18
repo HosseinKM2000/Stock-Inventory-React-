@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { Button } from "@/shared/ui/button/button";
 import { formatJalaliDateTime } from "@/shared/lib/date/jalali";
 import { permissionOptions, personnelApi, type PersonnelCreated } from "./api";
+import { PersonIcon } from "@radix-ui/react-icons";
+import { PageGuide } from "@/features/app/layout/page-guide";
 
 const keys = { all: ["store-personnel"] as const, roles: ["store-roles"] as const, capacity: ["personnel-capacity"] as const };
 
@@ -28,8 +30,8 @@ export function PersonnelPage() {
 
   return (
     <Box dir="rtl" className="mx-auto w-full max-w-5xl">
-      <Flex justify="between" align="end" gap="4" wrap="wrap" mb="6">
-        <Box><h1 className="text-3xl font-bold">پرسنل مجموعه</h1><Text color="gray">دسترسی هر شخص با نقش او کنترل می‌شود و تغییرات فقط آنلاین انجام می‌شوند.</Text></Box>
+      <Flex justify="between" align="end" gap="4" wrap="wrap" mb="4">
+        <div className="min-w-0 flex-1"><PageGuide section="تنظیمات" sectionTo="/setting" title="پرسنل مجموعه" description="دسترسی هر شخص با نقش او کنترل می‌شود و تغییرات فقط آنلاین انجام می‌شوند." icon={PersonIcon} /></div>
         <Badge size="2" color={hasCapacity ? "green" : "orange"}>{capacity.data ? (capacity.data.limit === null ? `${capacity.data.used} عضو فعال · نامحدود` : `${capacity.data.used} از ${capacity.data.limit} جایگاه فعال`) : "در حال بررسی ظرفیت"}</Badge>
       </Flex>
       {capacity.data && !capacity.data.enabled ? <Callout.Root color="orange" mb="5"><Callout.Text>مدیریت پرسنل در طرح فعلی فعال نیست. اطلاعات قبلی حفظ می‌شود.</Callout.Text></Callout.Root> : null}

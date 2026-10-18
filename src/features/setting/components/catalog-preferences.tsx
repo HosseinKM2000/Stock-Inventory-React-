@@ -2,6 +2,8 @@ import { catalogVisibilityService } from "@/features/app/inventory/services/cata
 import { Link } from "@tanstack/react-router";
 import { Box, Button, Card, Flex, Switch, Text } from "@radix-ui/themes";
 import { useState } from "react";
+import { ClipboardIcon } from "@radix-ui/react-icons";
+import { PageGuide } from "@/features/app/layout/page-guide";
 
 export function CatalogPreferences() {
   const [hidden, setHidden] = useState(() => catalogVisibilityService.isHidden());
@@ -13,12 +15,7 @@ export function CatalogPreferences() {
 
   return (
     <Box dir="rtl" className="mx-auto max-w-3xl space-y-5">
-      <Box>
-        <h1 className="text-2xl font-bold">کاتالوگ</h1>
-        <Text as="p" size="2" color="gray" mt="2">
-          محصولات کاتالوگی که قبلاً در داده محلی شما دریافت شده‌اند، همراه موجودی نمایش داده می‌شوند.
-        </Text>
-      </Box>
+      <PageGuide section="ابزارها" sectionTo="/tools" title="کاتالوگ" description="محصولات کاتالوگی که قبلاً در داده محلی شما دریافت شده‌اند، همراه موجودی نمایش داده می‌شوند." icon={ClipboardIcon} />
       <Card size="3">
         <Flex align={{ initial: "start", sm: "center" }} justify="between" gap="4" direction={{ initial: "column", sm: "row" }}>
           <Box>

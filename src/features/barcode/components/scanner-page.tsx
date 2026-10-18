@@ -28,6 +28,7 @@ import { completedHardwareScan } from "../input/hardware-input";
 import { barcodeService } from "../services/barcode-service";
 import { movementService } from "../services/movement-service";
 import type { InventoryMovement, ProductBarcode, ScanInputSource } from "../types";
+import { PageGuide } from "@/features/app/layout/page-guide";
 
 type ScannerMode = "observe" | "receive" | "issue" | "correction" | "edit";
 type LocatedProduct = { product: Product; barcode: ProductBarcode };
@@ -233,10 +234,7 @@ export function ScannerPage() {
   return (
     <Box dir="rtl" className="mx-auto w-full max-w-6xl px-3 py-5 sm:px-5 lg:py-8">
       <Flex direction="column" gap="5">
-        <Box>
-          <Text as="div" size="6" weight="bold">اسکن بارکد</Text>
-          <Text as="div" color="gray" size="2" mt="1">جست‌وجو یا ثبت گردش موجودی، حتی هنگام قطع اینترنت</Text>
-        </Box>
+        <PageGuide section="ابزارها" sectionTo="/tools" title="اسکن بارکد" description="جست‌وجو یا ثبت گردش موجودی، حتی هنگام قطع اینترنت" icon={MagnifyingGlassIcon} />
 
         <SegmentedControl.Root value={mode} onValueChange={(value) => {
           const next = value as ScannerMode;

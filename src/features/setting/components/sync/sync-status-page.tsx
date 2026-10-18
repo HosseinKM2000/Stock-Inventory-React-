@@ -12,6 +12,7 @@ import { CheckIcon, ClockIcon, ReloadIcon } from "@radix-ui/react-icons";
 import { Badge, Box, Callout, Flex, Grid, Text } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import { formatJalaliDateTime } from "@/shared/lib/date/jalali";
+import { PageGuide } from "@/features/app/layout/page-guide";
 
 const dateFormatter = { format: formatJalaliDateTime };
 
@@ -75,12 +76,7 @@ export function SyncStatusPage() {
 
   return (
     <Box dir="rtl" className="sync-detail-page mx-auto w-full max-w-5xl">
-      <Flex direction="column" gap="2" mb="6">
-        <h1 className="text-3xl font-bold">همگام‌سازی</h1>
-        <Text as="p" size="2" color="gray" className="max-w-3xl leading-6">
-          وضعیت ارتباط داده‌های محلی با سرور، تغییرات در انتظار، آخرین رخدادها و خطاهای قابل پیگیری را اینجا ببینید.
-        </Text>
-      </Flex>
+      <PageGuide section="تنظیمات" sectionTo="/setting" title="همگام‌سازی" description="وضعیت ارتباط داده‌های محلی با سرور، تغییرات در انتظار، آخرین رخدادها و خطاهای قابل پیگیری را اینجا ببینید." icon={ReloadIcon} />
 
       <section className="sync-overview" aria-labelledby="sync-current-title">
         <Flex align="center" justify="between" gap="4" wrap="wrap">

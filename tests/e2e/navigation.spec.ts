@@ -61,12 +61,13 @@ test("standard navigation separates Settings and Tools with contextual back beha
   const leftControls = header.locator(".app-header-left");
   const rightControls = header.locator(".app-header-right");
   const backupShortcut = leftControls.getByRole("button", { name: /فایل پشتیبان/ });
-  const notificationShortcut = leftControls.getByRole("button", { name: /اعلان‌ها|هشدار فعال/ });
+  const notificationShortcut = rightControls.getByRole("button", { name: /اعلان‌ها|هشدار فعال/ });
   await expect(leftControls.getByRole("link", { name: "تنظیمات" })).toHaveCount(0);
   await expect(backupShortcut).toBeVisible();
   await expect(notificationShortcut).toBeVisible();
-  await expect(rightControls.getByRole("button", { name: /اعلان‌ها|هشدار فعال/ })).toHaveCount(0);
-  expect((await notificationShortcut.boundingBox())!.x).toBeGreaterThan((await backupShortcut.boundingBox())!.x);
+  await expect(leftControls.locator(".sync-status-badge")).toBeVisible();
+  await expect(leftControls.getByRole("button", { name: /اعلان‌ها|هشدار فعال/ })).toHaveCount(0);
+  await expect(rightControls.locator(".sync-status-badge")).toHaveCount(0);
   expect((await leftControls.boundingBox())!.x).toBeLessThan((await rightControls.boundingBox())!.x);
   await expect(page.getByRole("button", { name: "بازگشت" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /منو/ })).toHaveCount(0);

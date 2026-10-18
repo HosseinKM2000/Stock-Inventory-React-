@@ -4,6 +4,7 @@ import { Box, Callout, Card, Flex, Progress, Table, Text } from "@radix-ui/theme
 import { Button } from "@/shared/ui/button/button";
 import { downloadImportTemplate, importProductRows, parseProductWorkbook, type ImportRow } from "../services/excel-import.service";
 import { syncService } from "@/shared/lib/infrastructure/sync/sync-service";
+import { PageGuide } from "@/features/app/layout/page-guide";
 
 export function ExcelImport() {
   const input = useRef<HTMLInputElement>(null);
@@ -38,7 +39,7 @@ export function ExcelImport() {
 
   return (
     <Box dir="rtl" className="space-y-6">
-      <Box><Text as="div" size="6" weight="bold">ورود از اکسل</Text><Text as="p" size="2" color="gray" mt="2" className="leading-6">فایل را روی همین دستگاه بررسی کنید، خطاها را پیش‌نمایش ببینید و محصولات را به‌صورت گروهی وارد کنید. پس از یک بار آماده‌شدن برنامه، این فرایند آفلاین هم کار می‌کند.</Text></Box>
+      <PageGuide section="ابزارها" sectionTo="/tools" title="ورود از اکسل" description="فایل را روی همین دستگاه بررسی کنید، خطاها را پیش‌نمایش ببینید و محصولات را به‌صورت گروهی وارد کنید. پس از یک بار آماده‌شدن برنامه، این فرایند آفلاین هم کار می‌کند." icon={UploadIcon} />
       <Flex gap="3" wrap="wrap">
         {["۱. دریافت الگو و انتخاب فایل", "۲. بررسی ردیف‌ها", "۳. ذخیره محلی و همگام‌سازی"].map((step, index) => <Card key={step} className="grow"><Text color={(rows.length ? 1 : 0) >= index ? "violet" : "gray"} weight="medium">{step}</Text></Card>)}
       </Flex>

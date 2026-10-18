@@ -3,6 +3,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Badge, Box, Card, Flex, Select, Text, TextField } from "@radix-ui/themes";
 import { personnelApi } from "./api";
 import { formatJalaliDateTime } from "@/shared/lib/date/jalali";
+import { ActivityLogIcon } from "@radix-ui/react-icons";
+import { PageGuide } from "@/features/app/layout/page-guide";
 
 export function ActivityPage() {
   const [actor, setActor] = useState("");
@@ -15,8 +17,7 @@ export function ActivityPage() {
 
   return (
     <Box dir="rtl" className="mx-auto w-full max-w-4xl">
-      <h1 className="text-3xl font-bold">فعالیت مجموعه</h1>
-      <Text color="gray">رویدادهای تأییدشده سرور با هویت پایدار انجام‌دهنده ثبت می‌شوند.</Text>
+      <PageGuide section="ابزارها" sectionTo="/tools" title="فعالیت مجموعه" description="رویدادهای تأییدشده سرور با هویت پایدار انجام‌دهنده ثبت می‌شوند." icon={ActivityLogIcon} />
       <Card mt="5"><Flex gap="3" wrap="wrap">
         <Select.Root value={actor || "all"} onValueChange={(value) => setActor(value === "all" ? "" : value)}><Select.Trigger placeholder="همه افراد" /><Select.Content><Select.Item value="all">همه افراد</Select.Item>{people.data?.map((person) => <Select.Item key={person.user_id} value={String(person.user_id)}>{person.first_name} {person.last_name}</Select.Item>)}</Select.Content></Select.Root>
         <TextField.Root placeholder="نوع عملیات" value={action} onChange={(event) => setAction(event.target.value)} />

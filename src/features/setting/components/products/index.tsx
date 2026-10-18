@@ -5,6 +5,7 @@ import { ReloadIcon } from "@radix-ui/react-icons";
 import { Box, Callout, Card, Flex, Text } from "@radix-ui/themes";
 import { useState } from "react";
 import { ConfirmDialog } from "@/shared/ui/dialog/confirm-dialog";
+import { PageGuide } from "@/features/app/layout/page-guide";
 
 export default function ProductSettings() {
   const online = useOnline();
@@ -13,12 +14,7 @@ export default function ProductSettings() {
 
   return (
     <Box className="space-y-5" dir="rtl">
-      <Box>
-        <Text as="div" size="6" weight="bold">بازیابی</Text>
-        <Text as="div" size="2" color="gray" mt="1">
-          همگام‌سازی تغییرات محلی و دریافت دوباره نسخه معتبر محصولات از سرور
-        </Text>
-      </Box>
+      <PageGuide section="ابزارها" sectionTo="/tools" title="بازیابی" description="همگام‌سازی تغییرات محلی و دریافت دوباره نسخه معتبر محصولات از سرور" icon={ReloadIcon} />
 
       {!online && (
         <Callout.Root color="amber">

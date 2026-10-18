@@ -29,6 +29,7 @@ import {
   formatToman,
 } from "../subscription-management/plan-options";
 import { formatJalaliDate } from "@/shared/lib/date/jalali";
+import { PageGuide } from "@/features/app/layout/page-guide";
 
 const date = (value: string | null | undefined) =>
   value
@@ -85,12 +86,7 @@ export default function SubscriptionSettings() {
 
   return (
     <Box>
-      <Text size="6" weight="bold">
-        اشتراک من
-      </Text>
-      <Text as="div" size="2" color="gray" mt="1">
-        وضعیت طرح، زمان باقی‌مانده و دسترسی‌های فعال حساب
-      </Text>
+      <PageGuide section="تنظیمات" sectionTo="/setting" title="اشتراک من" description="وضعیت طرح، زمان باقی‌مانده و دسترسی‌های فعال حساب" icon={StarIcon} />
 
       {expired && (
         <Callout.Root color="red" mt="5" dir="rtl">
