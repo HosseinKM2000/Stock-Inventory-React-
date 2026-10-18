@@ -238,7 +238,7 @@ const InventoryList = () => {
           {products.length > 0 && (
             <div ref={parentRef} className="h-full overflow-y-auto overscroll-contain scrollbar-thin">
               {viewMode === "grid" ? (
-                <div className="inventory-compact-grid grid grid-cols-1 gap-3 pb-4 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="inventory-compact-grid grid grid-cols-3 gap-2 pb-4 sm:gap-3">
                   {products.map(productCard)}
                 </div>
               ) : (

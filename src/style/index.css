@@ -711,12 +711,15 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
 }
 
 .inventory-grid-card { position: relative; min-width: 0; }
-.inventory-grid-media { position: relative; aspect-ratio: 4 / 3; min-height: 9rem; }
-.inventory-grid-status { position: absolute; inset-block-start: .75rem; inset-inline-start: .75rem; backdrop-filter: blur(10px); }
-.inventory-card--grid { border-color: color-mix(in srgb, var(--accent-8) 16%, var(--gray-a5)); border-radius: 1.25rem; background: color-mix(in srgb, var(--color-panel-solid) 96%, var(--accent-2)); }
+.inventory-grid-media { position: relative; aspect-ratio: 1.44 / 1; }
+.inventory-card--grid { border-color: color-mix(in srgb, var(--accent-8) 11%, var(--gray-a4)); border-radius: 1.25rem; background: color-mix(in srgb, var(--color-panel-solid) 98%, var(--accent-2)); box-shadow: 0 .5rem 1.5rem color-mix(in srgb, var(--indigo-a8) 6%, transparent); }
 .inventory-card--compact { border-color: color-mix(in srgb, var(--accent-8) 13%, var(--gray-a5)); border-radius: 1rem; }
 .inventory-compact-quick { width: min(25rem, 42%); min-width: 15rem; }
-.inventory-card--grid .rt-CardInner { padding: .5rem; }
+.inventory-card--grid .rt-CardInner { padding: clamp(.45rem, 1.35cqi, 1rem); }
+.inventory-grid-media > :first-child { border-radius: clamp(.65rem, 1.7cqi, 1.15rem); }
+.inventory-grid-content { gap: clamp(.1rem, .45cqi, .3rem); padding: clamp(.5rem, 1.35cqi, 1rem) .15rem clamp(.25rem, .8cqi, .6rem); text-align: center; }
+.inventory-grid-title { width: 100%; color: var(--gray-12); font-size: clamp(.75rem, 2.2cqi, 1.45rem); line-height: 1.35; }
+.inventory-grid-quantity { font-size: clamp(.7rem, 1.65cqi, 1.1rem); font-weight: 700; line-height: 1.4; }
 
 .financial-dashboard { max-width: 92rem; margin-inline: auto; }
 .financial-metric { position: relative; overflow: hidden; min-height: 9rem; border-radius: 1.25rem; }

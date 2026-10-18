@@ -3,9 +3,11 @@ import { Theme } from "@radix-ui/themes";
 import { describe, expect, it, vi } from "vitest";
 import { product } from "../helpers/product";
 
+const router = vi.hoisted(() => ({ navigate: vi.fn() }));
+
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ children }: { children: React.ReactNode }) => <span>{children}</span>,
-  useNavigate: () => vi.fn(),
+  useNavigate: () => router.navigate,
 }));
 vi.mock("@/shared/lib/infrastructure/media/useImage", () => ({
   useResolvedImage: (path?: string | null) => ({
@@ -25,6 +27,13 @@ const renderCard = (props: Partial<React.ComponentProps<typeof ProductCard>> = {
 );
 
 describe("product-card selection interaction", () => {
+  it.each(["grid", "comfortable", "compact"] as const)("opens product editing when the %s card is clicked", (viewMode) => {
+    router.navigate.mockClear();
+    const { container } = renderCard({ viewMode });
+    fireEvent.click(container.querySelector(".inventory-card")!);
+    expect(router.navigate).toHaveBeenCalledWith({ to: "/inventory/edit", search: { id: 41 } });
+  });
+
   it.each(["grid", "comfortable", "compact"] as const)("renders the %s view without losing product facts", (viewMode) => {
     const { container } = renderCard({ viewMode, product: product({ custom_label: "چای", quantity: 6, sale_price: 295_000, purchase_price: 200_000 }) });
     expect(screen.getByText("چای")).toBeInTheDocument();
@@ -61,21 +70,25 @@ describe("product-card selection interaction", () => {
     vi.useFakeTimers();
     const enter = vi.fn();
     const toggle = vi.fn();
-    renderCard({ onEnterSelection: enter, onToggleSelection: toggle });
-    const card = screen.getByRole("button", { name: /انتخاب چای با نگه‌داشتن/ });
+    router.navigate.mockClear();
+    const { container } = renderCard({ onEnterSelection: enter, onToggleSelection: toggle });
+    const card = container.querySelector(".inventory-card")!;
     fireEvent.pointerDown(card, { pointerType: "touch", clientX: 10, clientY: 10 });
     vi.advanceTimersByTime(550);
     fireEvent.click(card);
     expect(enter).toHaveBeenCalledOnce();
     expect(toggle).not.toHaveBeenCalled();
+    expect(router.navigate).not.toHaveBeenCalled();
   });
 
   it("offers a keyboard alternative and toggles cards only in selection mode", () => {
     const enter = vi.fn();
     const toggle = vi.fn();
+    router.navigate.mockClear();
     const view = renderCard({ onEnterSelection: enter, onToggleSelection: toggle });
-    fireEvent.keyDown(screen.getByRole("button", { name: /انتخاب چای با نگه‌داشتن/ }), { key: "Enter" });
-    expect(enter).toHaveBeenCalledOnce();
+    fireEvent.keyDown(view.container.querySelector(".inventory-card")!, { key: "Enter" });
+    expect(router.navigate).toHaveBeenCalledWith({ to: "/inventory/edit", search: { id: 41 } });
+    expect(enter).not.toHaveBeenCalled();
     view.rerender(<Theme><ProductCard product={product({ id: 41, custom_label: "چای" })} selectionMode selected onEnterSelection={enter} onToggleSelection={toggle} /></Theme>);
     fireEvent.click(screen.getByRole("button", { name: /لغو انتخاب چای/ }));
     expect(toggle).toHaveBeenCalledOnce();

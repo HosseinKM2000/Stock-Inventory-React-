@@ -245,6 +245,16 @@ test("all three product card modes retain core information and fit narrow screen
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
   }
 
+  await page.getByRole("button", { name: "شبکه فشرده", exact: true }).click();
+  const mobileGridColumns = await page.locator(".inventory-compact-grid").evaluate((element) =>
+    getComputedStyle(element).gridTemplateColumns.split(" ").filter(Boolean).length,
+  );
+  expect(mobileGridColumns).toBe(3);
+  const gridCard = page.locator(".inventory-card--grid");
+  await expect(gridCard.locator(".inventory-grid-title")).toHaveText("لامپ LED 12W");
+  await expect(gridCard.locator(".inventory-grid-quantity")).toHaveText("۶ عدد");
+  await expect(gridCard.locator(".inventory-grid-status")).toHaveCount(0);
+
   await page.setViewportSize({ width: 320, height: 700 });
   await page.getByRole("button", { name: "نمای فشرده", exact: true }).click();
   const narrowCompactCard = page.locator(".inventory-card--compact");
@@ -261,11 +271,32 @@ test("all three product card modes retain core information and fit narrow screen
   expect(narrowControls.at(-1)!.width).toBeGreaterThanOrEqual(44);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 
+  await page.getByRole("button", { name: "شبکه فشرده", exact: true }).click();
+  const narrowGridColumns = await page.locator(".inventory-compact-grid").evaluate((element) =>
+    getComputedStyle(element).gridTemplateColumns.split(" ").filter(Boolean).length,
+  );
+  expect(narrowGridColumns).toBe(3);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+
   await page.setViewportSize({ width: 768, height: 1024 });
   await page.getByRole("button", { name: "شبکه فشرده", exact: true }).click();
   const columns = await page.locator(".inventory-compact-grid").evaluate((element) =>
     getComputedStyle(element).gridTemplateColumns.split(" ").filter(Boolean).length,
   );
-  expect(columns).toBe(2);
+  expect(columns).toBe(3);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+});
+
+test("product card body opens editing in every view mode", async ({ page }) => {
+  await seedOfflineUser(page);
+  await seedProduct(page);
+  await page.setViewportSize({ width: 390, height: 700 });
+  await page.goto("/inventory/list");
+
+  for (const label of ["نمای راحت", "نمای فشرده", "شبکه فشرده"] as const) {
+    await page.getByRole("button", { name: label, exact: true }).click();
+    await page.getByText("لامپ LED 12W", { exact: true }).click();
+    await expect(page).toHaveURL(/\/inventory\/edit\?id=8101$/);
+    await page.goto("/inventory/list");
+  }
 });

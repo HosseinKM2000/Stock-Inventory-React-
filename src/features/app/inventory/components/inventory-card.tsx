@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Badge, Card, Flex, IconButton, Text } from "@radix-ui/themes";
 import { Barcode, Check, Copy, Package, Pencil, ShoppingCart, Store, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useState, type MouseEvent as ReactMouseEvent } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/shared/ui/button/button";
@@ -86,6 +86,10 @@ export function ProductCard({
   };
 
   const activate = () => selectionMode ? onToggleSelection?.(product) : edit();
+  const handleCardClick = (event: ReactMouseEvent<HTMLElement>) => {
+    if (!selectionMode && (event.target as HTMLElement).closest("[data-product-action]")) return;
+    activate();
+  };
   const copy = async () => {
     const text = productClipboardText(name, product.sale_price ?? (product.price_missing ? null : product.price));
     try {
@@ -143,7 +147,7 @@ export function ProductCard({
         aria-label={selectionMode ? `${selected ? "لغو انتخاب" : "انتخاب"} ${name}` : `ویرایش ${name}`}
         aria-pressed={selectionMode ? selected : undefined}
         className={`inventory-card inventory-card--${viewMode} cursor-pointer overflow-hidden transition-shadow hover:shadow-md ${selected ? "inventory-card--selected" : ""}`}
-        onClick={activate}
+        onClick={handleCardClick}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") { event.preventDefault(); activate(); }
         }}
@@ -153,15 +157,10 @@ export function ProductCard({
           <div className="inventory-grid-card">
             <div className="inventory-grid-media">
               {image("h-full w-full rounded-xl")}
-              <Badge size="2" color={status.color} className="inventory-grid-status"><Package size={14} aria-hidden="true" />{status.label}</Badge>
             </div>
-            <Flex direction="column" gap="2" className="min-w-0 p-2 pt-3">
-              <Text weight="bold" size="4" className="truncate">{name}</Text>
-              <Text size="1" color="gray" dir="ltr" className="text-end">#{product.id.toLocaleString("en-US")}</Text>
-              <Flex justify="between" align="center" gap="2" className="border-t border-[var(--gray-a4)] pt-3">
-                <Text size="2" color="gray"><Package size={16} className="inline-block align-middle" /> {product.quantity.toLocaleString("fa-IR")} عدد</Text>
-                {canViewSalePrice && <Text size="3" weight="bold" color="green">{salePrice == null ? "بدون قیمت" : `${salePrice.toLocaleString("fa-IR")} تومان`}</Text>}
-              </Flex>
+            <Flex direction="column" align="center" className="inventory-grid-content min-w-0">
+              <Text weight="bold" className="inventory-grid-title line-clamp-2">{name}</Text>
+              <Text color="gray" className="inventory-grid-quantity">{product.quantity.toLocaleString("fa-IR")} عدد</Text>
             </Flex>
             {selectionMode && <Flex align="center" justify="center" data-selected={selected} className="inventory-selection-mark absolute left-3 top-3 h-8 w-8 rounded-full border" aria-hidden="true">{selected && <Check size={16} />}</Flex>}
           </div>
@@ -190,14 +189,14 @@ export function ProductCard({
       role="button"
       tabIndex={0}
       aria-pressed={selectionMode ? selected : undefined}
-      aria-label={selectionMode ? `${selected ? "لغو انتخاب" : "انتخاب"} ${name}` : `انتخاب ${name} با نگه‌داشتن`}
+      aria-label={selectionMode ? `${selected ? "لغو انتخاب" : "انتخاب"} ${name}` : `ویرایش ${name}`}
       className={`inventory-card inventory-card--comfortable h-auto overflow-hidden transition-all duration-200 ${showActions ? "" : "inventory-card--readonly"} ${selected ? "inventory-card--selected" : ""}`}
-      onClick={() => { if (selectionMode) onToggleSelection?.(product); }}
+      onClick={handleCardClick}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           if (selectionMode) onToggleSelection?.(product);
-          else onEnterSelection?.(product);
+          else edit();
         }
       }}
       {...longPress}
