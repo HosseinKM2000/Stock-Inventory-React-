@@ -119,6 +119,18 @@ describe("local-first inventory service", () => {
     expect(mocks.enqueue).toHaveBeenCalledOnce();
   });
 
+  it("updates and clears sale price without erasing purchase price", async () => {
+    const current = product({ id: 9, version: 3, price: 120, sale_price: 120, purchase_price: 80 });
+    const cleared = product({ ...current, price: 0, sale_price: null, price_missing: true });
+    mocks.get.mockResolvedValueOnce(current).mockResolvedValueOnce(cleared);
+    mocks.save.mockResolvedValue(undefined);
+
+    await expect(inventoryService.update(9, { sale_price: null })).resolves.toMatchObject({ sale_price: null, purchase_price: 80 });
+    expect(mocks.enqueue).toHaveBeenCalledWith("product", 9, "UPDATE", {
+      id: 9, version: 3, sale_price: null, price: 0, price_missing: true,
+    });
+  });
+
   it("prevents local deletion of catalog-backed inventory", async () => {
     mocks.get.mockResolvedValue(product({ is_catalog_backed: true }));
     await expect(inventoryService.remove(1)).rejects.toThrow();
@@ -154,13 +166,13 @@ describe("local-first inventory service", () => {
   });
 
   it("applies only requested bulk fields and queues absolute prices once", async () => {
-    const first = product({ id: 1, version: 1, price: 100, category_id: 4, low_stock_alert: true, low_stock_threshold: 7, label_ids: [9] });
+    const first = product({ id: 1, version: 1, price: 100, sale_price: 100, purchase_price: 60, category_id: 4, low_stock_alert: true, low_stock_threshold: 7, label_ids: [9] });
     const second = product({ id: 2, version: 1, price: 250, category_id: null, low_stock_alert: false, low_stock_threshold: 3, label_ids: [8] });
     mocks.get.mockImplementation((id: number) => Promise.resolve(id === 1 ? first : second));
     mocks.save.mockResolvedValue(undefined);
     const updated = await inventoryService.bulkUpdate([1, 2, 2], { priceIncrease: 50, lowStockAlert: false });
     expect(updated).toHaveLength(2);
-    expect(updated[0]).toMatchObject({ price: 150, category_id: 4, low_stock_alert: false, low_stock_threshold: 7, label_ids: [9] });
+    expect(updated[0]).toMatchObject({ price: 150, sale_price: 150, purchase_price: 60, category_id: 4, low_stock_alert: false, low_stock_threshold: 7, label_ids: [9] });
     expect(updated[1]).toMatchObject({ price: 300, category_id: null, low_stock_alert: false, low_stock_threshold: 3, label_ids: [8] });
     expect(mocks.enqueue).toHaveBeenCalledTimes(2);
     expect(mocks.enqueue).toHaveBeenNthCalledWith(1, "product", 1, "UPDATE", expect.objectContaining({ price: 150 }));

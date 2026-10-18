@@ -10,6 +10,21 @@ import { ProductForm } from "./inventory-form";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/shared/ui/dialog/confirm-dialog";
+import type { Product, ProductInput } from "../types";
+
+function changedProductFields(current: Product, next: Product): ProductInput {
+  const output: ProductInput = {};
+  const keys = [
+    "quantity", "sale_price", "purchase_price", "custom_label", "note", "category_id",
+    "label_ids", "low_stock_threshold", "low_stock_alert", "image_url", "is_hidden", "catalog_product",
+  ] as const;
+  for (const key of keys) {
+    if (JSON.stringify(current[key]) !== JSON.stringify(next[key])) {
+      Object.assign(output, { [key]: next[key] });
+    }
+  }
+  return output;
+}
 
 type EditProductFormProps = {
   id: number;
@@ -54,7 +69,7 @@ const EditProductForm = ({ id }: EditProductFormProps) => {
         }
         onSubmit={(input) =>
           updateProduct.mutate(
-            { id, input },
+            { id, input: changedProductFields(product, input) },
             {
               onSuccess: () => {
                 toast.success(`«${name}» ویرایش شد`);

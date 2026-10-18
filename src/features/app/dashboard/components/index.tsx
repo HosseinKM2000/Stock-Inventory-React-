@@ -62,7 +62,7 @@ const DashboardComponent = () => {
 
       <Grid columns={{ initial: "1", sm: "2", lg: "4" }} gap="4" mt="5">
         {isOwner ? <TodayActivityCard /> : null}
-        {dashboardCards.map((card) => (
+        {dashboardCards.filter((card) => !card.permission || accessState.hasStorePermission(card.permission)).map((card) => (
           <Card
             key={card.id}
             id={`dashboard-section-${card.id}`}

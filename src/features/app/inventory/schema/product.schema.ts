@@ -43,6 +43,10 @@ export const productSchema = z.object({
 
   price: z.coerce.number().min(0, "قیمت نامعتبر است"),
 
+  sale_price: z.number().int().min(0, "قیمت فروش نامعتبر است").nullable(),
+
+  purchase_price: z.number().int().min(0, "قیمت خرید نامعتبر است").nullable(),
+
   custom_label: z.string().nullable(),
 
   image_url: z.string().nullable(),

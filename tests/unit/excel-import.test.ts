@@ -15,10 +15,38 @@ async function workbookFile(row: unknown[]) {
   return new File([data], "products.xlsx", { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
 }
 
+async function workbookWithHeaders(headers: string[], row: unknown[]) {
+  const workbook = createWorkbook();
+  const sheet = addWorksheet(workbook, "محصولات");
+  headers.forEach((header, index) => setCell(sheet, 1, index + 1, header));
+  row.forEach((value, index) => setCell(sheet, 2, index + 1, value as never));
+  const bytes = await workbookToBytes(workbook);
+  const data = bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer;
+  return new File([data], "products.xlsx");
+}
+
 describe("Excel product import", () => {
   it("normalizes Persian digits and validates a normal row locally", async () => {
-    const rows = await parseProductWorkbook(await workbookFile(["محصول تست", "۱۲", "۲۵۰٬۰۰۰", "شرح", "یادداشت"]));
+    const rows = await parseProductWorkbook(await workbookFile(["محصول تست", "۱۲", "۲۵۰٬۰۰۰", "", "شرح", "یادداشت"]));
     expect(rows).toEqual([expect.objectContaining({ name: "محصول تست", quantity: 12, price: 250_000, errors: [] })]);
+  });
+
+  it("keeps empty prices unknown and accepts explicit zero", async () => {
+    const [unknown] = await parseProductWorkbook(await workbookFile(["بدون قیمت", 1, "", ""]));
+    const [free] = await parseProductWorkbook(await workbookFile(["رایگان", 1, 0, 0]));
+    expect(unknown).toMatchObject({ salePrice: null, purchasePrice: null });
+    expect(free).toMatchObject({ salePrice: 0, purchasePrice: 0, errors: [] });
+  });
+
+  it("maps the legacy price column to sale price and accepts omitted price columns", async () => {
+    const [legacy] = await parseProductWorkbook(await workbookWithHeaders(["نام محصول", "تعداد", "قیمت"], ["قدیمی", 2, 90]));
+    const [unknown] = await parseProductWorkbook(await workbookWithHeaders(["نام محصول", "تعداد"], ["نامشخص", 1]));
+    expect(legacy).toMatchObject({ salePrice: 90, purchasePrice: null });
+    expect(unknown).toMatchObject({ salePrice: null, purchasePrice: null });
+  });
+
+  it("rejects conflicting legacy and canonical sale columns", async () => {
+    await expect(parseProductWorkbook(await workbookWithHeaders(["نام محصول", "تعداد", "قیمت", "قیمت فروش"], ["تکراری", 1, 10, 11]))).rejects.toThrow("هم‌زمان");
   });
 
   it("rejects formulas instead of evaluating imported workbook content", async () => {

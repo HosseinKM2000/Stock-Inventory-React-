@@ -405,6 +405,8 @@ class InventoryItem(Base):
         ),
         CheckConstraint("quantity >= 0", name="ck_inventory_items_quantity"),
         CheckConstraint("price >= 0", name="ck_inventory_items_price"),
+        CheckConstraint("sale_price IS NULL OR sale_price >= 0", name="ck_inventory_items_sale_price"),
+        CheckConstraint("purchase_price IS NULL OR purchase_price >= 0", name="ck_inventory_items_purchase_price"),
         CheckConstraint(
             "low_stock_threshold >= 0",
             name="ck_inventory_items_low_stock_threshold",
@@ -436,7 +438,11 @@ class InventoryItem(Base):
     )
 
     quantity: Mapped[int] = mapped_column(BigInteger, default=0)
+    # `price` is the legacy wire/storage alias for sale_price. New clients use
+    # the nullable canonical fields; writes keep the alias synchronized.
     price: Mapped[int] = mapped_column(BigInteger, default=0)
+    sale_price: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
+    purchase_price: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 

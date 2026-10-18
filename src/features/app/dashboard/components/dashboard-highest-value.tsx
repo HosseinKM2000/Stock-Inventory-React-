@@ -1,10 +1,8 @@
 import { Callout, Card, Flex, Select, Spinner, Text } from "@radix-ui/themes";
-import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
-import { resolvedProductName } from "@/features/app/inventory/domain/product-eligibility";
 import { useDashboardAnalysis } from "../mutations/use-dashboard";
-import { formatProductQuantity } from "../services/dashboard-format";
+import { DashboardProductCard } from "./dashboard-product-card";
 
 type Mode = "products" | "categories";
 
@@ -48,17 +46,7 @@ export function DashboardHighestValue() {
       )}
 
       {data && mode === "products" && data.productValues.map(({ product, value }) => (
-        <Link key={product.id} to="/inventory/edit" search={{ id: product.id }} className="block rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2">
-          <Card className="transition-colors hover:bg-[var(--accent-a2)]">
-            <Flex justify="between" gap="4" align="center" wrap="wrap">
-              <div className="min-w-0">
-                <Text as="div" weight="bold" className="break-words">{resolvedProductName(product)}</Text>
-                <Text as="div" size="2" color="gray">{formatProductQuantity(product)} · قیمت واحد {product.price.toLocaleString("fa-IR")} تومان</Text>
-              </div>
-              <Text weight="bold" color="green" className="shrink-0">{value.toLocaleString("fa-IR")} تومان</Text>
-            </Flex>
-          </Card>
-        </Link>
+        <DashboardProductCard key={product.id} product={product} variant="inventory-value" valueLabel={`${value.toLocaleString("fa-IR")} تومان`} />
       ))}
 
       {data && mode === "categories" && data.categoryValues.map((category) => (

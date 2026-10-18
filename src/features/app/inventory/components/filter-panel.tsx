@@ -1,9 +1,9 @@
 import { Button } from "@/shared/ui/button/button";
 import { TextInput } from "@/shared/ui/form/input/text-input";
 
-import { EyeNoneIcon, MagnifyingGlassIcon, TextAlignTopIcon } from "@radix-ui/react-icons";
+import { ArrowUpDown, EyeOff, Search, X } from "lucide-react";
 
-import { Flex, Popover, RadioGroup, Select, Switch, Text } from "@radix-ui/themes";
+import { Flex, IconButton, Popover, RadioGroup, Select, Switch, Text } from "@radix-ui/themes";
 
 import type { ProductSort } from "../types";
 import type { Category, Label } from "@/features/setting/types";
@@ -60,7 +60,8 @@ export default function FilterPanel({
         <Text as="span" size="2" weight="bold">جستجو</Text>
         <TextInput
           className="w-full"
-          rightSlot={<MagnifyingGlassIcon width="20" height="20" aria-hidden="true" />}
+          rightSlot={<Search size={20} aria-hidden="true" />}
+          leftSlot={search ? <IconButton type="button" size="1" variant="ghost" color="gray" aria-label="پاک کردن جست‌وجو" onClick={() => setSearch("")}><X size={16} /></IconButton> : null}
           size="3"
           aria-label="جستجوی محصول"
           placeholder="نام یا مشخصات محصول..."
@@ -85,7 +86,7 @@ export default function FilterPanel({
         <Popover.Root>
           <Popover.Trigger>
             <Button type="button" variant="soft" className="w-full justify-between">
-              <TextAlignTopIcon width="20" height="18" aria-hidden="true" />
+              <ArrowUpDown size={19} aria-hidden="true" />
               <Text size="2">{SORT_LABELS[sort]}</Text>
             </Button>
           </Popover.Trigger>
@@ -111,7 +112,7 @@ export default function FilterPanel({
 
       <label className="inventory-catalog-filter flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-[var(--gray-a6)] p-3">
         <Flex align="center" gap="2">
-          <EyeNoneIcon aria-hidden="true" />
+          <EyeOff size={18} aria-hidden="true" />
           <Text size="2" weight="bold">مخفی کردن کاتالوگ</Text>
         </Flex>
         <Switch checked={catalogProductsHidden} onCheckedChange={onCatalogVisibilityChange} aria-label="مخفی کردن محصولات کاتالوگ" />

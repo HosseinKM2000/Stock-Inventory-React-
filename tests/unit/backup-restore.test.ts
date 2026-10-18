@@ -54,6 +54,8 @@ const user: User = {
   is_admin: false,
   role: "USER",
   is_system_admin: false,
+  is_store_owner: true,
+  store_id: 7,
   subscription_started_at: null,
   subscription_expires_at: null,
   created_at: "2026-01-01T00:00:00Z",

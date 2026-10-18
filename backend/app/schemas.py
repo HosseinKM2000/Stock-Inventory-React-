@@ -327,6 +327,8 @@ class InventoryCreate(BaseModel):
     note: str | None = None
     quantity: int = Field(default=0, ge=0)
     price: int = Field(default=0, ge=0)
+    sale_price: int | None = Field(default=None, ge=0)
+    purchase_price: int | None = Field(default=None, ge=0)
     low_stock_threshold: int = Field(default=0, ge=0)
     low_stock_alert: bool = False
 
@@ -336,6 +338,8 @@ class InventoryUpdate(BaseModel):
     note: str | None = None
     quantity: int | None = Field(default=None, ge=0)
     price: int | None = Field(default=None, ge=0)
+    sale_price: int | None = Field(default=None, ge=0)
+    purchase_price: int | None = Field(default=None, ge=0)
     low_stock_threshold: int | None = Field(default=None, ge=0)
     low_stock_alert: bool | None = None
 
@@ -350,6 +354,9 @@ class InventoryOut(BaseModel):
     label_ids: list[int] = []
     quantity: int
     price: int
+    sale_price: int | None = None
+    purchase_price: int | None = None
+    price_missing: bool = False
 
     image_url: str | None = None
     version: int = 1

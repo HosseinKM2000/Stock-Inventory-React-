@@ -139,7 +139,7 @@ def _seed(db, user: User) -> dict[str, Any]:
         catalog.is_active = active
         catalog.created_at = created_at
         db.flush()
-        item = InventoryItem(user_id=user.id, catalog_product_id=catalog.id, category_id=categories[category_index].id if category_index is not None else None, quantity=quantity, price=price, image_url=catalog.image_url, is_catalog_backed=catalog.is_shared, version=1, custom_label=None if catalog.is_shared else name, note="TZ-010", low_stock_threshold=threshold, low_stock_alert=True, is_hidden=index == 14, created_at=catalog.created_at, updated_at=now)
+        item = InventoryItem(user_id=user.id, catalog_product_id=catalog.id, category_id=categories[category_index].id if category_index is not None else None, quantity=quantity, price=price, sale_price=price, image_url=catalog.image_url, is_catalog_backed=catalog.is_shared, version=1, custom_label=None if catalog.is_shared else name, note="TZ-010", low_stock_threshold=threshold, low_stock_alert=True, is_hidden=index == 14, created_at=catalog.created_at, updated_at=now)
         item.labels = [labels[i] for i in label_indexes]
         db.add(item); db.flush()
         db.add(SyncChange(

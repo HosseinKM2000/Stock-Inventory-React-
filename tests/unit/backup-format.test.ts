@@ -3,9 +3,11 @@ import { describe, expect, it } from "vitest";
 import {
   buildBackupEnvelope,
   parseBackupEnvelope,
+  normalizeBackupProducts,
   revisionForBackupData,
   type BackupData,
 } from "@/features/backup/services/backup-format";
+import { product } from "../helpers/product";
 
 const data = (overrides: Partial<BackupData> = {}): BackupData => ({
   products: [],
@@ -52,5 +54,10 @@ describe("portable backup format", () => {
     await expect(parseBackupEnvelope(JSON.stringify(tampered), 42)).rejects.toThrow("INTEGRITY");
     await expect(parseBackupEnvelope(JSON.stringify(envelope), 9)).rejects.toThrow("OWNER");
     await expect(parseBackupEnvelope(JSON.stringify({ ...envelope, schemaVersion: 99 }), 42)).rejects.toThrow("SCHEMA");
+  });
+
+  it("migrates legacy price to sale price without inventing purchase cost", () => {
+    const [migrated] = normalizeBackupProducts([product({ price: 125, sale_price: undefined, purchase_price: undefined })]);
+    expect(migrated).toMatchObject({ price: 125, sale_price: 125, purchase_price: null, price_missing: false });
   });
 });

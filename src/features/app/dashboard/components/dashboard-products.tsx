@@ -1,44 +1,23 @@
-import { ProductCard } from "@/features/app/inventory/components/inventory-card";
-import { useDeleteProduct } from "@/features/app/inventory/mutations/use-products";
-import { Box, Callout, Card, Flex, Spinner, Text } from "@radix-ui/themes";
-import { useState } from "react";
-import { toast } from "sonner";
-import type { Product } from "@/features/app/inventory/types";
-import { ConfirmDialog } from "@/shared/ui/dialog/confirm-dialog";
-import { Link } from "@tanstack/react-router";
-import { formatProductQuantity } from "../services/dashboard-format";
+import { Callout, Flex, Spinner, Text } from "@radix-ui/themes";
 
 import { useDashboardProducts } from "../mutations/use-dashboard";
 import { DashboardFilters, type DashboardFilter } from "../types";
+import { DashboardProductCard, type DashboardProductVariant } from "./dashboard-product-card";
 
 type DashboardProductsProps = {
   filter: DashboardFilter;
 };
 
 const DashboardProducts = ({ filter }: DashboardProductsProps) => {
-  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const { data, isLoading, isError } = useDashboardProducts(filter);
-  const deleteProduct = useDeleteProduct();
 
   const products = data?.products ?? [];
-  const minimal =
-    filter === DashboardFilters.ALL ||
-    filter === DashboardFilters.TODAY ||
-    filter === DashboardFilters.INVENTORY_VALUE;
-
-  const confirmDelete = () => {
-    if (!productToDelete) return;
-    const name = productToDelete.custom_label ?? productToDelete.catalog_product?.name ?? "محصول";
-    deleteProduct.mutate(productToDelete.id, {
-      onSuccess: () => {
-        setProductToDelete(null);
-        toast.success(`«${name}» حذف شد.`);
-      },
-      onError: (error) => {
-        toast.error(error instanceof Error ? error.message : "حذف محصول ناموفق بود");
-      },
-    });
-  };
+  const variant: DashboardProductVariant = filter === DashboardFilters.ALL ? "total"
+    : filter === DashboardFilters.TODAY ? "today"
+    : filter === DashboardFilters.INVENTORY_VALUE ? "inventory-value"
+    : filter === DashboardFilters.LOW_STOCK || filter === DashboardFilters.URGENT_PURCHASE ? "low"
+    : filter === DashboardFilters.OUT_OF_STOCK ? "out"
+    : filter === DashboardFilters.NO_PRICE ? "missing-price" : "standard";
 
   return (
     <Flex direction="column" gap="4" className="app-responsive-page p-4" dir="rtl">
@@ -64,68 +43,7 @@ const DashboardProducts = ({ filter }: DashboardProductsProps) => {
         </Flex>
       )}
 
-      {products.map((product) => {
-        const name = product.custom_label ?? product.catalog_product?.name ?? "محصول بدون نام";
-
-        if (minimal) {
-          return (
-            <Link key={product.id} to="/inventory/edit" search={{ id: product.id }} className="block rounded-lg focus-visible:outline-2 focus-visible:outline-offset-2">
-            <Card size="1" className="min-w-0 transition-colors hover:bg-[var(--accent-a2)]">
-              {filter === DashboardFilters.ALL ? (
-                <Flex justify="between" align="center" gap="4">
-                  <Text weight="medium" className="min-w-0 break-words">{name}</Text>
-                  <Text size="2" color="gray" className="shrink-0">{formatProductQuantity(product)}</Text>
-                </Flex>
-              ) : <Text as="div" weight="medium" className="break-words">{name}</Text>}
-              {filter === DashboardFilters.TODAY && (
-                <Flex gap="4" mt="1" wrap="wrap">
-                  <Text size="1" color="gray">قیمت: {product.price_missing ? "ثبت نشده" : `${product.price.toLocaleString("fa-IR")} تومان`}</Text>
-                  <Text size="1" color="gray">تعداد: {product.quantity.toLocaleString("fa-IR")}</Text>
-                </Flex>
-              )}
-              {filter === DashboardFilters.INVENTORY_VALUE && (
-                <Flex direction="column" gap="1" mt="1">
-                  <Text size="1" color="gray">قیمت واحد: {product.price_missing ? "ثبت نشده" : `${product.price.toLocaleString("fa-IR")} تومان`}</Text>
-                  <Text size="1" color="gray">تعداد: {product.quantity.toLocaleString("fa-IR")}</Text>
-                  <Text size="2" weight="bold" color="green">
-                    ارزش موجودی: {product.price_missing ? "نامشخص" : `${(product.price * product.quantity).toLocaleString("fa-IR")} تومان`}
-                  </Text>
-                </Flex>
-              )}
-            </Card>
-            </Link>
-          );
-        }
-
-        return (
-          <Box key={product.id}>
-            <ProductCard
-              product={product}
-              showQuickStock={false}
-              onDelete={() => setProductToDelete(product)}
-              deleting={deleteProduct.isPending && deleteProduct.variables === product.id}
-            />
-          </Box>
-        );
-      })}
-
-      <ConfirmDialog
-        open={productToDelete !== null}
-        onOpenChange={(open) => {
-          if (!open) setProductToDelete(null);
-        }}
-        title="محصول حذف شود؟"
-        description={
-          productToDelete
-            ? `«${productToDelete.custom_label ?? productToDelete.catalog_product?.name ?? "این محصول"}» از موجودی حذف می‌شود.`
-            : ""
-        }
-        confirmLabel="حذف محصول"
-        cancelLabel="لغو"
-        variant="danger"
-        loading={deleteProduct.isPending}
-        onConfirm={confirmDelete}
-      />
+      {products.map((product) => <DashboardProductCard key={product.id} product={product} variant={variant} />)}
     </Flex>
   );
 };

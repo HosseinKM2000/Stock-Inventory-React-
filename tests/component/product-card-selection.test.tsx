@@ -25,6 +25,13 @@ const renderCard = (props: Partial<React.ComponentProps<typeof ProductCard>> = {
 );
 
 describe("product-card selection interaction", () => {
+  it.each(["grid", "comfortable", "compact"] as const)("renders the %s view without losing product facts", (viewMode) => {
+    const { container } = renderCard({ viewMode, product: product({ custom_label: "چای", quantity: 6, sale_price: 295_000, purchase_price: 200_000 }) });
+    expect(screen.getByText("چای")).toBeInTheDocument();
+    expect(screen.getAllByText(/۶/).length).toBeGreaterThan(0);
+    expect(container.querySelector(viewMode === "comfortable" ? ".inventory-card-layout" : `.inventory-card--${viewMode}`)).toBeTruthy();
+  });
+
   it("enters selection on long press and suppresses the following click", () => {
     vi.useFakeTimers();
     const enter = vi.fn();

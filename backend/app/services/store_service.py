@@ -44,7 +44,7 @@ def create_owner_store(db: Session, user: User) -> StoreContext:
     templates = {
         "سرپرست": ["products.view", "products.create", "products.edit", "products.quantity.change", "products.price.change", "categories.manage", "labels.manage", "products.bulk", "barcodes.lookup", "barcodes.manage", "labels.print", "dashboard.view", "tools.import", "tools.export", "tools.catalog"],
         "اپراتور موجودی": ["products.view", "products.create", "products.edit", "products.quantity.change", "categories.manage", "labels.manage", "barcodes.lookup", "dashboard.view"],
-        "ویرایشگر قیمت": ["products.view", "products.price.change", "dashboard.view"],
+        "ویرایشگر قیمت": ["products.view", "products.price.change", "products.sale_price.view", "products.sale_price.change", "dashboard.view"],
         "مشاهده‌گر": ["products.view", "dashboard.view"],
     }
     for name, permissions in templates.items():

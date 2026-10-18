@@ -7,7 +7,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import joinedload, selectinload
 
 from ..deps import CurrentUser, DbSession, require_capability
-from ..services.store_authorization import StorePermission, require_store_permission
+from ..services.store_authorization import StorePermission, require_store_permission, effective_permissions, project_inventory_item
+from ..services.store_service import active_store_context
 from ..models import InventoryItem, InventoryTransaction
 from ..schemas import InventoryOut
 from ..services.tool_policy import require_tool
@@ -34,7 +35,7 @@ def export_inventory_json(
         ).order_by(InventoryItem.created_at.desc(), InventoryItem.id.desc())
     ).all()
 
-    return items
+    return [project_inventory_item(db, current_user, item) for item in items]
 
 
 # =========================
@@ -59,6 +60,8 @@ def export_inventory_csv(
     output.write("\ufeff")
     writer = csv.writer(output)
 
+    permissions = effective_permissions(active_store_context(db, current_user))
+    include_purchase = StorePermission.PURCHASE_PRICE_VIEW.value in permissions
     writer.writerow([
         "ID",
         "Primary Barcode",
@@ -66,7 +69,8 @@ def export_inventory_csv(
         "Quantity",
         "Is Packaged",
         "Pack Size",
-        "Price",
+        "Sale Price",
+        *(["Purchase Price"] if include_purchase else []),
         "Status",
         "Custom Label",
         "Catalog ID",
@@ -82,7 +86,8 @@ def export_inventory_csv(
             item.quantity,
             item.catalog_product.is_packaged if item.catalog_product else False,
             item.catalog_product.pack_size if item.catalog_product else None,
-            item.price,
+            item.sale_price if item.sale_price is not None else "",
+            *([item.purchase_price if item.purchase_price is not None else ""] if include_purchase else []),
             item.status,
             item.custom_label,
             item.catalog_product_id,

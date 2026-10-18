@@ -39,3 +39,7 @@ def update_inventory_item(
 ):
     for field, value in data.items():
         setattr(item, field, value)
+    if "sale_price" in data:
+        item.price = data["sale_price"] or 0
+    elif "price" in data:
+        item.sale_price = data["price"]

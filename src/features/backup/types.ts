@@ -5,7 +5,7 @@ import type { InventoryMovement, ProductBarcode } from "@/features/barcode/types
 
 export const BACKUP_FORMAT = "tanzim-local-backup" as const;
 export const BACKUP_FORMAT_VERSION = 1 as const;
-export const BACKUP_SCHEMA_VERSION = 3 as const;
+export const BACKUP_SCHEMA_VERSION = 4 as const;
 export const DEFAULT_BACKUP_INTERVAL_MS = 5 * 60_000;
 
 export type BackupMode = "directory" | "file" | "manual";

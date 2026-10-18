@@ -44,7 +44,7 @@ export async function apiFetch<T>(
   } = options;
 
   const headers: Record<string, string> = {
-    "X-Client-Data-Schema": "2",
+    "X-Client-Data-Schema": "3",
     ...customHeaders,
   };
 

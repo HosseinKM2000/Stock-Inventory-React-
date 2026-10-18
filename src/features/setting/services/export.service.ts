@@ -19,8 +19,10 @@ export type ExportOptions = {
   selectedIds?: number[];
 };
 
-const COLUMNS: { key: string; label: string; value(product: Product, primaryBarcodes: ReadonlyMap<number, string>): string }[] =
-  [
+type ExportColumn = { key: string; label: string; value(product: Product, primaryBarcodes: ReadonlyMap<number, string>): string };
+
+function columns(): ExportColumn[] {
+  const output: ExportColumn[] = [
     { key: "primary_barcode", label: "بارکد اصلی", value: (product, barcodes) => barcodes.get(product.id) ?? "" },
     { key: "id", label: "شناسه", value: (p) => String(p.id) },
     {
@@ -31,21 +33,27 @@ const COLUMNS: { key: string; label: string; value(product: Product, primaryBarc
     { key: "quantity", label: "تعداد", value: (p) => String(p.quantity) },
     { key: "is_packaged", label: "بسته‌بندی", value: (p) => p.catalog_product?.is_packaged ? "بله" : "خیر" },
     { key: "pack_size", label: "تعداد در هر بسته", value: (p) => p.catalog_product?.pack_size == null ? "" : String(p.catalog_product.pack_size) },
-    { key: "price", label: "قیمت", value: (p) => String(p.price) },
+    { key: "sale_price", label: "قیمت فروش", value: (p) => p.sale_price == null ? "" : String(p.sale_price) },
     { key: "status", label: "وضعیت", value: (p) => p.status },
     { key: "note", label: "یادداشت", value: (p) => p.note ?? "" },
     { key: "updated_at", label: "بروزرسانی", value: (p) => formatJalaliDateTime(p.updated_at) },
   ];
+  if (typeof accessState.hasStorePermission === "function" && accessState.hasStorePermission("products.purchase_price.view")) {
+    output.splice(7, 0, { key: "purchase_price", label: "قیمت خرید", value: (p) => p.purchase_price == null ? "" : String(p.purchase_price) });
+  }
+  return output;
+}
 
 function escapeCsv(value: string) {
   return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
 function toCsv(products: Product[], primaryBarcodes: ReadonlyMap<number, string>) {
-  const header = COLUMNS.map((column) => column.label).join(",");
+  const selectedColumns = columns();
+  const header = selectedColumns.map((column) => column.label).join(",");
 
   const rows = products.map((product) =>
-    COLUMNS.map((column) => escapeCsv(column.value(product, primaryBarcodes))).join(","),
+    selectedColumns.map((column) => escapeCsv(column.value(product, primaryBarcodes))).join(","),
   );
 
   // BOM keeps Excel from mangling the Persian labels.
@@ -60,12 +68,13 @@ function escapeHtml(value: string) {
 }
 
 function toHtmlTable(products: Product[], title: string, primaryBarcodes: ReadonlyMap<number, string>) {
-  const header = COLUMNS.map((column) => `<th>${column.label}</th>`).join("");
+  const selectedColumns = columns();
+  const header = selectedColumns.map((column) => `<th>${column.label}</th>`).join("");
 
   const rows = products
     .map(
       (product) =>
-        `<tr>${COLUMNS.map(
+        `<tr>${selectedColumns.map(
           (column) => `<td>${escapeHtml(column.value(product, primaryBarcodes))}</td>`,
         ).join("")}</tr>`,
     )

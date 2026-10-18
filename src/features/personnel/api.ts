@@ -31,7 +31,8 @@ export const personnelApi = {
 
 export const permissionOptions = [
   ["products.view", "مشاهده محصولات"], ["products.create", "ایجاد محصول"], ["products.edit", "ویرایش جزئیات محصول"],
-  ["products.quantity.change", "تغییر موجودی"], ["products.price.change", "تغییر قیمت"], ["products.delete", "حذف محصول"],
+  ["products.quantity.change", "تغییر موجودی"], ["products.sale_price.view", "مشاهده قیمت فروش"], ["products.sale_price.change", "تغییر قیمت فروش"],
+  ["products.purchase_price.view", "مشاهده قیمت خرید"], ["products.purchase_price.change", "تغییر قیمت خرید"], ["finance.view", "مشاهده تحلیل مالی"], ["products.delete", "حذف محصول"],
   ["categories.manage", "مدیریت دسته‌ها"], ["labels.manage", "مدیریت برچسب‌ها"], ["products.bulk", "عملیات گروهی"],
   ["barcodes.lookup", "مشاهده و اسکن بارکد"], ["barcodes.manage", "مدیریت بارکد"], ["labels.print", "چاپ لیبل"],
   ["dashboard.view", "مشاهده داشبورد"], ["tools.import", "ورود اطلاعات"], ["tools.export", "خروجی"],

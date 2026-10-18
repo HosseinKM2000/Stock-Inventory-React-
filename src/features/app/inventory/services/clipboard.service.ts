@@ -22,6 +22,6 @@ export async function copyPlainText(text: string) {
   }
 }
 
-export function productClipboardText(name: string, price: number) {
-  return `${name}\n${price.toLocaleString("fa-IR")} تومان`;
+export function productClipboardText(name: string, salePrice: number | null | undefined) {
+  return `${name}\n${salePrice == null ? "قیمت فروش ثبت نشده" : `${salePrice.toLocaleString("fa-IR")} تومان`}`;
 }

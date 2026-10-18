@@ -76,14 +76,18 @@ def _authorize_operation(db: DbSession, user: User, operation: SyncOperationIn) 
         required = {StorePermission.PRODUCTS_DELETE.value}
     elif operation.operation == "CREATE":
         required = {StorePermission.PRODUCTS_CREATE.value}
+        if (operation.payload or {}).get("purchase_price") is not None:
+            required.add(StorePermission.PURCHASE_PRICE_CHANGE.value)
     else:
         payload = operation.payload or {}
         required = set()
         if "quantity" in payload:
             required.add(StorePermission.QUANTITY_CHANGE.value)
-        if "price" in payload:
-            required.add(StorePermission.PRICE_CHANGE.value)
-        if set(payload) - {"quantity", "price"}:
+        if "price" in payload or "sale_price" in payload:
+            required.add(StorePermission.SALE_PRICE_CHANGE.value)
+        if "purchase_price" in payload:
+            required.add(StorePermission.PURCHASE_PRICE_CHANGE.value)
+        if set(payload) - {"quantity", "price", "sale_price", "purchase_price", "price_missing"}:
             required.add(StorePermission.PRODUCTS_EDIT.value)
     missing = required - permissions
     if missing:
@@ -97,7 +101,29 @@ def _authorize_operation(db: DbSession, user: User, operation: SyncOperationIn) 
 
 
 def _serialize(item: InventoryItem) -> dict:
-    return InventoryOut.model_validate(item).model_dump(mode="json")
+    record = InventoryOut.model_validate(item).model_dump(mode="json")
+    sale_price = item.sale_price if item.sale_price is not None else None
+    record.update({"sale_price": sale_price, "purchase_price": item.purchase_price, "price": sale_price or 0, "price_missing": sale_price is None})
+    return record
+
+
+def _project_record(record: dict | None, permissions: frozenset[str], client_schema: int) -> dict | None:
+    if record is None:
+        return None
+    output = dict(record)
+    if client_schema < 3:
+        output.pop("sale_price", None)
+        output.pop("purchase_price", None)
+        output.pop("price_missing", None)
+        return output
+    if "sale_price" not in output and "price" in output:
+        output["sale_price"] = None if output.get("price_missing") else output["price"]
+    output["price_missing"] = output.get("sale_price") is None
+    if StorePermission.PURCHASE_PRICE_VIEW.value not in permissions:
+        output["purchase_price"] = None
+    if StorePermission.SALE_PRICE_VIEW.value not in permissions:
+        output.update({"sale_price": None, "price": 0, "price_missing": True})
+    return output
 
 
 def _result_from_json(value: str) -> SyncOperationResult:
@@ -183,12 +209,24 @@ def _apply_fields(
         item.catalog_product.is_packaged = is_packaged
         item.catalog_product.pack_size = pack_size
 
-    for field in ("quantity", "price", "low_stock_threshold"):
+    for field in ("quantity", "low_stock_threshold"):
         if field in payload:
             value = payload[field]
             if isinstance(value, bool) or not isinstance(value, int) or value < 0:
                 raise ValueError(f"{field} must be a non-negative integer")
             setattr(item, field, value)
+
+    if "sale_price" in payload or "price" in payload:
+        value = payload.get("sale_price") if "sale_price" in payload else payload.get("price")
+        if value is not None and (isinstance(value, bool) or not isinstance(value, int) or value < 0):
+            raise ValueError("sale_price must be a non-negative integer or null")
+        item.sale_price = value
+        item.price = value or 0
+    if "purchase_price" in payload:
+        value = payload["purchase_price"]
+        if value is not None and (isinstance(value, bool) or not isinstance(value, int) or value < 0):
+            raise ValueError("purchase_price must be a non-negative integer or null")
+        item.purchase_price = value
 
     for field in ("low_stock_alert", "is_hidden"):
         if field in payload:
@@ -643,6 +681,8 @@ async def push_batch(
     client_data_schema: Annotated[int | None, Header(alias="X-Client-Data-Schema")] = None,
 ) -> SyncBatchResponse:
     _require_store_aware_client(client_data_schema)
+    permissions = effective_permissions(active_store_context(db, current_user))
+    projection_schema = client_data_schema or 2
     request = SyncBatchRequest.model_validate_json(operations_json)
     image_files = {file.filename: file for file in files or [] if file.filename}
     results: list[SyncOperationResult] = []
@@ -842,6 +882,17 @@ async def push_batch(
     cursor = db.scalar(
         select(func.max(SyncChange.id)).where(SyncChange.user_id == current_user.data_owner_id)
     ) or 0
+    for result in results:
+        if isinstance(result.record, InventoryOut):
+            raw_record = result.record.model_dump(mode="json")
+        elif isinstance(result.record, dict):
+            raw_record = result.record
+        else:
+            continue
+        if "catalog_product_id" in raw_record:
+            result.record = _project_record(raw_record, permissions, projection_schema)
+        elif isinstance(raw_record.get("product"), dict):
+            result.record = {**raw_record, "product": _project_record(raw_record["product"], permissions, projection_schema)}
     return SyncBatchResponse(results=results, cursor=cursor)
 
 
@@ -869,6 +920,8 @@ def pull_changes(
     client_data_schema: Annotated[int | None, Header(alias="X-Client-Data-Schema")] = None,
 ) -> SyncChangesResponse:
     _require_store_aware_client(client_data_schema)
+    permissions = effective_permissions(active_store_context(db, current_user))
+    projection_schema = client_data_schema or 2
     latest = db.scalar(
         select(func.max(SyncChange.id)).where(SyncChange.user_id == current_user.data_owner_id)
     ) or 0
@@ -889,7 +942,7 @@ def pull_changes(
                     entity="product",
                     entity_id=item.id,
                     operation="UPSERT",
-                    record=InventoryOut.model_validate(item),
+                    record=_project_record(_serialize(item), permissions, projection_schema),
                 )
                 for item in items
             ],
@@ -911,7 +964,7 @@ def pull_changes(
                 entity="product",
                 entity_id=change.entity_id,
                 operation=change.operation,
-                record=json.loads(change.payload) if change.payload else None,
+                record=_project_record(json.loads(change.payload), permissions, projection_schema) if change.payload else None,
             )
             for change in changes
         ],
