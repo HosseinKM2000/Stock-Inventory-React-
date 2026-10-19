@@ -1,6 +1,43 @@
-# React + TypeScript + Vite
+# Stock Inventory
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A stock/inventory management app: React + TypeScript frontend (Vite, TanStack
+Router/Query, Radix Themes) backed by a FastAPI + SQLite REST API.
+
+## Running the full stack
+
+You need **two** processes: the backend API and the frontend dev server.
+
+### 1. Backend (FastAPI + SQLite)
+
+See [`backend/README.md`](backend/README.md) for full details.
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/Scripts/activate      # Windows Git Bash; see backend README for PowerShell / *nix
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
+
+API runs at `http://localhost:8000` (Swagger docs at `/docs`).
+
+### 2. Frontend (Vite)
+
+```bash
+npm install
+npm run dev
+```
+
+App runs at `http://localhost:5173`. The API base URL is configured via
+`VITE_API_URL` (see `.env`, default `http://localhost:8000/api`).
+
+Open the app, create an account on the signup page, and you're in.
+
+---
+
+## Frontend template notes
+
+This project was bootstrapped with React + TypeScript + Vite (HMR + ESLint).
 
 Currently, two official plugins are available:
 

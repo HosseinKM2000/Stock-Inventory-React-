@@ -1,121 +1,62 @@
-import { ProductImageUpload } from "@/features/app/products/components/upload-file";
-import { Button } from "@/shared/ui/button/button";
-import { FormField } from "@/shared/ui/form/field/form-field";
-import { Form } from "@/shared/ui/form/form";
-import { SelectInput } from "@/shared/ui/form/input/select-input";
-import { TextAreaInput } from "@/shared/ui/form/input/text-area";
-import { TextInput } from "@/shared/ui/form/input/text-input";
-import { BellIcon } from "@radix-ui/react-icons";
-import { Box, Card, Flex, Grid, Switch, Text } from "@radix-ui/themes";
+import { ApiError } from "@/shared/api/client";
+import { Callout, Flex, Spinner } from "@radix-ui/themes";
+import { useNavigate } from "@tanstack/react-router";
+import {
+  useDeleteProduct,
+  useProduct,
+  useUpdateProduct,
+} from "../hooks/use-products";
+import { ProductForm } from "./product-form";
 
-const EditProductForm = () => {
+type EditProductFormProps = {
+  id: number;
+};
+
+const EditProductForm = ({ id }: EditProductFormProps) => {
+  const navigate = useNavigate();
+  const { data: product, isLoading, isError } = useProduct(id);
+  const updateProduct = useUpdateProduct();
+  const deleteProduct = useDeleteProduct();
+
+  if (isLoading) {
+    return (
+      <Flex justify="center" align="center" py="9">
+        <Spinner size="3" />
+      </Flex>
+    );
+  }
+
+  if (isError || !product) {
+    return (
+      <Callout.Root color="red" dir="rtl" mt="6">
+        <Callout.Text>محصول یافت نشد</Callout.Text>
+      </Callout.Root>
+    );
+  }
+
   return (
-    <Form>
-      <Box
-        mt={"6"}
-        mb={"9"}
-        className="bg-foreground/5 p-5 rounded-2xl mt-5 border-foreground/20 border"
-      >
-        <Text className="text-xl font-medium">ویرایش محصول</Text>
-        <Grid columns={{ xs: "1", md: "3" }} gap={"5"} width="auto" mt={"5"}>
-          <Box className="md:col-span-3">
-            <ProductImageUpload />
-          </Box>
-          <FormField label="نام محصول" id="">
-            <TextInput size={"3"} />
-          </FormField>
-          <FormField label="دسته بندی" id="">
-            <SelectInput
-              size={"3"}
-              placeholder="دسته بندی محصول"
-              options={[
-                { value: "b", label: "B" },
-                { value: "a", label: "A" },
-              ]}
-            />
-          </FormField>
-          <FormField label="واحد" id="">
-            <SelectInput
-              size={"3"}
-              placeholder="دسته بندی محصول"
-              options={[
-                { value: "b", label: "B" },
-                { value: "a", label: "A" },
-              ]}
-            />
-          </FormField>
-          <FormField label="تعداد اولیه" id="">
-            <TextInput size={"3"} type="number" />
-          </FormField>
-          <FormField label="قیمت (تومان)" id="">
-            <TextInput size={"3"} type="number" />
-          </FormField>
-          <FormField label="وضعیت موجودی" id="">
-            <SelectInput
-              size={"3"}
-              placeholder=""
-              value="a"
-              options={[
-                { value: "b", label: "B" },
-                { value: "a", label: "A" },
-              ]}
-            />
-          </FormField>
-          <Box className="md:col-span-3">
-            <FormField id="" label="توضیحات">
-              <TextAreaInput size="3" />
-            </FormField>
-          </Box>
-          <Card
-            size="3"
-            className="
-            w-full
-            border
-            rounded-3xl
-            md:col-span-3
-            bg-violet-1/40
-            border-violet-1
-            "
-          >
-            <Flex
-              gap="3"
-              wrap={"wrap"}
-              width={"100%"}
-              align={"center"}
-              justify={"between"}
-            >
-              <Flex justify="between" wrap={"wrap"} align="start" gap="4">
-                <Switch size="3" onCheckedChange={() => {}} />
-                <Flex align="start" gap="3" wrap={"wrap"}>
-                  <Box className="mt-1 text-amber-600">
-                    <BellIcon width={28} height={28} />
-                  </Box>
-                  <Box>
-                    <Text as="div" size="3" weight="bold">
-                      هشدار کم موجودی
-                    </Text>
-                    <Text as="div" size="2" color="gray" className="mt-1">
-                      هنگام رسیدن موجودی به حد نصاب اطلاع‌رسانی شود.
-                    </Text>
-                  </Box>
-                </Flex>
-              </Flex>
-              <Box className="w-full md:w-45">
-                <FormField id="threshold" label="حد نصاب هشدار">
-                  <TextInput size="3" type="number" />
-                </FormField>
-              </Box>
-            </Flex>
-          </Card>
-        </Grid>
-        <Grid width={"100%"} mt={"6"}>
-          <Button>ثبت تغییرات</Button>
-          <Button color="red" mt={"3"}>
-            حذف
-          </Button>
-        </Grid>
-      </Box>
-    </Form>
+    <ProductForm
+      mode="edit"
+      initial={product}
+      submitting={updateProduct.isPending}
+      deleting={deleteProduct.isPending}
+      errorMessage={
+        updateProduct.error instanceof ApiError
+          ? updateProduct.error.message
+          : null
+      }
+      onSubmit={(input) =>
+        updateProduct.mutate(
+          { id, input },
+          { onSuccess: () => navigate({ to: "/product/list" }) },
+        )
+      }
+      onDelete={() =>
+        deleteProduct.mutate(id, {
+          onSuccess: () => navigate({ to: "/product/list" }),
+        })
+      }
+    />
   );
 };
 

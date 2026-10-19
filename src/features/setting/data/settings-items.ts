@@ -3,6 +3,7 @@ import {
   LayersIcon,
   DownloadIcon,
   MixerHorizontalIcon,
+  CubeIcon,
 } from "@radix-ui/react-icons";
 
 export const settingsNavItems = [
@@ -25,5 +26,10 @@ export const settingsNavItems = [
     label: "خروجی",
     to: "/setting/export",
     icon: DownloadIcon,
+  },
+  {
+    label: "حوزه کاری",
+    to: "/setting/industry",
+    icon: CubeIcon,
   },
 ] as const;

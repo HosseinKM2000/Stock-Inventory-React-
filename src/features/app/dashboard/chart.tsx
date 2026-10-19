@@ -1,66 +1,14 @@
+import { Flex, Text } from "@radix-ui/themes";
 import {
   Bar,
   BarChart,
   CartesianGrid,
-  Legend,
   Tooltip,
   XAxis,
   YAxis,
   type TooltipContentProps,
 } from "recharts";
-
-const data = [
-  {
-    name: "Food",
-    pv: 60,
-  },
-  {
-    name: "Drinks",
-    pv: 70,
-  },
-  {
-    name: "Tools",
-    pv: 5,
-  },
-  {
-    name: "Tools",
-    pv: 50,
-  },
-  {
-    name: "Tools",
-    pv: 2,
-  },
-  {
-    name: "Tools",
-    pv: 25,
-  },
-  {
-    name: "Tools",
-    pv: 10,
-  },
-];
-
-const getIntroOfPage = (label: string | number | undefined) => {
-  if (label === "Page A") {
-    return "Page A is about men's clothing";
-  }
-  if (label === "Page B") {
-    return "Page B is about women's dress";
-  }
-  if (label === "Page C") {
-    return "Page C is about women's bag";
-  }
-  if (label === "Page D") {
-    return "Page D is about household goods";
-  }
-  if (label === "Page E") {
-    return "Page E is about food";
-  }
-  if (label === "Page F") {
-    return "Page F is about baby food";
-  }
-  return "";
-};
+import type { CategoryBreakdown } from "./types";
 
 const CustomTooltip = ({ active, payload, label }: TooltipContentProps) => {
   const firstPayload = payload?.[0];
@@ -71,17 +19,25 @@ const CustomTooltip = ({ active, payload, label }: TooltipContentProps) => {
       style={{ visibility: isVisible ? "visible" : "hidden" }}
     >
       {isVisible && (
-        <>
-          <p className="label">{`${label} : ${firstPayload.value}`}</p>
-          <p className="intro">{getIntroOfPage(label)}</p>
-          <p className="desc">Anything you want can be displayed here.</p>
-        </>
+        <p className="label">{`${label} : ${firstPayload.value}`}</p>
       )}
     </div>
   );
 };
 
-const Chart = () => {
+type ChartProps = {
+  data: CategoryBreakdown[];
+};
+
+const Chart = ({ data }: ChartProps) => {
+  if (data.length === 0) {
+    return (
+      <Flex justify="center" align="center" py="9">
+        <Text color="gray">داده ای برای نمایش وجود ندارد</Text>
+      </Flex>
+    );
+  }
+
   return (
     <BarChart
       style={{
@@ -105,10 +61,14 @@ const Chart = () => {
         content={CustomTooltip}
         isAnimationActive={true}
         defaultIndex={0}
-          cursor={false}
+        cursor={false}
       />
-      <Legend />
-      <Bar dataKey="pv" barSize={100} fill="#8884d8" isAnimationActive={true} />
+      <Bar
+        dataKey="value"
+        barSize={100}
+        fill="#8884d8"
+        isAnimationActive={true}
+      />
     </BarChart>
   );
 };

@@ -1,19 +1,8 @@
-import {
-  DotsHorizontalIcon,
-  GearIcon,
-  HomeIcon,
-  MixIcon,
-} from "@radix-ui/react-icons";
+import { GearIcon, HomeIcon, MixIcon } from "@radix-ui/react-icons";
 import { Box, Flex, Text } from "@radix-ui/themes";
 import { Link, useRouterState } from "@tanstack/react-router";
 
 export const menuNavItems = [
-  {
-    label: "بیشتر",
-    to: "/more",
-    match: "/more",
-    icon: DotsHorizontalIcon,
-  },
   {
     label: "تنظیمات",
     to: "/setting/profile",

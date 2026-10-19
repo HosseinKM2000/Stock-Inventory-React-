@@ -6,8 +6,10 @@ import {
   ChevronRightIcon,
   ExitIcon,
 } from "@radix-ui/react-icons";
+import { useLogout } from "@/features/auth/mutations/use-register";
 
 export function SettingNav() {
+  const logout = useLogout();
   const [collapsed, setCollapsed] = useState(false);
 
   const pathname = useRouterState({
@@ -95,8 +97,8 @@ export function SettingNav() {
 
       {/* FOOTER */}
       <div className="border-t p-3">
-        <Link
-          to={"/"}
+        <div
+          onClick={logout}
           className={`
             flex
             px-3
@@ -104,6 +106,7 @@ export function SettingNav() {
             rounded-xl
             items-center
             hover:bg-red-500
+            cursor-pointer
           `}
         >
           <ExitIcon />
@@ -112,7 +115,7 @@ export function SettingNav() {
               {"خروج از حساب کاربری"}
             </span>
           )}
-        </Link>
+        </div>
       </div>
     </aside>
   );
