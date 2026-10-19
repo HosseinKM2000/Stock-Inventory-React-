@@ -237,10 +237,10 @@ export function ProductCard({
               ><Trash2 size={19} /></Button>}
             </Flex>}
           </Flex>
-          {(categoryName || barcode) && <Flex direction="column" gap="1" className="inventory-card-classification min-w-0">
+          <Flex direction="column" gap="1" className="inventory-card-classification min-w-0">
             {categoryName && <Badge size="1" color="violet" variant="soft" className="inventory-card-category">{categoryName}</Badge>}
-            {barcode && <Text size="1" color="gray" dir="ltr" className="inventory-card-barcode"><Barcode size={14} aria-hidden="true" /><span>{barcode}</span></Text>}
-          </Flex>}
+            <Text size="1" color="gray" dir={barcode ? "ltr" : "rtl"} data-empty={!barcode} className="inventory-card-barcode"><Barcode size={13} aria-hidden="true" /><span>{barcode ?? "بدون بارکد"}</span></Text>
+          </Flex>
         </Flex>
         {showActions && !selectionMode && <div className="inventory-card-controls" data-product-action>
           {showQuickStock && canAdjustQuantity && <div className="inventory-card-quick shrink-0 border-[var(--gray-a5)] bg-[var(--gray-a2)]">

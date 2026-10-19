@@ -404,6 +404,7 @@ test("desktop product cards keep long content and packaged stock controls aligne
   const gridMediaBox = (await gridCard.locator(".inventory-card-media").boundingBox())!;
   const gridStatus = gridCard.locator(".inventory-card-image-status");
   const gridActionsBox = (await gridCard.locator(".inventory-card-mobile-actions").boundingBox())!;
+  const gridFooterBox = (await gridCard.locator(".inventory-card-footer").boundingBox())!;
   const gridTitleBox = (await gridTitle.boundingBox())!;
   const gridPriceBox = (await gridPrice.boundingBox())!;
   const gridCardBox = (await gridCard.boundingBox())!;
@@ -420,7 +421,13 @@ test("desktop product cards keep long content and packaged stock controls aligne
   await expect(gridCard.locator(".inventory-card-category")).toHaveText("ظروف آشپزخانه");
   await expect(gridCard.locator(".inventory-card-barcode")).toHaveText("6261234567890");
   await expect(gridCard.locator(".inventory-card-mobile-meta")).toBeHidden();
+  const gridTitleFontSize = await gridTitle.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize));
+  const gridPriceFontSize = await gridPrice.locator("strong").evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize));
+  expect(Math.abs(gridPriceFontSize - gridTitleFontSize)).toBeLessThanOrEqual(.5);
   expect(await gridPrice.locator("strong").evaluate((element) => getComputedStyle(element).whiteSpace)).toBe("nowrap");
+  expect(Math.abs(gridActionsBox.x - gridFooterBox.x)).toBeLessThanOrEqual(2);
+  expect(gridActionsBox.y - (gridPriceBox.y + gridPriceBox.height)).toBeGreaterThanOrEqual(8);
+  expect(gridCardBox.height / gridCardBox.width).toBeGreaterThanOrEqual(.82);
   expect(gridActionsBox.y + gridActionsBox.height).toBeLessThanOrEqual(gridQuickBox.y);
   expect(gridQuickBox.x).toBeGreaterThanOrEqual(gridCardBox.x);
   expect(gridQuickBox.x + gridQuickBox.width).toBeLessThanOrEqual(gridCardBox.x + gridCardBox.width + 1);
@@ -457,6 +464,15 @@ test("desktop product cards keep long content and packaged stock controls aligne
   await expect(comfortableCard.locator(".inventory-card-mobile-meta")).toBeHidden();
   const mobileModeBox = (await comfortableCard.locator(".quick-stock-mode").boundingBox())!;
   const mobileStockBox = (await comfortableCard.locator(".quick-stock-control").boundingBox())!;
+  const mobilePrice = comfortableCard.locator(".inventory-card-price");
+  const mobileActionsBox = (await comfortableCard.locator(".inventory-card-mobile-actions").boundingBox())!;
+  const mobileFooterBox = (await comfortableCard.locator(".inventory-card-footer").boundingBox())!;
+  const mobilePriceBox = (await mobilePrice.boundingBox())!;
+  const mobileTitleFontSize = await comfortableTitle.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize));
+  const mobilePriceFontSize = await mobilePrice.locator("strong").evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize));
+  expect(Math.abs(mobilePriceFontSize - mobileTitleFontSize)).toBeLessThanOrEqual(.5);
+  expect(Math.abs(mobileActionsBox.x - mobileFooterBox.x)).toBeLessThanOrEqual(2);
+  expect(mobileActionsBox.y - (mobilePriceBox.y + mobilePriceBox.height)).toBeGreaterThanOrEqual(8);
   expect(Math.abs(mobileModeBox.width - mobileStockBox.width)).toBeLessThanOrEqual(1);
 
   for (const width of [1280, 1024]) {
@@ -474,4 +490,20 @@ test("desktop product cards keep long content and packaged stock controls aligne
       expect(cardBox.x + cardBox.width).toBeLessThanOrEqual(resultsBox.x + resultsBox.width + 1);
     }
   }
+});
+
+test("grid and comfortable cards show a minimal empty barcode state", async ({ page }) => {
+  await seedOfflineUser(page);
+  await seedProduct(page, { categoryName: "ظروف آشپزخانه" });
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.goto("/inventory/list");
+
+  await page.getByRole("button", { name: "شبکه فشرده", exact: true }).click();
+  await expect(page.locator(".inventory-card--grid .inventory-card-barcode")).toHaveText("بدون بارکد");
+
+  await page.setViewportSize({ width: 390, height: 700 });
+  await page.getByRole("button", { name: "نمای راحت", exact: true }).click();
+  const emptyBarcode = page.locator(".inventory-card--comfortable .inventory-card-barcode");
+  await expect(emptyBarcode).toHaveText("بدون بارکد");
+  await expect(emptyBarcode.locator("svg")).toBeVisible();
 });
