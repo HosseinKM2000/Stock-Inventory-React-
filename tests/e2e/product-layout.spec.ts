@@ -45,9 +45,9 @@ async function seedOfflineUser(page: Page) {
   await page.route("http://localhost:8000/api/**", (route) => route.abort());
 }
 
-async function seedProduct(page: Page) {
+async function seedProduct(page: Page, options: { name?: string; packaged?: boolean } = {}) {
   await page.goto("/dashboard");
-  await page.evaluate(async () => {
+  await page.evaluate(async ({ name, packaged }) => {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open("inventory-db");
       request.onsuccess = () => resolve(request.result);
@@ -59,14 +59,21 @@ async function seedProduct(page: Page) {
       local_key: "7111:7111:8101", local_user_id: 7111, local_store_id: 7111,
       id: 8101, catalog_product_id: 8101, is_catalog_backed: false, category_id: null,
       label_ids: [], version: 1, quantity: 6, price: 350000, sale_price: 350000,
-      purchase_price: null, price_missing: false, custom_label: "لامپ LED 12W", note: "نور گرم کم‌مصرف",
+      purchase_price: null, price_missing: false, custom_label: name, note: "نور گرم کم‌مصرف",
       low_stock_threshold: 8, low_stock_alert: true, is_hidden: false, image_url: null,
       deleted_at: null, status: "low_stock", created_at: now, updated_at: now,
-      catalog_product: { id: 8101, industry_id: 1, is_active: true, name: "لامپ LED 12W", description: "نور گرم کم‌مصرف", brand: "Tanzim Demo", image_url: null, is_packaged: false, pack_size: null, created_at: now },
+      catalog_product: { id: 8101, industry_id: 1, is_active: true, name, description: "نور گرم کم‌مصرف", brand: "Tanzim Demo", image_url: null, is_packaged: packaged, pack_size: packaged ? 4 : null, created_at: now },
     });
     await new Promise<void>((resolve, reject) => { transaction.oncomplete = () => resolve(); transaction.onerror = () => reject(transaction.error); });
     database.close();
-  });
+  }, { name: options.name ?? "لامپ LED 12W", packaged: options.packaged ?? false });
+}
+
+function boxesOverlap(first: { x: number; y: number; width: number; height: number }, second: { x: number; y: number; width: number; height: number }) {
+  return first.x < second.x + second.width
+    && first.x + first.width > second.x
+    && first.y < second.y + second.height
+    && first.y + first.height > second.y;
 }
 
 test("product filters use one responsive panel across desktop and mobile", async ({ page }) => {
@@ -359,5 +366,57 @@ test("product card body opens editing in every view mode", async ({ page }) => {
     await page.getByText("لامپ LED 12W", { exact: true }).click();
     await expect(page).toHaveURL(/\/inventory\/edit\?id=8101$/);
     await page.goto("/inventory/list");
+  }
+});
+
+test("desktop product cards keep long content and packaged stock controls aligned without overflow", async ({ page }) => {
+  await seedOfflineUser(page);
+  await seedProduct(page, { name: "ظرف نگهدارنده شیشه‌ای با درپوش بسیار بلند", packaged: true });
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto("/inventory/list");
+
+  await page.getByRole("button", { name: "شبکه فشرده", exact: true }).click();
+  const gridCard = page.locator(".inventory-card--grid");
+  const gridTitle = gridCard.locator(".inventory-grid-title");
+  const gridPrice = gridCard.locator(".inventory-card-price");
+  const gridQuick = gridCard.locator(".inventory-card-quick");
+  const gridTitleBox = (await gridTitle.boundingBox())!;
+  const gridPriceBox = (await gridPrice.boundingBox())!;
+  const gridCardBox = (await gridCard.boundingBox())!;
+  const gridQuickBox = (await gridQuick.boundingBox())!;
+  expect(await gridTitle.evaluate((element) => getComputedStyle(element).whiteSpace)).not.toBe("nowrap");
+  expect(boxesOverlap(gridTitleBox, gridPriceBox)).toBe(false);
+  expect(gridQuickBox.x).toBeGreaterThanOrEqual(gridCardBox.x);
+  expect(gridQuickBox.x + gridQuickBox.width).toBeLessThanOrEqual(gridCardBox.x + gridCardBox.width + 1);
+
+  await page.getByRole("button", { name: "نمای فشرده", exact: true }).click();
+  const compactCard = page.locator(".inventory-card--compact");
+  const compactCardBox = (await compactCard.boundingBox())!;
+  const compactModeBox = (await compactCard.locator(".quick-stock-mode").boundingBox())!;
+  const compactControlBox = (await compactCard.locator(".quick-stock-control").boundingBox())!;
+  expect(compactCardBox.height).toBeLessThanOrEqual(96);
+  expect(Math.abs((compactModeBox.y + compactModeBox.height / 2) - (compactControlBox.y + compactControlBox.height / 2))).toBeLessThanOrEqual(4);
+
+  await page.getByRole("button", { name: "نمای راحت", exact: true }).click();
+  const comfortableCard = page.locator(".inventory-card--comfortable");
+  const comfortableBox = (await comfortableCard.boundingBox())!;
+  const comfortableImage = (await comfortableCard.locator(".inventory-card-image").boundingBox())!;
+  expect(comfortableBox.height).toBeLessThanOrEqual(180);
+  expect(Math.abs(comfortableImage.width - comfortableImage.height)).toBeLessThanOrEqual(1);
+
+  for (const width of [1280, 1024]) {
+    await page.setViewportSize({ width, height: 800 });
+    for (const [label, selector] of [
+      ["نمای راحت", ".inventory-card--comfortable"],
+      ["نمای فشرده", ".inventory-card--compact"],
+      ["شبکه فشرده", ".inventory-card--grid"],
+    ] as const) {
+      await page.getByRole("button", { name: label, exact: true }).click();
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+      const resultsBox = (await page.locator(".inventory-list-results").boundingBox())!;
+      const cardBox = (await page.locator(selector).boundingBox())!;
+      expect(cardBox.x).toBeGreaterThanOrEqual(resultsBox.x - 1);
+      expect(cardBox.x + cardBox.width).toBeLessThanOrEqual(resultsBox.x + resultsBox.width + 1);
+    }
   }
 });
