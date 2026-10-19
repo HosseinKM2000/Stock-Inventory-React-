@@ -11,6 +11,16 @@ node_modules
 dist
 dist-ssr
 *.local
+coverage/
+playwright-report/
+test-results/
+backend/.coverage
+backend/htmlcov/
+backend/coverage/
+
+# Local environment (use .env.example as the template)
+.env
+.env.*.local
 
 # Editor directories and files
 .vscode/*

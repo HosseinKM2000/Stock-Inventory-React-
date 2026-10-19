@@ -1,0 +1,255 @@
+import { ApiError } from "@/shared/api/api-error";
+import { isAuthenticated } from "@/shared/api/token-store";
+
+import { networkService } from "../network/network-service";
+import type { SyncQueueItem } from "../storage/types";
+import { queueService } from "./queue.service";
+import { syncStatusStore } from "./sync-status";
+import { accessState } from "@/shared/access/access-state";
+import { entitlementService } from "@/shared/access/entitlement-service";
+
+export type SyncHandlerResult = {
+  itemId: string;
+  status: "applied" | "conflict" | "fatal_error";
+  error?: string | null;
+};
+
+export type SyncHandler = (
+  items: SyncQueueItem[],
+) => Promise<SyncHandlerResult[]>;
+
+export type InboundSyncHandler = () => Promise<void>;
+
+const handlers = new Map<string, SyncHandler>();
+const inboundHandlers = new Map<string, InboundSyncHandler>();
+const BATCH_SIZE = 100;
+const ENTITY_ORDER = ["label", "category", "product"];
+
+let running: Promise<void> | null = null;
+let onSettled: (() => void) | null = null;
+
+export function registerSyncHandler(entity: string, handler: SyncHandler) {
+  handlers.set(entity, handler);
+}
+
+export function registerInboundSyncHandler(
+  entity: string,
+  handler: InboundSyncHandler,
+) {
+  inboundHandlers.set(entity, handler);
+}
+
+export function onSyncSettled(listener: () => void) {
+  onSettled = listener;
+}
+
+function isFatalRequest(error: unknown) {
+  return (
+    error instanceof ApiError &&
+    error.status >= 400 &&
+    error.status < 500 &&
+    error.status !== 423 &&
+    error.status !== 408 &&
+    error.status !== 409 &&
+    error.status !== 429 &&
+    error.message !== "SUBSCRIPTION_EXPIRED"
+  );
+}
+
+async function processGroup(entity: string, items: SyncQueueItem[]) {
+  const handler = handlers.get(entity);
+  if (!handler) return { changed: false, error: null as string | null };
+
+  const active: SyncQueueItem[] = [];
+  for (const item of items) {
+    const claimed = await queueService.markInFlight(item);
+    if (claimed) active.push(claimed);
+  }
+  if (active.length === 0) return { changed: false, error: null };
+
+  try {
+    const results = await handler(active);
+    const byId = new Map(results.map((result) => [result.itemId, result]));
+    let lastError: string | null = null;
+
+    for (const item of active) {
+      const result = byId.get(item.id);
+
+      if (!result) {
+        const error = new Error("Sync server omitted an operation result");
+        await queueService.markFailed(item, error);
+        lastError = error.message;
+      } else if (result.status === "applied") {
+        await queueService.removeIfUnchanged(item);
+      } else if (result.status === "conflict") {
+        const error = result.error ?? "Sync conflict";
+        await queueService.markConflict(item, error);
+        lastError = error;
+      } else {
+        const error = new Error(result.error ?? "Server rejected the operation");
+        await queueService.markFailed(item, error, true);
+        lastError = error.message;
+      }
+    }
+
+    return { changed: true, error: lastError };
+  } catch (error) {
+    for (const item of active) {
+      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+        await queueService.releaseAfterAuthFailure(item, error);
+      } else {
+        await queueService.markFailed(item, error, isFatalRequest(error));
+      }
+    }
+
+    return {
+      changed: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+async function runSync() {
+  if (syncService.isPaused()) {
+    syncStatusStore.set({ state: "idle", pending: await queueService.count(), error: "SYNC_PAUSED_FOR_RESTORE" });
+    return;
+  }
+  if (networkService.isOffline() || !isAuthenticated()) {
+    syncStatusStore.set({ state: "idle", pending: await queueService.count() });
+    return;
+  }
+
+  if (!accessState.canAccess()) {
+    syncStatusStore.set({
+      state: "failed",
+      pending: await queueService.count(),
+      error: "ACCOUNT_DISABLED",
+    });
+    return;
+  }
+
+  try {
+    await entitlementService.ensureVerified();
+  } catch (error) {
+    syncStatusStore.set({
+      state: "failed",
+      pending: await queueService.count(),
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return;
+  }
+
+  const writeAllowed = accessState.canWrite();
+  const items = writeAllowed ? await queueService.getDue() : [];
+
+  syncStatusStore.set({ state: "syncing", pending: items.length, error: null });
+
+  let changed = false;
+  let lastError: string | null = writeAllowed ? null : "SUBSCRIPTION_EXPIRED";
+
+  const groups = new Map<string, SyncQueueItem[]>();
+  for (const item of items) {
+    groups.set(item.entity, [...(groups.get(item.entity) ?? []), item]);
+  }
+
+  const orderedGroups = [...groups.entries()].sort(
+    ([a], [b]) => (ENTITY_ORDER.indexOf(a) < 0 ? 99 : ENTITY_ORDER.indexOf(a)) -
+      (ENTITY_ORDER.indexOf(b) < 0 ? 99 : ENTITY_ORDER.indexOf(b)),
+  );
+  for (const [entity, group] of orderedGroups) {
+    for (let offset = 0; offset < group.length; offset += BATCH_SIZE) {
+      const result = await processGroup(entity, group.slice(offset, offset + BATCH_SIZE));
+      changed ||= result.changed;
+      lastError = result.error ?? lastError;
+      if (networkService.isOffline()) break;
+    }
+    if (networkService.isOffline()) break;
+  }
+
+  if (networkService.isOnline()) {
+    for (const handler of inboundHandlers.values()) {
+      try {
+        await handler();
+        changed = true;
+      } catch (error) {
+        lastError = error instanceof Error ? error.message : String(error);
+        if (networkService.isOffline()) break;
+      }
+    }
+  }
+
+  const queued = await queueService.getAll();
+  const terminal = queued.find(
+    (item) => item.status === "fatal_error" || item.status === "dead_letter",
+  );
+  const conflict = queued.find((item) => item.status === "conflict");
+
+  syncStatusStore.set({
+    state: conflict ? "conflict" : lastError || terminal ? "failed" : "synced",
+    pending: queued.length,
+    error: conflict?.lastError ?? lastError ?? terminal?.lastError ?? null,
+    lastSyncedAt: lastError ? syncStatusStore.get().lastSyncedAt : Date.now(),
+  });
+
+  if (changed) onSettled?.();
+}
+
+export const syncService = {
+  pause(reason = "manual", accountId?: number) {
+    const userId = accountId ?? accessState.user?.()?.id;
+    if (!userId) return;
+    localStorage.setItem(`tanzim:${userId}:sync-paused`, reason);
+  },
+
+  resume(accountId?: number) {
+    const userId = accountId ?? accessState.user?.()?.id;
+    if (!userId) return;
+    localStorage.removeItem(`tanzim:${userId}:sync-paused`);
+    syncStatusStore.set({ error: null });
+  },
+
+  isPaused(accountId?: number) {
+    const userId = accountId ?? accessState.user?.()?.id;
+    if (!userId) return false;
+    return localStorage.getItem(`tanzim:${userId}:sync-paused`) != null;
+  },
+
+  async sync() {
+    if (running) return running;
+
+    const coordinatedRun = async () => {
+      if (!navigator.locks) return runSync();
+      await navigator.locks.request(
+        "tanzim-outbox-sync",
+        { ifAvailable: true },
+        async (lock) => { if (lock) await runSync(); },
+      );
+    };
+
+    running = coordinatedRun()
+      .catch((error) => {
+        syncStatusStore.set({
+          state: "failed",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      })
+      .finally(() => {
+        running = null;
+      });
+
+    return running;
+  },
+
+  schedule() {
+    window.setTimeout(() => { void this.sync(); }, 150);
+  },
+
+  async retry() {
+    await queueService.resetFailures();
+    return this.sync();
+  },
+
+  async refreshPending() {
+    syncStatusStore.set({ pending: await queueService.count() });
+  },
+};
