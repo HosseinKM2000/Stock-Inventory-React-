@@ -12,6 +12,9 @@ function AppearanceComponent() {
       <Text className="text-2xl font-bold">
         تنظیمات ظاهری
       </Text>
+      <Text as="p" size="2" color="gray" mt="2" className="leading-6">
+        حالت نمایش برنامه را متناسب با دستگاه یا ترجیح شخصی خود انتخاب کنید؛ این تنظیم روی همین دستگاه ذخیره می‌شود.
+      </Text>
       <AppearanceOptions />
     </Box>
   );
