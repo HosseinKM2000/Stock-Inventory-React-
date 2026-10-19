@@ -1,94 +1,69 @@
-import {
-  DotsHorizontalIcon,
-  GearIcon,
-  HomeIcon,
-  MixIcon,
-} from "@radix-ui/react-icons";
 import { Box, Flex, Text } from "@radix-ui/themes";
 import { Link, useRouterState } from "@tanstack/react-router";
+import { primaryNavigationItems } from "./navigation-items";
+import { isPathActive } from "@/shared/lib/navigation/is-path-active";
+import { useAuth } from "@/shared/auth/use-auth";
 
-export const menuNavItems = [
-  {
-    label: "بیشتر",
-    to: "/more",
-    match: "/more",
-    icon: DotsHorizontalIcon,
-  },
-  {
-    label: "تنظیمات",
-    to: "/setting/profile",
-    match: "/setting",
-    icon: GearIcon,
-  },
-  {
-    label: "محصولات",
-    to: "/product/list",
-    match: "/product",
-    icon: MixIcon,
-  },
-  {
-    label: "خانه",
-    to: "/",
-    match: "/",
-    icon: HomeIcon,
-  },
-] as const;
+type Props = {
+  hidden?: boolean;
+};
 
-const NavMenu = () => {
+const NavMenu = ({ hidden = false }: Props) => {
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
+  const { user } = useAuth();
+  const items = primaryNavigationItems(user);
   return (
-    <Box
+    <nav
       dir="rtl"
       className="
+        app-bottom-navigation
         z-50
         fixed
         w-full
         bottom-0
+        block!
         overflow-hidden
       "
-      style={{
-        paddingBottom: "env(safe-area-inset-bottom)",
-      }}
+      data-hidden={hidden}
+      aria-hidden={hidden}
+      aria-label="ناوبری اصلی"
     >
       <Flex
         align="center"
         justify="center"
         className="
+          app-bottom-navigation-surface
           relative
 
           border
-          border-white/10
-
-          bg-[rgba(15,15,24,0.92)]
 
           px-2
           py-2
 
-          shadow-[0_20px_50px_rgba(0,0,0,.35)]
-
           backdrop-blur-2xl
         "
       >
-        {menuNavItems.map((item) => {
+        {items.map((item) => {
           const Icon = item.icon;
 
-          const active =
-            item.match === "/"
-              ? pathname === "/"
-              : pathname.startsWith(item.match);
-              
+          const active = isPathActive(pathname, item.to);
+
           return (
             <Link
               key={item.to}
               to={item.to}
+              data-active={active}
               className="
+                app-bottom-navigation-item
                 flex
                 px-3
                 py-2
-                w-[25%]
+                min-w-0
+                flex-1
                 md:w-70
+                md:flex-none
                 relative
                 flex-col
                 ease-out
@@ -118,18 +93,14 @@ const NavMenu = () => {
                 {/* Main Line */}
 
                 <Box
-                  className="
-                    h-[3px]
-                    w-15
-                    rounded-full
-                  bg-indigo-600
-                  "
+                  className="app-navigation-indicator h-[3px] w-15 rounded-full"
                 />
 
                 {/* Glow */}
 
                 <Box
                   className="
+                    app-navigation-glow
                     absolute
                     left-1/2
                     top-0
@@ -142,7 +113,6 @@ const NavMenu = () => {
 
                     rounded-full
 
-               bg-indigo-600
                     blur-xl
                   "
                 />
@@ -152,10 +122,11 @@ const NavMenu = () => {
 
               <Box
                 className={`
+                  app-navigation-icon
                   transition-all
                   duration-200
 
-                  ${active ? "scale-105 text-primary" : "text-white/60"}
+                  ${active ? "scale-105" : ""}
                 `}
               >
                 <Icon width={20} height={20} />
@@ -165,14 +136,14 @@ const NavMenu = () => {
 
               <Text
                 size="1"
-                className={`
+                className="
+                  app-bottom-navigation-label
                   mt-1
+                  whitespace-nowrap
 
                   transition-all
                   duration-200
-
-                  ${active ? "text-primary" : "text-white/60"}
-                `}
+                "
               >
                 {item.label}
               </Text>
@@ -180,7 +151,7 @@ const NavMenu = () => {
           );
         })}
       </Flex>
-    </Box>
+    </nav>
   );
 };
 

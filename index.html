@@ -3,11 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Inventory</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#171326" />
+    <meta name="application-name" content="Tanzim" />
+    <meta name="apple-mobile-web-app-title" content="Tanzim" />
+    <meta name="description" content="Tanzim — offline-first inventory management" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Tanzim</title>
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      (() => {
+        const saved = localStorage.getItem("inventory-appearance");
+        const dark = saved === "dark" ||
+          (saved !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+        const appearance = dark ? "dark" : "light";
+        document.documentElement.dataset.appearance = appearance;
+        document.documentElement.style.colorScheme = appearance;
+        document.querySelector('meta[name="theme-color"]').content = dark ? "#171326" : "#ffffff";
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
