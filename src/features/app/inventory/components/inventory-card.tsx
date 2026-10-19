@@ -138,7 +138,7 @@ export function ProductCard({
     );
   };
 
-  if (viewMode !== "comfortable") {
+  if (viewMode === "compact") {
     return (
       <Card
         size="1"
@@ -146,42 +146,26 @@ export function ProductCard({
         tabIndex={0}
         aria-label={selectionMode ? `${selected ? "لغو انتخاب" : "انتخاب"} ${name}` : `ویرایش ${name}`}
         aria-pressed={selectionMode ? selected : undefined}
-        className={`inventory-card inventory-card--${viewMode} cursor-pointer overflow-hidden transition-shadow hover:shadow-md ${selected ? "inventory-card--selected" : ""}`}
+        className={`inventory-card inventory-card--compact cursor-pointer overflow-hidden transition-shadow hover:shadow-md ${selected ? "inventory-card--selected" : ""}`}
         onClick={handleCardClick}
         onKeyDown={(event) => {
           if (event.key === "Enter" || event.key === " ") { event.preventDefault(); activate(); }
         }}
         {...longPress}
       >
-        {viewMode === "grid" ? (
-          <div className="inventory-grid-card">
-            <div className="inventory-grid-media">
-              {image("h-full w-full rounded-xl")}
-              <span className="inventory-grid-status-dot" data-status={product.status} title={status.label}>
-                <span className="sr-only">{status.label}</span>
-              </span>
-            </div>
-            <Flex direction="column" align="center" className="inventory-grid-content min-w-0">
-              <Text weight="bold" className="inventory-grid-title truncate">{name}</Text>
-              <Text color="gray" className="inventory-grid-quantity">{product.quantity.toLocaleString("fa-IR")} عدد</Text>
+        <Flex align="center" gap="3" className="inventory-compact-card min-w-0" dir="rtl">
+          {image("inventory-compact-image h-20 w-20 shrink-0 rounded-xl")}
+          <Flex direction="column" gap="2" className="inventory-compact-info min-w-0 flex-1">
+            <Text weight="bold" size="3" className="inventory-compact-title truncate">{name}</Text>
+            <Flex gap="2" align="center" wrap="wrap" className="inventory-compact-facts">
+              <Text size="2" color="gray" className="inventory-compact-quantity">{product.quantity.toLocaleString("fa-IR")}<span className="inventory-compact-unit"> عدد</span></Text>
+              <Badge size="1" color={status.color} className="inventory-compact-status">{status.label}</Badge>
+              {canViewSalePrice && <Text size="2" weight="bold" color="green" className="inventory-compact-price">{salePrice == null ? "بدون قیمت" : `${salePrice.toLocaleString("fa-IR")} تومان`}</Text>}
             </Flex>
-            {selectionMode && <Flex align="center" justify="center" data-selected={selected} className="inventory-selection-mark absolute left-3 top-3 h-8 w-8 rounded-full border" aria-hidden="true">{selected && <Check size={16} />}</Flex>}
-          </div>
-        ) : (
-          <Flex align="center" gap="3" className="inventory-compact-card min-w-0" dir="rtl">
-            {image("inventory-compact-image h-20 w-20 shrink-0 rounded-xl")}
-            <Flex direction="column" gap="2" className="inventory-compact-info min-w-0 flex-1">
-              <Text weight="bold" size="3" className="inventory-compact-title truncate">{name}</Text>
-              <Flex gap="2" align="center" wrap="wrap" className="inventory-compact-facts">
-                <Text size="2" color="gray" className="inventory-compact-quantity">{product.quantity.toLocaleString("fa-IR")}<span className="inventory-compact-unit"> عدد</span></Text>
-                <Badge size="1" color={status.color} className="inventory-compact-status">{status.label}</Badge>
-                {canViewSalePrice && <Text size="2" weight="bold" color="green" className="inventory-compact-price">{salePrice == null ? "بدون قیمت" : `${salePrice.toLocaleString("fa-IR")} تومان`}</Text>}
-              </Flex>
-            </Flex>
-            {showQuickStock && canAdjustQuantity && !selectionMode && <div className="inventory-compact-quick" data-product-action onClick={(event) => event.stopPropagation()}><QuickStockAdjustment product={product} /></div>}
-            {selectionMode && <Flex align="center" justify="center" data-selected={selected} className="inventory-selection-mark h-7 w-7 rounded-full border" aria-hidden="true">{selected && <Check size={16} />}</Flex>}
           </Flex>
-        )}
+          {showQuickStock && canAdjustQuantity && !selectionMode && <div className="inventory-compact-quick" data-product-action onClick={(event) => event.stopPropagation()}><QuickStockAdjustment product={product} /></div>}
+          {selectionMode && <Flex align="center" justify="center" data-selected={selected} className="inventory-selection-mark h-7 w-7 rounded-full border" aria-hidden="true">{selected && <Check size={16} />}</Flex>}
+        </Flex>
       </Card>
     );
   }
@@ -193,7 +177,7 @@ export function ProductCard({
       tabIndex={0}
       aria-pressed={selectionMode ? selected : undefined}
       aria-label={selectionMode ? `${selected ? "لغو انتخاب" : "انتخاب"} ${name}` : `ویرایش ${name}`}
-      className={`inventory-card inventory-card--comfortable h-auto overflow-hidden transition-all duration-200 ${showActions ? "" : "inventory-card--readonly"} ${selected ? "inventory-card--selected" : ""}`}
+      className={`inventory-card inventory-card--${viewMode} h-auto overflow-hidden transition-all duration-200 ${showActions ? "" : "inventory-card--readonly"} ${selected ? "inventory-card--selected" : ""}`}
       onClick={handleCardClick}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -204,15 +188,16 @@ export function ProductCard({
       }}
       {...longPress}
     >
-      <Flex className="inventory-card-layout min-w-0" dir="rtl">
+      <Flex className={`inventory-card-layout min-w-0 ${viewMode === "grid" ? "inventory-grid-card" : ""}`} dir="rtl">
         <div className="inventory-card-media">
           {image("inventory-card-image shrink-0")}
+          {viewMode === "grid" && <span className="inventory-grid-status-dot" data-status={product.status} title={status.label}><span className="sr-only">{status.label}</span></span>}
           {!selectionMode && <Badge color={status.color} className="inventory-card-image-status">{status.label}<Package size={16} aria-hidden="true" /></Badge>}
         </div>
         <Flex direction="column" justify="between" className="inventory-card-content min-w-0 flex-1 p-3 sm:p-4">
           <div className="inventory-card-identity min-w-0">
             <Flex justify="between" align="start" gap="2" className="min-w-0">
-              <Text weight="bold" size="3" className="break-words text-lg!">{name}</Text>
+              <Text weight="bold" size="3" className={`break-words text-lg! ${viewMode === "grid" ? "inventory-grid-title" : ""}`}>{name}</Text>
               {selectionMode ? <Flex align="center" justify="center" data-selected={selected} className="inventory-selection-mark h-8 w-8 shrink-0 rounded-full border" aria-hidden="true">{selected && <Check size={16} />}</Flex> : <Badge color={status.color} className="inventory-card-mobile-status shrink-0">{status.label}</Badge>}
             </Flex>
             <Flex direction="column" gap="1" className="inventory-card-mobile-meta">
@@ -229,7 +214,7 @@ export function ProductCard({
               <Text size="2"><Text color="gray">تعداد کل: </Text>{product.quantity.toLocaleString("fa-IR")}</Text>
             </Flex>
           )}
-          {!packageBreakdown && <Text size="2" color="gray" className="inventory-card-stock-details"><Package size={16} className="inline-block align-middle" /> {product.quantity.toLocaleString("fa-IR")} عدد</Text>}
+          {!packageBreakdown && <Text size="2" color="gray" className={`inventory-card-stock-details ${viewMode === "grid" ? "inventory-grid-quantity" : ""}`}><Package size={16} className="inline-block align-middle" /> {product.quantity.toLocaleString("fa-IR")} عدد</Text>}
           <Flex justify="between" gap="3" className="inventory-card-footer min-w-0">
             <Flex gap="2" wrap="wrap" className="min-w-0">
               {canViewSalePrice && <Badge size="3" color="green" className="inventory-card-price max-w-full overflow-hidden"><ShoppingCart size={15} aria-hidden="true" />{salePrice == null ? "قیمت ثبت نشده" : <><strong>{salePrice.toLocaleString("fa-IR")}</strong><span>تومان</span></>}</Badge>}

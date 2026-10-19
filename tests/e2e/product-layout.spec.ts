@@ -109,6 +109,7 @@ test("product filters use one responsive panel across desktop and mobile", async
   await expect(filterTrigger).toBeVisible();
   const mobileSearchBox = (await search.boundingBox())!;
   const mobileFilterBox = (await filterTrigger.boundingBox())!;
+  await expect(panel.locator(":scope > .inventory-catalog-filter")).toBeHidden();
   expect(mobileSearchBox.y).toBeLessThan(mobileFilterBox.y);
   expect(mobileSearchBox.height).toBeLessThanOrEqual(46);
   expect(mobileFilterBox.height).toBeLessThanOrEqual(44);
@@ -305,6 +306,46 @@ test("all three product card modes retain core information and fit narrow screen
   );
   expect(columns).toBe(3);
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.getByRole("button", { name: "شبکه فشرده", exact: true }).click();
+  const desktopGridCard = page.locator(".inventory-card--grid");
+  const desktopGridColumns = await page.locator(".inventory-compact-grid").evaluate((element) =>
+    getComputedStyle(element).gridTemplateColumns.split(" ").filter(Boolean).length,
+  );
+  expect(desktopGridColumns).toBeGreaterThanOrEqual(3);
+  await expect(desktopGridCard.locator(".inventory-card-mobile-meta")).toContainText("Tanzim Demo");
+  await expect(desktopGridCard.locator(".inventory-card-price")).toContainText("۳۵۰٬۰۰۰");
+  await expect(desktopGridCard.locator(".quick-stock-control")).toBeVisible();
+  await expect(desktopGridCard.locator(".inventory-card-mobile-actions")).toBeVisible();
+
+  await page.getByRole("button", { name: "نمای فشرده", exact: true }).click();
+  const desktopCompactCard = page.locator(".inventory-card--compact");
+  const desktopCompactImage = (await desktopCompactCard.locator(".inventory-compact-image").boundingBox())!;
+  const desktopCompactInfo = (await desktopCompactCard.locator(".inventory-compact-info").boundingBox())!;
+  const desktopCompactQuick = (await desktopCompactCard.locator(".inventory-compact-quick").boundingBox())!;
+  const desktopCompactBox = (await desktopCompactCard.boundingBox())!;
+  const desktopCompactButtons = await desktopCompactCard.locator(".quick-stock-button").evaluateAll((buttons) =>
+    buttons.map((button) => {
+      const box = button.getBoundingClientRect();
+      return { width: box.width, height: box.height };
+    }),
+  );
+  expect(Math.abs(desktopCompactImage.width - desktopCompactImage.height)).toBeLessThanOrEqual(1);
+  const compactCenterY = desktopCompactBox.y + desktopCompactBox.height / 2;
+  expect(Math.abs(desktopCompactImage.y + desktopCompactImage.height / 2 - compactCenterY)).toBeLessThanOrEqual(3);
+  expect(Math.abs(desktopCompactInfo.y + desktopCompactInfo.height / 2 - compactCenterY)).toBeLessThanOrEqual(4);
+  expect(Math.abs(desktopCompactQuick.y + desktopCompactQuick.height / 2 - compactCenterY)).toBeLessThanOrEqual(4);
+  for (const button of desktopCompactButtons) {
+    expect(button.width).toBeGreaterThanOrEqual(40);
+    expect(button.width).toBeLessThanOrEqual(48);
+    expect(button.height).toBeGreaterThanOrEqual(40);
+    expect(button.height).toBeLessThanOrEqual(48);
+  }
+
+  await page.getByRole("button", { name: "نمای راحت", exact: true }).click();
+  const desktopComfortableImage = (await page.locator(".inventory-card--comfortable .inventory-card-image").boundingBox())!;
+  expect(Math.abs(desktopComfortableImage.width - desktopComfortableImage.height)).toBeLessThanOrEqual(1);
 });
 
 test("product card body opens editing in every view mode", async ({ page }) => {

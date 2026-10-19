@@ -77,6 +77,13 @@ test("standard navigation separates Settings and Tools with contextual back beha
   await expect(bottomNavigation.getByRole("link", { name: "مدیریت" })).toHaveCount(0);
   await expect(bottomNavigation.getByRole("link", { name: "تنظیمات" })).toBeVisible();
   await expect(bottomNavigation.getByRole("link", { name: "افزودن محصول" })).toBeVisible();
+  const activeGlow = await bottomNavigation.getByRole("link", { name: "داشبورد" }).locator(".app-navigation-indicator").evaluate((element) => {
+    const glow = getComputedStyle(element, "::after");
+    return { content: glow.content, backgroundImage: glow.backgroundImage, opacity: glow.opacity };
+  });
+  expect(activeGlow.content).not.toBe("none");
+  expect(activeGlow.backgroundImage).not.toBe("none");
+  expect(Number(activeGlow.opacity)).toBeLessThanOrEqual(.45);
 
   await bottomNavigation.getByRole("link", { name: "تنظیمات" }).click();
   await expect(page).toHaveURL(/\/setting\/?$/);
@@ -120,6 +127,19 @@ test("settings and tools share a neutral responsive guide for roots and descenda
     const guide = page.locator(".page-guide");
     await expect(guide).toHaveAttribute("data-root", "true");
     await expect(guide.locator(".page-guide-context")).toHaveCount(0);
+    const guideControls = await guide.evaluate((element) => {
+      const icon = element.querySelector<HTMLElement>(".page-guide-page-icon")!.getBoundingClientRect();
+      const back = element.querySelector<HTMLElement>(".page-guide-back")!;
+      const backBox = back.getBoundingClientRect();
+      return {
+        icon: { width: icon.width, height: icon.height },
+        back: { width: backBox.width, height: backBox.height },
+        paddingInline: Number.parseFloat(getComputedStyle(back).paddingInline),
+      };
+    });
+    expect(Math.abs(guideControls.back.width - guideControls.icon.width)).toBeLessThanOrEqual(1);
+    expect(Math.abs(guideControls.back.height - guideControls.icon.height)).toBeLessThanOrEqual(1);
+    expect(guideControls.paddingInline).toBeLessThanOrEqual(4);
     rootStyles.push(await guide.evaluate((element) => {
       const icon = element.querySelector<HTMLElement>(".page-guide-page-icon")!;
       const description = element.querySelector<HTMLElement>(".page-guide-description")!;
