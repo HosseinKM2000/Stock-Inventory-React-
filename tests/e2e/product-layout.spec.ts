@@ -390,7 +390,8 @@ test("desktop product cards keep long content and packaged stock controls aligne
   expect(gridMediaBox.width / gridMediaBox.height).toBeGreaterThan(2);
   expect(gridMediaBox.width / gridCardBox.width).toBeGreaterThan(.9);
   await expect(gridStatus).toBeVisible();
-  expect(await gridTitle.evaluate((element) => getComputedStyle(element).whiteSpace)).not.toBe("nowrap");
+  expect(await gridTitle.evaluate((element) => getComputedStyle(element).whiteSpace)).toBe("nowrap");
+  expect(await gridTitle.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize))).toBeLessThanOrEqual(15);
   expect(boxesOverlap(gridTitleBox, gridPriceBox)).toBe(false);
   expect(gridActionsBox.y + gridActionsBox.height).toBeLessThanOrEqual(gridQuickBox.y);
   expect(gridQuickBox.x).toBeGreaterThanOrEqual(gridCardBox.x);
@@ -398,17 +399,23 @@ test("desktop product cards keep long content and packaged stock controls aligne
 
   await page.getByRole("button", { name: "نمای فشرده", exact: true }).click();
   const compactCard = page.locator(".inventory-card--compact");
+  const compactTitle = compactCard.locator(".inventory-compact-title");
   const compactCardBox = (await compactCard.boundingBox())!;
   const compactModeBox = (await compactCard.locator(".quick-stock-mode").boundingBox())!;
   const compactControlBox = (await compactCard.locator(".quick-stock-control").boundingBox())!;
   expect(compactCardBox.height).toBeLessThanOrEqual(96);
+  expect(await compactTitle.evaluate((element) => getComputedStyle(element).whiteSpace)).toBe("nowrap");
+  expect(await compactTitle.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize))).toBeLessThanOrEqual(15);
   expect(Math.abs((compactModeBox.y + compactModeBox.height / 2) - (compactControlBox.y + compactControlBox.height / 2))).toBeLessThanOrEqual(4);
 
   await page.getByRole("button", { name: "نمای راحت", exact: true }).click();
   const comfortableCard = page.locator(".inventory-card--comfortable");
+  const comfortableTitle = comfortableCard.locator(".inventory-card-title");
   const comfortableBox = (await comfortableCard.boundingBox())!;
   const comfortableImage = (await comfortableCard.locator(".inventory-card-image").boundingBox())!;
   expect(comfortableBox.height).toBeLessThanOrEqual(180);
+  expect(await comfortableTitle.evaluate((element) => getComputedStyle(element).whiteSpace)).toBe("nowrap");
+  expect(await comfortableTitle.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize))).toBeLessThanOrEqual(16.2);
   expect(Math.abs(comfortableImage.width - comfortableImage.height)).toBeLessThanOrEqual(1);
 
   for (const width of [1280, 1024]) {

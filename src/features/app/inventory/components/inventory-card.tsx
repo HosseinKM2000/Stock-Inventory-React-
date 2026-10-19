@@ -197,7 +197,7 @@ export function ProductCard({
         <Flex direction="column" justify="between" className="inventory-card-content min-w-0 flex-1 p-3 sm:p-4">
           <div className="inventory-card-identity min-w-0">
             <Flex justify="between" align="start" gap="2" className="min-w-0">
-              <Text weight="bold" size="3" className={`break-words text-lg! ${viewMode === "grid" ? "inventory-grid-title" : ""}`}>{name}</Text>
+              <Text weight="bold" size="3" className={`inventory-card-title ${viewMode === "grid" ? "inventory-grid-title" : ""}`}>{name}</Text>
               {selectionMode ? <Flex align="center" justify="center" data-selected={selected} className="inventory-selection-mark h-8 w-8 shrink-0 rounded-full border" aria-hidden="true">{selected && <Check size={16} />}</Flex> : <Badge color={status.color} className="inventory-card-mobile-status shrink-0">{status.label}</Badge>}
             </Flex>
             <Flex direction="column" gap="1" className="inventory-card-mobile-meta">
