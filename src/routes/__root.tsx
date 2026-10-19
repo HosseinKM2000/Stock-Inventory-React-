@@ -1,12 +1,31 @@
-/* eslint-disable react-refresh/only-export-components */
+import { lazy, Suspense } from "react";
 import { createRootRoute, Outlet } from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/router-devtools";
+import { AuthProvider } from "@/shared/auth/auth-provider";
+import { AccessBoundary } from "@/shared/access/access-boundary";
+import { AuthenticatedPwaInstallPromotion } from "@/shared/lib/infrastructure/pwa/pwa-install-button";
+
+const RouterDevtools = import.meta.env.DEV
+  ? lazy(async () => {
+      const module = await import("@tanstack/router-devtools");
+
+      return { default: module.TanStackRouterDevtools };
+    })
+  : null;
+
+const routerDevtoolsToggleProps = {
+  style: { bottom: "calc(var(--app-bottom-navigation-height) + 1rem)" },
+};
 
 export const Route = createRootRoute({
   component: () => (
-    <>
-      <Outlet />
-      <TanStackRouterDevtools />
-    </>
+    <AuthProvider>
+      <AccessBoundary><Outlet /></AccessBoundary>
+      <AuthenticatedPwaInstallPromotion />
+      {RouterDevtools && (
+        <Suspense fallback={null}>
+          <RouterDevtools toggleButtonProps={routerDevtoolsToggleProps} />
+        </Suspense>
+      )}
+    </AuthProvider>
   ),
 });

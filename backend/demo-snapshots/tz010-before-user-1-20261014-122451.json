@@ -1,0 +1,605 @@
+{
+  "schema": 1,
+  "created_at": "2026-10-14T08:54:51.118939+00:00",
+  "environment": "development",
+  "database": "tanzim",
+  "user_id": 1,
+  "previous_industry_id": null,
+  "rows": {
+    "inventory_transactions": [],
+    "inventory_item_labels": [],
+    "inventory_items": [],
+    "catalog_products": [],
+    "categories": [
+      {
+        "id": 3446524702679700,
+        "name": "خوراکی ها",
+        "description": "غذای سالم",
+        "user_id": 1,
+        "created_at": "2026-10-13T05:45:30.957808+00:00",
+        "updated_at": "2026-10-13T05:47:17.729372+00:00"
+      },
+      {
+        "id": 58551950109238,
+        "name": "پوشیدنی",
+        "description": "لباس و سایر",
+        "user_id": 1,
+        "created_at": "2026-10-13T05:45:50.047470+00:00",
+        "updated_at": "2026-10-13T05:47:10.710874+00:00"
+      },
+      {
+        "id": 3310299747720927,
+        "name": "اشیا",
+        "description": "همه لوازم ",
+        "user_id": 1,
+        "created_at": "2026-10-13T05:46:57.933526+00:00",
+        "updated_at": "2026-10-13T05:46:57.933530+00:00"
+      }
+    ],
+    "labels": [
+      {
+        "id": 2612005044506674,
+        "user_id": 1,
+        "name": "البرز",
+        "normalized_name": "البرز",
+        "version": 1,
+        "created_at": "2026-10-14T07:40:57.895373+00:00",
+        "updated_at": "2026-10-14T07:40:57.895378+00:00"
+      }
+    ],
+    "sync_operations": [
+      {
+        "id": 1,
+        "user_id": 1,
+        "operation_id": "c1e65aba-8871-4fc5-a6ac-b0035b6afb7a",
+        "result_payload": "{\"operation_id\":\"c1e65aba-8871-4fc5-a6ac-b0035b6afb7a\",\"status\":\"fatal_error\",\"entity_id\":2910411250259157,\"record\":null,\"error\":\"An industry is required before creating a product\"}",
+        "created_at": "2026-10-12T08:05:36.855993+00:00"
+      },
+      {
+        "id": 2,
+        "user_id": 1,
+        "operation_id": "85c538b7-0fba-4e9e-b2eb-f66adf4d0928",
+        "result_payload": "{\"operation_id\":\"85c538b7-0fba-4e9e-b2eb-f66adf4d0928\",\"status\":\"fatal_error\",\"entity_id\":1817527057334699,\"record\":null,\"error\":\"An industry is required before creating a product\"}",
+        "created_at": "2026-10-12T13:18:12.605148+00:00"
+      },
+      {
+        "id": 3,
+        "user_id": 1,
+        "operation_id": "1df02e66-5468-410d-a296-7605f0ad88d0",
+        "result_payload": "{\"operation_id\":\"1df02e66-5468-410d-a296-7605f0ad88d0\",\"status\":\"fatal_error\",\"entity_id\":1817527057334699,\"record\":null,\"error\":\"PRODUCT_NOT_FOUND\"}",
+        "created_at": "2026-10-13T05:33:48.964197+00:00"
+      },
+      {
+        "id": 4,
+        "user_id": 1,
+        "operation_id": "45de0a5a-b545-44b3-856d-c939015c3025",
+        "result_payload": "{\"operation_id\":\"45de0a5a-b545-44b3-856d-c939015c3025\",\"status\":\"applied\",\"entity_id\":3446524702679700,\"record\":{\"id\":3446524702679700,\"name\":\"خوراکی ها\",\"description\":\"یک غذای سالم\",\"created_at\":\"2026-10-13T05:45:30.957808Z\",\"updated_at\":\"2026-10-13T05:45:30.957813Z\"},\"error\":null}",
+        "created_at": "2026-10-13T05:45:30.961146+00:00"
+      },
+      {
+        "id": 5,
+        "user_id": 1,
+        "operation_id": "1d6c4cc2-8e87-4e89-8c70-f8630459c363",
+        "result_payload": "{\"operation_id\":\"1d6c4cc2-8e87-4e89-8c70-f8630459c363\",\"status\":\"applied\",\"entity_id\":58551950109238,\"record\":{\"id\":58551950109238,\"name\":\"پوشیدنی\",\"description\":\"یک لباس فاخر\",\"created_at\":\"2026-10-13T05:45:50.047470Z\",\"updated_at\":\"2026-10-13T05:45:50.047479Z\"},\"error\":null}",
+        "created_at": "2026-10-13T05:45:50.051214+00:00"
+      },
+      {
+        "id": 6,
+        "user_id": 1,
+        "operation_id": "30802999-b146-4905-98a7-41e76a7164b1",
+        "result_payload": "{\"operation_id\":\"30802999-b146-4905-98a7-41e76a7164b1\",\"status\":\"applied\",\"entity_id\":3446524702679700,\"record\":{\"id\":3446524702679700,\"name\":\"خوراکی ها\",\"description\":\"یک غذای سالم\",\"created_at\":\"2026-10-13T05:45:30.957808Z\",\"updated_at\":\"2026-10-13T05:45:30.957813Z\"},\"error\":null}",
+        "created_at": "2026-10-13T05:46:34.450164+00:00"
+      },
+      {
+        "id": 7,
+        "user_id": 1,
+        "operation_id": "6c4c47e8-73d8-4c71-b021-3d5cc21ae2ca",
+        "result_payload": "{\"operation_id\":\"6c4c47e8-73d8-4c71-b021-3d5cc21ae2ca\",\"status\":\"applied\",\"entity_id\":3310299747720927,\"record\":{\"id\":3310299747720927,\"name\":\"اشیا\",\"description\":\"همه لوازم \",\"created_at\":\"2026-10-13T05:46:57.933526Z\",\"updated_at\":\"2026-10-13T05:46:57.933530Z\"},\"error\":null}",
+        "created_at": "2026-10-13T05:46:57.935281+00:00"
+      },
+      {
+        "id": 8,
+        "user_id": 1,
+        "operation_id": "758bb0ec-bae6-42e3-afdc-60e738612824",
+        "result_payload": "{\"operation_id\":\"758bb0ec-bae6-42e3-afdc-60e738612824\",\"status\":\"applied\",\"entity_id\":58551950109238,\"record\":{\"id\":58551950109238,\"name\":\"پوشیدنی\",\"description\":\"لباس و سایر\",\"created_at\":\"2026-10-13T05:45:50.047470Z\",\"updated_at\":\"2026-10-13T05:47:10.710874Z\"},\"error\":null}",
+        "created_at": "2026-10-13T05:47:10.714006+00:00"
+      },
+      {
+        "id": 9,
+        "user_id": 1,
+        "operation_id": "90bc7394-940d-43cc-8692-2cfe9271f346",
+        "result_payload": "{\"operation_id\":\"90bc7394-940d-43cc-8692-2cfe9271f346\",\"status\":\"applied\",\"entity_id\":3446524702679700,\"record\":{\"id\":3446524702679700,\"name\":\"خوراکی ها\",\"description\":\"غذای سالم\",\"created_at\":\"2026-10-13T05:45:30.957808Z\",\"updated_at\":\"2026-10-13T05:47:17.729372Z\"},\"error\":null}",
+        "created_at": "2026-10-13T05:47:17.730984+00:00"
+      },
+      {
+        "id": 10,
+        "user_id": 1,
+        "operation_id": "22e5c78d-1a03-42fd-9f92-df613360d293",
+        "result_payload": "{\"operation_id\":\"22e5c78d-1a03-42fd-9f92-df613360d293\",\"status\":\"fatal_error\",\"entity_id\":2910411250259157,\"record\":null,\"error\":\"PRODUCT_NOT_FOUND\"}",
+        "created_at": "2026-10-13T05:47:50.276640+00:00"
+      },
+      {
+        "id": 11,
+        "user_id": 1,
+        "operation_id": "68c35524-aa79-4b9b-9852-832dce6ec704",
+        "result_payload": "{\"operation_id\":\"68c35524-aa79-4b9b-9852-832dce6ec704\",\"status\":\"fatal_error\",\"entity_id\":101757944896215,\"record\":null,\"error\":\"An industry is required before creating a product\"}",
+        "created_at": "2026-10-13T05:48:33.708230+00:00"
+      },
+      {
+        "id": 12,
+        "user_id": 1,
+        "operation_id": "d11563a9-2bf2-48cc-b6d0-dde477ad3324",
+        "result_payload": "{\"operation_id\":\"d11563a9-2bf2-48cc-b6d0-dde477ad3324\",\"status\":\"fatal_error\",\"entity_id\":101757944896215,\"record\":null,\"error\":\"PRODUCT_NOT_FOUND\"}",
+        "created_at": "2026-10-13T05:48:42.914603+00:00"
+      },
+      {
+        "id": 13,
+        "user_id": 1,
+        "operation_id": "dc7b87cb-ba2d-4176-8d56-382a769b39e1",
+        "result_payload": "{\"operation_id\":\"dc7b87cb-ba2d-4176-8d56-382a769b39e1\",\"status\":\"fatal_error\",\"entity_id\":988194398852993,\"record\":null,\"error\":\"An industry is required before creating a product\"}",
+        "created_at": "2026-10-13T05:49:35.254867+00:00"
+      },
+      {
+        "id": 14,
+        "user_id": 1,
+        "operation_id": "0cf7d036-c7a9-49d9-b8ac-19d9ec30f0bb",
+        "result_payload": "{\"operation_id\":\"0cf7d036-c7a9-49d9-b8ac-19d9ec30f0bb\",\"status\":\"fatal_error\",\"entity_id\":778684510501935,\"record\":null,\"error\":\"An industry is required before creating a product\"}",
+        "created_at": "2026-10-13T05:49:44.421001+00:00"
+      },
+      {
+        "id": 15,
+        "user_id": 1,
+        "operation_id": "f56c09dc-a0fd-4c4f-b3bd-e37b4c0e4764",
+        "result_payload": "{\"operation_id\":\"f56c09dc-a0fd-4c4f-b3bd-e37b4c0e4764\",\"status\":\"fatal_error\",\"entity_id\":988194398852993,\"record\":null,\"error\":\"PRODUCT_NOT_FOUND\"}",
+        "created_at": "2026-10-13T05:49:52.141027+00:00"
+      },
+      {
+        "id": 16,
+        "user_id": 1,
+        "operation_id": "6afae1b7-530d-46db-a31e-152efa3882a8",
+        "result_payload": "{\"operation_id\":\"6afae1b7-530d-46db-a31e-152efa3882a8\",\"status\":\"fatal_error\",\"entity_id\":778684510501935,\"record\":null,\"error\":\"PRODUCT_NOT_FOUND\"}",
+        "created_at": "2026-10-13T05:49:52.153058+00:00"
+      },
+      {
+        "id": 17,
+        "user_id": 1,
+        "operation_id": "11bcdc07-0af6-4cdc-a864-169199b4e983",
+        "result_payload": "{\"operation_id\":\"11bcdc07-0af6-4cdc-a864-169199b4e983\",\"status\":\"fatal_error\",\"entity_id\":3100063445116576,\"record\":null,\"error\":\"An industry is required before creating a product\"}",
+        "created_at": "2026-10-13T06:18:28.393509+00:00"
+      },
+      {
+        "id": 18,
+        "user_id": 1,
+        "operation_id": "4ac6c348-fa12-4ca8-8ec6-a28d921f8ac1",
+        "result_payload": "{\"operation_id\":\"4ac6c348-fa12-4ca8-8ec6-a28d921f8ac1\",\"status\":\"fatal_error\",\"entity_id\":1237014430696327,\"record\":null,\"error\":\"An industry is required before creating a product\"}",
+        "created_at": "2026-10-13T06:18:34.799532+00:00"
+      },
+      {
+        "id": 19,
+        "user_id": 1,
+        "operation_id": "989465ee-69af-41c3-9eb8-370b4d5a7235",
+        "result_payload": "{\"operation_id\":\"989465ee-69af-41c3-9eb8-370b4d5a7235\",\"status\":\"fatal_error\",\"entity_id\":1237014430696327,\"record\":null,\"error\":\"PRODUCT_NOT_FOUND\"}",
+        "created_at": "2026-10-13T06:18:43.854632+00:00"
+      },
+      {
+        "id": 20,
+        "user_id": 1,
+        "operation_id": "3aff9718-f9da-45bd-83f0-13664597ced4",
+        "result_payload": "{\"operation_id\":\"3aff9718-f9da-45bd-83f0-13664597ced4\",\"status\":\"fatal_error\",\"entity_id\":3100063445116576,\"record\":null,\"error\":\"PRODUCT_NOT_FOUND\"}",
+        "created_at": "2026-10-13T06:18:43.866361+00:00"
+      },
+      {
+        "id": 21,
+        "user_id": 1,
+        "operation_id": "0dba3be1-d9b2-4a54-a54a-91d514bd5de5",
+        "result_payload": "{\"operation_id\":\"0dba3be1-d9b2-4a54-a54a-91d514bd5de5\",\"status\":\"fatal_error\",\"entity_id\":3083168704522511,\"record\":null,\"error\":\"An industry is required before creating a product\"}",
+        "created_at": "2026-10-13T06:19:08.062815+00:00"
+      },
+      {
+        "id": 22,
+        "user_id": 1,
+        "operation_id": "492bd54c-c942-4e9d-adf7-79d9cbbccbae",
+        "result_payload": "{\"operation_id\":\"492bd54c-c942-4e9d-adf7-79d9cbbccbae\",\"status\":\"fatal_error\",\"entity_id\":3486749451280639,\"record\":null,\"error\":\"An industry is required before creating a product\"}",
+        "created_at": "2026-10-13T06:19:14.949955+00:00"
+      },
+      {
+        "id": 23,
+        "user_id": 1,
+        "operation_id": "2b73bcdf-de55-4cbf-a62a-b00db627fa08",
+        "result_payload": "{\"operation_id\":\"2b73bcdf-de55-4cbf-a62a-b00db627fa08\",\"status\":\"fatal_error\",\"entity_id\":3486749451280639,\"record\":null,\"error\":\"PRODUCT_NOT_FOUND\"}",
+        "created_at": "2026-10-13T06:19:28.035935+00:00"
+      },
+      {
+        "id": 24,
+        "user_id": 1,
+        "operation_id": "ebb7fc01-90d9-4ace-902b-216d1c585351",
+        "result_payload": "{\"operation_id\":\"ebb7fc01-90d9-4ace-902b-216d1c585351\",\"status\":\"fatal_error\",\"entity_id\":3083168704522511,\"record\":null,\"error\":\"PRODUCT_NOT_FOUND\"}",
+        "created_at": "2026-10-13T06:19:28.047253+00:00"
+      },
+      {
+        "id": 25,
+        "user_id": 1,
+        "operation_id": "76b1477d-83e0-4e22-9864-15eb7af73e28",
+        "result_payload": "{\"operation_id\":\"76b1477d-83e0-4e22-9864-15eb7af73e28\",\"status\":\"applied\",\"entity_id\":2910411250259157,\"record\":null,\"error\":null}",
+        "created_at": "2026-10-13T06:29:08.701390+00:00"
+      },
+      {
+        "id": 26,
+        "user_id": 1,
+        "operation_id": "26d808e2-8154-4527-a6fd-fcf6683e8c1b",
+        "result_payload": "{\"operation_id\":\"26d808e2-8154-4527-a6fd-fcf6683e8c1b\",\"status\":\"applied\",\"entity_id\":1817527057334699,\"record\":null,\"error\":null}",
+        "created_at": "2026-10-13T06:40:07.053787+00:00"
+      },
+      {
+        "id": 27,
+        "user_id": 1,
+        "operation_id": "875d9812-63c8-4ec9-8a5b-b3908d945c87",
+        "result_payload": "{\"operation_id\":\"875d9812-63c8-4ec9-8a5b-b3908d945c87\",\"status\":\"applied\",\"entity_id\":2910411250259157,\"record\":null,\"error\":null}",
+        "created_at": "2026-10-13T06:40:07.067361+00:00"
+      },
+      {
+        "id": 28,
+        "user_id": 1,
+        "operation_id": "17c06150-d684-49df-9dd9-0570d7a6ec74",
+        "result_payload": "{\"operation_id\":\"17c06150-d684-49df-9dd9-0570d7a6ec74\",\"status\":\"applied\",\"entity_id\":101757944896215,\"record\":null,\"error\":null}",
+        "created_at": "2026-10-13T06:40:16.900818+00:00"
+      },
+      {
+        "id": 29,
+        "user_id": 1,
+        "operation_id": "0b7e1569-938a-4e93-add6-466345f3c8f1",
+        "result_payload": "{\"operation_id\":\"0b7e1569-938a-4e93-add6-466345f3c8f1\",\"status\":\"applied\",\"entity_id\":988194398852993,\"record\":null,\"error\":null}",
+        "created_at": "2026-10-13T06:40:16.911054+00:00"
+      },
+      {
+        "id": 30,
+        "user_id": 1,
+        "operation_id": "a396322f-24a3-40c4-8182-120d7c626fdd",
+        "result_payload": "{\"operation_id\":\"a396322f-24a3-40c4-8182-120d7c626fdd\",\"status\":\"applied\",\"entity_id\":778684510501935,\"record\":null,\"error\":null}",
+        "created_at": "2026-10-13T06:40:16.921253+00:00"
+      },
+      {
+        "id": 31,
+        "user_id": 1,
+        "operation_id": "b7d29ff7-0b2c-47fc-94af-f591c1c1f7c8",
+        "result_payload": "{\"operation_id\":\"b7d29ff7-0b2c-47fc-94af-f591c1c1f7c8\",\"status\":\"applied\",\"entity_id\":3100063445116576,\"record\":null,\"error\":null}",
+        "created_at": "2026-10-13T06:40:16.931449+00:00"
+      },
+      {
+        "id": 32,
+        "user_id": 1,
+        "operation_id": "975f38c5-d4cc-4528-8ad7-6c87ce6c774d",
+        "result_payload": "{\"operation_id\":\"975f38c5-d4cc-4528-8ad7-6c87ce6c774d\",\"status\":\"applied\",\"entity_id\":1237014430696327,\"record\":null,\"error\":null}",
+        "created_at": "2026-10-13T06:40:16.942690+00:00"
+      },
+      {
+        "id": 33,
+        "user_id": 1,
+        "operation_id": "b0038047-942d-44bb-b539-8bd5ef9a6f58",
+        "result_payload": "{\"operation_id\":\"b0038047-942d-44bb-b539-8bd5ef9a6f58\",\"status\":\"applied\",\"entity_id\":2910411250259157,\"record\":null,\"error\":null}",
+        "created_at": "2026-10-13T06:43:33.948541+00:00"
+      },
+      {
+        "id": 34,
+        "user_id": 1,
+        "operation_id": "b187f986-e5b4-4276-9b6b-efd0771c0551",
+        "result_payload": "{\"operation_id\":\"b187f986-e5b4-4276-9b6b-efd0771c0551\",\"status\":\"applied\",\"entity_id\":1817527057334699,\"record\":null,\"error\":null}",
+        "created_at": "2026-10-13T06:43:33.960261+00:00"
+      },
+      {
+        "id": 35,
+        "user_id": 1,
+        "operation_id": "081c597d-111a-4ef2-9baa-668948be40ac",
+        "result_payload": "{\"operation_id\":\"081c597d-111a-4ef2-9baa-668948be40ac\",\"status\":\"applied\",\"entity_id\":101757944896215,\"record\":null,\"error\":null}",
+        "created_at": "2026-10-13T06:43:33.973202+00:00"
+      },
+      {
+        "id": 36,
+        "user_id": 1,
+        "operation_id": "abd6015b-73e0-43a7-a265-45fee684573e",
+        "result_payload": "{\"operation_id\":\"abd6015b-73e0-43a7-a265-45fee684573e\",\"status\":\"applied\",\"entity_id\":988194398852993,\"record\":null,\"error\":null}",
+        "created_at": "2026-10-13T06:43:33.984159+00:00"
+      },
+      {
+        "id": 37,
+        "user_id": 1,
+        "operation_id": "f02a125d-27fb-47de-8219-11a091305987",
+        "result_payload": "{\"operation_id\":\"f02a125d-27fb-47de-8219-11a091305987\",\"status\":\"applied\",\"entity_id\":778684510501935,\"record\":null,\"error\":null}",
+        "created_at": "2026-10-13T06:43:33.997475+00:00"
+      },
+      {
+        "id": 38,
+        "user_id": 1,
+        "operation_id": "3d9efadf-52c2-4a6f-aa05-240bdd32773c",
+        "result_payload": "{\"operation_id\":\"3d9efadf-52c2-4a6f-aa05-240bdd32773c\",\"status\":\"applied\",\"entity_id\":3100063445116576,\"record\":null,\"error\":null}",
+        "created_at": "2026-10-13T06:43:34.011491+00:00"
+      },
+      {
+        "id": 39,
+        "user_id": 1,
+        "operation_id": "64d3802b-545d-472b-8218-6db9b6456ce7",
+        "result_payload": "{\"operation_id\":\"64d3802b-545d-472b-8218-6db9b6456ce7\",\"status\":\"applied\",\"entity_id\":1237014430696327,\"record\":null,\"error\":null}",
+        "created_at": "2026-10-13T06:43:34.022575+00:00"
+      },
+      {
+        "id": 40,
+        "user_id": 1,
+        "operation_id": "93418580-2d23-4e74-bfbc-eb3ae353a59a",
+        "result_payload": "{\"operation_id\":\"93418580-2d23-4e74-bfbc-eb3ae353a59a\",\"status\":\"fatal_error\",\"entity_id\":3486749451280639,\"record\":null,\"error\":\"An industry is required before creating a product\"}",
+        "created_at": "2026-10-13T13:46:39.695499+00:00"
+      },
+      {
+        "id": 41,
+        "user_id": 1,
+        "operation_id": "b27b4eff-8309-46e9-a419-b8994bcd4ae1",
+        "result_payload": "{\"operation_id\":\"b27b4eff-8309-46e9-a419-b8994bcd4ae1\",\"status\":\"applied\",\"entity_id\":3083168704522511,\"record\":null,\"error\":null}",
+        "created_at": "2026-10-13T13:47:43.631383+00:00"
+      },
+      {
+        "id": 42,
+        "user_id": 1,
+        "operation_id": "d8e67bed-23a0-4ac0-acd9-55a7b87199be",
+        "result_payload": "{\"operation_id\":\"d8e67bed-23a0-4ac0-acd9-55a7b87199be\",\"status\":\"applied\",\"entity_id\":1237014430696327,\"record\":null,\"error\":null}",
+        "created_at": "2026-10-13T13:47:43.645424+00:00"
+      },
+      {
+        "id": 43,
+        "user_id": 1,
+        "operation_id": "6a0bc69f-5896-4c87-80de-604597f29b6c",
+        "result_payload": "{\"operation_id\":\"6a0bc69f-5896-4c87-80de-604597f29b6c\",\"status\":\"applied\",\"entity_id\":3100063445116576,\"record\":null,\"error\":null}",
+        "created_at": "2026-10-13T13:47:43.657348+00:00"
+      },
+      {
+        "id": 44,
+        "user_id": 1,
+        "operation_id": "02396eb8-34e7-416b-8a97-688d20ac1ac7",
+        "result_payload": "{\"operation_id\":\"02396eb8-34e7-416b-8a97-688d20ac1ac7\",\"status\":\"applied\",\"entity_id\":778684510501935,\"record\":null,\"error\":null}",
+        "created_at": "2026-10-13T13:47:43.668736+00:00"
+      },
+      {
+        "id": 45,
+        "user_id": 1,
+        "operation_id": "b75dcef2-b00d-46f8-8ba7-e3349ceac425",
+        "result_payload": "{\"operation_id\":\"b75dcef2-b00d-46f8-8ba7-e3349ceac425\",\"status\":\"applied\",\"entity_id\":988194398852993,\"record\":null,\"error\":null}",
+        "created_at": "2026-10-13T13:47:43.682963+00:00"
+      },
+      {
+        "id": 46,
+        "user_id": 1,
+        "operation_id": "60546592-3188-4ff7-a315-f0e52b29e7cb",
+        "result_payload": "{\"operation_id\":\"60546592-3188-4ff7-a315-f0e52b29e7cb\",\"status\":\"applied\",\"entity_id\":101757944896215,\"record\":null,\"error\":null}",
+        "created_at": "2026-10-13T13:47:43.699325+00:00"
+      },
+      {
+        "id": 47,
+        "user_id": 1,
+        "operation_id": "f3066c93-bb68-45f2-bf1f-4c238b28c3f9",
+        "result_payload": "{\"operation_id\":\"f3066c93-bb68-45f2-bf1f-4c238b28c3f9\",\"status\":\"applied\",\"entity_id\":1817527057334699,\"record\":null,\"error\":null}",
+        "created_at": "2026-10-13T13:47:43.712697+00:00"
+      },
+      {
+        "id": 48,
+        "user_id": 1,
+        "operation_id": "b303daee-6e21-4b0c-8eb5-536f772b42e5",
+        "result_payload": "{\"operation_id\":\"b303daee-6e21-4b0c-8eb5-536f772b42e5\",\"status\":\"applied\",\"entity_id\":2910411250259157,\"record\":null,\"error\":null}",
+        "created_at": "2026-10-13T13:47:43.724094+00:00"
+      },
+      {
+        "id": 49,
+        "user_id": 1,
+        "operation_id": "36bd5e60-0247-4c5f-b508-7f0c921b1618",
+        "result_payload": "{\"operation_id\":\"36bd5e60-0247-4c5f-b508-7f0c921b1618\",\"status\":\"applied\",\"entity_id\":2612005044506674,\"record\":{\"id\":2612005044506674,\"name\":\"البرز\",\"normalized_name\":\"البرز\",\"version\":1,\"created_at\":\"2026-10-14T07:40:57.895373Z\",\"updated_at\":\"2026-10-14T07:40:57.895378Z\"},\"error\":null}",
+        "created_at": "2026-10-14T07:40:57.907044+00:00"
+      }
+    ],
+    "sync_changes": [
+      {
+        "id": 1,
+        "user_id": 1,
+        "entity": "product",
+        "entity_id": 2910411250259157,
+        "operation": "DELETE",
+        "payload": null,
+        "created_at": "2026-10-13T06:29:08.694934+00:00"
+      },
+      {
+        "id": 2,
+        "user_id": 1,
+        "entity": "product",
+        "entity_id": 1817527057334699,
+        "operation": "DELETE",
+        "payload": null,
+        "created_at": "2026-10-13T06:40:07.051533+00:00"
+      },
+      {
+        "id": 3,
+        "user_id": 1,
+        "entity": "product",
+        "entity_id": 2910411250259157,
+        "operation": "DELETE",
+        "payload": null,
+        "created_at": "2026-10-13T06:40:07.065077+00:00"
+      },
+      {
+        "id": 4,
+        "user_id": 1,
+        "entity": "product",
+        "entity_id": 101757944896215,
+        "operation": "DELETE",
+        "payload": null,
+        "created_at": "2026-10-13T06:40:16.899299+00:00"
+      },
+      {
+        "id": 5,
+        "user_id": 1,
+        "entity": "product",
+        "entity_id": 988194398852993,
+        "operation": "DELETE",
+        "payload": null,
+        "created_at": "2026-10-13T06:40:16.909409+00:00"
+      },
+      {
+        "id": 6,
+        "user_id": 1,
+        "entity": "product",
+        "entity_id": 778684510501935,
+        "operation": "DELETE",
+        "payload": null,
+        "created_at": "2026-10-13T06:40:16.919992+00:00"
+      },
+      {
+        "id": 7,
+        "user_id": 1,
+        "entity": "product",
+        "entity_id": 3100063445116576,
+        "operation": "DELETE",
+        "payload": null,
+        "created_at": "2026-10-13T06:40:16.930121+00:00"
+      },
+      {
+        "id": 8,
+        "user_id": 1,
+        "entity": "product",
+        "entity_id": 1237014430696327,
+        "operation": "DELETE",
+        "payload": null,
+        "created_at": "2026-10-13T06:40:16.941105+00:00"
+      },
+      {
+        "id": 9,
+        "user_id": 1,
+        "entity": "product",
+        "entity_id": 2910411250259157,
+        "operation": "DELETE",
+        "payload": null,
+        "created_at": "2026-10-13T06:43:33.947058+00:00"
+      },
+      {
+        "id": 10,
+        "user_id": 1,
+        "entity": "product",
+        "entity_id": 1817527057334699,
+        "operation": "DELETE",
+        "payload": null,
+        "created_at": "2026-10-13T06:43:33.959110+00:00"
+      },
+      {
+        "id": 11,
+        "user_id": 1,
+        "entity": "product",
+        "entity_id": 101757944896215,
+        "operation": "DELETE",
+        "payload": null,
+        "created_at": "2026-10-13T06:43:33.970465+00:00"
+      },
+      {
+        "id": 12,
+        "user_id": 1,
+        "entity": "product",
+        "entity_id": 988194398852993,
+        "operation": "DELETE",
+        "payload": null,
+        "created_at": "2026-10-13T06:43:33.982508+00:00"
+      },
+      {
+        "id": 13,
+        "user_id": 1,
+        "entity": "product",
+        "entity_id": 778684510501935,
+        "operation": "DELETE",
+        "payload": null,
+        "created_at": "2026-10-13T06:43:33.996146+00:00"
+      },
+      {
+        "id": 14,
+        "user_id": 1,
+        "entity": "product",
+        "entity_id": 3100063445116576,
+        "operation": "DELETE",
+        "payload": null,
+        "created_at": "2026-10-13T06:43:34.009430+00:00"
+      },
+      {
+        "id": 15,
+        "user_id": 1,
+        "entity": "product",
+        "entity_id": 1237014430696327,
+        "operation": "DELETE",
+        "payload": null,
+        "created_at": "2026-10-13T06:43:34.021269+00:00"
+      },
+      {
+        "id": 16,
+        "user_id": 1,
+        "entity": "product",
+        "entity_id": 3083168704522511,
+        "operation": "DELETE",
+        "payload": null,
+        "created_at": "2026-10-13T13:47:43.625356+00:00"
+      },
+      {
+        "id": 17,
+        "user_id": 1,
+        "entity": "product",
+        "entity_id": 1237014430696327,
+        "operation": "DELETE",
+        "payload": null,
+        "created_at": "2026-10-13T13:47:43.643772+00:00"
+      },
+      {
+        "id": 18,
+        "user_id": 1,
+        "entity": "product",
+        "entity_id": 3100063445116576,
+        "operation": "DELETE",
+        "payload": null,
+        "created_at": "2026-10-13T13:47:43.655486+00:00"
+      },
+      {
+        "id": 19,
+        "user_id": 1,
+        "entity": "product",
+        "entity_id": 778684510501935,
+        "operation": "DELETE",
+        "payload": null,
+        "created_at": "2026-10-13T13:47:43.666770+00:00"
+      },
+      {
+        "id": 20,
+        "user_id": 1,
+        "entity": "product",
+        "entity_id": 988194398852993,
+        "operation": "DELETE",
+        "payload": null,
+        "created_at": "2026-10-13T13:47:43.680910+00:00"
+      },
+      {
+        "id": 21,
+        "user_id": 1,
+        "entity": "product",
+        "entity_id": 101757944896215,
+        "operation": "DELETE",
+        "payload": null,
+        "created_at": "2026-10-13T13:47:43.696460+00:00"
+      },
+      {
+        "id": 22,
+        "user_id": 1,
+        "entity": "product",
+        "entity_id": 1817527057334699,
+        "operation": "DELETE",
+        "payload": null,
+        "created_at": "2026-10-13T13:47:43.711241+00:00"
+      },
+      {
+        "id": 23,
+        "user_id": 1,
+        "entity": "product",
+        "entity_id": 2910411250259157,
+        "operation": "DELETE",
+        "payload": null,
+        "created_at": "2026-10-13T13:47:43.722569+00:00"
+      }
+    ]
+  }
+}
