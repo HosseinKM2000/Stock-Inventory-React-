@@ -1255,5 +1255,145 @@ class SyncApiTest(unittest.TestCase):
             db.commit()
 
 
+class SyncWithoutIndustryTest(unittest.TestCase):
+    """An account that never chose an industry must still keep its records."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        Base.metadata.create_all(bind=engine)
+        with SessionLocal() as db:
+            seed_default_plans(db)
+            ensure_system_admin(db)
+
+        cls.client = TestClient(app)
+        signup = cls.client.post(
+            "/api/auth/signup",
+            json={
+                "first_name": "No",
+                "last_name": "Industry",
+                "username": "no-industry-sync-test",
+                "password": "StrongPass123!",
+                "device_fingerprint": "no-industry-device",
+            },
+        )
+        assert signup.status_code == 201, signup.text
+        cls.user_id = signup.json()["user"]["id"]
+        cls.headers = {
+            "Authorization": f"Bearer {signup.json()['access_token']}",
+            "X-Device-Fingerprint": "no-industry-device",
+        }
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.client.close()
+        # Windows keeps the SQLite file locked while a connection survives, so
+        # the session-level temporary database cannot be removed otherwise.
+        engine.dispose()
+
+    def test_product_creation_falls_back_to_the_default_industry(self) -> None:
+        with SessionLocal() as db:
+            user = db.get(User, self.user_id)
+            self.assertIsNone(user.industry_id)
+
+        entity_id = 1_900_000_000_101
+        response = self.client.post(
+            "/api/sync/batch",
+            headers=self.headers,
+            data={
+                "operations_json": json.dumps(
+                    {
+                        "operations": [
+                            {
+                                "operation_id": "no-industry-create-1",
+                                "entity": "product",
+                                "entity_id": entity_id,
+                                "operation": "CREATE",
+                                "payload": {
+                                    "quantity": 7,
+                                    "price": 1500,
+                                    "custom_label": "Recovered stock",
+                                    "low_stock_threshold": 2,
+                                    "low_stock_alert": True,
+                                    "is_hidden": False,
+                                    "version": 1,
+                                },
+                            }
+                        ]
+                    }
+                )
+            },
+        )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        result = response.json()["results"][0]
+        self.assertEqual(result["status"], "applied", response.text)
+
+        with SessionLocal() as db:
+            user = db.get(User, self.user_id)
+            self.assertIsNotNone(user.industry_id)
+            industry = db.get(Industry, user.industry_id)
+            self.assertEqual(industry.name, "عمومی")
+
+            item = db.scalar(
+                select(InventoryItem).where(InventoryItem.id == entity_id)
+            )
+            self.assertIsNotNone(item)
+            self.assertEqual(item.quantity, 7)
+
+    def test_the_fallback_industry_is_reused_rather_than_duplicated(self) -> None:
+        second = self.client.post(
+            "/api/auth/signup",
+            json={
+                "first_name": "Another",
+                "last_name": "Industryless",
+                "username": "no-industry-sync-test-2",
+                "password": "StrongPass123!",
+                "device_fingerprint": "no-industry-device-2",
+            },
+        )
+        self.assertEqual(second.status_code, 201, second.text)
+        headers = {
+            "Authorization": f"Bearer {second.json()['access_token']}",
+            "X-Device-Fingerprint": "no-industry-device-2",
+        }
+
+        response = self.client.post(
+            "/api/sync/batch",
+            headers=headers,
+            data={
+                "operations_json": json.dumps(
+                    {
+                        "operations": [
+                            {
+                                "operation_id": "no-industry-create-2",
+                                "entity": "product",
+                                "entity_id": 1_900_000_000_202,
+                                "operation": "CREATE",
+                                "payload": {
+                                    "quantity": 1,
+                                    "price": 100,
+                                    "custom_label": "Second account stock",
+                                    "low_stock_threshold": 1,
+                                    "low_stock_alert": False,
+                                    "is_hidden": False,
+                                    "version": 1,
+                                },
+                            }
+                        ]
+                    }
+                )
+            },
+        )
+
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["results"][0]["status"], "applied")
+
+        with SessionLocal() as db:
+            defaults = db.scalars(
+                select(Industry).where(Industry.name == "عمومی")
+            ).all()
+            self.assertEqual(len(defaults), 1)
+
+
 if __name__ == "__main__":
     unittest.main()

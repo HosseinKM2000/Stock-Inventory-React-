@@ -14,6 +14,7 @@ dist-ssr
 coverage/
 playwright-report/
 test-results/
+backend/downloaded_files/
 backend/.coverage
 backend/htmlcov/
 backend/coverage/
@@ -32,3 +33,5 @@ backend/coverage/
 *.njsproj
 *.sln
 *.sw?
+# Local Claude Code tooling (contains deployment host details)
+.claude/

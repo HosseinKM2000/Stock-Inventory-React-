@@ -12,6 +12,7 @@ from ..deps import CurrentUser, CurrentWritableUser, DbSession
 from ..models import (
     CatalogProduct,
     Category,
+    Industry,
     InventoryItem,
     InventoryTransaction,
     SyncChange,
@@ -39,6 +40,30 @@ _IMAGE_EXTENSIONS = {
     "image/gif": ".gif",
 }
 _MAX_IMAGE_BYTES = 10 * 1024 * 1024
+
+DEFAULT_INDUSTRY_NAME = "عمومی"
+DEFAULT_INDUSTRY_DESCRIPTION = (
+    "Automatically assigned when an account synchronizes before choosing an "
+    "industry. Accounts can be moved to a specific industry at any time."
+)
+
+
+def _default_industry(db: DbSession) -> Industry:
+    """Return the fallback industry, creating it on first use."""
+    industry = db.scalar(
+        select(Industry).where(
+            func.lower(Industry.name) == DEFAULT_INDUSTRY_NAME.lower()
+        )
+    )
+    if industry is None:
+        industry = Industry(
+            name=DEFAULT_INDUSTRY_NAME,
+            description=DEFAULT_INDUSTRY_DESCRIPTION,
+            is_active=True,
+        )
+        db.add(industry)
+        db.flush()
+    return industry
 
 
 def _serialize(item: InventoryItem) -> dict:
@@ -86,7 +111,13 @@ def _catalog_for_operation(
         raise ValueError("CATALOG_PRODUCT_NOT_AVAILABLE")
 
     if user.industry_id is None:
-        raise ValueError("An industry is required before creating a product")
+        # Rejecting the operation here used to strand the client's queued work
+        # permanently: the outbox marks the failure fatal and never retries it,
+        # so locally captured stock never reached the server. A missing
+        # industry is a setup gap, not invalid data, so the account adopts the
+        # fallback industry and keeps its records.
+        user.industry_id = _default_industry(db).id
+        db.flush()
 
     name = catalog_payload.get("name") or payload.get("custom_label")
     if not isinstance(name, str) or not name.strip():
