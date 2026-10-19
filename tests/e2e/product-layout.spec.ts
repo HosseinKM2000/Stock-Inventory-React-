@@ -380,12 +380,19 @@ test("desktop product cards keep long content and packaged stock controls aligne
   const gridTitle = gridCard.locator(".inventory-grid-title");
   const gridPrice = gridCard.locator(".inventory-card-price");
   const gridQuick = gridCard.locator(".inventory-card-quick");
+  const gridMediaBox = (await gridCard.locator(".inventory-card-media").boundingBox())!;
+  const gridStatus = gridCard.locator(".inventory-card-image-status");
+  const gridActionsBox = (await gridCard.locator(".inventory-card-mobile-actions").boundingBox())!;
   const gridTitleBox = (await gridTitle.boundingBox())!;
   const gridPriceBox = (await gridPrice.boundingBox())!;
   const gridCardBox = (await gridCard.boundingBox())!;
   const gridQuickBox = (await gridQuick.boundingBox())!;
+  expect(gridMediaBox.width / gridMediaBox.height).toBeGreaterThan(2);
+  expect(gridMediaBox.width / gridCardBox.width).toBeGreaterThan(.9);
+  await expect(gridStatus).toBeVisible();
   expect(await gridTitle.evaluate((element) => getComputedStyle(element).whiteSpace)).not.toBe("nowrap");
   expect(boxesOverlap(gridTitleBox, gridPriceBox)).toBe(false);
+  expect(gridActionsBox.y + gridActionsBox.height).toBeLessThanOrEqual(gridQuickBox.y);
   expect(gridQuickBox.x).toBeGreaterThanOrEqual(gridCardBox.x);
   expect(gridQuickBox.x + gridQuickBox.width).toBeLessThanOrEqual(gridCardBox.x + gridCardBox.width + 1);
 

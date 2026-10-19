@@ -2519,46 +2519,56 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
     min-height: 40px;
   }
 
-  .inventory-card--grid .rt-CardInner { padding: 0; }
   .inventory-card--grid .inventory-card-layout {
-    display: grid !important;
-    grid-template-columns: 108px minmax(0, 1fr);
-    grid-template-areas:
-      "image content"
-      "quick quick";
+    display: flex !important;
+    flex-direction: column;
     min-height: 0;
     gap: 0;
     padding: 8px;
   }
   .inventory-card--grid .inventory-card-media {
-    grid-area: image;
-    width: 108px;
-    align-self: start;
-    border-radius: 8px;
+    width: 100%;
+    border-radius: 10px;
   }
   .inventory-card--grid .inventory-card-image {
-    width: 108px;
-    height: 108px;
-    min-height: 108px;
-    aspect-ratio: 1;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    aspect-ratio: 2.65 / 1;
   }
-  .inventory-card--grid .inventory-card-image-status { display: none !important; }
+  .inventory-card--grid .inventory-card-image-status {
+    display: inline-flex !important;
+    top: 9px;
+    left: 9px;
+    min-height: 27px;
+    padding-inline: 8px;
+    border-radius: 7px;
+    font-size: .75rem;
+    backdrop-filter: none;
+  }
+  .inventory-card--grid .inventory-card-image-status svg { width: 14px; height: 14px; }
   .inventory-card--grid .inventory-card-content {
-    grid-area: content;
-    display: flex !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas: "identity commerce";
+    align-items: start;
     min-width: 0;
-    min-height: 108px;
-    gap: 4px;
-    padding: 2px 10px 2px 0 !important;
+    min-height: 0;
+    gap: 8px 10px;
+    padding: 10px 6px 8px !important;
   }
-  .inventory-card--grid .inventory-card-identity { min-width: 0; gap: 2px; }
+  .inventory-card--grid .inventory-card-identity {
+    grid-area: identity;
+    min-width: 0;
+    gap: 3px;
+  }
   .inventory-card--grid .inventory-card-identity > .rt-Flex { min-width: 0; }
   .inventory-card--grid .inventory-grid-title {
     display: -webkit-box;
     min-width: 0;
     overflow: hidden;
-    font-size: .95rem !important;
-    line-height: 1.45;
+    font-size: 1rem !important;
+    line-height: 1.4;
     text-overflow: ellipsis;
     white-space: normal;
     overflow-wrap: anywhere;
@@ -2567,28 +2577,26 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
   }
   .inventory-card--grid .inventory-card-mobile-meta {
     min-width: 0;
-    margin-top: 1px;
-    gap: 0;
+    margin-top: 2px;
+    gap: 1px;
   }
   .inventory-card--grid .inventory-card-mobile-meta .rt-Text {
     min-width: 0;
     overflow: hidden;
-    font-size: .78rem;
-    line-height: 1.35;
+    font-size: .82rem;
+    line-height: 1.4;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
   .inventory-card--grid .inventory-card-description { display: none !important; }
-  .inventory-card--grid .inventory-card-stock-details {
-    display: flex !important;
-    margin-top: auto;
-    font-size: .75rem;
-  }
+  .inventory-card--grid .inventory-card-stock-details { display: none !important; }
+  .inventory-card--grid .inventory-card-mobile-status { display: none !important; }
   .inventory-card--grid .inventory-card-footer {
+    grid-area: commerce;
     flex-direction: column;
-    align-items: stretch;
-    gap: 5px !important;
-    padding-top: 2px;
+    align-items: flex-start;
+    gap: 8px !important;
+    padding-top: 0;
   }
   .inventory-card--grid .inventory-card-footer > .rt-Flex:first-child {
     min-width: 0;
@@ -2597,10 +2605,10 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
   }
   .inventory-card--grid .inventory-card-price {
     max-width: 100%;
-    height: 27px;
-    min-height: 27px;
-    padding-inline: 7px !important;
-    font-size: .75rem;
+    height: 30px;
+    min-height: 30px;
+    padding-inline: 6px !important;
+    font-size: .8rem;
   }
   .inventory-card--grid .inventory-card-purchase-price { display: none !important; }
   .inventory-card--grid .inventory-card-mobile-actions {
@@ -2620,17 +2628,16 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
     border-radius: 7px;
   }
   .inventory-card--grid .inventory-card-controls {
-    grid-area: quick;
     display: block;
     width: 100%;
     min-width: 0;
     min-height: 0;
-    padding-top: 7px;
+    padding-top: 0;
   }
   .inventory-card--grid .inventory-card-quick {
     position: static;
     width: 100%;
-    padding-top: 7px;
+    padding-top: 8px;
     border-width: 1px 0 0;
     background: transparent !important;
   }
@@ -2645,29 +2652,31 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
     padding: 0;
     flex: 0 1 96px;
   }
-  .inventory-card--grid .quick-stock-mode .rt-SelectTrigger { height: 38px; }
+  .inventory-card--grid .quick-stock-mode .rt-SelectTrigger { height: 42px; }
   .inventory-card--grid .quick-stock-control {
     display: grid !important;
-    grid-template-columns: minmax(38px, 1fr) 42px minmax(38px, 1fr);
+    grid-template-columns: minmax(44px, 1fr) minmax(50px, .72fr) minmax(44px, 1fr);
     width: auto;
     min-width: 0;
-    min-height: 38px;
+    min-height: 42px;
     padding: 0;
     gap: 4px !important;
     flex: 1 1 auto;
   }
   .inventory-card--grid .quick-stock-button {
     width: 100% !important;
-    min-width: 38px;
+    min-width: 44px;
     max-width: none;
-    height: 38px;
-    min-height: 38px;
-    border-radius: 7px;
+    height: 42px;
+    min-height: 42px;
+    border-radius: 8px;
   }
   .inventory-card--grid .quick-stock-quantity {
-    width: 42px;
-    min-width: 42px;
-    min-height: 38px;
+    width: auto;
+    min-width: 50px;
+    min-height: 42px;
+    border-radius: 8px;
+    background: var(--gray-a2);
   }
   .inventory-card--grid .inventory-card-desktop-end { display: none !important; }
 
