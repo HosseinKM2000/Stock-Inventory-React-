@@ -84,6 +84,8 @@ test("standard navigation separates Settings and Tools with contextual back beha
   await expect(page.getByRole("link", { name: /پروفایل/ })).toHaveAttribute("href", "/setting/profile");
   await expect(page.getByRole("link", { name: /اشتراک/ })).toHaveAttribute("href", "/setting/subscription");
   await expect(page.getByRole("button", { name: "بازگشت" })).toBeVisible();
+  await expect(header.getByRole("button", { name: "بازگشت" })).toHaveCount(0);
+  await expect(page.locator(".page-guide").getByRole("button", { name: "بازگشت" })).toBeVisible();
 
   await page.goto("/tools");
   await expect(page.getByRole("heading", { name: "ابزارها" })).toBeVisible();
@@ -117,7 +119,7 @@ test("settings and tools share a neutral responsive guide for roots and descenda
     await page.goto(path);
     const guide = page.locator(".page-guide");
     await expect(guide).toHaveAttribute("data-root", "true");
-    await expect(guide.locator(".page-guide-context")).toBeVisible();
+    await expect(guide.locator(".page-guide-context")).toHaveCount(0);
     rootStyles.push(await guide.evaluate((element) => {
       const icon = element.querySelector<HTMLElement>(".page-guide-page-icon")!;
       const description = element.querySelector<HTMLElement>(".page-guide-description")!;
@@ -162,7 +164,7 @@ test("settings and tools share a neutral responsive guide for roots and descenda
   await expect(descendant.locator(".page-guide-title")).toBeVisible();
 });
 
-test("administrators receive a fixed Management shortcut above the menu without contextual back controls", async ({ page }) => {
+test("administrators receive a polished fixed Management shortcut and guided management pages", async ({ page }) => {
   await seedAuthenticatedUser(page, "ADMIN");
   await page.goto("/dashboard");
   const navigation = page.getByRole("navigation", { name: "ناوبری اصلی" });
@@ -174,15 +176,22 @@ test("administrators receive a fixed Management shortcut above the menu without 
   const shortcutBox = await managementShortcut.boundingBox();
   const navigationBox = await navigation.boundingBox();
   expect(shortcutBox!.y + shortcutBox!.height).toBeLessThanOrEqual(navigationBox!.y + 1);
+  expect(Math.abs(shortcutBox!.width - shortcutBox!.height)).toBeLessThanOrEqual(1);
 
   await page.goto("/management");
   await expect(page.getByRole("heading", { name: "مدیریت" })).toBeVisible();
-  await expect(page.getByRole("button", { name: "بازگشت" })).toHaveCount(0);
+  const managementGuide = page.locator(".page-guide");
+  await expect(managementGuide).toHaveAttribute("data-root", "true");
+  await expect(managementGuide.getByRole("button", { name: "بازگشت" })).toBeVisible();
   await expect(page.getByRole("link", { name: /مدیریت اشتراک‌ها/ })).toHaveAttribute(
     "href",
     "/management/subscriptions",
   );
   await expect(page.getByRole("link", { name: /کاربران/ })).toHaveAttribute("href", "/management/users");
+
+  await page.goto("/management/users");
+  await expect(page.locator(".page-guide")).toHaveAttribute("data-root", "false");
+  await expect(page.locator(".page-guide-section")).toHaveAttribute("href", "/management");
 });
 
 test("application navigation has no horizontal overflow at narrow and desktop widths", async ({ page }) => {

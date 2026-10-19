@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Cross2Icon, MagnifyingGlassIcon } from "@radix-ui/react-icons";
+import { ChevronDownIcon, Cross2Icon, MagnifyingGlassIcon } from "@radix-ui/react-icons";
 import { Checkbox, Flex, Popover, Text, TextField } from "@radix-ui/themes";
 import { Button } from "@/shared/ui/button/button";
 import type { Label } from "@/features/setting/types";
@@ -34,7 +34,7 @@ export function LabelFilter({ labels, selectedIds, onToggle, onRemove, onClear, 
         <Button type="button" variant="soft" className="inventory-filter-button inventory-label-filter-trigger" aria-label="فیلتر محصولات بر اساس برچسب">
           <span>{selectedIds.length ? "برچسب‌ها" : emptyLabel}</span>
           {selectedIds.length ? <Text size="1">{selectedIds.length.toLocaleString("fa-IR")}</Text> : null}
-          <span className="inventory-filter-chevron" aria-hidden="true" />
+          <ChevronDownIcon className="inventory-filter-chevron-icon" aria-hidden="true" />
         </Button>
       </Popover.Trigger>
       <Popover.Content width="min(320px, calc(100vw - 2rem))" dir="rtl">
@@ -64,7 +64,7 @@ export function LabelFilter({ labels, selectedIds, onToggle, onRemove, onClear, 
         type="button"
         size="1"
         variant="soft"
-        color="violet"
+        color="gray"
         aria-label={`حذف برچسب ${label.name} از فیلتر`}
         onClick={() => onRemove(label.id)}
       >{label.name}<Cross2Icon /></Button>)}

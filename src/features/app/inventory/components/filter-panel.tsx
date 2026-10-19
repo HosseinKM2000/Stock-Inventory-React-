@@ -16,7 +16,7 @@ import {
   X,
 } from "lucide-react";
 
-import { Dialog, Flex, IconButton, Popover, RadioGroup, Select, Switch, Text } from "@radix-ui/themes";
+import { Dialog, IconButton, Select, Switch, Text } from "@radix-ui/themes";
 
 import type { ProductSort } from "../types";
 import type { ProductViewMode } from "../services/inventory-list-preferences";
@@ -155,27 +155,13 @@ export default function FilterPanel({
               <div className="inventory-filter-dialog-field">
                 <Text as="span" weight="bold" className="inventory-filter-dialog-label">مرتب‌سازی</Text>
                 <div className="inventory-filter-control inventory-sort-control">
-                  <Popover.Root>
-                    <Popover.Trigger>
-                      <Button type="button" variant="soft" className="inventory-filter-button">
-                        <ArrowUpDown className="inventory-filter-leading-icon" size={25} strokeWidth={1.8} aria-hidden="true" />
-                        <span>{SORT_LABELS[sort]}</span>
-                        <span className="inventory-filter-chevron" aria-hidden="true" />
-                      </Button>
-                    </Popover.Trigger>
-                    <Popover.Content width="280px" className="inventory-sort-popover">
-                      <RadioGroup.Root value={sort} onValueChange={(value) => setSort(value as ProductSort)}>
-                        <Flex direction="column" gap="3" align="end">
-                          {(Object.keys(SORT_LABELS) as ProductSort[]).map((key) => (
-                            <Flex key={key} align="center" gap="2">
-                              <Text size="2" weight="bold">{SORT_LABELS[key]}</Text>
-                              <RadioGroup.Item value={key} />
-                            </Flex>
-                          ))}
-                        </Flex>
-                      </RadioGroup.Root>
-                    </Popover.Content>
-                  </Popover.Root>
+                  <ArrowUpDown className="inventory-filter-leading-icon" size={25} strokeWidth={1.8} aria-hidden="true" />
+                  <Select.Root value={sort} onValueChange={(value) => setSort(value as ProductSort)}>
+                    <Select.Trigger aria-label="مرتب‌سازی محصولات در پنجره فیلترها" className="inventory-filter-select" />
+                    <Select.Content>
+                      {(Object.keys(SORT_LABELS) as ProductSort[]).map((key) => <Select.Item key={key} value={key}>{SORT_LABELS[key]}</Select.Item>)}
+                    </Select.Content>
+                  </Select.Root>
                 </div>
               </div>
 
@@ -229,6 +215,12 @@ export default function FilterPanel({
         />
       </label>
 
+      <label className="inventory-catalog-filter">
+        <EyeOff size={21} strokeWidth={1.8} aria-hidden="true" />
+        <Text as="span" size="2" weight="medium">مخفی کردن کاتالوگ</Text>
+        <Switch checked={catalogProductsHidden} onCheckedChange={onCatalogVisibilityChange} aria-label="مخفی کردن محصولات کاتالوگ" />
+      </label>
+
       <div className="inventory-filter-row">
         <div className="inventory-filter-control inventory-category-control">
           <Box className="inventory-filter-leading-icon" size={25} strokeWidth={1.8} aria-hidden="true" />
@@ -242,27 +234,13 @@ export default function FilterPanel({
         </div>
 
         <div className="inventory-filter-control inventory-sort-control">
-          <Popover.Root>
-            <Popover.Trigger>
-              <Button type="button" variant="soft" className="inventory-filter-button">
-                <ArrowUpDown className="inventory-filter-leading-icon" size={25} strokeWidth={1.8} aria-hidden="true" />
-                <span>{SORT_LABELS[sort]}</span>
-                <span className="inventory-filter-chevron" aria-hidden="true" />
-              </Button>
-            </Popover.Trigger>
-            <Popover.Content width="280px" className="inventory-sort-popover">
-              <RadioGroup.Root value={sort} onValueChange={(value) => setSort(value as ProductSort)}>
-                <Flex direction="column" gap="3" align="end">
-                  {(Object.keys(SORT_LABELS) as ProductSort[]).map((key) => (
-                    <Flex key={key} align="center" gap="2">
-                      <Text size="2" weight="bold">{SORT_LABELS[key]}</Text>
-                      <RadioGroup.Item value={key} />
-                    </Flex>
-                  ))}
-                </Flex>
-              </RadioGroup.Root>
-            </Popover.Content>
-          </Popover.Root>
+          <ArrowUpDown className="inventory-filter-leading-icon" size={25} strokeWidth={1.8} aria-hidden="true" />
+          <Select.Root value={sort} onValueChange={(value) => setSort(value as ProductSort)}>
+            <Select.Trigger aria-label="مرتب‌سازی محصولات" className="inventory-filter-select" />
+            <Select.Content>
+              {(Object.keys(SORT_LABELS) as ProductSort[]).map((key) => <Select.Item key={key} value={key}>{SORT_LABELS[key]}</Select.Item>)}
+            </Select.Content>
+          </Select.Root>
         </div>
 
         <div className="inventory-filter-control inventory-label-control">
@@ -270,11 +248,6 @@ export default function FilterPanel({
           <LabelFilter labels={labels} selectedIds={selectedLabelIds} onToggle={onToggleLabel} onRemove={onRemoveLabel} onClear={onClearLabels} />
         </div>
 
-        <label className="inventory-catalog-filter">
-          <EyeOff size={25} strokeWidth={1.8} aria-hidden="true" />
-          <Text as="span" size="3" weight="medium">مخفی کردن کاتالوگ</Text>
-          <Switch checked={catalogProductsHidden} onCheckedChange={onCatalogVisibilityChange} aria-label="مخفی کردن محصولات کاتالوگ" />
-        </label>
       </div>
     </div>
   );

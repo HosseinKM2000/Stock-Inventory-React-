@@ -27,7 +27,7 @@ import RestoreCatalogDialog from "./restore-catalog-dialog";
 import { formatJalaliDate } from "@/shared/lib/date/jalali";
 
 
-const Catalogs = () => {
+const Catalogs = ({ hideHeading = false }: { hideHeading?: boolean }) => {
   const [industryId, setIndustryId] = useState<number | undefined>();
   const [search, setSearch] = useState("");
   const [catalogState, setCatalogState] = useState<"active" | "archived">("active");
@@ -69,10 +69,10 @@ const Catalogs = () => {
   return (
     <Box className="space-y-6">
       <Flex justify="between" align="center" gap="3" wrap="wrap">
-        <Box>
+        {!hideHeading ? <Box>
           <Text as="div" size="6" weight="bold">کاتالوگ محصولات</Text>
           <Text as="div" size="2" color="gray" mt="1">مدیریت محصولات مشترک حوزه‌های کاری</Text>
-        </Box>
+        </Box> : <span />}
 
         <CatalogFormDialog
           mode="create"

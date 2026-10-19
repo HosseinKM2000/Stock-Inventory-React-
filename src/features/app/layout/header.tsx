@@ -1,54 +1,10 @@
-import { ArrowRightIcon } from "@radix-ui/react-icons";
-import { Flex, IconButton, Text } from "@radix-ui/themes";
-import { useNavigate, useRouter, useRouterState } from "@tanstack/react-router";
-import { useEffect, useRef } from "react";
+import { Flex, Text } from "@radix-ui/themes";
 
 import { NotificationPanel } from "@/features/notifications/components/notification-panel";
 import { BackupShortcut } from "@/features/backup/components/backup-shortcut";
-import { contextualBackFallback, contextualSection } from "@/shared/lib/navigation/contextual-back";
 import ConnectionStatus from "./connection-status";
 
-const CURRENT_PATH_KEY = "tanzim-navigation-current-path";
-
-function readPreviousPath(pathname: string) {
-  try {
-    const current = sessionStorage.getItem(CURRENT_PATH_KEY);
-    return current && current !== pathname ? current : null;
-  } catch {
-    return null;
-  }
-}
-
 const Header = () => {
-  const router = useRouter();
-  const navigate = useNavigate();
-  const pathname = useRouterState({ select: (state) => state.location.pathname });
-  const previousPath = useRef(readPreviousPath(pathname));
-  const section = contextualSection(pathname);
-
-  useEffect(() => {
-    try {
-      const current = sessionStorage.getItem(CURRENT_PATH_KEY);
-      if (current && current !== pathname) previousPath.current = current;
-      sessionStorage.setItem(CURRENT_PATH_KEY, pathname);
-    } catch {
-      previousPath.current = null;
-    }
-  }, [pathname]);
-
-  const goBack = () => {
-    const hasSafeInAppHistory =
-      router.history.canGoBack() &&
-      previousPath.current?.startsWith("/") &&
-      !previousPath.current.startsWith("/auth");
-
-    if (hasSafeInAppHistory) {
-      router.history.back();
-      return;
-    }
-    void navigate({ to: contextualBackFallback(pathname) });
-  };
-
   return (
     <header
       dir="ltr"
@@ -57,11 +13,6 @@ const Header = () => {
       <Flex align="center" justify="start" gap="2" className="app-header-left min-w-0">
         <BackupShortcut />
         <ConnectionStatus />
-        {section && (
-          <IconButton size="2" color="gray" variant="ghost" aria-label="بازگشت" onClick={goBack}>
-            <ArrowRightIcon width="20" height="20" />
-          </IconButton>
-        )}
       </Flex>
 
       <Text size="3" weight="bold" className="app-header-title whitespace-nowrap text-center">

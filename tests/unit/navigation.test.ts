@@ -69,14 +69,15 @@ describe("navigation metadata", () => {
   });
 });
 
-describe("contextual header back navigation", () => {
+describe("contextual page-guide back navigation", () => {
   it.each([
     ["/setting", "settings"],
     ["/setting/profile", "settings"],
     ["/tools", "tools"],
     ["/tools/export", "tools"],
     ["/dashboard", null],
-    ["/management", null],
+    ["/management", "management"],
+    ["/management/users", "management"],
   ])("scopes %s to %s", (pathname, section) => {
     expect(contextualSection(pathname)).toBe(section);
   });
@@ -86,6 +87,8 @@ describe("contextual header back navigation", () => {
     ["/setting/security", "/setting"],
     ["/tools", "/dashboard"],
     ["/tools/recovery", "/tools"],
+    ["/management", "/dashboard"],
+    ["/management/catalogs", "/management"],
   ])("provides a deterministic fallback from %s", (pathname, fallback) => {
     expect(contextualBackFallback(pathname)).toBe(fallback);
   });

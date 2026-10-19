@@ -84,9 +84,12 @@ test("product filters use one responsive panel across desktop and mobile", async
   await expect(page.getByRole("heading", { name: "جستجو و فیلتر" })).toBeVisible();
   await expect(page.getByRole("button", { name: "فیلترها" })).toBeHidden();
   const searchBox = (await page.getByRole("textbox", { name: "جستجوی محصول" }).boundingBox())!;
+  const catalogControl = panel.locator(":scope > .inventory-catalog-filter");
+  const catalogBox = (await catalogControl.boundingBox())!;
   const controls = panel.locator(".inventory-filter-control, .inventory-catalog-filter");
   const positions = await Promise.all(Array.from({ length: 4 }, async (_, index) => (await controls.nth(index).boundingBox())!));
   expect(searchBox.y).toBeLessThan(positions[0].y);
+  expect(searchBox.y + searchBox.height).toBeLessThanOrEqual(catalogBox.y);
   for (let index = 1; index < positions.length; index += 1) {
     expect(positions[index].y).toBeGreaterThan(positions[index - 1].y);
   }

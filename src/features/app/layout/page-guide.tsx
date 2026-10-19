@@ -1,12 +1,13 @@
-import { ChevronLeftIcon, CubeIcon, GearIcon, InfoCircledIcon } from "@radix-ui/react-icons";
+import { ChevronLeftIcon, CubeIcon, GearIcon, InfoCircledIcon, PersonIcon } from "@radix-ui/react-icons";
 import { Link } from "@tanstack/react-router";
 import type { ComponentType } from "react";
+import { ContextualBackButton } from "./contextual-back-button";
 
 type GuideIcon = ComponentType<{ width?: number | string; height?: number | string }>;
 
 type Props = {
-  section: "تنظیمات" | "ابزارها";
-  sectionTo: "/setting" | "/tools";
+  section: "تنظیمات" | "ابزارها" | "مدیریت";
+  sectionTo: "/setting" | "/tools" | "/management";
   title: string;
   description: string;
   icon: GuideIcon;
@@ -14,8 +15,7 @@ type Props = {
 
 export function PageGuide({ section, sectionTo, title, description, icon: Icon }: Props) {
   const root = title === section;
-  const SectionIcon = sectionTo === "/setting" ? GearIcon : CubeIcon;
-  const context = root ? `صفحه اصلی ${section}` : `صفحه زیرمجموعه ${section}`;
+  const SectionIcon = sectionTo === "/setting" ? GearIcon : sectionTo === "/tools" ? CubeIcon : PersonIcon;
 
   return (
     <header className="page-guide" dir="rtl" data-root={root}>
@@ -33,7 +33,7 @@ export function PageGuide({ section, sectionTo, title, description, icon: Icon }
             </nav>
           ) : <h1 className="page-guide-title">{title}</h1>}
         </div>
-        <span className="page-guide-context">{context}</span>
+        <ContextualBackButton />
       </div>
       <div className="page-guide-description">
         <InfoCircledIcon className="page-guide-description-icon" width="20" height="20" aria-hidden="true" />

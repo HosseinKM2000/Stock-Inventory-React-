@@ -14,7 +14,7 @@ import SubscribersDialog from "./subscribers-dialog";
 const builtInPlans = new Set(["free", "starter", "pro", "vip"]);
 const durationLabels = { day: "روز", month: "ماه", year: "سال" } as const;
 
-export default function SubscriptionManagement() {
+export default function SubscriptionManagement({ hideHeading = false }: { hideHeading?: boolean }) {
   const plans = useAdminPlans();
   const remove = useDeletePlan();
   const [deleteTarget, setDeleteTarget] = useState<SubscriptionPlan | null>(null);
@@ -35,7 +35,7 @@ export default function SubscriptionManagement() {
   return (
     <Box>
       <Flex justify="between" align="center" gap="3" wrap="wrap">
-        <Box><Text size="6" weight="bold">مدیریت اشتراک‌ها</Text><Text as="div" size="2" color="gray" mt="1">قیمت‌ها به تومان نمایش داده می‌شوند و تغییر قابلیت‌ها فوراً در مجوزهای سرور اعمال می‌شود.</Text></Box>
+        {!hideHeading ? <Box><Text size="6" weight="bold">مدیریت اشتراک‌ها</Text><Text as="div" size="2" color="gray" mt="1">قیمت‌ها به تومان نمایش داده می‌شوند و تغییر قابلیت‌ها فوراً در مجوزهای سرور اعمال می‌شود.</Text></Box> : <span />}
         <PlanDialog trigger={<Button><PlusIcon />طرح جدید</Button>} />
       </Flex>
       <Grid columns={{ initial: "1", md: "2", xl: "3" }} gap="4" mt="5">

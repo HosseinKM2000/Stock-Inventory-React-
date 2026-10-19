@@ -17,7 +17,7 @@ type Props = {
   description: string;
   items: readonly NavigationItem[];
   icon?: ComponentType<{ width?: number | string; height?: number | string }>;
-  sectionTo?: "/setting" | "/tools";
+  sectionTo?: "/setting" | "/tools" | "/management";
   footer?: ReactNode;
 };
 
@@ -25,7 +25,7 @@ export function QuickAccessPage({ title, description, items, icon, sectionTo, fo
   useEntitlementAccess();
   const { user } = useAuth();
   const visibleItems = visibleNavigationItems(items, user);
-  const guidedSection = title === "تنظیمات" || title === "ابزارها" ? title : null;
+  const guidedSection = title === "تنظیمات" || title === "ابزارها" || title === "مدیریت" ? title : null;
 
   return (
     <Box dir="rtl" className="mx-auto w-full max-w-3xl">

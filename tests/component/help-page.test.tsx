@@ -3,7 +3,13 @@ import { describe, expect, it, vi } from "vitest";
 
 const state = vi.hoisted(() => ({ role: "USER" }));
 vi.mock("@/shared/auth/use-auth", () => ({ useAuth: () => ({ user: { role: state.role, is_admin: state.role === "ADMIN", is_system_admin: false } }) }));
-vi.mock("@tanstack/react-router", () => ({ Link: ({ to, children, ...props }: { to: string; children: React.ReactNode }) => <a href={to} {...props}>{children}</a> }));
+vi.mock("@tanstack/react-router", () => ({
+  Link: ({ to, children, ...props }: { to: string; children: React.ReactNode }) => <a href={to} {...props}>{children}</a>,
+  useNavigate: () => vi.fn(),
+  useRouter: () => ({ history: { canGoBack: () => false, back: vi.fn() } }),
+  useRouterState: ({ select }: { select: (routerState: { location: { pathname: string } }) => unknown }) =>
+    select({ location: { pathname: "/tools/help" } }),
+}));
 
 import { HelpPage } from "@/features/help/help-page";
 

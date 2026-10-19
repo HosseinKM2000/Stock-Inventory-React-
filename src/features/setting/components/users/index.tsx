@@ -83,7 +83,7 @@ function actionCopy(action: PendingAction | null) {
   };
 }
 
-export default function UsersSettings() {
+export default function UsersSettings({ hideHeading = false }: { hideHeading?: boolean }) {
   const { user: current } = useAuth();
   const users = useAdminUsers();
   const plans = useAdminPlans();
@@ -142,13 +142,13 @@ export default function UsersSettings() {
 
   return (
     <Box>
-      <Text size="6" weight="bold">
-        کاربران
-      </Text>
-      <Text as="div" size="2" color="gray" mt="1">
-        حساب‌ها، نقش مدیریتی، وضعیت دسترسی و اشتراک کاربران را مدیریت کنید. این عملیات مستقیماً روی سرور اعمال می‌شود.
-      </Text>
-      <Flex direction="column" gap="3" mt="5">
+      {!hideHeading ? <>
+        <Text size="6" weight="bold">کاربران</Text>
+        <Text as="div" size="2" color="gray" mt="1">
+          حساب‌ها، نقش مدیریتی، وضعیت دسترسی و اشتراک کاربران را مدیریت کنید. این عملیات مستقیماً روی سرور اعمال می‌شود.
+        </Text>
+      </> : null}
+      <Flex direction="column" gap="3" mt={hideHeading ? "0" : "5"}>
         {(users.data ?? []).map((user) => {
           const immutable = user.is_system_admin;
           const self = user.id === current?.id;
