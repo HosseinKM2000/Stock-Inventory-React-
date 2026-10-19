@@ -15,7 +15,7 @@ export function TextInput({
   ...props
 }: TextInputProps) {
   return (
-    <TextField.Root {...props}>
+    <TextField.Root {...props} className={`min-w-0 max-w-full ${props.className ?? ""}`}>
         {rightSlot && (
           <TextField.Slot
             side="right"

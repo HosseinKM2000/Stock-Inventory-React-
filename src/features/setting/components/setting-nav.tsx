@@ -4,15 +4,27 @@ import { Link, useRouterState } from "@tanstack/react-router";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
+  DashboardIcon,
   ExitIcon,
 } from "@radix-ui/react-icons";
+import { useLogout } from "@/features/auth/mutations/use-register";
+import { useAuth } from "@/shared/auth/use-auth";
+import { isAdmin } from "@/shared/access/authorization";
+import { isPathActive } from "@/shared/lib/navigation/is-path-active";
+import { useProfileMedia } from "@/shared/profile-media/use-profile-media";
+import { Avatar } from "@radix-ui/themes";
 
 export function SettingNav() {
+  const logout = useLogout();
+  const { user } = useAuth();
+  const profileMedia = useProfileMedia();
   const [collapsed, setCollapsed] = useState(false);
+  const initial = user?.first_name?.[0]?.toUpperCase() ?? "A";
 
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
+  const dashboardActive = isPathActive(pathname, "/dashboard");
 
   return (
     <aside
@@ -36,9 +48,7 @@ export function SettingNav() {
       <div className="flex items-center justify-between px-4 py-5">
         {!collapsed && (
           <div>
-            <h1 className="font-bold text-lg text-indigo-600">StockFlow</h1>
-
-            <p className="text-xs text-foreground">Retail Business Pro</p>
+            <h1 className="text-lg font-bold text-[var(--accent-11)]">Tanzim</h1>
           </div>
         )}
         <button
@@ -49,7 +59,7 @@ export function SettingNav() {
           rounded-md
           items-center
           justify-center
-          hover:bg-gray-100
+          hover:bg-foreground/10
           "
           onClick={() => setCollapsed((prev) => !prev)}
         >
@@ -60,9 +70,22 @@ export function SettingNav() {
       {/* MENU */}
       <nav className="flex-1 px-3">
         <div className="space-y-1">
-          {settingsNavItems.map((item) => {
+          <Link
+            to="/dashboard"
+            data-active={dashboardActive}
+            className="themed-navigation-item flex items-center rounded-xl px-3 py-3 transition-colors duration-200"
+          >
+            <DashboardIcon width={18} height={18} />
+            {!collapsed && (
+              <span className="mr-3 text-sm font-medium">داشبورد</span>
+            )}
+          </Link>
+
+          <div className="my-2 border-t border-foreground/10" />
+
+          {settingsNavItems.filter((item) => !("adminOnly" in item) || isAdmin(user)).map((item) => {
             const Icon = item.icon;
-            const active = pathname.startsWith(item.to);
+            const active = isPathActive(pathname, item.to);
 
             return (
               <Link
@@ -78,8 +101,8 @@ export function SettingNav() {
                   transition-colors
                   ${
                     active
-                      ? "bg-indigo-700 text-foreground"
-                      : "hover:bg-indigo-300/10 text-foreground"
+                      ? "bg-[var(--accent-a4)] text-[var(--accent-11)]"
+                      : "text-foreground hover:bg-[var(--accent-a3)] hover:text-[var(--accent-11)]"
                   }
                 `}
               >
@@ -94,16 +117,43 @@ export function SettingNav() {
       </nav>
 
       {/* FOOTER */}
-      <div className="border-t p-3">
+      <div className="border-t border-[var(--gray-a6)] p-3">
         <Link
-          to={"/"}
+          to="/setting/profile"
+          className="mb-1 flex items-center rounded-xl px-3 py-3 transition-colors hover:bg-foreground/5"
+        >
+          <Avatar
+            size="2"
+            radius="full"
+            fallback={initial}
+            src={profileMedia.src}
+            className="shrink-0"
+          />
+          {!collapsed && user && (
+            <span className="mr-3 min-w-0 text-right">
+              <span className="block truncate text-sm font-medium">
+                {user.first_name} {user.last_name}
+              </span>
+              <span className="block truncate text-xs text-foreground/60">
+                @{user.username}
+              </span>
+            </span>
+          )}
+        </Link>
+
+        <button
+          type="button"
+          onClick={logout}
           className={`
+            w-full
             flex
             px-3
             py-3
             rounded-xl
             items-center
-            hover:bg-red-500
+            text-[var(--red-11)]
+            hover:bg-[var(--red-a3)]
+            cursor-pointer
           `}
         >
           <ExitIcon />
@@ -112,7 +162,7 @@ export function SettingNav() {
               {"خروج از حساب کاربری"}
             </span>
           )}
-        </Link>
+        </button>
       </div>
     </aside>
   );
