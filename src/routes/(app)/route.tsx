@@ -37,8 +37,9 @@ function ProtectedLayout() {
       )}
 
       <main
+        key={pathname}
         data-scroll-restoration-id="app-shell"
-        className="app-shell-content min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
+        className="app-shell-content app-route-transition min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto"
       >
         <Outlet />
       </main>

@@ -139,11 +139,17 @@ test("product filters use one responsive panel across desktop and mobile", async
   await filterTrigger.click();
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
+  expect(await dialog.evaluate((element) => getComputedStyle(element).animationName)).toContain("app-dialog-enter");
   expect(await dialog.evaluate((element) => getComputedStyle(element).fontFamily)).toContain("Vazirmatn");
   await expect(dialog.getByText("دسته‌بندی", { exact: true })).toBeVisible();
   await expect(dialog.getByText("مرتب‌سازی", { exact: true })).toBeVisible();
   await expect(dialog.getByText("برچسب‌ها", { exact: true })).toBeVisible();
   await expect(dialog.getByRole("switch", { name: "مخفی کردن محصولات کاتالوگ در پنجره فیلترها" })).toBeVisible();
+  await dialog.getByRole("combobox").first().click();
+  const selectContent = page.locator(".rt-SelectContent[data-state='open']");
+  await expect(selectContent).toBeVisible();
+  expect(await selectContent.locator(".rt-SelectItem").first().evaluate((element) => getComputedStyle(element).animationName)).toContain("app-menu-item-enter");
+  await page.keyboard.press("Escape");
   const closeDialog = dialog.getByRole("button", { name: "بستن", exact: true });
   await closeDialog.scrollIntoViewIfNeeded();
   await expect(closeDialog).toBeInViewport();
@@ -404,6 +410,25 @@ test("only the product image opens editing in every view mode", async ({ page })
     await expect(page).toHaveURL(/\/inventory\/edit\?id=8101$/);
     await page.goto("/inventory/list");
   }
+});
+
+test("toast notifications enter with lightweight motion", async ({ page, context }) => {
+  await context.grantPermissions(["clipboard-write"]);
+  await seedOfflineUser(page);
+  await seedProduct(page);
+  await page.goto("/inventory/list");
+
+  await page.getByRole("button", { name: "نمای راحت", exact: true }).click();
+  await page.getByRole("button", { name: /کپی نام و قیمت لامپ LED 12W/ }).click();
+  const toast = page.locator(".app-toaster .app-toast").first();
+  await expect(toast).toBeVisible();
+  const motion = await toast.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { name: style.animationName, duration: Number.parseFloat(style.animationDuration) };
+  });
+  expect(motion.name).toContain("app-toast-enter");
+  expect(motion.duration).toBeGreaterThanOrEqual(.15);
+  expect(motion.duration).toBeLessThanOrEqual(.25);
 });
 
 test("long press selection covers the card and bulk actions stay inside mobile viewport", async ({ page }) => {

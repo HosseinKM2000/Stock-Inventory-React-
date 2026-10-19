@@ -57,6 +57,14 @@ test("standard navigation separates Settings and Tools with contextual back beha
   await seedAuthenticatedUser(page, "USER");
   await page.goto("/dashboard");
 
+  const routeMotion = await page.locator("main.app-route-transition").evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { name: style.animationName, duration: Number.parseFloat(style.animationDuration) };
+  });
+  expect(routeMotion.name).toContain("app-route-enter");
+  expect(routeMotion.duration).toBeGreaterThanOrEqual(.15);
+  expect(routeMotion.duration).toBeLessThanOrEqual(.25);
+
   const header = page.locator(".app-header");
   const leftControls = header.locator(".app-header-left");
   const rightControls = header.locator(".app-header-right");
@@ -71,6 +79,19 @@ test("standard navigation separates Settings and Tools with contextual back beha
   expect((await leftControls.boundingBox())!.x).toBeLessThan((await rightControls.boundingBox())!.x);
   await expect(page.getByRole("button", { name: "بازگشت" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /منو/ })).toHaveCount(0);
+
+  await notificationShortcut.click();
+  const notificationPopover = page.locator(".notification-popover");
+  await expect(notificationPopover).toBeVisible();
+  const notificationMotion = await notificationPopover.evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { name: style.animationName, duration: Number.parseFloat(style.animationDuration) };
+  });
+  expect(notificationMotion.name).not.toBe("none");
+  expect(notificationMotion.duration).toBeGreaterThanOrEqual(.15);
+  expect(notificationMotion.duration).toBeLessThanOrEqual(.2);
+  await page.keyboard.press("Escape");
+  await expect(notificationPopover).toBeHidden();
 
   const bottomNavigation = page.getByRole("navigation", { name: "ناوبری اصلی" });
   await expect(bottomNavigation.getByRole("link", { name: "ابزارها" })).toBeVisible();
@@ -105,6 +126,17 @@ test("standard navigation separates Settings and Tools with contextual back beha
   await expect(page).toHaveURL(/\/tools\/categories$/);
   await page.goto("/management");
   await expect(page).toHaveURL(/\/dashboard$/);
+});
+
+test("application motion respects reduced-motion preferences", async ({ page }) => {
+  await seedAuthenticatedUser(page, "USER");
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("/dashboard");
+
+  const duration = await page.locator("main.app-route-transition").evaluate((element) =>
+    Number.parseFloat(getComputedStyle(element).animationDuration),
+  );
+  expect(duration).toBeLessThanOrEqual(.001);
 });
 
 test("contextual back uses safe fallbacks for direct descendants and access pages", async ({ page }) => {
