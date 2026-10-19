@@ -83,7 +83,8 @@ test("standard navigation separates Settings and Tools with contextual back beha
   });
   expect(activeGlow.content).not.toBe("none");
   expect(activeGlow.backgroundImage).not.toBe("none");
-  expect(Number(activeGlow.opacity)).toBeLessThanOrEqual(.45);
+  expect(Number(activeGlow.opacity)).toBeGreaterThanOrEqual(.38);
+  expect(Number(activeGlow.opacity)).toBeLessThanOrEqual(.6);
 
   await bottomNavigation.getByRole("link", { name: "تنظیمات" }).click();
   await expect(page).toHaveURL(/\/setting\/?$/);

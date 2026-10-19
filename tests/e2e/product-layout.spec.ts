@@ -359,6 +359,12 @@ test("all three product card modes retain core information and fit narrow screen
   const desktopCompactImage = (await desktopCompactCard.locator(".inventory-compact-image").boundingBox())!;
   const desktopCompactInfo = (await desktopCompactCard.locator(".inventory-compact-info").boundingBox())!;
   const desktopCompactQuick = (await desktopCompactCard.locator(".inventory-compact-quick").boundingBox())!;
+  const desktopCompactStockItems = await desktopCompactCard.locator(".quick-stock-wrapper > *").evaluateAll((items) =>
+    items.filter((item) => getComputedStyle(item).display !== "none").map((item) => {
+      const box = item.getBoundingClientRect();
+      return { left: box.left, right: box.right };
+    }),
+  );
   const desktopCompactBox = (await desktopCompactCard.boundingBox())!;
   const desktopCompactButtons = await desktopCompactCard.locator(".quick-stock-button").evaluateAll((buttons) =>
     buttons.map((button) => {
@@ -371,6 +377,7 @@ test("all three product card modes retain core information and fit narrow screen
   expect(Math.abs(desktopCompactImage.y + desktopCompactImage.height / 2 - compactCenterY)).toBeLessThanOrEqual(3);
   expect(Math.abs(desktopCompactInfo.y + desktopCompactInfo.height / 2 - compactCenterY)).toBeLessThanOrEqual(4);
   expect(Math.abs(desktopCompactQuick.y + desktopCompactQuick.height / 2 - compactCenterY)).toBeLessThanOrEqual(4);
+  expect(Math.min(...desktopCompactStockItems.map((item) => item.left)) - desktopCompactQuick.x).toBeLessThanOrEqual(2);
   for (const button of desktopCompactButtons) {
     expect(button.width).toBeGreaterThanOrEqual(40);
     expect(button.width).toBeLessThanOrEqual(48);
@@ -507,6 +514,9 @@ test("desktop product cards keep long content and packaged stock controls aligne
   expect(await comfortableTitle.evaluate((element) => getComputedStyle(element).whiteSpace)).toBe("nowrap");
   expect(await comfortableTitle.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize))).toBeLessThanOrEqual(16.2);
   expect(Math.abs(comfortableImage.width - comfortableImage.height)).toBeLessThanOrEqual(1);
+  await expect(comfortableCard.locator(".inventory-card-category")).toHaveText("ظروف آشپزخانه");
+  await expect(comfortableCard.locator(".inventory-card-barcode")).toHaveText("6261234567890");
+  await expect(comfortableCard.locator(".inventory-card-classification")).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 700 });
   const mobileContentBox = (await comfortableCard.locator(".inventory-card-content").boundingBox())!;
@@ -529,6 +539,11 @@ test("desktop product cards keep long content and packaged stock controls aligne
   expect(Math.abs(mobileActionsBox.x - mobileFooterBox.x)).toBeLessThanOrEqual(2);
   expect(mobileActionsBox.y - (mobilePriceBox.y + mobilePriceBox.height)).toBeGreaterThanOrEqual(8);
   expect(Math.abs(mobileModeBox.width - mobileStockBox.width)).toBeLessThanOrEqual(1);
+
+  await page.getByRole("button", { name: "شبکه فشرده", exact: true }).click();
+  const packagedGridQuantity = page.locator(".inventory-card--grid .inventory-grid-quantity");
+  await expect(packagedGridQuantity).toBeVisible();
+  await expect(packagedGridQuantity).toContainText("۶");
 
   for (const width of [1280, 1024]) {
     await page.setViewportSize({ width, height: 800 });
@@ -555,6 +570,11 @@ test("grid and comfortable cards show a minimal empty barcode state", async ({ p
 
   await page.getByRole("button", { name: "شبکه فشرده", exact: true }).click();
   await expect(page.locator(".inventory-card--grid .inventory-card-barcode")).toHaveText("بدون بارکد");
+
+  await page.getByRole("button", { name: "نمای راحت", exact: true }).click();
+  const desktopEmptyBarcode = page.locator(".inventory-card--comfortable .inventory-card-barcode");
+  await expect(desktopEmptyBarcode).toHaveText("بدون بارکد");
+  await expect(desktopEmptyBarcode).toBeVisible();
 
   await page.setViewportSize({ width: 390, height: 700 });
   await page.getByRole("button", { name: "نمای راحت", exact: true }).click();

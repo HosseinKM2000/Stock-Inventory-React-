@@ -78,7 +78,7 @@ export function ProductCard({
   const [unavailableImagePath, setUnavailableImagePath] = useState<string | null>(null);
   const imagePreview = resolvedImage.src ?? productPlaceholder;
   const hasViewableImage = Boolean(imagePath && resolvedImage.src && !resolvedImage.error && unavailableImagePath !== imagePath);
-  const name = product.custom_label ?? product.catalog_product?.name ?? "محصول بدون نام";
+  const name = product.custom_label?.trim() || product.catalog_product?.name?.trim() || "محصول بدون نام";
   const salePrice = product.sale_price ?? (product.price_missing ? null : product.price);
   const longPress = useLongPress(() => onEnterSelection?.(product), 550);
 
@@ -205,7 +205,10 @@ export function ProductCard({
           <Text size="2" color="gray" className="inventory-card-description line-clamp-2 break-words">
             {product.note ?? product.catalog_product?.description ?? "بدون توضیح"}
           </Text>
-          {packageBreakdown && (
+          {packageBreakdown && viewMode === "grid" && (
+            <Text size="2" color="gray" className="inventory-card-stock-details inventory-grid-quantity"><Package size={16} className="inline-block align-middle" /> {product.quantity.toLocaleString("fa-IR")} عدد</Text>
+          )}
+          {packageBreakdown && viewMode !== "grid" && (
             <Flex gap="3" wrap="wrap" className="inventory-card-stock-details">
               <Text size="2"><Text color="gray">بسته: </Text>{packageBreakdown.completePackages.toLocaleString("fa-IR")}</Text>
               <Text size="2"><Text color="gray">تعداد کل: </Text>{product.quantity.toLocaleString("fa-IR")}</Text>
