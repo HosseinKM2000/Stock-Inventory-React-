@@ -31,4 +31,9 @@ export default defineConfig({
       interval: 100,
     },
   },
+  build: {
+    // The service worker reads this file during installation so every
+    // code-split route is available before the connection disappears.
+    manifest: true,
+  },
 });
