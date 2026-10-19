@@ -1,46 +1,15 @@
-import Header from "@/features/app/layout/header";
-import { SettingNavigation } from "@/features/setting/components/layout";
-import { Box, Flex } from "@radix-ui/themes";
-import { Outlet, createFileRoute } from "@tanstack/react-router";
+import { SectionLayout } from "@/features/app/layout/section-layout";
+import { isAuthenticated } from "@/shared/api/token-store";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { accessState } from "@/shared/access/access-state";
+import { isAdmin } from "@/shared/access/authorization";
 
 export const Route = createFileRoute("/setting")({
-  component: SettingLayout,
+  beforeLoad: ({ location }) => {
+    if (!isAuthenticated()) throw redirect({ to: "/auth/login" });
+    const ownerOnly = ["/setting/personnel", "/setting/backup", "/setting/subscription"];
+    const user = accessState.user();
+    if (ownerOnly.includes(location.pathname) && !isAdmin(user) && user?.is_store_owner === false) throw redirect({ to: "/setting" });
+  },
+  component: SectionLayout,
 });
-
-function SettingLayout() {
-  return (
-    <Flex
-      direction="column"
-      className="h-dvh overflow-hidden"
-    >
-      <Header />
-
-      {/* Remaining viewport height */}
-      <Flex className="flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <Box
-          className="
-            hidden lg:flex
-            w-72
-            flex-col
-            overflow-y-auto
-            overflow-x-hidden
-          "
-        >
-          <SettingNavigation />
-        </Box>
-
-        {/* Content */}
-        <main
-          className="
-            flex-1
-            overflow-y-auto
-            p-10
-          "
-        >
-          <Outlet />
-        </main>
-      </Flex>
-    </Flex>
-  );
-}
