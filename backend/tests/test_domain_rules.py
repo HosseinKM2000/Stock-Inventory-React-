@@ -1,0 +1,113 @@
+import os
+from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
+
+import pytest
+from pydantic import ValidationError
+
+os.environ.setdefault("ENVIRONMENT", "test")
+os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+
+from app.plans import PLAN_CATALOG, subscription_expired
+from app.schemas import CatalogProductCreate, InventoryCreate, PasswordUpdate, SyncBatchRequest
+from app.security import hash_password, verify_password
+from app.services.authorization_service import Permission, RoleId, has_permission, set_role
+from app.services import plan_policy
+from app.services.tool_policy import DEFAULT_TOOL_POLICY, normalize_tool_policy
+from app.demo_fixture import _assert_safe
+from app.services.jalali_date import format_jalali_datetime
+
+
+def test_bcrypt_hashes_and_verifies_without_storing_plaintext() -> None:
+    password = "StrongPass123!"
+    hashed = hash_password(password)
+    assert hashed != password
+    assert hashed.startswith("$2")
+    assert verify_password(password, hashed)
+    assert not verify_password("WrongPass123!", hashed)
+
+
+@pytest.mark.parametrize("password", ["alllowercase1", "ALLUPPERCASE1", "NoNumberHere"])
+def test_password_update_rejects_weak_passwords(password: str) -> None:
+    with pytest.raises(ValidationError):
+        PasswordUpdate(current_password="CurrentPass123!", new_password=password)
+
+
+def test_password_schema_enforces_bcrypt_utf8_limit() -> None:
+    with pytest.raises(ValidationError, match="PASSWORD_TOO_LONG"):
+        PasswordUpdate(current_password="CurrentPass123!", new_password="A1a" + "é" * 35)
+
+
+def test_catalog_packaging_contract_normalizes_or_rejects_invalid_metadata() -> None:
+    unpackaged = CatalogProductCreate(industry_id=1, name="  Item  ", is_packaged=False, pack_size=12)
+    assert unpackaged.name == "Item"
+    assert unpackaged.pack_size is None
+    with pytest.raises(ValidationError, match="PACK_SIZE_REQUIRED"):
+        CatalogProductCreate(industry_id=1, name="Item", is_packaged=True, pack_size=None)
+    with pytest.raises(ValidationError):
+        CatalogProductCreate(industry_id=1, name="Item", is_packaged=True, pack_size=0)
+
+
+@pytest.mark.parametrize("field", ["quantity", "price", "low_stock_threshold"])
+def test_inventory_payload_rejects_negative_values(field: str) -> None:
+    with pytest.raises(ValidationError):
+        InventoryCreate(**{field: -1})
+
+
+def test_sync_batch_has_a_hard_operation_limit() -> None:
+    operation = {"operation_id": "op", "entity": "product", "entity_id": 1, "operation": "DELETE"}
+    with pytest.raises(ValidationError):
+        SyncBatchRequest(operations=[{**operation, "operation_id": f"op-{index}"} for index in range(201)])
+
+
+def test_subscription_expiry_uses_absolute_time_and_free_plan_does_not_expire() -> None:
+    now = datetime.now(timezone.utc)
+    assert subscription_expired("pro", now - timedelta(seconds=1))
+    assert not subscription_expired("pro", now + timedelta(minutes=1))
+    assert not subscription_expired("free", now - timedelta(days=1))
+    assert subscription_expired("pro", (now - timedelta(seconds=1)).replace(tzinfo=None))
+
+
+def test_builtin_device_limits_are_unlimited_by_default() -> None:
+    assert all(plan["limits"]["devices"] is None for plan in PLAN_CATALOG.values())
+
+
+def test_user_device_policy_precedence(monkeypatch) -> None:
+    monkeypatch.setattr(plan_policy, "entitlement_for_user", lambda _db, _user: {"limits": {"devices": 3}})
+    user = SimpleNamespace(is_admin=False, is_system_admin=False, role="USER", device_limit_mode="inherit", device_limit_override=None)
+    assert plan_policy.effective_device_policy(None, user) == {"limit": 3, "source": "plan", "mode": "limited"}
+    user.device_limit_mode = "unlimited"
+    assert plan_policy.effective_device_policy(None, user)["limit"] is None
+    user.device_limit_mode = "limited"
+    user.device_limit_override = 2
+    assert plan_policy.can_add_device(None, user, 1)
+    assert not plan_policy.can_add_device(None, user, 2)
+
+
+def test_role_changes_keep_legacy_admin_flag_synchronized() -> None:
+    user = SimpleNamespace(role="USER", is_admin=False, is_system_admin=False)
+    assert not has_permission(user, Permission.USERS_MANAGE)
+    set_role(user, RoleId.ADMIN)
+    assert user.role == "ADMIN"
+    assert user.is_admin is True
+    assert has_permission(user, Permission.CATALOG_MANAGE)
+    set_role(user, RoleId.USER)
+    assert user.is_admin is False
+
+
+def test_industry_tool_policy_preserves_existing_availability_and_rejects_unknown_ids() -> None:
+    assert normalize_tool_policy(None) == DEFAULT_TOOL_POLICY
+    assert normalize_tool_policy({"export": False})["export"] is False
+    assert normalize_tool_policy({"export": False})["catalog"] is True
+    with pytest.raises(ValueError, match="UNKNOWN_TOOL_ID"):
+        normalize_tool_policy({"future-tool": True})
+
+
+def test_demo_reset_requires_explicit_confirmation() -> None:
+    with pytest.raises(RuntimeError, match="CONFIRMATION_REQUIRED"):
+        _assert_safe(1, "wrong")
+
+
+def test_server_exports_use_fixed_jalali_datetime_shape() -> None:
+    value = format_jalali_datetime(datetime(2025, 1, 1, 0, 0, tzinfo=timezone.utc))
+    assert value == "۱۴۰۳/۱۰/۱۲ ۰۳:۳۰"

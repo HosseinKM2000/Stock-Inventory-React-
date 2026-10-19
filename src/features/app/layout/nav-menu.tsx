@@ -1,186 +1,98 @@
-import {
-  DotsHorizontalIcon,
-  GearIcon,
-  HomeIcon,
-  MixIcon,
-} from "@radix-ui/react-icons";
 import { Box, Flex, Text } from "@radix-ui/themes";
 import { Link, useRouterState } from "@tanstack/react-router";
+import { primaryNavigationItems } from "./navigation-items";
+import { isPathActive } from "@/shared/lib/navigation/is-path-active";
+import { useAuth } from "@/shared/auth/use-auth";
+import { PlusIcon } from "@radix-ui/react-icons";
+import { accessState } from "@/shared/access/access-state";
+import { useEntitlementAccess } from "@/shared/access/use-entitlement";
+import type { NavigationItem } from "./navigation-items";
 
-export const menuNavItems = [
-  {
-    label: "بیشتر",
-    to: "/more",
-    match: "/more",
-    icon: DotsHorizontalIcon,
-  },
-  {
-    label: "تنظیمات",
-    to: "/setting/profile",
-    match: "/setting",
-    icon: GearIcon,
-  },
-  {
-    label: "محصولات",
-    to: "/product/list",
-    match: "/product",
-    icon: MixIcon,
-  },
-  {
-    label: "خانه",
-    to: "/",
-    match: "/",
-    icon: HomeIcon,
-  },
-] as const;
+type Props = {
+  hidden?: boolean;
+};
 
-const NavMenu = () => {
+function NavigationLink({ item, active }: { item: NavigationItem; active: boolean }) {
+  const Icon = item.icon;
+  return (
+    <Link
+      to={item.to}
+      data-active={active}
+      className="app-bottom-navigation-item relative flex min-w-0 flex-1 flex-col items-center justify-center rounded-2xl px-3 py-2 transition-all duration-200 ease-out active:scale-95 md:w-52 md:flex-none"
+    >
+      <Box className={`absolute -top-2 left-1/2 -translate-x-1/2 transition-all duration-300 ${active ? "opacity-100" : "opacity-0"}`}>
+        <Box className="app-navigation-indicator h-[3px] w-12 rounded-full" />
+      </Box>
+      <Box className={`app-navigation-icon transition-all duration-200 ${active ? "scale-105" : ""}`}>
+        <Icon width={20} height={20} />
+      </Box>
+      <Text size="1" className="app-bottom-navigation-label mt-1 whitespace-nowrap transition-all duration-200">
+        {item.label}
+      </Text>
+    </Link>
+  );
+}
+
+const NavMenu = ({ hidden = false }: Props) => {
+  useEntitlementAccess();
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
+  const { user } = useAuth();
+  const items = primaryNavigationItems(user);
+  const canAddProduct = accessState.canWrite();
+  const beforeAction = items.slice(0, 2);
+  const afterAction = items.slice(2);
   return (
-    <Box
+    <nav
       dir="rtl"
       className="
+        app-bottom-navigation
         z-50
         fixed
         w-full
         bottom-0
-        overflow-hidden
+        block!
+        overflow-visible
       "
-      style={{
-        paddingBottom: "env(safe-area-inset-bottom)",
-      }}
+      data-hidden={hidden}
+      aria-hidden={hidden}
+      aria-label="ناوبری اصلی"
     >
       <Flex
         align="center"
         justify="center"
         className="
+          app-bottom-navigation-surface
           relative
 
           border
-          border-white/10
-
-          bg-[rgba(15,15,24,0.92)]
 
           px-2
           py-2
 
-          shadow-[0_20px_50px_rgba(0,0,0,.35)]
-
           backdrop-blur-2xl
         "
       >
-        {menuNavItems.map((item) => {
-          const Icon = item.icon;
-
-          const active =
-            item.match === "/"
-              ? pathname === "/"
-              : pathname.startsWith(item.match);
-              
-          return (
-            <Link
-              key={item.to}
-              to={item.to}
-              className="
-                flex
-                px-3
-                py-2
-                w-[25%]
-                md:w-70
-                relative
-                flex-col
-                ease-out
-                rounded-2xl
-                items-center
-                duration-200
-                justify-center
-                transition-all
-                active:scale-95
-              "
-            >
-              {/* Lamp Indicator */}
-
-              <Box
-                className={`
-                  absolute
-                  -top-2
-                  left-1/2
-                  -translate-x-1/2
-
-                  transition-all
-                  duration-300
-
-                  ${active ? "opacity-100" : "opacity-0"}
-                `}
-              >
-                {/* Main Line */}
-
-                <Box
-                  className="
-                    h-[3px]
-                    w-15
-                    rounded-full
-                  bg-indigo-600
-                  "
-                />
-
-                {/* Glow */}
-
-                <Box
-                  className="
-                    absolute
-                    left-1/2
-                    top-0
-
-                    h-5
-                    w-16
-
-                    -translate-x-1/2
-                    -translate-y-1/2
-
-                    rounded-full
-
-               bg-indigo-600
-                    blur-xl
-                  "
-                />
-              </Box>
-
-              {/* Icon */}
-
-              <Box
-                className={`
-                  transition-all
-                  duration-200
-
-                  ${active ? "scale-105 text-primary" : "text-white/60"}
-                `}
-              >
-                <Icon width={20} height={20} />
-              </Box>
-
-              {/* Label */}
-
-              <Text
-                size="1"
-                className={`
-                  mt-1
-
-                  transition-all
-                  duration-200
-
-                  ${active ? "text-primary" : "text-white/60"}
-                `}
-              >
-                {item.label}
-              </Text>
-            </Link>
-          );
-        })}
+        {beforeAction.map((item) => (
+          <NavigationLink key={item.to} item={item} active={isPathActive(pathname, item.to)} />
+        ))}
+        {canAddProduct && (
+          <Link
+            to="/inventory/add"
+            className="app-bottom-navigation-add relative flex min-w-0 flex-1 items-center justify-center md:w-24 md:flex-none"
+            aria-label="افزودن محصول"
+          >
+            <span className="app-bottom-navigation-add-button" aria-hidden="true">
+              <PlusIcon width="28" height="28" />
+            </span>
+          </Link>
+        )}
+        {afterAction.map((item) => (
+          <NavigationLink key={item.to} item={item} active={isPathActive(pathname, item.to)} />
+        ))}
       </Flex>
-    </Box>
+    </nav>
   );
 };
 
