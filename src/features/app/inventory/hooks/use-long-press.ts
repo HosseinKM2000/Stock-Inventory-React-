@@ -31,7 +31,7 @@ export function useLongPress(onLongPress: () => void, delay = DEFAULT_DELAY) {
     if (event.pointerType === "mouse" && event.button !== 0) return;
     if (event.target instanceof Element) {
       const interactive = event.target.closest("button,a,input,select,textarea,[data-product-action]");
-      if (interactive && interactive !== event.currentTarget) return;
+      if (interactive && interactive !== event.currentTarget && !interactive.matches(".inventory-card-image-trigger")) return;
     }
     fired.current = false;
     origin.current = { x: event.clientX, y: event.clientY };

@@ -1,7 +1,7 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Badge, Card, Flex, IconButton, Text } from "@radix-ui/themes";
 import { Barcode, Check, Copy, Package, Pencil, ShoppingCart, Store, Trash2 } from "lucide-react";
-import { useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
 
 import { Button } from "@/shared/ui/button/button";
@@ -31,7 +31,6 @@ type Props = {
   showActions?: boolean;
   showQuickStock?: boolean;
   onDelete?: (id: number) => void;
-  onImageOpen?: (product: Product) => void;
   onEdit?: (product: Product) => void;
   selectionMode?: boolean;
   selected?: boolean;
@@ -48,7 +47,6 @@ export function ProductCard({
   showActions = true,
   showQuickStock = true,
   onDelete,
-  onImageOpen,
   onEdit,
   selectionMode = false,
   selected = false,
@@ -89,11 +87,6 @@ export function ProductCard({
     void navigate({ to: "/inventory/edit", search: { id: product.id } });
   };
 
-  const activate = () => selectionMode ? onToggleSelection?.(product) : edit();
-  const handleCardClick = (event: ReactMouseEvent<HTMLElement>) => {
-    if (!selectionMode && (event.target as HTMLElement).closest("[data-product-action]")) return;
-    activate();
-  };
   const copy = async () => {
     const text = productClipboardText(name, product.sale_price ?? (product.price_missing ? null : product.price));
     try {
@@ -120,20 +113,16 @@ export function ProductCard({
       />
     );
 
-    if (!hasViewableImage) {
-      return <div className={`${className} relative block overflow-hidden bg-[var(--gray-a3)]`} aria-hidden="true">{content}</div>;
-    }
-
     return (
       <button
         type="button"
-        className={`${className} relative block touch-pan-y overflow-hidden bg-[var(--gray-a3)] text-start focus-visible:outline-3 focus-visible:outline-offset-[-3px] focus-visible:outline-[var(--focus-8)]`}
-        aria-label={selectionMode ? `${selected ? "لغو انتخاب" : "انتخاب"} ${name}` : `نمایش تصویر ${name}`}
-        title={selectionMode ? undefined : "نمایش تصویر در اندازه بزرگ"}
+        className={`${className} inventory-card-image-trigger relative block touch-pan-y overflow-hidden bg-[var(--gray-a3)] text-start focus-visible:outline-3 focus-visible:outline-offset-[-3px] focus-visible:outline-[var(--focus-8)]`}
+        aria-label={selectionMode ? `${selected ? "لغو انتخاب" : "انتخاب"} ${name} از تصویر` : `ویرایش ${name} از تصویر`}
+        title={selectionMode ? undefined : "ویرایش محصول"}
         onClick={(event) => {
           event.stopPropagation();
           if (selectionMode) onToggleSelection?.(product);
-          else onImageOpen?.(product);
+          else edit();
         }}
         data-product-action="true"
       >
@@ -141,19 +130,24 @@ export function ProductCard({
       </button>
     );
   };
+  const selectionOverlay = selected ? (
+    <span className="inventory-selection-overlay" aria-hidden="true">
+      <span className="inventory-selection-check"><Check size={18} strokeWidth={2.5} /></span>
+    </span>
+  ) : null;
 
   if (viewMode === "compact") {
     return (
       <Card
         size="1"
-        role="button"
-        tabIndex={0}
-        aria-label={selectionMode ? `${selected ? "لغو انتخاب" : "انتخاب"} ${name}` : `ویرایش ${name}`}
+        role={selectionMode ? "button" : undefined}
+        tabIndex={selectionMode ? 0 : undefined}
+        aria-label={selectionMode ? `${selected ? "لغو انتخاب" : "انتخاب"} ${name}` : undefined}
         aria-pressed={selectionMode ? selected : undefined}
-        className={`inventory-card inventory-card--compact cursor-pointer overflow-hidden transition-shadow hover:shadow-md ${selected ? "inventory-card--selected" : ""}`}
-        onClick={handleCardClick}
+        className={`inventory-card inventory-card--compact relative overflow-hidden transition-shadow ${selectionMode ? "cursor-pointer hover:shadow-md" : ""} ${selected ? "inventory-card--selected" : ""}`}
+        onClick={selectionMode ? () => onToggleSelection?.(product) : undefined}
         onKeyDown={(event) => {
-          if (event.key === "Enter" || event.key === " ") { event.preventDefault(); activate(); }
+          if (selectionMode && (event.key === "Enter" || event.key === " ")) { event.preventDefault(); onToggleSelection?.(product); }
         }}
         {...longPress}
       >
@@ -168,8 +162,8 @@ export function ProductCard({
             </Flex>
           </Flex>
           {showQuickStock && canAdjustQuantity && !selectionMode && <div className="inventory-compact-quick" data-product-action onClick={(event) => event.stopPropagation()}><QuickStockAdjustment product={product} /></div>}
-          {selectionMode && <Flex align="center" justify="center" data-selected={selected} className="inventory-selection-mark h-7 w-7 rounded-full border" aria-hidden="true">{selected && <Check size={16} />}</Flex>}
         </Flex>
+        {selectionOverlay}
       </Card>
     );
   }
@@ -177,17 +171,16 @@ export function ProductCard({
   return (
     <Card
       size="2"
-      role="button"
-      tabIndex={0}
+      role={selectionMode ? "button" : undefined}
+      tabIndex={selectionMode ? 0 : undefined}
       aria-pressed={selectionMode ? selected : undefined}
-      aria-label={selectionMode ? `${selected ? "لغو انتخاب" : "انتخاب"} ${name}` : `ویرایش ${name}`}
-      className={`inventory-card inventory-card--${viewMode} h-auto overflow-hidden transition-all duration-200 ${showActions ? "" : "inventory-card--readonly"} ${selected ? "inventory-card--selected" : ""}`}
-      onClick={handleCardClick}
+      aria-label={selectionMode ? `${selected ? "لغو انتخاب" : "انتخاب"} ${name}` : undefined}
+      className={`inventory-card inventory-card--${viewMode} relative h-auto overflow-hidden transition-all duration-200 ${selectionMode ? "cursor-pointer" : ""} ${showActions ? "" : "inventory-card--readonly"} ${selected ? "inventory-card--selected" : ""}`}
+      onClick={selectionMode ? () => onToggleSelection?.(product) : undefined}
       onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
+        if (selectionMode && (event.key === "Enter" || event.key === " ")) {
           event.preventDefault();
-          if (selectionMode) onToggleSelection?.(product);
-          else edit();
+          onToggleSelection?.(product);
         }
       }}
       {...longPress}
@@ -202,7 +195,7 @@ export function ProductCard({
           <div className="inventory-card-identity min-w-0">
             <Flex justify="between" align="start" gap="2" className="min-w-0">
               <Text weight="bold" size="3" className={`inventory-card-title ${viewMode === "grid" ? "inventory-grid-title" : ""}`}>{name}</Text>
-              {selectionMode ? <Flex align="center" justify="center" data-selected={selected} className="inventory-selection-mark h-8 w-8 shrink-0 rounded-full border" aria-hidden="true">{selected && <Check size={16} />}</Flex> : <Badge color={status.color} className="inventory-card-mobile-status shrink-0">{status.label}</Badge>}
+              {!selectionMode && <Badge color={status.color} className="inventory-card-mobile-status shrink-0">{status.label}</Badge>}
             </Flex>
             <Flex direction="column" gap="1" className="inventory-card-mobile-meta">
               {product.catalog_product?.brand && <Text size="2" color="gray" className="break-words"><Store size={16} aria-hidden="true" />{product.catalog_product.brand}</Text>}
@@ -258,6 +251,7 @@ export function ProductCard({
           </Flex>
         </div>}
       </Flex>
+      {selectionOverlay}
     </Card>
   );
 }

@@ -24,7 +24,7 @@ export function BulkSelectionActions({
     <Flex
       gap="2"
       align="center"
-      className="bulk-selection-actions fixed left-4 z-60"
+      className="bulk-selection-actions fixed z-60"
       aria-label="عملیات گروهی محصولات"
     >
       {onPrint ? <Button
@@ -32,29 +32,29 @@ export function BulkSelectionActions({
         color="green"
         variant="outline"
         aria-label={`چاپ لیبل ${localizedCount} محصول`}
-        className="h-14! rounded-full! px-5!"
+        className="bulk-selection-button"
         onClick={onPrint}
       >
-        <ReaderIcon width="22" height="22" /> چاپ لیبل
+        <ReaderIcon width="18" height="18" /><span>چاپ لیبل</span>
       </Button> : null}
       <Button
         type="button"
         color="red"
         variant="soft"
         aria-label={`حذف گروهی ${localizedCount} محصول`}
-        className="h-14! rounded-full! px-5!"
+        className="bulk-selection-button"
         loading={deleting}
         onClick={onDelete}
       >
-        <TrashIcon width="22" height="22" /> حذف
+        <TrashIcon width="18" height="18" /><span>حذف</span>
       </Button>
       <Button
         type="button"
         aria-label={`ویرایش گروهی ${localizedCount} محصول`}
-        className="h-14! rounded-full! px-5!"
+        className="bulk-selection-button"
         onClick={onEdit}
       >
-        <MixerHorizontalIcon width="22" height="22" /> ویرایش {localizedCount}
+        <MixerHorizontalIcon width="18" height="18" /><span>ویرایش {localizedCount}</span>
       </Button>
     </Flex>
   );

@@ -297,6 +297,12 @@ test("all three product card modes retain core information and fit narrow screen
   await expect(gridCard.locator(".inventory-grid-status")).toHaveCount(0);
   await expect(gridCard.locator(".inventory-grid-status-dot[data-status='low_stock']")).toHaveCount(1);
   expect(await gridCard.locator(".inventory-grid-title").evaluate((element) => getComputedStyle(element).whiteSpace)).toBe("nowrap");
+  const mobileGridCardBox = (await gridCard.boundingBox())!;
+  const mobileGridTitleBox = (await gridCard.locator(".inventory-grid-title").boundingBox())!;
+  expect(Math.abs(mobileGridCardBox.width - mobileGridCardBox.height)).toBeLessThanOrEqual(2);
+  expect(mobileGridTitleBox.x).toBeGreaterThanOrEqual(mobileGridCardBox.x);
+  expect(mobileGridTitleBox.x + mobileGridTitleBox.width).toBeLessThanOrEqual(mobileGridCardBox.x + mobileGridCardBox.width);
+  expect(await gridCard.locator(".inventory-grid-title").evaluate((element) => getComputedStyle(element).overflow)).toBe("hidden");
 
   await page.setViewportSize({ width: 320, height: 700 });
   await page.getByRole("button", { name: "نمای فشرده", exact: true }).click();
@@ -319,6 +325,13 @@ test("all three product card modes retain core information and fit narrow screen
     getComputedStyle(element).gridTemplateColumns.split(" ").filter(Boolean).length,
   );
   expect(narrowGridColumns).toBe(3);
+  const narrowGridCard = page.locator(".inventory-card--grid");
+  const narrowGridCardBox = (await narrowGridCard.boundingBox())!;
+  const narrowGridTitleBox = (await narrowGridCard.locator(".inventory-grid-title").boundingBox())!;
+  expect(Math.abs(narrowGridCardBox.width - narrowGridCardBox.height)).toBeLessThanOrEqual(2);
+  expect(narrowGridTitleBox.x).toBeGreaterThanOrEqual(narrowGridCardBox.x);
+  expect(narrowGridTitleBox.x + narrowGridTitleBox.width).toBeLessThanOrEqual(narrowGridCardBox.x + narrowGridCardBox.width);
+  expect(await narrowGridCard.locator(".inventory-grid-title").evaluate((element) => getComputedStyle(element).textOverflow)).toBe("ellipsis");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 
   await page.setViewportSize({ width: 768, height: 1024 });
@@ -370,7 +383,7 @@ test("all three product card modes retain core information and fit narrow screen
   expect(Math.abs(desktopComfortableImage.width - desktopComfortableImage.height)).toBeLessThanOrEqual(1);
 });
 
-test("product card body opens editing in every view mode", async ({ page }) => {
+test("only the product image opens editing in every view mode", async ({ page }) => {
   await seedOfflineUser(page);
   await seedProduct(page);
   await page.setViewportSize({ width: 390, height: 700 });
@@ -379,9 +392,51 @@ test("product card body opens editing in every view mode", async ({ page }) => {
   for (const label of ["نمای راحت", "نمای فشرده", "شبکه فشرده"] as const) {
     await page.getByRole("button", { name: label, exact: true }).click();
     await page.getByText("لامپ LED 12W", { exact: true }).click();
+    await expect(page).toHaveURL(/\/inventory\/list$/);
+    await page.locator(".inventory-card-image, .inventory-compact-image").click();
     await expect(page).toHaveURL(/\/inventory\/edit\?id=8101$/);
     await page.goto("/inventory/list");
   }
+});
+
+test("long press selection covers the card and bulk actions stay inside mobile viewport", async ({ page }) => {
+  await seedOfflineUser(page);
+  await seedProduct(page);
+  await page.setViewportSize({ width: 320, height: 700 });
+  await page.goto("/inventory/list");
+
+  const card = page.locator(".inventory-card");
+  const imageBox = (await card.locator(".inventory-card-image").boundingBox())!;
+  await page.mouse.move(imageBox.x + imageBox.width / 2, imageBox.y + imageBox.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(600);
+  await page.mouse.up();
+
+  const overlay = card.locator(".inventory-selection-overlay");
+  await expect(overlay).toBeVisible();
+  const cardBox = (await card.boundingBox())!;
+  const overlayBox = (await overlay.boundingBox())!;
+  expect(Math.abs(cardBox.x - overlayBox.x)).toBeLessThanOrEqual(1);
+  expect(Math.abs(cardBox.y - overlayBox.y)).toBeLessThanOrEqual(1);
+  expect(Math.abs(cardBox.width - overlayBox.width)).toBeLessThanOrEqual(1);
+  expect(Math.abs(cardBox.height - overlayBox.height)).toBeLessThanOrEqual(1);
+  const checkBox = (await overlay.locator(".inventory-selection-check").boundingBox())!;
+  expect(checkBox.x + checkBox.width).toBeGreaterThan(cardBox.x + cardBox.width * .75);
+  expect(checkBox.y).toBeLessThan(cardBox.y + cardBox.height * .25);
+
+  const bulkActions = page.locator(".bulk-selection-actions");
+  const bulkBox = (await bulkActions.boundingBox())!;
+  expect(bulkBox.x).toBeGreaterThanOrEqual(0);
+  expect(bulkBox.x + bulkBox.width).toBeLessThanOrEqual(320);
+  const bulkButtons = await bulkActions.locator("button").evaluateAll((buttons) => buttons.map((button) => {
+    const box = button.getBoundingClientRect();
+    return { width: box.width, height: box.height };
+  }));
+  for (const button of bulkButtons) {
+    expect(button.width).toBeGreaterThanOrEqual(44);
+    expect(button.height).toBeLessThanOrEqual(44);
+  }
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 });
 
 test("desktop product cards keep long content and packaged stock controls aligned without overflow", async ({ page }) => {

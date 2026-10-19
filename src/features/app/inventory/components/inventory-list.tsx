@@ -8,7 +8,6 @@ import { ConfirmDialog } from "@/shared/ui/dialog/confirm-dialog";
 import { useCategories } from "@/features/setting/mutations/use-categories";
 import FilterPanel from "./filter-panel";
 import { ProductCard } from "./inventory-card";
-import { ProductImageDialog } from "./product-image-dialog";
 import { BulkEditDialog } from "./bulk-edit-dialog";
 import { BulkSelectionActions } from "./bulk-selection-actions";
 import { LabelPrintDialog } from "@/features/barcode/components/label-print-dialog";
@@ -42,7 +41,6 @@ const InventoryList = () => {
   const [categoryId, setCategoryId] = useState<number | null>(initial.categoryId);
   const [viewMode, setViewMode] = useState<ProductViewMode>(initial.viewMode);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
-  const [imageProduct, setImageProduct] = useState<Product | null>(null);
   const [catalogProductsHidden, setCatalogProductsHidden] = useState(() => catalogVisibilityService.isHidden());
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
@@ -223,7 +221,6 @@ const InventoryList = () => {
       categoryName={product.category_id == null ? null : categoryNames.get(product.category_id) ?? null}
       barcode={barcodeByProduct.get(product.id)?.value ?? null}
       viewMode={viewMode}
-      onImageOpen={setImageProduct}
       onEdit={rememberEdit}
       onDelete={() => setProductToDelete(product)}
       deleting={deleteProduct.isPending && deleteProduct.variables === product.id}
@@ -318,7 +315,6 @@ const InventoryList = () => {
           selection.remove(updatedSet);
         }}
       />
-      <ProductImageDialog product={imageProduct} onOpenChange={(open) => { if (!open) setImageProduct(null); }} />
       <ConfirmDialog
         open={bulkDeleteOpen}
         onOpenChange={setBulkDeleteOpen}
