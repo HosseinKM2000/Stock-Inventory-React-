@@ -3,6 +3,11 @@ import {
   LayersIcon,
   DownloadIcon,
   MixerHorizontalIcon,
+  CubeIcon,
+  ClipboardIcon,
+  LockClosedIcon,
+  StarIcon,
+  ReloadIcon,
 } from "@radix-ui/react-icons";
 
 export const settingsNavItems = [
@@ -25,5 +30,37 @@ export const settingsNavItems = [
     label: "خروجی",
     to: "/setting/export",
     icon: DownloadIcon,
+  },
+  {
+    label: "حوزه کاری",
+    to: "/setting/industry",
+    icon: CubeIcon,
+  },
+  {
+    label: "کاتالوگ",
+    to: "/setting/catalogs",
+    icon: ClipboardIcon,
+  },
+  {
+    label: "محصولات",
+    to: "/setting/products",
+    icon: ReloadIcon,
+  },
+  {
+    label: "اشتراک",
+    to: "/setting/subscription",
+    icon: StarIcon,
+  },
+  {
+    label: "کاربران",
+    to: "/setting/users",
+    icon: LockClosedIcon,
+    adminOnly: true,
+  },
+  {
+    label: "مدیریت اشتراک‌ها",
+    to: "/setting/subscription-management",
+    icon: StarIcon,
+    adminOnly: true,
   },
 ] as const;
