@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Box, Callout, Flex, Spinner, Text } from "@radix-ui/themes";
 import { Cross2Icon } from "@radix-ui/react-icons";
 import { toast } from "sonner";
@@ -29,6 +29,8 @@ import {
   type ProductViewMode,
 } from "../services/inventory-list-preferences";
 import { barcodeService } from "@/features/barcode/services/barcode-service";
+import { barcodeRepository } from "@/features/barcode/services/barcode-repository";
+import type { ProductBarcode } from "@/features/barcode/types";
 import { accessState } from "@/shared/access/access-state";
 
 const QUICK_STOCK_HINT_KEY = "inventory-quick-stock-hint-v3";
@@ -62,6 +64,10 @@ const InventoryList = () => {
   const { selectedIds, selectionMode, retainAvailable } = selection;
   const { data: categories = [] } = useCategories();
   const { data: labels = [] } = useLabels();
+  const [barcodeSnapshot, setBarcodeSnapshot] = useState<{
+    scopeKey: string;
+    items: ProductBarcode[];
+  }>({ scopeKey: "", items: [] });
   const { data, isLoading, isError } = useProducts({
     search: search || undefined,
     sort,
@@ -70,6 +76,24 @@ const InventoryList = () => {
     hide_catalog_products: catalogProductsHidden,
   });
   const products = data ?? EMPTY_PRODUCTS;
+  const currentActor = accessState.user();
+  const actorId = currentActor?.id ?? null;
+  const storeId = currentActor?.store_id ?? currentActor?.id ?? null;
+  const canViewBarcodes = accessState.canUse("barcode.lookup") && accessState.hasStorePermission("barcodes.lookup");
+  const barcodeScopeKey = canViewBarcodes && actorId != null && storeId != null
+    ? `${actorId}:${storeId}`
+    : "";
+  const categoryNames = useMemo(() => new Map(categories.map((category) => [category.id, category.name])), [categories]);
+  const barcodeByProduct = useMemo(() => {
+    const resolved = new Map<number, ProductBarcode>();
+    if (barcodeSnapshot.scopeKey !== barcodeScopeKey) return resolved;
+    for (const barcode of barcodeSnapshot.items) {
+      if (!barcode.is_active) continue;
+      const current = resolved.get(barcode.product_id);
+      if (!current || barcode.is_default) resolved.set(barcode.product_id, barcode);
+    }
+    return resolved;
+  }, [barcodeScopeKey, barcodeSnapshot]);
   const barcodeFilterKey = `${search}|${categoryId ?? ""}|${selectedLabelIds.join(",")}|${catalogProductsHidden}`;
   const barcodeMatchHidden = barcodeMatchResult?.key === barcodeFilterKey && barcodeMatchResult.hidden;
   const canPrintLabels = accessState.canUse("label.print") && accessState.hasStorePermission("labels.print");
@@ -83,6 +107,17 @@ const InventoryList = () => {
   useEffect(() => {
     retainAvailableLabels(new Set(labels.map((label) => label.id)));
   }, [retainAvailableLabels, labels]);
+
+  useEffect(() => {
+    let active = true;
+    if (!barcodeScopeKey) return () => { active = false; };
+    void barcodeRepository.getAll().then((items) => {
+      if (active) setBarcodeSnapshot({ scopeKey: barcodeScopeKey, items });
+    }).catch(() => {
+      if (active) setBarcodeSnapshot({ scopeKey: barcodeScopeKey, items: [] });
+    });
+    return () => { active = false; };
+  }, [barcodeScopeKey]);
 
   useEffect(() => {
     if (!selectionMode) return;
@@ -185,6 +220,8 @@ const InventoryList = () => {
     <ProductCard
       key={product.id}
       product={product}
+      categoryName={product.category_id == null ? null : categoryNames.get(product.category_id) ?? null}
+      barcode={barcodeByProduct.get(product.id)?.value ?? null}
       viewMode={viewMode}
       onImageOpen={setImageProduct}
       onEdit={rememberEdit}

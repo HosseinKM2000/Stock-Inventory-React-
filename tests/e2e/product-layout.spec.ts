@@ -18,7 +18,7 @@ async function seedOfflineUser(page: Page) {
       role: "USER",
       is_system_admin: false,
       is_store_owner: false,
-      store_permissions: ["products.view", "products.create", "products.edit", "products.delete", "products.quantity.change", "products.sale_price.view", "products.sale_price.change"],
+      store_permissions: ["products.view", "products.create", "products.edit", "products.delete", "products.quantity.change", "products.sale_price.view", "products.sale_price.change", "barcodes.lookup"],
       subscription_started_at: now,
       subscription_expires_at: "2099-01-01T00:00:00.000Z",
       created_at: now,
@@ -38,35 +38,50 @@ async function seedOfflineUser(page: Page) {
       verified_at: now,
       captured_at_ms: Date.now(),
       last_observed_at_ms: Date.now(),
-      capabilities: { "inventory.read": true, "inventory.write": true },
+      capabilities: { "inventory.read": true, "inventory.write": true, "barcode.lookup": true },
       limits: { inventory_items: null },
     }));
   });
   await page.route("http://localhost:8000/api/**", (route) => route.abort());
 }
 
-async function seedProduct(page: Page, options: { name?: string; packaged?: boolean } = {}) {
+async function seedProduct(page: Page, options: { name?: string; packaged?: boolean; categoryName?: string; barcode?: string; salePrice?: number } = {}) {
   await page.goto("/dashboard");
-  await page.evaluate(async ({ name, packaged }) => {
+  await page.evaluate(async ({ name, packaged, categoryName, barcode, salePrice }) => {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open("inventory-db");
       request.onsuccess = () => resolve(request.result);
       request.onerror = () => reject(request.error);
     });
     const now = new Date().toISOString();
-    const transaction = database.transaction("inventoryItems", "readwrite");
+    const transaction = database.transaction(["inventoryItems", "categories", "barcodes"], "readwrite");
     transaction.objectStore("inventoryItems").put({
       local_key: "7111:7111:8101", local_user_id: 7111, local_store_id: 7111,
-      id: 8101, catalog_product_id: 8101, is_catalog_backed: false, category_id: null,
-      label_ids: [], version: 1, quantity: 6, price: 350000, sale_price: 350000,
+      id: 8101, catalog_product_id: 8101, is_catalog_backed: false, category_id: categoryName ? 9101 : null,
+      label_ids: [], version: 1, quantity: 6, price: salePrice, sale_price: salePrice,
       purchase_price: null, price_missing: false, custom_label: name, note: "نور گرم کم‌مصرف",
       low_stock_threshold: 8, low_stock_alert: true, is_hidden: false, image_url: null,
       deleted_at: null, status: "low_stock", created_at: now, updated_at: now,
       catalog_product: { id: 8101, industry_id: 1, is_active: true, name, description: "نور گرم کم‌مصرف", brand: "Tanzim Demo", image_url: null, is_packaged: packaged, pack_size: packaged ? 4 : null, created_at: now },
     });
+    if (categoryName) transaction.objectStore("categories").put({
+      local_key: "7111:7111:9101", local_user_id: 7111, local_store_id: 7111,
+      id: 9101, name: categoryName, description: "", created_at: now, updated_at: now,
+    });
+    if (barcode) transaction.objectStore("barcodes").put({
+      local_key: "7111:7111:9102", local_user_id: 7111, local_store_id: 7111, store_id: 7111,
+      id: 9102, product_id: 8101, value: barcode, source: "manufacturer", symbology: "code128",
+      meaning: "unit", scan_quantity: 1, is_active: true, is_default: true, created_at: now, updated_at: now,
+    });
     await new Promise<void>((resolve, reject) => { transaction.oncomplete = () => resolve(); transaction.onerror = () => reject(transaction.error); });
     database.close();
-  }, { name: options.name ?? "لامپ LED 12W", packaged: options.packaged ?? false });
+  }, {
+    name: options.name ?? "لامپ LED 12W",
+    packaged: options.packaged ?? false,
+    categoryName: options.categoryName ?? null,
+    barcode: options.barcode ?? null,
+    salePrice: options.salePrice ?? 350000,
+  });
 }
 
 function boxesOverlap(first: { x: number; y: number; width: number; height: number }, second: { x: number; y: number; width: number; height: number }) {
@@ -371,7 +386,13 @@ test("product card body opens editing in every view mode", async ({ page }) => {
 
 test("desktop product cards keep long content and packaged stock controls aligned without overflow", async ({ page }) => {
   await seedOfflineUser(page);
-  await seedProduct(page, { name: "ظرف نگهدارنده شیشه‌ای با درپوش بسیار بلند", packaged: true });
+  await seedProduct(page, {
+    name: "ظرف نگهدارنده شیشه‌ای با درپوش بسیار بلند",
+    packaged: true,
+    categoryName: "ظروف آشپزخانه",
+    barcode: "6261234567890",
+    salePrice: 1295000000,
+  });
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("/inventory/list");
 
@@ -390,9 +411,16 @@ test("desktop product cards keep long content and packaged stock controls aligne
   expect(gridMediaBox.width / gridMediaBox.height).toBeGreaterThan(2);
   expect(gridMediaBox.width / gridCardBox.width).toBeGreaterThan(.9);
   await expect(gridStatus).toBeVisible();
-  expect(await gridTitle.evaluate((element) => getComputedStyle(element).whiteSpace)).toBe("nowrap");
+  expect(await gridTitle.evaluate((element) => getComputedStyle(element).webkitLineClamp)).toBe("2");
+  expect(await gridTitle.evaluate((element) => getComputedStyle(element).whiteSpace)).toBe("normal");
   expect(await gridTitle.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize))).toBeLessThanOrEqual(15);
+  const gridContentBox = (await gridCard.locator(".inventory-card-content").boundingBox())!;
+  expect(gridTitleBox.width).toBeLessThanOrEqual(gridContentBox.width * .52);
   expect(boxesOverlap(gridTitleBox, gridPriceBox)).toBe(false);
+  await expect(gridCard.locator(".inventory-card-category")).toHaveText("ظروف آشپزخانه");
+  await expect(gridCard.locator(".inventory-card-barcode")).toHaveText("6261234567890");
+  await expect(gridCard.locator(".inventory-card-mobile-meta")).toBeHidden();
+  expect(await gridPrice.locator("strong").evaluate((element) => getComputedStyle(element).whiteSpace)).toBe("nowrap");
   expect(gridActionsBox.y + gridActionsBox.height).toBeLessThanOrEqual(gridQuickBox.y);
   expect(gridQuickBox.x).toBeGreaterThanOrEqual(gridCardBox.x);
   expect(gridQuickBox.x + gridQuickBox.width).toBeLessThanOrEqual(gridCardBox.x + gridCardBox.width + 1);
@@ -417,6 +445,19 @@ test("desktop product cards keep long content and packaged stock controls aligne
   expect(await comfortableTitle.evaluate((element) => getComputedStyle(element).whiteSpace)).toBe("nowrap");
   expect(await comfortableTitle.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize))).toBeLessThanOrEqual(16.2);
   expect(Math.abs(comfortableImage.width - comfortableImage.height)).toBeLessThanOrEqual(1);
+
+  await page.setViewportSize({ width: 390, height: 700 });
+  const mobileContentBox = (await comfortableCard.locator(".inventory-card-content").boundingBox())!;
+  const mobileTitleBox = (await comfortableTitle.boundingBox())!;
+  expect(await comfortableTitle.evaluate((element) => getComputedStyle(element).webkitLineClamp)).toBe("2");
+  expect(await comfortableTitle.evaluate((element) => getComputedStyle(element).whiteSpace)).toBe("normal");
+  expect(mobileTitleBox.width).toBeLessThanOrEqual(mobileContentBox.width * .52);
+  await expect(comfortableCard.locator(".inventory-card-category")).toHaveText("ظروف آشپزخانه");
+  await expect(comfortableCard.locator(".inventory-card-barcode")).toHaveText("6261234567890");
+  await expect(comfortableCard.locator(".inventory-card-mobile-meta")).toBeHidden();
+  const mobileModeBox = (await comfortableCard.locator(".quick-stock-mode").boundingBox())!;
+  const mobileStockBox = (await comfortableCard.locator(".quick-stock-control").boundingBox())!;
+  expect(Math.abs(mobileModeBox.width - mobileStockBox.width)).toBeLessThanOrEqual(1);
 
   for (const width of [1280, 1024]) {
     await page.setViewportSize({ width, height: 800 });

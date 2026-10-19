@@ -24,6 +24,8 @@ const STATUS_META: Record<ProductStatus, { label: string; color: "green" | "yell
 
 type Props = {
   product: Product;
+  categoryName?: string | null;
+  barcode?: string | null;
   deleting?: boolean;
   viewMode?: ProductViewMode;
   showActions?: boolean;
@@ -39,6 +41,8 @@ type Props = {
 
 export function ProductCard({
   product,
+  categoryName = null,
+  barcode = null,
   deleting,
   viewMode = "comfortable",
   showActions = true,
@@ -217,7 +221,7 @@ export function ProductCard({
           {!packageBreakdown && <Text size="2" color="gray" className={`inventory-card-stock-details ${viewMode === "grid" ? "inventory-grid-quantity" : ""}`}><Package size={16} className="inline-block align-middle" /> {product.quantity.toLocaleString("fa-IR")} عدد</Text>}
           <Flex justify="between" gap="3" className="inventory-card-footer min-w-0">
             <Flex gap="2" wrap="wrap" className="min-w-0">
-              {canViewSalePrice && <Badge size="3" color="green" className="inventory-card-price max-w-full overflow-hidden"><ShoppingCart size={15} aria-hidden="true" />{salePrice == null ? "قیمت ثبت نشده" : <><strong>{salePrice.toLocaleString("fa-IR")}</strong><span>تومان</span></>}</Badge>}
+              {canViewSalePrice && <Badge size="3" color="green" data-long-price={salePrice != null && String(salePrice).length >= 10} className="inventory-card-price max-w-full overflow-hidden"><ShoppingCart size={15} aria-hidden="true" />{salePrice == null ? "قیمت ثبت نشده" : <><strong>{salePrice.toLocaleString("fa-IR")}</strong><span>تومان</span></>}</Badge>}
               {canViewPurchasePrice && <Badge size="2" color="blue" className="inventory-card-purchase-price">خرید: {product.purchase_price == null ? "نامشخص" : `${product.purchase_price.toLocaleString("fa-IR")} تومان`}</Badge>}
             </Flex>
             {showActions && !selectionMode && <Flex gap="2" justify="end" data-product-action className="inventory-card-actions inventory-card-mobile-actions">
@@ -233,6 +237,10 @@ export function ProductCard({
               ><Trash2 size={19} /></Button>}
             </Flex>}
           </Flex>
+          {(categoryName || barcode) && <Flex direction="column" gap="1" className="inventory-card-classification min-w-0">
+            {categoryName && <Badge size="1" color="violet" variant="soft" className="inventory-card-category">{categoryName}</Badge>}
+            {barcode && <Text size="1" color="gray" dir="ltr" className="inventory-card-barcode"><Barcode size={14} aria-hidden="true" /><span>{barcode}</span></Text>}
+          </Flex>}
         </Flex>
         {showActions && !selectionMode && <div className="inventory-card-controls" data-product-action>
           {showQuickStock && canAdjustQuantity && <div className="inventory-card-quick shrink-0 border-[var(--gray-a5)] bg-[var(--gray-a2)]">
