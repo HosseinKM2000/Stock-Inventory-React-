@@ -1,5 +1,7 @@
 import { apiFetch } from "@/shared/api/client";
 
+export const personnelKeys = { all: ["store-personnel"] as const, roles: ["store-roles"] as const, capacity: ["personnel-capacity"] as const };
+
 export type StoreRole = { id: number; name: string; permissions: string[]; assigned_count: number };
 export type Personnel = { membership_id: number; user_id: number; first_name: string; last_name: string; username: string; role_id: number; role_name: string; active: boolean; temporary_password_required: boolean; credentials_notice_viewed: boolean; created_at: string; last_activity_at: string | null };
 export type PersonnelCreated = Personnel & { temporary_password: string };

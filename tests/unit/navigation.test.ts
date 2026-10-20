@@ -49,6 +49,7 @@ describe("navigation metadata", () => {
   it("separates personal subscription, tools, and administrative destinations", () => {
     expect(settingsNavigationItems.map((item) => item.to)).toContain("/setting/subscription");
     expect(settingsNavigationItems.map((item) => item.to)).toContain("/setting/sync");
+    expect(settingsNavigationItems.map((item) => item.to)).toContain("/setting/roles");
     expect(toolsNavigationItems.map((item) => item.to)).toEqual([
       "/tools/scanner",
       "/tools/activity",
@@ -65,6 +66,7 @@ describe("navigation metadata", () => {
     expect(visibleNavigationItems(managementNavigationItems, { ...standardUser, is_admin: true })).toHaveLength(4);
     const administrator = { ...standardUser, is_admin: true, role: "ADMIN" as const, is_store_owner: false };
     expect(visibleNavigationItems(settingsNavigationItems, administrator).map((item) => item.to)).toContain("/setting/personnel");
+    expect(visibleNavigationItems(settingsNavigationItems, administrator).map((item) => item.to)).toContain("/setting/roles");
     expect(visibleNavigationItems(toolsNavigationItems, administrator).map((item) => item.to)).toContain("/tools/activity");
   });
 });

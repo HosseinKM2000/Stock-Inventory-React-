@@ -1,47 +1,346 @@
-import { useState } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Badge, Box, Callout, Card, Checkbox, Flex, Grid, Select, Text, TextField } from "@radix-ui/themes";
+import { Badge, Box, IconButton, Select, Text, TextField } from "@radix-ui/themes";
+import {
+  AvatarIcon,
+  ClipboardCopyIcon,
+  Cross2Icon,
+  IdCardIcon,
+  InfoCircledIcon,
+  LockClosedIcon,
+  PersonIcon,
+  PlusIcon,
+  ReloadIcon,
+} from "@radix-ui/react-icons";
 import { toast } from "sonner";
-import { Button } from "@/shared/ui/button/button";
-import { formatJalaliDateTime } from "@/shared/lib/date/jalali";
-import { permissionOptions, personnelApi, type PersonnelCreated } from "./api";
-import { PersonIcon } from "@radix-ui/react-icons";
-import { PageGuide } from "@/features/app/layout/page-guide";
 
-const keys = { all: ["store-personnel"] as const, roles: ["store-roles"] as const, capacity: ["personnel-capacity"] as const };
+import { copyPlainText } from "@/features/app/inventory/services/clipboard.service";
+import { PageGuide } from "@/features/app/layout/page-guide";
+import { OnlineGuard } from "@/shared/access/online-guard";
+import { formatJalaliDateTime } from "@/shared/lib/date/jalali";
+import { Button } from "@/shared/ui/button/button";
+import {
+  personnelApi,
+  personnelKeys,
+  type Capacity,
+  type Personnel,
+  type PersonnelCreated,
+  type StoreRole,
+} from "./api";
+
+type PersonnelForm = {
+  first_name: string;
+  last_name: string;
+  username: string;
+  role_id: string;
+};
+
+const emptyPersonnelForm: PersonnelForm = {
+  first_name: "",
+  last_name: "",
+  username: "",
+  role_id: "",
+};
 
 export function PersonnelPage() {
+  return (
+    <Box dir="rtl" className="personnel-page mx-auto w-full max-w-6xl">
+      <PageGuide
+        section="تنظیمات"
+        sectionTo="/setting"
+        title="پرسنل مجموعه"
+        description="افزودن اعضا و تغییر دسترسی آن‌ها فقط با اتصال اینترنت انجام می‌شود."
+        icon={PersonIcon}
+      />
+      <OnlineGuard><PersonnelContent /></OnlineGuard>
+    </Box>
+  );
+}
+
+function PersonnelContent() {
   const client = useQueryClient();
-  const roles = useQuery({ queryKey: keys.roles, queryFn: personnelApi.roles });
-  const people = useQuery({ queryKey: keys.all, queryFn: personnelApi.personnel });
-  const capacity = useQuery({ queryKey: keys.capacity, queryFn: personnelApi.capacity });
+  const capacity = useQuery({ queryKey: personnelKeys.capacity, queryFn: personnelApi.capacity });
+  const managementEnabled = capacity.data?.enabled === true;
+  const roles = useQuery({ queryKey: personnelKeys.roles, queryFn: personnelApi.roles, enabled: managementEnabled });
+  const people = useQuery({ queryKey: personnelKeys.all, queryFn: personnelApi.personnel, enabled: managementEnabled });
   const [credentials, setCredentials] = useState<PersonnelCreated | null>(null);
-  const [roleName, setRoleName] = useState("");
-  const [editingRoleId, setEditingRoleId] = useState<number | null>(null);
-  const [permissions, setPermissions] = useState<string[]>([]);
-  const [person, setPerson] = useState({ first_name: "", last_name: "", username: "", role_id: "" });
-  const refresh = () => Promise.all([client.invalidateQueries({ queryKey: keys.all }), client.invalidateQueries({ queryKey: keys.capacity }), client.invalidateQueries({ queryKey: keys.roles })]);
-  const saveRole = useMutation({ mutationFn: (input: { name: string; permissions: string[] }) => editingRoleId ? personnelApi.updateRole(editingRoleId, input) : personnelApi.createRole(input), onSuccess: () => { setRoleName(""); setPermissions([]); setEditingRoleId(null); void client.invalidateQueries({ queryKey: keys.roles }); toast.success("نقش ذخیره شد"); } });
-  const deleteRole = useMutation({ mutationFn: personnelApi.deleteRole, onSuccess: () => void client.invalidateQueries({ queryKey: keys.roles }), onError: () => toast.error("نقشِ اختصاص‌داده‌شده را ابتدا از اعضا جدا کنید") });
-  const createPerson = useMutation({ mutationFn: personnelApi.create, onSuccess: (value) => { setCredentials(value); setPerson({ first_name: "", last_name: "", username: "", role_id: "" }); void refresh(); } });
-  const update = useMutation({ mutationFn: ({ id, active }: { id: number; active: boolean }) => personnelApi.update(id, { active }), onSuccess: () => void refresh() });
-  const resetCredentials = useMutation({ mutationFn: personnelApi.resetCredentials, onSuccess: (value) => { setCredentials(value); void refresh(); } });
+  const [person, setPerson] = useState<PersonnelForm>(emptyPersonnelForm);
+
+  const refresh = () => Promise.all([
+    client.invalidateQueries({ queryKey: personnelKeys.all }),
+    client.invalidateQueries({ queryKey: personnelKeys.capacity }),
+    client.invalidateQueries({ queryKey: personnelKeys.roles }),
+  ]);
+
+  const createPerson = useMutation({
+    mutationFn: personnelApi.create,
+    onSuccess: (value) => {
+      setCredentials(value);
+      setPerson(emptyPersonnelForm);
+      toast.success("حساب پرسنل ساخته شد");
+      void refresh();
+    },
+    onError: () => toast.error("ساخت حساب انجام نشد؛ دوباره تلاش کنید"),
+  });
+  const updateStatus = useMutation({
+    mutationFn: ({ id, active }: { id: number; active: boolean }) => personnelApi.update(id, { active }),
+    onSuccess: () => void refresh(),
+    onError: () => toast.error("تغییر وضعیت عضو انجام نشد"),
+  });
+  const updateRole = useMutation({
+    mutationFn: ({ id, roleId }: { id: number; roleId: number }) => personnelApi.update(id, { role_id: roleId }),
+    onSuccess: () => {
+      toast.success("نقش عضو تغییر کرد");
+      void refresh();
+    },
+    onError: () => toast.error("تغییر نقش عضو انجام نشد"),
+  });
+  const resetCredentials = useMutation({
+    mutationFn: personnelApi.resetCredentials,
+    onSuccess: (value) => {
+      setCredentials(value);
+      toast.success("رمز موقت تازه صادر شد");
+      void refresh();
+    },
+    onError: () => toast.error("صدور رمز موقت انجام نشد"),
+  });
+
   const hasCapacity = capacity.data?.enabled === true && (capacity.data.available === null || capacity.data.available > 0);
+  const hasRoles = (roles.data?.length ?? 0) > 0;
+
+  const handleCreate = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!person.first_name || !person.last_name || !person.role_id || !hasCapacity) return;
+    createPerson.mutate({
+      ...person,
+      username: person.username || undefined,
+      role_id: Number(person.role_id),
+    });
+  };
 
   return (
-    <Box dir="rtl" className="mx-auto w-full max-w-5xl">
-      <Flex justify="between" align="end" gap="4" wrap="wrap" mb="4">
-        <div className="min-w-0 flex-1"><PageGuide section="تنظیمات" sectionTo="/setting" title="پرسنل مجموعه" description="دسترسی هر شخص با نقش او کنترل می‌شود و تغییرات فقط آنلاین انجام می‌شوند." icon={PersonIcon} /></div>
-        <Badge size="2" color={hasCapacity ? "green" : "orange"}>{capacity.data ? (capacity.data.limit === null ? `${capacity.data.used} عضو فعال · نامحدود` : `${capacity.data.used} از ${capacity.data.limit} جایگاه فعال`) : "در حال بررسی ظرفیت"}</Badge>
-      </Flex>
-      {capacity.data && !capacity.data.enabled ? <Callout.Root color="orange" mb="5"><Callout.Text>مدیریت پرسنل در طرح فعلی فعال نیست. اطلاعات قبلی حفظ می‌شود.</Callout.Text></Callout.Root> : null}
-      {credentials ? <Callout.Root color="green" mb="5"><Callout.Text><Text weight="bold">اطلاعات ورود فقط همین یک‌بار نمایش داده می‌شود.</Text><br />نام کاربری: <code>{credentials.username}</code><br />رمز موقت: <code>{credentials.temporary_password}</code><Flex mt="3"><Button variant="soft" onClick={() => { void navigator.clipboard.writeText(`${credentials.username}\n${credentials.temporary_password}`); toast.success("اطلاعات ورود کپی شد"); }}>کپی اطلاعات ورود</Button><Button variant="ghost" onClick={() => setCredentials(null)}>بستن</Button></Flex></Callout.Text></Callout.Root> : null}
-      <Grid columns={{ initial: "1", md: "2" }} gap="5">
-        <Card><h2 className="mb-4 text-xl font-bold">افزودن پرسنل</h2><Flex direction="column" gap="3"><TextField.Root placeholder="نام" value={person.first_name} onChange={(e) => setPerson({ ...person, first_name: e.target.value })} /><TextField.Root placeholder="نام خانوادگی" value={person.last_name} onChange={(e) => setPerson({ ...person, last_name: e.target.value })} /><TextField.Root placeholder="نام کاربری دلخواه (اختیاری)" value={person.username} onChange={(e) => setPerson({ ...person, username: e.target.value })} /><Select.Root value={person.role_id} onValueChange={(role_id) => setPerson({ ...person, role_id })}><Select.Trigger placeholder="انتخاب نقش" /><Select.Content>{roles.data?.map((role) => <Select.Item key={role.id} value={String(role.id)}>{role.name}</Select.Item>)}</Select.Content></Select.Root><Button loading={createPerson.isPending} disabled={!person.first_name || !person.last_name || !person.role_id || !hasCapacity} onClick={() => createPerson.mutate({ ...person, username: person.username || undefined, role_id: Number(person.role_id) })}>ساخت حساب و رمز موقت</Button></Flex></Card>
-        <Card><h2 className="mb-2 text-xl font-bold">{editingRoleId ? "ویرایش نقش" : "نقش تازه"}</h2><Text size="2" color="gray">نقش تازه بدون مجوز شروع می‌شود؛ وابستگی‌های لازم هنگام ذخیره خودکار افزوده می‌شوند.</Text><Flex direction="column" gap="3" mt="4"><TextField.Root placeholder="نام نقش" value={roleName} onChange={(e) => setRoleName(e.target.value)} /><Grid columns="2" gap="2">{permissionOptions.map(([id, label]) => <Text as="label" size="2" key={id} className="flex items-center gap-2"><Checkbox checked={permissions.includes(id)} onCheckedChange={(checked) => setPermissions((current) => checked ? [...current, id] : current.filter((item) => item !== id))} />{label}</Text>)}</Grid><Flex><Button variant="soft" disabled={!roleName.trim()} loading={saveRole.isPending} onClick={() => saveRole.mutate({ name: roleName, permissions })}>ذخیره نقش</Button>{editingRoleId ? <Button variant="ghost" onClick={() => { setEditingRoleId(null); setRoleName(""); setPermissions([]); }}>انصراف</Button> : null}</Flex><Flex direction="column" gap="2">{roles.data?.map((role) => <Flex key={role.id} justify="between" align="center"><Text size="2">{role.name} · {role.assigned_count} عضو</Text><Flex><Button size="1" variant="ghost" onClick={() => { setEditingRoleId(role.id); setRoleName(role.name); setPermissions(role.permissions); }}>ویرایش</Button><Button size="1" color="red" variant="ghost" disabled={role.assigned_count > 0} onClick={() => deleteRole.mutate(role.id)}>حذف</Button></Flex></Flex>)}</Flex></Flex></Card>
-      </Grid>
-      <h2 className="mb-3 mt-7 text-xl font-bold">اعضای پرسنل</h2>
-      <Grid columns={{ initial: "1", md: "2" }} gap="3">{people.data?.map((item) => <Card key={item.membership_id}><Flex justify="between" gap="3"><Box><Text weight="bold">{item.first_name} {item.last_name}</Text><Text as="div" size="2" color="gray">@{item.username}</Text><Select.Root value={String(item.role_id)} onValueChange={(role_id) => personnelApi.update(item.membership_id, { role_id: Number(role_id) }).then(refresh)}><Select.Trigger mt="2" /><Select.Content>{roles.data?.map((role) => <Select.Item key={role.id} value={String(role.id)}>{role.name}</Select.Item>)}</Select.Content></Select.Root>{item.last_activity_at ? <Text as="div" size="1" color="gray">آخرین فعالیت: {formatJalaliDateTime(item.last_activity_at)}</Text> : null}</Box><Flex direction="column" align="end" gap="2"><Badge color={item.active ? "green" : "gray"}>{item.active ? "فعال" : "غیرفعال"}</Badge><Button size="2" variant="soft" loading={update.isPending} onClick={() => update.mutate({ id: item.membership_id, active: !item.active })}>{item.active ? "غیرفعال‌کردن" : "فعال‌کردن"}</Button><Button size="1" variant="ghost" loading={resetCredentials.isPending} onClick={() => resetCredentials.mutate(item.membership_id)}>صدور رمز موقت تازه</Button></Flex></Flex></Card>)}</Grid>
-    </Box>
+    <div className="personnel-workspace">
+      <CapacitySummary capacity={capacity.data} hasCapacity={hasCapacity} />
+
+      {capacity.data && !capacity.data.enabled ? (
+        <section className="personnel-plan-notice" aria-labelledby="personnel-plan-title">
+          <InfoCircledIcon width="22" height="22" aria-hidden="true" />
+          <div>
+            <h2 id="personnel-plan-title">مدیریت پرسنل در پلن فعلی فعال نیست</h2>
+            <p>این قابلیت برای پلن‌های تیمی یا چنددستگاهی در نظر گرفته شده است و اطلاعات قبلی مجموعه حفظ می‌شود.</p>
+          </div>
+        </section>
+      ) : null}
+
+      {credentials ? <CredentialsPanel credentials={credentials} onClose={() => setCredentials(null)} /> : null}
+
+      {managementEnabled ? (
+        <div className="personnel-main-grid">
+          <AddPersonnelCard
+            form={person}
+            roles={roles.data ?? []}
+            hasCapacity={hasCapacity}
+            hasRoles={hasRoles}
+            isLoadingRoles={roles.isLoading}
+            isPending={createPerson.isPending}
+            onChange={setPerson}
+            onSubmit={handleCreate}
+          />
+          <PersonnelList
+            people={people.data ?? []}
+            roles={roles.data ?? []}
+            isLoading={people.isLoading}
+            hasError={people.isError || roles.isError}
+            statusPendingId={updateStatus.isPending ? updateStatus.variables?.id : undefined}
+            rolePendingId={updateRole.isPending ? updateRole.variables?.id : undefined}
+            resetPendingId={resetCredentials.isPending ? resetCredentials.variables : undefined}
+            onStatusChange={(id, active) => updateStatus.mutate({ id, active })}
+            onRoleChange={(id, roleId) => updateRole.mutate({ id, roleId })}
+            onResetCredentials={(id) => resetCredentials.mutate(id)}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function CapacitySummary({ capacity, hasCapacity }: { capacity?: Capacity; hasCapacity: boolean }) {
+  let label = "در حال بررسی ظرفیت";
+  if (capacity?.limit === null) label = `${capacity.used.toLocaleString("fa-IR")} عضو فعال · نامحدود`;
+  else if (capacity) label = `${capacity.used.toLocaleString("fa-IR")} عضو فعال · ${Math.max(0, capacity.available ?? 0).toLocaleString("fa-IR")} جایگاه باقی‌مانده`;
+
+  return (
+    <div className="personnel-capacity-row">
+      <Text as="p" size="2" color="gray">اعضا و نقش‌های مجموعه فقط به‌صورت آنلاین مدیریت می‌شوند.</Text>
+      <Badge className="personnel-capacity-badge" size="2" color={hasCapacity ? "green" : "orange"}>
+        <span className="personnel-status-dot" aria-hidden="true" />
+        {label}
+      </Badge>
+    </div>
+  );
+}
+
+function CredentialsPanel({ credentials, onClose }: { credentials: PersonnelCreated; onClose: () => void }) {
+  const copyValue = async (value: string, message: string) => {
+    try {
+      await copyPlainText(value);
+      toast.success(message);
+    } catch {
+      toast.error("کپی اطلاعات در این مرورگر ممکن نیست");
+    }
+  };
+
+  return (
+    <section className="personnel-credentials" aria-labelledby="credentials-title">
+      <div className="personnel-credentials-heading">
+        <span className="personnel-credentials-icon" aria-hidden="true"><InfoCircledIcon width="22" height="22" /></span>
+        <div>
+          <h2 id="credentials-title">اطلاعات ورود فقط همین‌بار نمایش داده می‌شود.</h2>
+          <p>این اطلاعات را در جای امن ذخیره کنید.</p>
+        </div>
+      </div>
+      <div className="personnel-credential-list">
+        <CredentialRow icon={<PersonIcon />} label="نام کاربری" value={credentials.username} onCopy={() => void copyValue(credentials.username, "نام کاربری کپی شد")} />
+        <CredentialRow icon={<LockClosedIcon />} label="رمز موقت" value={credentials.temporary_password} onCopy={() => void copyValue(credentials.temporary_password, "رمز موقت کپی شد")} />
+      </div>
+      <div className="personnel-credentials-actions">
+        <Button
+          className="personnel-copy-all"
+          color="green"
+          leftIcon={<ClipboardCopyIcon />}
+          onClick={() => void copyValue(`${credentials.username}\n${credentials.temporary_password}`, "اطلاعات ورود کپی شد")}
+        >
+          کپی اطلاعات ورود
+        </Button>
+        <Button variant="soft" color="gray" leftIcon={<Cross2Icon />} onClick={onClose}>بستن</Button>
+      </div>
+    </section>
+  );
+}
+
+function CredentialRow({ icon, label, value, onCopy }: { icon: ReactNode; label: string; value: string; onCopy: () => void }) {
+  return (
+    <div className="personnel-credential-row">
+      <span className="personnel-credential-label">{icon}{label}:</span>
+      <code dir="ltr">{value}</code>
+      <IconButton type="button" variant="soft" aria-label={`کپی ${label}`} onClick={onCopy}><ClipboardCopyIcon /></IconButton>
+    </div>
+  );
+}
+
+function AddPersonnelCard({ form, roles, hasCapacity, hasRoles, isLoadingRoles, isPending, onChange, onSubmit }: {
+  form: PersonnelForm;
+  roles: StoreRole[];
+  hasCapacity: boolean;
+  hasRoles: boolean;
+  isLoadingRoles: boolean;
+  isPending: boolean;
+  onChange: (value: PersonnelForm) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+}) {
+  return (
+    <section className="personnel-card personnel-create-card" aria-labelledby="create-personnel-title">
+      <SectionHeading id="create-personnel-title" icon={<PlusIcon />} title="افزودن پرسنل" description="برای ایجاد حساب جدید، اطلاعات زیر را وارد کنید." />
+      <form className="personnel-create-form" onSubmit={onSubmit}>
+        <TextField.Root size="3" className="personnel-field" aria-label="نام" placeholder="نام" autoComplete="given-name" value={form.first_name} onChange={(event) => onChange({ ...form, first_name: event.target.value })}>
+          <TextField.Slot side="right"><PersonIcon /></TextField.Slot>
+        </TextField.Root>
+        <TextField.Root size="3" className="personnel-field" aria-label="نام خانوادگی" placeholder="نام خانوادگی" autoComplete="family-name" value={form.last_name} onChange={(event) => onChange({ ...form, last_name: event.target.value })}>
+          <TextField.Slot side="right"><PersonIcon /></TextField.Slot>
+        </TextField.Root>
+        <TextField.Root size="3" className="personnel-field" aria-label="نام کاربری دلخواه" placeholder="نام کاربری دلخواه (اختیاری)" autoComplete="off" dir="rtl" value={form.username} onChange={(event) => onChange({ ...form, username: event.target.value })}>
+          <TextField.Slot side="right"><IdCardIcon /></TextField.Slot>
+        </TextField.Root>
+        <Select.Root value={form.role_id} onValueChange={(roleId) => onChange({ ...form, role_id: roleId })}>
+          <Select.Trigger className="personnel-select" aria-label="انتخاب نقش" placeholder={isLoadingRoles ? "در حال دریافت نقش‌ها…" : "انتخاب نقش"} />
+          <Select.Content>{roles.map((role) => <Select.Item key={role.id} value={String(role.id)}>{role.name}</Select.Item>)}</Select.Content>
+        </Select.Root>
+        {!hasRoles && !isLoadingRoles ? <Text as="p" size="1" color="orange">برای افزودن پرسنل، ابتدا یک نقش بسازید.</Text> : null}
+        <Button type="submit" className="personnel-create-submit" loading={isPending} disabled={!form.first_name || !form.last_name || !form.role_id || !hasCapacity || !hasRoles} leftIcon={<PlusIcon />}>
+          ساخت حساب و رمز موقت
+        </Button>
+      </form>
+    </section>
+  );
+}
+
+function PersonnelList({ people, roles, isLoading, hasError, statusPendingId, rolePendingId, resetPendingId, onStatusChange, onRoleChange, onResetCredentials }: {
+  people: Personnel[];
+  roles: StoreRole[];
+  isLoading: boolean;
+  hasError: boolean;
+  statusPendingId?: number;
+  rolePendingId?: number;
+  resetPendingId?: number;
+  onStatusChange: (id: number, active: boolean) => void;
+  onRoleChange: (id: number, roleId: number) => void;
+  onResetCredentials: (id: number) => void;
+}) {
+  return (
+    <section className="personnel-card personnel-members-card" aria-labelledby="personnel-members-title">
+      <SectionHeading id="personnel-members-title" icon={<AvatarIcon />} title="اعضای پرسنل" description="فهرست اعضای تیم و نقش‌های دسترسی آن‌ها" />
+      {isLoading ? <div className="personnel-list-state">در حال دریافت اعضا…</div> : null}
+      {hasError ? <div className="personnel-list-state is-error">دریافت اطلاعات اعضا انجام نشد.</div> : null}
+      {!isLoading && !hasError && people.length === 0 ? <div className="personnel-list-state"><PersonIcon width="24" height="24" aria-hidden="true" />هنوز عضوی به مجموعه اضافه نشده است.</div> : null}
+      <div className="personnel-member-list">
+        {people.map((item) => (
+          <PersonnelMemberCard
+            key={item.membership_id}
+            item={item}
+            roles={roles}
+            statusPending={statusPendingId === item.membership_id}
+            rolePending={rolePendingId === item.membership_id}
+            resetPending={resetPendingId === item.membership_id}
+            onStatusChange={onStatusChange}
+            onRoleChange={onRoleChange}
+            onResetCredentials={onResetCredentials}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function PersonnelMemberCard({ item, roles, statusPending, rolePending, resetPending, onStatusChange, onRoleChange, onResetCredentials }: {
+  item: Personnel;
+  roles: StoreRole[];
+  statusPending: boolean;
+  rolePending: boolean;
+  resetPending: boolean;
+  onStatusChange: (id: number, active: boolean) => void;
+  onRoleChange: (id: number, roleId: number) => void;
+  onResetCredentials: (id: number) => void;
+}) {
+  return (
+    <article className="personnel-member" data-active={item.active}>
+      <div className="personnel-member-header">
+        <span className="personnel-avatar" aria-hidden="true"><PersonIcon width="22" height="22" /></span>
+        <div className="personnel-member-identity">
+          <h3>{item.first_name} {item.last_name}</h3>
+          <span dir="ltr">@{item.username}</span>
+        </div>
+        <Badge color={item.active ? "green" : "gray"}><span className="personnel-status-dot" aria-hidden="true" />{item.active ? "فعال" : "غیرفعال"}</Badge>
+      </div>
+      <div className="personnel-member-controls">
+        <Select.Root value={String(item.role_id)} disabled={rolePending} onValueChange={(roleId) => onRoleChange(item.membership_id, Number(roleId))}>
+          <Select.Trigger className="personnel-select" aria-label={`نقش ${item.first_name} ${item.last_name}`} />
+          <Select.Content>{roles.map((role) => <Select.Item key={role.id} value={String(role.id)}>{role.name}</Select.Item>)}</Select.Content>
+        </Select.Root>
+        <Button size="2" variant="soft" color={item.active ? "red" : "green"} loading={statusPending} onClick={() => onStatusChange(item.membership_id, !item.active)}>
+          {item.active ? "غیرفعال کردن" : "فعال کردن"}
+        </Button>
+        <Button size="2" variant="soft" loading={resetPending} leftIcon={<ReloadIcon />} onClick={() => onResetCredentials(item.membership_id)}>رمز موقت تازه</Button>
+      </div>
+      {item.last_activity_at ? <Text as="p" className="personnel-last-activity" size="1" color="gray">آخرین فعالیت: {formatJalaliDateTime(item.last_activity_at)}</Text> : null}
+    </article>
+  );
+}
+
+function SectionHeading({ id, icon, title, description }: { id: string; icon: ReactNode; title: string; description: string }) {
+  return (
+    <div className="personnel-section-heading">
+      <span className="personnel-section-icon" aria-hidden="true">{icon}</span>
+      <div><h2 id={id}>{title}</h2><p>{description}</p></div>
+    </div>
   );
 }

@@ -42,6 +42,20 @@ def test_permission_dependencies_are_expanded_and_unknown_values_denied():
         normalize_permissions(["products.typo"])
 
 
+def test_role_changes_require_personnel_capability(client: TestClient):
+    username = f"free-owner-{uuid.uuid4().hex[:8]}"
+    auth = signup(client, username)
+    owner_headers = headers(auth, f"device-{username}")
+    roles = client.get("/api/store/roles", headers=owner_headers)
+    assert roles.status_code == 200
+
+    created = client.post("/api/store/roles", headers=owner_headers, json={
+        "name": "فروشنده", "permissions": ["products.view"],
+    })
+    assert created.status_code == 403
+    assert created.json()["detail"] == "PERSONNEL_ENTITLEMENT_REQUIRED"
+
+
 def test_personnel_capacity_temporary_password_gate_and_attribution(client: TestClient):
     username = f"owner-{uuid.uuid4().hex[:8]}"
     auth = signup(client, username)
@@ -56,6 +70,11 @@ def test_personnel_capacity_temporary_password_gate_and_attribution(client: Test
     roles = client.get("/api/store/roles", headers=owner_headers)
     assert roles.status_code == 200
     viewer = next(item for item in roles.json() if item["name"] == "مشاهده‌گر")
+    role_created = client.post("/api/store/roles", headers=owner_headers, json={
+        "name": "انباردار", "permissions": ["products.quantity.change"],
+    })
+    assert role_created.status_code == 201, role_created.text
+    assert role_created.json()["permissions"] == ["products.quantity.change", "products.view"]
     created = client.post("/api/store/personnel", headers=owner_headers, json={
         "first_name": "Person", "last_name": "One", "role_id": viewer["id"],
     })

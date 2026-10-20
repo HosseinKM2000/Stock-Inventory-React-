@@ -74,6 +74,13 @@ def _capacity(db: Session, store: Store, user: User) -> PersonnelCapacityOut:
     return PersonnelCapacityOut(enabled=enabled, used=used, limit=limit, available=max(0, limit - used))
 
 
+def _require_personnel_management(db: Session, store: Store, user: User) -> PersonnelCapacityOut:
+    capacity = _capacity(db, store, user)
+    if not capacity.enabled:
+        raise HTTPException(status_code=403, detail="PERSONNEL_ENTITLEMENT_REQUIRED")
+    return capacity
+
+
 @router.get("/store/roles", response_model=list[StoreRoleOut])
 def list_roles(current_user: CurrentUser, db: DbSession):
     context = owner_store_context(db, current_user)
@@ -83,6 +90,7 @@ def list_roles(current_user: CurrentUser, db: DbSession):
 @router.post("/store/roles", response_model=StoreRoleOut, status_code=status.HTTP_201_CREATED)
 def create_role(payload: StoreRoleCreate, current_user: CurrentUser, db: DbSession):
     context = owner_store_context(db, current_user)
+    _require_personnel_management(db, context.store, current_user)
     role = StoreRole(store_id=context.store.id, name=payload.name.strip(), permissions_json=json.dumps(normalize_permissions(payload.permissions)))
     db.add(role)
     db.flush()
@@ -94,6 +102,7 @@ def create_role(payload: StoreRoleCreate, current_user: CurrentUser, db: DbSessi
 @router.patch("/store/roles/{role_id}", response_model=StoreRoleOut)
 def update_role(role_id: int, payload: StoreRoleUpdate, current_user: CurrentUser, db: DbSession):
     context = owner_store_context(db, current_user)
+    _require_personnel_management(db, context.store, current_user)
     role = db.scalar(select(StoreRole).where(StoreRole.id == role_id, StoreRole.store_id == context.store.id))
     if role is None: raise HTTPException(status_code=404, detail="ROLE_NOT_FOUND")
     before = {"name": role.name, "permissions": json.loads(role.permissions_json)}
@@ -107,6 +116,7 @@ def update_role(role_id: int, payload: StoreRoleUpdate, current_user: CurrentUse
 @router.delete("/store/roles/{role_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_role(role_id: int, current_user: CurrentUser, db: DbSession):
     context = owner_store_context(db, current_user)
+    _require_personnel_management(db, context.store, current_user)
     role = db.scalar(select(StoreRole).where(StoreRole.id == role_id, StoreRole.store_id == context.store.id))
     if role is None: raise HTTPException(status_code=404, detail="ROLE_NOT_FOUND")
     if db.scalar(select(StoreMembership.id).where(StoreMembership.role_id == role.id).limit(1)):
@@ -131,8 +141,7 @@ def list_personnel(current_user: CurrentUser, db: DbSession):
 def create_personnel(payload: PersonnelCreate, current_user: CurrentUser, db: DbSession):
     context = owner_store_context(db, current_user)
     store = db.scalar(select(Store).where(Store.id == context.store.id).with_for_update())
-    capacity = _capacity(db, store, current_user)
-    if not capacity.enabled: raise HTTPException(status_code=403, detail="PERSONNEL_ENTITLEMENT_REQUIRED")
+    capacity = _require_personnel_management(db, store, current_user)
     if capacity.available is not None and capacity.available <= 0: raise HTTPException(status_code=409, detail="PERSONNEL_CAPACITY_REACHED")
     role = db.scalar(select(StoreRole).where(StoreRole.id == payload.role_id, StoreRole.store_id == store.id))
     if role is None: raise HTTPException(status_code=404, detail="ROLE_NOT_FOUND")
@@ -149,6 +158,7 @@ def create_personnel(payload: PersonnelCreate, current_user: CurrentUser, db: Db
 @router.patch("/store/personnel/{membership_id}", response_model=PersonnelOut)
 def update_personnel(membership_id: int, payload: PersonnelUpdate, current_user: CurrentUser, db: DbSession):
     context = owner_store_context(db, current_user)
+    _require_personnel_management(db, context.store, current_user)
     membership = db.scalar(select(StoreMembership).where(StoreMembership.id == membership_id, StoreMembership.store_id == context.store.id, StoreMembership.is_owner.is_(False)).with_for_update())
     if membership is None: raise HTTPException(status_code=404, detail="PERSONNEL_NOT_FOUND")
     before = {"role_id": membership.role_id, "status": membership.status}
@@ -170,6 +180,7 @@ def update_personnel(membership_id: int, payload: PersonnelUpdate, current_user:
 @router.post("/store/personnel/{membership_id}/temporary-credentials", response_model=PersonnelCreated)
 def reset_personnel_credentials(membership_id: int, current_user: CurrentUser, db: DbSession):
     context = owner_store_context(db, current_user)
+    _require_personnel_management(db, context.store, current_user)
     membership = db.scalar(select(StoreMembership).where(StoreMembership.id == membership_id, StoreMembership.store_id == context.store.id, StoreMembership.is_owner.is_(False)))
     if membership is None: raise HTTPException(status_code=404, detail="PERSONNEL_NOT_FOUND")
     password = _temporary_password(); membership.user.hashed_password = hash_password(password)

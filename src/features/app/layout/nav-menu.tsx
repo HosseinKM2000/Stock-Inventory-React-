@@ -9,6 +9,7 @@ import { isAdmin } from "@/shared/access/authorization";
 import { useEntitlementAccess } from "@/shared/access/use-entitlement";
 import type { NavigationItem } from "./navigation-items";
 import { useNavigationLayout } from "./use-navigation-layout";
+import { useDraggableAdminShortcut } from "./use-draggable-admin-shortcut";
 
 type Props = {
   hidden?: boolean;
@@ -42,6 +43,8 @@ const NavMenu = ({ hidden = false }: Props) => {
     select: (state) => state.location.pathname,
   });
   const { user } = useAuth();
+  const administrator = isAdmin(user);
+  const adminShortcut = useDraggableAdminShortcut(navigationRef, administrator);
   const items = primaryNavigationItems(user);
   const canAddProduct = accessState.canWrite() && (accessState.hasStorePermission?.("products.create") ?? true);
   const beforeAction = items.slice(0, 2);
@@ -64,13 +67,21 @@ const NavMenu = ({ hidden = false }: Props) => {
       aria-hidden={hidden || keyboardOpen}
       aria-label="ناوبری اصلی"
     >
-      {isAdmin(user) && (
+      {administrator && (
         <Link
           to="/management"
           aria-label="مدیریت"
           aria-current={isPathActive(pathname, "/management") ? "page" : undefined}
           data-active={isPathActive(pathname, "/management")}
           className="app-admin-shortcut"
+          style={adminShortcut.style}
+          title="برای جابه‌جایی بکشید"
+          draggable={false}
+          onClick={adminShortcut.onClick}
+          onPointerDown={adminShortcut.onPointerDown}
+          onPointerMove={adminShortcut.onPointerMove}
+          onPointerUp={adminShortcut.onPointerUp}
+          onPointerCancel={adminShortcut.onPointerCancel}
         >
           <PersonIcon width="22" height="22" aria-hidden="true" />
         </Link>
