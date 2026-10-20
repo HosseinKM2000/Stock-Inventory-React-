@@ -32,6 +32,7 @@ import { Route as SettingSyncRouteImport } from './routes/setting/sync'
 import { Route as SettingSubscriptionManagementRouteImport } from './routes/setting/subscription-management'
 import { Route as SettingSubscriptionRouteImport } from './routes/setting/subscription'
 import { Route as SettingSecurityRouteImport } from './routes/setting/security'
+import { Route as SettingRolesRouteImport } from './routes/setting/roles'
 import { Route as SettingProfileRouteImport } from './routes/setting/profile'
 import { Route as SettingProductsRouteImport } from './routes/setting/products'
 import { Route as SettingPersonnelRouteImport } from './routes/setting/personnel'
@@ -182,6 +183,11 @@ const SettingSubscriptionRoute = SettingSubscriptionRouteImport.update({
 const SettingSecurityRoute = SettingSecurityRouteImport.update({
   id: '/security',
   path: '/security',
+  getParentRoute: () => SettingRouteRoute,
+} as any)
+const SettingRolesRoute = SettingRolesRouteImport.update({
+  id: '/roles',
+  path: '/roles',
   getParentRoute: () => SettingRouteRoute,
 } as any)
 const SettingProfileRoute = SettingProfileRouteImport.update({
@@ -401,6 +407,7 @@ export interface FileRoutesByFullPath {
   '/setting/personnel': typeof SettingPersonnelRoute
   '/setting/products': typeof SettingProductsRoute
   '/setting/profile': typeof SettingProfileRoute
+  '/setting/roles': typeof SettingRolesRoute
   '/setting/security': typeof SettingSecurityRoute
   '/setting/subscription': typeof SettingSubscriptionRoute
   '/setting/subscription-management': typeof SettingSubscriptionManagementRoute
@@ -456,6 +463,7 @@ export interface FileRoutesByTo {
   '/setting/personnel': typeof SettingPersonnelRoute
   '/setting/products': typeof SettingProductsRoute
   '/setting/profile': typeof SettingProfileRoute
+  '/setting/roles': typeof SettingRolesRoute
   '/setting/security': typeof SettingSecurityRoute
   '/setting/subscription': typeof SettingSubscriptionRoute
   '/setting/subscription-management': typeof SettingSubscriptionManagementRoute
@@ -518,6 +526,7 @@ export interface FileRoutesById {
   '/setting/personnel': typeof SettingPersonnelRoute
   '/setting/products': typeof SettingProductsRoute
   '/setting/profile': typeof SettingProfileRoute
+  '/setting/roles': typeof SettingRolesRoute
   '/setting/security': typeof SettingSecurityRoute
   '/setting/subscription': typeof SettingSubscriptionRoute
   '/setting/subscription-management': typeof SettingSubscriptionManagementRoute
@@ -580,6 +589,7 @@ export interface FileRouteTypes {
     | '/setting/personnel'
     | '/setting/products'
     | '/setting/profile'
+    | '/setting/roles'
     | '/setting/security'
     | '/setting/subscription'
     | '/setting/subscription-management'
@@ -635,6 +645,7 @@ export interface FileRouteTypes {
     | '/setting/personnel'
     | '/setting/products'
     | '/setting/profile'
+    | '/setting/roles'
     | '/setting/security'
     | '/setting/subscription'
     | '/setting/subscription-management'
@@ -696,6 +707,7 @@ export interface FileRouteTypes {
     | '/setting/personnel'
     | '/setting/products'
     | '/setting/profile'
+    | '/setting/roles'
     | '/setting/security'
     | '/setting/subscription'
     | '/setting/subscription-management'
@@ -904,6 +916,13 @@ declare module '@tanstack/react-router' {
       path: '/security'
       fullPath: '/setting/security'
       preLoaderRoute: typeof SettingSecurityRouteImport
+      parentRoute: typeof SettingRouteRoute
+    }
+    '/setting/roles': {
+      id: '/setting/roles'
+      path: '/roles'
+      fullPath: '/setting/roles'
+      preLoaderRoute: typeof SettingRolesRouteImport
       parentRoute: typeof SettingRouteRoute
     }
     '/setting/profile': {
@@ -1296,6 +1315,7 @@ interface SettingRouteRouteChildren {
   SettingPersonnelRoute: typeof SettingPersonnelRoute
   SettingProductsRoute: typeof SettingProductsRoute
   SettingProfileRoute: typeof SettingProfileRoute
+  SettingRolesRoute: typeof SettingRolesRoute
   SettingSecurityRoute: typeof SettingSecurityRoute
   SettingSubscriptionRoute: typeof SettingSubscriptionRoute
   SettingSubscriptionManagementRoute: typeof SettingSubscriptionManagementRoute
@@ -1314,6 +1334,7 @@ const SettingRouteRouteChildren: SettingRouteRouteChildren = {
   SettingPersonnelRoute: SettingPersonnelRoute,
   SettingProductsRoute: SettingProductsRoute,
   SettingProfileRoute: SettingProfileRoute,
+  SettingRolesRoute: SettingRolesRoute,
   SettingSecurityRoute: SettingSecurityRoute,
   SettingSubscriptionRoute: SettingSubscriptionRoute,
   SettingSubscriptionManagementRoute: SettingSubscriptionManagementRoute,

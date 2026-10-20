@@ -231,7 +231,23 @@ test("administrators receive a polished fixed Management shortcut and guided man
   expect(shortcutBox!.y + shortcutBox!.height).toBeLessThanOrEqual(navigationBox!.y + 1);
   expect(Math.abs(shortcutBox!.width - shortcutBox!.height)).toBeLessThanOrEqual(1);
 
-  await page.goto("/management");
+  await page.mouse.move(shortcutBox!.x + shortcutBox!.width / 2, shortcutBox!.y + shortcutBox!.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(120, 180, { steps: 6 });
+  await page.mouse.up();
+  const movedShortcutBox = await managementShortcut.boundingBox();
+  expect(movedShortcutBox!.x).toBeLessThan(shortcutBox!.x - 100);
+  expect(movedShortcutBox!.y).toBeLessThan(shortcutBox!.y - 100);
+  await expect.poll(() => page.evaluate(() => localStorage.getItem("tanzim-admin-shortcut-position-v1"))).not.toBeNull();
+
+  await page.reload();
+  const restoredShortcut = page.getByRole("navigation", { name: "ناوبری اصلی" }).getByRole("link", { name: "مدیریت" });
+  const restoredShortcutBox = await restoredShortcut.boundingBox();
+  expect(Math.abs(restoredShortcutBox!.x - movedShortcutBox!.x)).toBeLessThanOrEqual(2);
+  expect(Math.abs(restoredShortcutBox!.y - movedShortcutBox!.y)).toBeLessThanOrEqual(2);
+  await restoredShortcut.click();
+  await expect(page).toHaveURL(/\/management\/?$/);
+
   await expect(page.getByRole("heading", { name: "مدیریت" })).toBeVisible();
   const managementGuide = page.locator(".page-guide");
   await expect(managementGuide).toHaveAttribute("data-root", "true");

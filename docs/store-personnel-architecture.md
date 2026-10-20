@@ -26,7 +26,7 @@ Effective customer access is the intersection of: a valid session; active member
 
 ## Commercial policy
 
-Plan data contains the `personnel` capability and `active_personnel` limit. Free, Starter, and Pro disable personnel with zero seats. VIP enables ten active personnel in addition to the owner. `Store.personnel_limit_override` is the supported store exception. Admission and reactivation lock the store row and count active non-owner memberships inside the transaction. Inactive people and role definitions consume no seats.
+Plan data contains the `personnel` capability and `active_personnel` limit. This capability is the stable gate for team/multi-device plans while commercial plan names are still evolving. Free, Starter, and Pro disable personnel with zero seats. VIP enables ten active personnel in addition to the owner. `Store.personnel_limit_override` is the supported store exception. Admission and reactivation lock the store row and count active non-owner memberships inside the transaction. Inactive people and role definitions consume no seats. Personnel and role mutations require the capability and a live server request; they are never queued in the operational outbox.
 
 Expiration or downgrade preserves users, memberships, roles, data, and history. Personnel operational access is suspended when `personnel` is unavailable. If a still-enabled limit is reduced below usage, existing memberships are preserved while admission/reactivation is blocked.
 

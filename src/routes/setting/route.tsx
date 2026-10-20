@@ -7,7 +7,7 @@ import { isAdmin } from "@/shared/access/authorization";
 export const Route = createFileRoute("/setting")({
   beforeLoad: ({ location }) => {
     if (!isAuthenticated()) throw redirect({ to: "/auth/login" });
-    const ownerOnly = ["/setting/personnel", "/setting/backup", "/setting/subscription"];
+    const ownerOnly = ["/setting/personnel", "/setting/roles", "/setting/backup", "/setting/subscription"];
     const user = accessState.user();
     if (ownerOnly.includes(location.pathname) && !isAdmin(user) && user?.is_store_owner === false) throw redirect({ to: "/setting" });
   },
