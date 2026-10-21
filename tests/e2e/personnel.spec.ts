@@ -1,4 +1,5 @@
 import { expect, test, type Page, type Route } from "@playwright/test";
+import path from "node:path";
 
 const now = "2026-10-20T08:00:00.000Z";
 const owner = {
@@ -88,6 +89,9 @@ async function openPersonnel(page: Page) {
   });
 
   await page.goto("/setting/personnel");
+  await expect(page.getByRole("heading", { name: "پرسنل مجموعه", level: 1 })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "مسیر صفحه" })).toContainText("تنظیمات");
+  await expect(page.locator(".page-guide").getByRole("button", { name: "بازگشت" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "افزودن پرسنل" })).toBeVisible();
   await expect(page.getByText("تست تستی")).toBeVisible();
 }
@@ -102,5 +106,26 @@ test("personnel layout adapts without horizontal overflow", async ({ page }, tes
 
   const gridColumns = await page.locator(".personnel-main-grid").evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(" ").length);
   if (testInfo.project.name.includes("mobile")) expect(gridColumns).toBe(1);
-  else expect(gridColumns).toBe(2);
+  else {
+    expect(gridColumns).toBe(2);
+    await page.setViewportSize({ width: 820, height: 1180 });
+    const tabletColumns = await page.locator(".personnel-main-grid").evaluate((element) => getComputedStyle(element).gridTemplateColumns.split(" ").length);
+    expect(tabletColumns).toBe(1);
+    const tabletOverflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(tabletOverflow).toBeLessThanOrEqual(1);
+  }
+
+  if (process.env.UPDATE_PERSONNEL_GALLERY === "1") {
+    const mobile = testInfo.project.name.includes("mobile");
+    await page.setViewportSize(mobile ? { width: 390, height: 844 } : { width: 1440, height: 1000 });
+    await page.locator("[data-sonner-toast]").getByRole("button").click().catch(() => undefined);
+    await page.locator("[data-sonner-toast]").waitFor({ state: "detached", timeout: 6_000 }).catch(() => undefined);
+    await page.locator(".app-shell-content").evaluate((element) => element.scrollTo({ top: 0 }));
+    await page.screenshot({
+      path: path.resolve(
+        "artifacts/ui-layout-gallery-2026-10-20",
+        mobile ? "mobile/settings/01-personnel.png" : "desktop/settings/01-personnel.png",
+      ),
+    });
+  }
 });

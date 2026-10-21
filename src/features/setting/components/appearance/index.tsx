@@ -44,10 +44,12 @@ export default function AppearanceOptions() {
   };
 
   return (
-    <Box mt="6">
-      <Text size="6" weight="bold">
-        ظاهر برنامه
-      </Text>
+    <Box mt="6" className="appearance-workspace">
+      <section className="settings-choice-panel" aria-labelledby="appearance-theme-title">
+      <Box className="settings-panel-heading">
+        <Text id="appearance-theme-title" as="div" size="5" weight="bold">پوسته برنامه</Text>
+        <Text as="p" size="2" color="gray">نور و کنتراست محیط کار را با دستگاه یا ترجیح خود هماهنگ کنید.</Text>
+      </Box>
       <RadioCards.Root
         mt="4"
         columns={{ initial: "1", sm: "3" }}
@@ -77,13 +79,18 @@ export default function AppearanceOptions() {
           </RadioCards.Item>
         ))}
       </RadioCards.Root>
-      <Text as="div" size="5" weight="bold" mt="7">اندازه نمایش</Text>
-      <Text as="p" size="2" color="gray" mt="1">اندازه نوشته‌ها و فاصله اجزا را بدون تغییر بزرگ‌نمایی مرورگر تنظیم کنید.</Text>
+      </section>
+      <section className="settings-choice-panel" aria-labelledby="appearance-size-title">
+      <Box className="settings-panel-heading">
+        <Text id="appearance-size-title" as="div" size="5" weight="bold">اندازه نمایش</Text>
+        <Text as="p" size="2" color="gray">اندازه نوشته‌ها و فاصله اجزا را بدون تغییر بزرگ‌نمایی مرورگر تنظیم کنید.</Text>
+      </Box>
       <RadioCards.Root mt="4" columns={{ initial: "1", sm: "3" }} value={displaySize} onValueChange={(next) => { const size = next as DisplaySize; updateDisplaySize(size); setDisplaySize(size); }}>
         <RadioCards.Item value="compact"><Box><Text as="div" weight="bold">کوچک</Text><Text size="2" color="gray">اطلاعات بیشتر در صفحه</Text></Box></RadioCards.Item>
         <RadioCards.Item value="normal"><Box><Text as="div" weight="bold">معمولی</Text><Text size="2" color="gray">اندازه پیش‌فرض برنامه</Text></Box></RadioCards.Item>
         <RadioCards.Item value="large"><Box><Text as="div" weight="bold">بزرگ</Text><Text size="2" color="gray">خوانایی و فاصله بیشتر</Text></Box></RadioCards.Item>
       </RadioCards.Root>
+      </section>
     </Box>
   );
 }

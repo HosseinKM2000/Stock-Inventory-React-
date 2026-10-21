@@ -17,7 +17,7 @@ export function ActivityPage() {
 
   return (
     <Box dir="rtl" className="mx-auto w-full max-w-4xl">
-      <PageGuide section="ابزارها" sectionTo="/tools" title="فعالیت مجموعه" description="رویدادهای تأییدشده سرور با هویت پایدار انجام‌دهنده ثبت می‌شوند." icon={ActivityLogIcon} />
+      <PageGuide section="ابزارها" sectionTo="/tools" title="فعالیت مجموعه" description="ببینید چه کسی، چه کاری، چه زمانی انجام داده و نتیجه چه بوده است." icon={ActivityLogIcon} helpTopic="team" />
       <Card mt="5"><Flex gap="3" wrap="wrap">
         <Select.Root value={actor || "all"} onValueChange={(value) => setActor(value === "all" ? "" : value)}><Select.Trigger placeholder="همه افراد" /><Select.Content><Select.Item value="all">همه افراد</Select.Item>{people.data?.map((person) => <Select.Item key={person.user_id} value={String(person.user_id)}>{person.first_name} {person.last_name}</Select.Item>)}</Select.Content></Select.Root>
         <TextField.Root placeholder="نوع عملیات" value={action} onChange={(event) => setAction(event.target.value)} />

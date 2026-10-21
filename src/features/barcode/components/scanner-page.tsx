@@ -234,7 +234,7 @@ export function ScannerPage() {
   return (
     <Box dir="rtl" className="mx-auto w-full max-w-6xl px-3 py-5 sm:px-5 lg:py-8">
       <Flex direction="column" gap="5">
-        <PageGuide section="ابزارها" sectionTo="/tools" title="اسکن بارکد" description="جست‌وجو یا ثبت گردش موجودی، حتی هنگام قطع اینترنت" icon={MagnifyingGlassIcon} />
+        <PageGuide section="ابزارها" sectionTo="/tools" title="اسکن بارکد" description="با دوربین یا بارکدخوان، محصول را سریع پیدا کنید و تغییر موجودی را ثبت کنید." icon={MagnifyingGlassIcon} helpTopic="barcodes" />
 
         <SegmentedControl.Root value={mode} onValueChange={(value) => {
           const next = value as ScannerMode;

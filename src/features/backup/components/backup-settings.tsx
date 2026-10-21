@@ -114,7 +114,7 @@ export function BackupSettings() {
 
   return (
     <Box dir="rtl" className="mx-auto w-full max-w-5xl">
-      <PageGuide section="تنظیمات" sectionTo="/setting" title="فایل پشتیبان محلی" description="یک نسخه کامل و رمزنگاری‌نشده از داده‌های قابل بازیابی حساب روی دستگاه خود نگه دارید. این فایل شامل رمز عبور، توکن ورود یا نقش‌های دسترسی نیست." icon={ArchiveIcon} />
+      <PageGuide section="تنظیمات" sectionTo="/setting" title="فایل پشتیبان محلی" description="یک نسخه تازه از اطلاعات قابل بازیابی مجموعه نگه دارید تا در صورت نیاز بتوانید آن‌ها را برگردانید. فایل را در محل مطمئن نگه دارید؛ این نسخه شامل رمز عبور یا اطلاعات ورود نیست." icon={ArchiveIcon} helpTopic="backup" />
 
       <Card mt="5" size="3">
         <Flex justify="between" align="center" gap="3" wrap="wrap">
@@ -137,7 +137,7 @@ export function BackupSettings() {
       <Grid columns={{ initial: "1", md: "2" }} gap="4" mt="4">
         <Card size="3">
           <Heading as="h2" size="4">مقصد ذخیره</Heading>
-          <Text as="p" size="2" color="gray" mt="1" className="leading-6">فایل متصل در همان مقصد به‌روزرسانی می‌شود و در پوشه‌ها، نسخه قبلی نیز نگه‌داری خواهد شد. پس از پاک‌شدن داده‌های مرورگر یا نصب دوباره برنامه، ممکن است لازم باشد فایل بیرونی را دوباره انتخاب کنید.</Text>
+          <Text as="p" size="2" color="gray" mt="1" className="leading-6">محل مطمئنی انتخاب کنید که بعداً هم به آن دسترسی داشته باشید. اگر دستگاه یا مرورگر را عوض کردید، ممکن است لازم باشد مقصد را دوباره انتخاب کنید.</Text>
           <Separator size="4" my="4" />
           <Flex direction="column" gap="3">
             <Flex justify="between" gap="3"><Text size="2" color="gray">روش</Text><Badge>{settings?.mode === "manual" ? "دستی" : settings?.mode === "directory" ? "پوشه" : "فایل"}</Badge></Flex>
@@ -150,10 +150,10 @@ export function BackupSettings() {
 
         <Card size="3">
           <Heading as="h2" size="4">زمان‌بندی</Heading>
-          <Text as="p" size="2" color="gray" mt="1" className="leading-6">فقط وقتی داده‌ها تغییر کرده‌اند، نسخه جدید نوشته می‌شود. مرورگر در پس‌زمینه بدون مجوز تازه درخواست نشان نمی‌دهد.</Text>
+          <Text as="p" size="2" color="gray" mt="1" className="leading-6">اگر ذخیره خودکار روشن باشد، برنامه در زمان‌های انتخابی بررسی می‌کند که نسخه تازه لازم است یا نه.</Text>
           <Separator size="4" my="4" />
           <Flex justify="between" align="center" gap="3">
-            <Box><Text size="2" weight="medium">ذخیره خودکار</Text><Text as="div" size="1" color="gray">پس از بازگشت به برنامه نیز زمان عقب‌افتاده بررسی می‌شود.</Text></Box>
+            <Box><Text size="2" weight="medium">ذخیره خودکار</Text><Text as="div" size="1" color="gray">پس از بازگشت به برنامه، نیاز به نسخه تازه دوباره بررسی می‌شود.</Text></Box>
             <Switch
               checked={settings?.automaticEnabled ?? false}
               disabled={!settings || settings.mode === "manual" || working}
@@ -183,7 +183,7 @@ export function BackupSettings() {
         <Flex justify="between" align="start" gap="4" wrap="wrap">
           <Box className="max-w-2xl">
             <Heading as="h2" size="4">بازیابی</Heading>
-            <Text as="p" size="2" color="gray" mt="1" className="leading-6">پیش از جایگزینی، مالک فایل، سلامت آن و تعداد رکوردها بررسی می‌شود. از وضعیت فعلی یک نسخه نجات ساخته می‌شود و عملیات قدیمی بدون بررسی دوباره ارسال نخواهند شد. بازیابی آفلاین مجاز است، اما همگام‌سازی تا اتصال و تأیید شما متوقف می‌ماند.</Text>
+            <Text as="p" size="2" color="gray" mt="1" className="leading-6">پیش از جایگزینی، خلاصه فایل را با دقت بررسی کنید و از اطلاعات فعلی یک نسخه احتیاطی بگیرید. پس از بازیابی، چند محصول و کارهای در انتظار را کنترل کنید و سپس ادامه دهید.</Text>
           </Box>
           <Flex gap="2" wrap="wrap">
             {settings?.mode !== "manual" && settings?.handle ? <Button variant="soft" loading={working} onClick={() => void inspectConnected()} leftIcon={<ReloadIcon />}>بررسی نسخه متصل</Button> : null}
@@ -201,7 +201,7 @@ export function BackupSettings() {
           <Callout.Root color="amber" mt="4">
             <Callout.Icon><ExclamationTriangleIcon /></Callout.Icon>
             <Callout.Text>
-              همگام‌سازی پس از بازیابی متوقف است. داده‌ها و تعارض‌های صف را بررسی کنید.
+              همگام‌سازی پس از بازیابی متوقف است. چند محصول و کارهای در انتظار را بررسی کنید.
               <Button size="2" variant="soft" ml="2" loading={working} onClick={() => void resume()}>بررسی شد؛ ادامه همگام‌سازی</Button>
             </Callout.Text>
           </Callout.Root>
@@ -212,7 +212,7 @@ export function BackupSettings() {
         <AlertDialog.Content maxWidth="520px" dir="rtl">
           <AlertDialog.Title>تأیید بازیابی فایل پشتیبان</AlertDialog.Title>
           <AlertDialog.Description size="2" className="leading-7">
-            داده‌های فعلی این حساب جایگزین می‌شوند. پیش از بازیابی، یک نسخه نجات از وضعیت فعلی دریافت خواهید کرد.
+            اطلاعات فعلی جایگزین می‌شوند. پیش از ادامه، از وضعیت فعلی یک نسخه احتیاطی بگیرید و خلاصه فایل را بررسی کنید.
           </AlertDialog.Description>
           {preview ? (
             <Box mt="4" p="3" className="rounded-lg bg-[var(--gray-a3)]">
@@ -223,7 +223,7 @@ export function BackupSettings() {
           ) : null}
           <Flex gap="3" mt="5" justify="end">
             <AlertDialog.Cancel><Button variant="soft" color="gray">انصراف</Button></AlertDialog.Cancel>
-            <Button color="red" loading={working} onClick={() => void restore()}>ساخت نسخه نجات و بازیابی</Button>
+            <Button color="red" loading={working} onClick={() => void restore()}>بازیابی اطلاعات</Button>
           </Flex>
         </AlertDialog.Content>
       </AlertDialog.Root>

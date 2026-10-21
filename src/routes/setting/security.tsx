@@ -18,8 +18,8 @@ function SecurityPage() {
     }
   }, [user, refetchUser]);
   return (
-    <Box dir="rtl" className="mx-auto w-full max-w-3xl">
-      <PageGuide section="تنظیمات" sectionTo="/setting" title="امنیت" description="تغییر رمز عبور به تأیید سرور و اتصال اینترنت نیاز دارد." icon={LockClosedIcon} />
+    <Box dir="rtl" className="settings-detail-workspace mx-auto w-full max-w-4xl">
+      <PageGuide section="تنظیمات" sectionTo="/setting" title="امنیت" description="تغییر رمز عبور به تأیید و اتصال اینترنت نیاز دارد." icon={LockClosedIcon} helpTopic="account" />
       {user?.temporary_password_required ? <Callout.Root color="orange" mb="4"><Callout.Text>این حساب با رمز موقت ساخته شده است. تا تغییر موفق رمز، دسترسی عملیاتی متوقف می‌ماند.</Callout.Text></Callout.Root> : null}
       <OnlineGuard><PasswordFields /></OnlineGuard>
     </Box>

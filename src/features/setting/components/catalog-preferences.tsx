@@ -15,7 +15,7 @@ export function CatalogPreferences() {
 
   return (
     <Box dir="rtl" className="mx-auto max-w-3xl space-y-5">
-      <PageGuide section="ابزارها" sectionTo="/tools" title="کاتالوگ" description="محصولات کاتالوگی که قبلاً در داده محلی شما دریافت شده‌اند، همراه موجودی نمایش داده می‌شوند." icon={ClipboardIcon} />
+      <PageGuide section="ابزارها" sectionTo="/tools" title="کاتالوگ" description="از اطلاعات آماده محصولات حوزه کاری برای ثبت سریع‌تر و یکدست‌تر کالاها استفاده کنید." icon={ClipboardIcon} helpTopic="catalog" />
       <Card size="3">
         <Flex align={{ initial: "start", sm: "center" }} justify="between" gap="4" direction={{ initial: "column", sm: "row" }}>
           <Box>

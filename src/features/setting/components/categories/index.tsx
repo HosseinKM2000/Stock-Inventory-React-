@@ -37,7 +37,7 @@ const CategoriesCards = () => {
   return (
     <Box className="space-y-6">
       <Flex justify="between" align="center" gap="3" wrap="wrap">
-        <div className="min-w-0 flex-1"><PageGuide section="ابزارها" sectionTo="/tools" title="دسته‌بندی‌ها" description="دسته‌بندی‌های موجودی را روی دستگاه مدیریت کنید و در صورت نیاز نسخه معتبر سرور را دریافت کنید." icon={LayersIcon} /></div>
+        <div className="min-w-0 flex-1"><PageGuide section="ابزارها" sectionTo="/tools" title="دسته‌بندی‌ها" description="ساختار اصلی محصولات را با دسته‌های روشن و ماندگار مرتب کنید و در صورت نیاز آخرین اطلاعات تأییدشده مجموعه را بگیرید." icon={LayersIcon} helpTopic="classification" /></div>
 
         <Flex gap="2" wrap="wrap" className="w-full sm:w-auto">
           <Button

@@ -9,7 +9,7 @@ export const Route = createFileRoute("/tools/export")({ component: ExportPage })
 function ExportPage() {
   return (
     <Box dir="rtl">
-      <PageGuide section="ابزارها" sectionTo="/tools" title="خروجی" description="از داده‌های ذخیره‌شده روی دستگاه خروجی آفلاین بگیرید یا در حالت آنلاین فایل مبتنی بر داده‌های سرور دریافت کنید." icon={DownloadIcon} />
+      <PageGuide section="ابزارها" sectionTo="/tools" title="خروجی" description="محدوده اطلاعات را انتخاب کنید و فایل مناسب گزارش، انتقال یا بررسی را دریافت کنید." icon={DownloadIcon} helpTopic="files" />
       <ExportTools />
     </Box>
   );

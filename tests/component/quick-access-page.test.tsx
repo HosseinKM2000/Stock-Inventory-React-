@@ -84,7 +84,7 @@ describe("quick-access navigation", () => {
     );
   });
 
-  it("keeps mobile menu rows concise while preserving local navigation offline", () => {
+  it("keeps navigation available offline and exposes concise context for each destination", () => {
     state.online = false;
     render(
       <QuickAccessPage
@@ -95,7 +95,9 @@ describe("quick-access navigation", () => {
     );
 
     expect(screen.queryByText("نیازمند اینترنت")).not.toBeInTheDocument();
-    expect(screen.queryByText("اطلاعات حساب و تصویر پروفایل")).not.toBeInTheDocument();
+    expect(screen.getByText("اطلاعات حساب و تصویر پروفایل")).toBeVisible();
+    expect(screen.getAllByText("آنلاین").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("روی دستگاه").length).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: /ظاهر/ })).toBeVisible();
   });
 });

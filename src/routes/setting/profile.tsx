@@ -12,8 +12,8 @@ export const Route = createFileRoute("/setting/profile")({
 
 function ProfilePage() {
   return (
-    <Box className="w-full min-w-0">
-      <PageGuide section="تنظیمات" sectionTo="/setting" title="تنظیمات پروفایل" description="تصویر و اطلاعات حساب خود را مشاهده کنید؛ ثبت تغییرات اطلاعات حساب به اتصال اینترنت نیاز دارد." icon={PersonIcon} />
+    <Box dir="rtl" className="settings-detail-workspace mx-auto w-full max-w-5xl">
+      <PageGuide section="تنظیمات" sectionTo="/setting" title="تنظیمات پروفایل" description="تصویر و اطلاعات حساب خود را مشاهده کنید؛ ثبت تغییرات اطلاعات حساب به اتصال اینترنت نیاز دارد." icon={PersonIcon} helpTopic="account" />
       <ProfileMediaSelector />
       <OnlineGuard>
         <PersonalInformationFields />

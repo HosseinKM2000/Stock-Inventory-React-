@@ -13,7 +13,7 @@ type Props = {
 
 export function ManagementPage({ title, description, icon, children }: Props) {
   return (
-    <Box dir="rtl" className="w-full">
+    <Box dir="rtl" className="management-workspace mx-auto w-full max-w-6xl">
       <PageGuide
         section="مدیریت"
         sectionTo="/management"

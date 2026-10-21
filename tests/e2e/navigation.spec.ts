@@ -164,14 +164,17 @@ test("settings and tools share a neutral responsive guide for roots and descenda
       const icon = element.querySelector<HTMLElement>(".page-guide-page-icon")!.getBoundingClientRect();
       const back = element.querySelector<HTMLElement>(".page-guide-back")!;
       const backBox = back.getBoundingClientRect();
+      const description = element.querySelector<HTMLElement>(".page-guide-description")!.getBoundingClientRect();
       return {
         icon: { width: icon.width, height: icon.height },
-        back: { width: backBox.width, height: backBox.height },
+        back: { left: backBox.left, width: backBox.width, height: backBox.height },
+        descriptionLeft: description.left,
         paddingInline: Number.parseFloat(getComputedStyle(back).paddingInline),
       };
     });
     expect(Math.abs(guideControls.back.width - guideControls.icon.width)).toBeLessThanOrEqual(1);
     expect(Math.abs(guideControls.back.height - guideControls.icon.height)).toBeLessThanOrEqual(1);
+    expect(Math.abs(guideControls.back.left - guideControls.descriptionLeft)).toBeLessThanOrEqual(1);
     expect(guideControls.paddingInline).toBeLessThanOrEqual(4);
     rootStyles.push(await guide.evaluate((element) => {
       const icon = element.querySelector<HTMLElement>(".page-guide-page-icon")!;
@@ -273,6 +276,34 @@ test("application navigation has no horizontal overflow at narrow and desktop wi
       scrollWidth: document.documentElement.scrollWidth,
     }));
     expect(dimensions.scrollWidth, `${viewport.width}px`).toBeLessThanOrEqual(dimensions.clientWidth);
+  }
+});
+
+test("help handbook keeps every topic accessible without horizontal scrolling", async ({ page }) => {
+  await seedAuthenticatedUser(page, "ADMIN");
+  for (const viewport of [
+    { width: 320, height: 568 },
+    { width: 390, height: 844 },
+    { width: 1440, height: 900 },
+  ]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/tools/help");
+
+    const topicNavigation = page.locator(".help-quick-nav");
+    await expect(topicNavigation).toBeVisible();
+    expect(await topicNavigation.locator("a").count()).toBeGreaterThan(10);
+
+    const dimensions = await page.evaluate(() => {
+      const navigation = document.querySelector<HTMLElement>(".help-quick-nav")!;
+      return {
+        pageClientWidth: document.documentElement.clientWidth,
+        pageScrollWidth: document.documentElement.scrollWidth,
+        navigationClientWidth: navigation.clientWidth,
+        navigationScrollWidth: navigation.scrollWidth,
+      };
+    });
+    expect(dimensions.pageScrollWidth, `${viewport.width}px page`).toBeLessThanOrEqual(dimensions.pageClientWidth);
+    expect(dimensions.navigationScrollWidth, `${viewport.width}px topics`).toBeLessThanOrEqual(dimensions.navigationClientWidth);
   }
 });
 

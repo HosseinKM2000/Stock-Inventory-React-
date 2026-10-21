@@ -50,7 +50,7 @@ export function ContextualBackButton() {
       type="button"
       size="2"
       color="gray"
-      variant="ghost"
+      variant="soft"
       className="page-guide-back"
       aria-label="بازگشت"
       onClick={goBack}

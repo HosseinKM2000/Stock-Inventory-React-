@@ -39,7 +39,7 @@ export function ExcelImport() {
 
   return (
     <Box dir="rtl" className="space-y-6">
-      <PageGuide section="ابزارها" sectionTo="/tools" title="ورود از اکسل" description="فایل را روی همین دستگاه بررسی کنید، خطاها را پیش‌نمایش ببینید و محصولات را به‌صورت گروهی وارد کنید. پس از یک بار آماده‌شدن برنامه، این فرایند آفلاین هم کار می‌کند." icon={UploadIcon} />
+      <PageGuide section="ابزارها" sectionTo="/tools" title="ورود از اکسل" description="الگوی Tanzim را بگیرید، فایل را پیش‌نمایش کنید و خطاهای هر ردیف را پیش از ورود گروهی برطرف کنید." icon={UploadIcon} helpTopic="files" />
       <Flex gap="3" wrap="wrap">
         {["۱. دریافت الگو و انتخاب فایل", "۲. بررسی ردیف‌ها", "۳. ذخیره محلی و همگام‌سازی"].map((step, index) => <Card key={step} className="grow"><Text color={(rows.length ? 1 : 0) >= index ? "violet" : "gray"} weight="medium">{step}</Text></Card>)}
       </Flex>

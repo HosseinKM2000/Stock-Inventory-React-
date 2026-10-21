@@ -5,7 +5,6 @@ import {
   AvatarIcon,
   ClipboardCopyIcon,
   Cross2Icon,
-  IdCardIcon,
   InfoCircledIcon,
   LockClosedIcon,
   PersonIcon,
@@ -44,13 +43,14 @@ const emptyPersonnelForm: PersonnelForm = {
 
 export function PersonnelPage() {
   return (
-    <Box dir="rtl" className="personnel-page mx-auto w-full max-w-6xl">
+    <Box dir="rtl" className="personnel-page mx-auto w-full max-w-5xl">
       <PageGuide
         section="تنظیمات"
         sectionTo="/setting"
         title="پرسنل مجموعه"
-        description="افزودن اعضا و تغییر دسترسی آن‌ها فقط با اتصال اینترنت انجام می‌شود."
+        description="افزودن اعضا و تغییر نقش و وضعیت دسترسی آن‌ها فقط با اتصال اینترنت انجام می‌شود."
         icon={PersonIcon}
+        helpTopic="team"
       />
       <OnlineGuard><PersonnelContent /></OnlineGuard>
     </Box>
@@ -171,7 +171,6 @@ function CapacitySummary({ capacity, hasCapacity }: { capacity?: Capacity; hasCa
 
   return (
     <div className="personnel-capacity-row">
-      <Text as="p" size="2" color="gray">اعضا و نقش‌های مجموعه فقط به‌صورت آنلاین مدیریت می‌شوند.</Text>
       <Badge className="personnel-capacity-badge" size="2" color={hasCapacity ? "green" : "orange"}>
         <span className="personnel-status-dot" aria-hidden="true" />
         {label}
@@ -243,13 +242,13 @@ function AddPersonnelCard({ form, roles, hasCapacity, hasRoles, isLoadingRoles, 
       <SectionHeading id="create-personnel-title" icon={<PlusIcon />} title="افزودن پرسنل" description="برای ایجاد حساب جدید، اطلاعات زیر را وارد کنید." />
       <form className="personnel-create-form" onSubmit={onSubmit}>
         <TextField.Root size="3" className="personnel-field" aria-label="نام" placeholder="نام" autoComplete="given-name" value={form.first_name} onChange={(event) => onChange({ ...form, first_name: event.target.value })}>
-          <TextField.Slot side="right"><PersonIcon /></TextField.Slot>
+          <TextField.Slot side="left"><PersonIcon /></TextField.Slot>
         </TextField.Root>
         <TextField.Root size="3" className="personnel-field" aria-label="نام خانوادگی" placeholder="نام خانوادگی" autoComplete="family-name" value={form.last_name} onChange={(event) => onChange({ ...form, last_name: event.target.value })}>
-          <TextField.Slot side="right"><PersonIcon /></TextField.Slot>
+          <TextField.Slot side="left"><PersonIcon /></TextField.Slot>
         </TextField.Root>
         <TextField.Root size="3" className="personnel-field" aria-label="نام کاربری دلخواه" placeholder="نام کاربری دلخواه (اختیاری)" autoComplete="off" dir="rtl" value={form.username} onChange={(event) => onChange({ ...form, username: event.target.value })}>
-          <TextField.Slot side="right"><IdCardIcon /></TextField.Slot>
+          <TextField.Slot side="left"><span className="personnel-at-sign" aria-hidden="true">@</span></TextField.Slot>
         </TextField.Root>
         <Select.Root value={form.role_id} onValueChange={(roleId) => onChange({ ...form, role_id: roleId })}>
           <Select.Trigger className="personnel-select" aria-label="انتخاب نقش" placeholder={isLoadingRoles ? "در حال دریافت نقش‌ها…" : "انتخاب نقش"} />

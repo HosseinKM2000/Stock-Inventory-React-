@@ -61,7 +61,7 @@ export function SyncStatusPage() {
         }
       })
       .catch(() => {
-        if (current) setQueueError("خواندن صف محلی ممکن نشد. صفحه را دوباره باز کنید.");
+        if (current) setQueueError("نمایش کارهای در انتظار ممکن نشد. صفحه را دوباره باز کنید.");
       })
       .finally(() => {
         if (current) setQueueLoading(false);
@@ -76,7 +76,7 @@ export function SyncStatusPage() {
 
   return (
     <Box dir="rtl" className="sync-detail-page mx-auto w-full max-w-5xl">
-      <PageGuide section="تنظیمات" sectionTo="/setting" title="همگام‌سازی" description="وضعیت ارتباط داده‌های محلی با سرور، تغییرات در انتظار، آخرین رخدادها و خطاهای قابل پیگیری را اینجا ببینید." icon={ReloadIcon} />
+      <PageGuide section="تنظیمات" sectionTo="/setting" title="همگام‌سازی" description="اینجا ببینید تغییرها ثبت شده‌اند یا به اتصال و بررسی شما نیاز دارند." icon={ReloadIcon} helpTopic="sync" />
 
       <section className="sync-overview" aria-labelledby="sync-current-title">
         <Flex align="center" justify="between" gap="4" wrap="wrap">
@@ -101,9 +101,9 @@ export function SyncStatusPage() {
 
         <Grid columns={{ initial: "2", md: "4" }} gap="4" mt="6" className="sync-facts">
           <Box><Text size="1" color="gray">اتصال</Text><Text as="div" weight="bold" mt="1">{online ? "آنلاین" : "آفلاین"}</Text></Box>
-          <Box><Text size="1" color="gray">در صف</Text><Text as="div" weight="bold" mt="1">{status.pending.toLocaleString("fa-IR")} تغییر</Text></Box>
+          <Box><Text size="1" color="gray">در انتظار</Text><Text as="div" weight="bold" mt="1">{status.pending.toLocaleString("fa-IR")} تغییر</Text></Box>
           <Box><Text size="1" color="gray">آخرین همگام‌سازی</Text><Text as="div" weight="bold" mt="1">{formatTime(status.lastSyncedAt)}</Text></Box>
-          <Box><Text size="1" color="gray">فعالیت خودکار</Text><Text as="div" weight="bold" mt="1">{paused ? "متوقف" : "فعال"}</Text></Box>
+          <Box><Text size="1" color="gray">پیگیری خودکار</Text><Text as="div" weight="bold" mt="1">{paused ? "متوقف" : "فعال"}</Text></Box>
         </Grid>
       </section>
 
@@ -117,8 +117,8 @@ export function SyncStatusPage() {
         <section className="sync-detail-section" aria-labelledby="sync-queue-title">
           <Flex align="center" justify="between" gap="3" mb="4">
             <Box>
-              <h2 id="sync-queue-title" className="text-lg font-bold">صف تغییرات</h2>
-              <Text as="p" size="1" color="gray" mt="1">آخرین تغییرات محلی که باید پردازش شوند</Text>
+              <h2 id="sync-queue-title" className="text-lg font-bold">کارهای در انتظار</h2>
+              <Text as="p" size="1" color="gray" mt="1">تغییرهایی که هنوز نتیجه نهایی آن‌ها مشخص نشده است</Text>
             </Box>
             <Badge color={queue.length > 0 ? "amber" : "green"} radius="full">
               {queue.length.toLocaleString("fa-IR")}
@@ -128,7 +128,7 @@ export function SyncStatusPage() {
           {queueError ? (
             <Callout.Root color="red"><Callout.Text>{queueError}</Callout.Text></Callout.Root>
           ) : queueLoading ? (
-            <Text color="gray">در حال خواندن صف…</Text>
+            <Text color="gray">در حال بررسی…</Text>
           ) : queue.length === 0 ? (
             <Flex align="center" gap="2" className="sync-empty-state">
               <CheckIcon aria-hidden="true" />
@@ -160,8 +160,8 @@ export function SyncStatusPage() {
 
         <section className="sync-detail-section" aria-labelledby="sync-events-title">
           <Box mb="4">
-            <h2 id="sync-events-title" className="text-lg font-bold">آخرین رخدادها</h2>
-            <Text as="p" size="1" color="gray" mt="1">فعالیت‌های ثبت‌شده در اجرای فعلی برنامه</Text>
+            <h2 id="sync-events-title" className="text-lg font-bold">گزارش وضعیت اخیر</h2>
+            <Text as="p" size="1" color="gray" mt="1">آخرین نتیجه‌هایی که برای پیگیری شما نمایش داده شده‌اند</Text>
           </Box>
           {events.length === 0 ? (
             <Flex align="center" gap="2" className="sync-empty-state">
@@ -191,12 +191,12 @@ export function SyncStatusPage() {
       </Grid>
 
       <section className="sync-flow" aria-labelledby="sync-flow-title">
-        <h2 id="sync-flow-title" className="text-lg font-bold">مسیر داده</h2>
+        <h2 id="sync-flow-title" className="text-lg font-bold">چه زمانی این صفحه را بررسی کنید؟</h2>
         <ol>
-          <li><span>۱</span><div><strong>ذخیره محلی</strong><small>تغییر ابتدا روی همین دستگاه ثبت می‌شود.</small></div></li>
-          <li><span>۲</span><div><strong>صف امن</strong><small>عملیات تا زمان اتصال و تأیید سرور نگهداری می‌شود.</small></div></li>
-          <li><span>۳</span><div><strong>ارسال و دریافت</strong><small>تغییرات محلی ارسال و نسخه‌های جدید سرور دریافت می‌شوند.</small></div></li>
-          <li><span>۴</span><div><strong>بررسی نتیجه</strong><small>خطا یا تداخل در همین صفحه برای پیگیری باقی می‌ماند.</small></div></li>
+          <li><span>۱</span><div><strong>بعد از تغییرهای زیاد</strong><small>پس از ورود گروهی یا ویرایش چند محصول، نتیجه را اینجا بررسی کنید.</small></div></li>
+          <li><span>۲</span><div><strong>پیش از خروج یا پاک‌سازی مرورگر</strong><small>مطمئن شوید کاری در انتظار نمانده است.</small></div></li>
+          <li><span>۳</span><div><strong>وقتی وضعیت «در انتظار» است</strong><small>اتصال اینترنت را بررسی کنید و «همگام‌سازی اکنون» را بزنید.</small></div></li>
+          <li><span>۴</span><div><strong>وقتی خطا می‌بینید</strong><small>راهنمای همان پیام را دنبال کنید و عملیات را چندبار تکرار نکنید.</small></div></li>
         </ol>
       </section>
     </Box>

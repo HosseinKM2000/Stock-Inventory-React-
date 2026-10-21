@@ -10,8 +10,8 @@ export const Route = createFileRoute("/setting/appearance")({
 
 function AppearanceComponent() {
   return (
-    <Box>
-      <PageGuide section="تنظیمات" sectionTo="/setting" title="تنظیمات ظاهری" description="حالت نمایش برنامه را متناسب با دستگاه یا ترجیح شخصی خود انتخاب کنید؛ این تنظیم روی همین دستگاه ذخیره می‌شود." icon={MixerHorizontalIcon} />
+    <Box dir="rtl" className="settings-detail-workspace mx-auto w-full max-w-5xl">
+      <PageGuide section="تنظیمات" sectionTo="/setting" title="تنظیمات ظاهری" description="حالت نمایش برنامه را متناسب با دستگاه یا ترجیح شخصی خود انتخاب کنید؛ این تنظیم روی همین دستگاه ذخیره می‌شود." icon={MixerHorizontalIcon} helpTopic="account" />
       <AppearanceOptions />
     </Box>
   );

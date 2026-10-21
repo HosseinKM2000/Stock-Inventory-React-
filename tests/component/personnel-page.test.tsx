@@ -13,7 +13,12 @@ const api = vi.hoisted(() => ({
 }));
 
 vi.mock("@/features/app/layout/page-guide", () => ({
-  PageGuide: ({ title }: { title: string }) => <h1>{title}</h1>,
+  PageGuide: ({ section, title }: { section: string; title: string }) => (
+    <header>
+      <nav aria-label="مسیر صفحه">{section}</nav>
+      <h1>{title}</h1>
+    </header>
+  ),
 }));
 
 vi.mock("@/shared/access/online-guard", () => ({
@@ -66,6 +71,8 @@ describe("personnel page", () => {
   it("shows the responsive management sections and member controls", async () => {
     renderPage();
 
+    expect(screen.getByRole("heading", { name: "پرسنل مجموعه", level: 1 })).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "مسیر صفحه" })).toHaveTextContent("تنظیمات");
     expect(await screen.findByRole("heading", { name: "افزودن پرسنل" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "اعضای پرسنل" })).toBeInTheDocument();
     expect(await screen.findByText("تست تستی")).toBeInTheDocument();

@@ -1,4 +1,4 @@
-import { ChevronLeftIcon, CubeIcon, GearIcon, InfoCircledIcon, PersonIcon } from "@radix-ui/react-icons";
+import { ChevronLeftIcon, CubeIcon, GearIcon, InfoCircledIcon, PersonIcon, QuestionMarkCircledIcon } from "@radix-ui/react-icons";
 import { Link } from "@tanstack/react-router";
 import type { ComponentType } from "react";
 import { ContextualBackButton } from "./contextual-back-button";
@@ -11,14 +11,15 @@ type Props = {
   title: string;
   description: string;
   icon: GuideIcon;
+  helpTopic?: string;
 };
 
-export function PageGuide({ section, sectionTo, title, description, icon: Icon }: Props) {
+export function PageGuide({ section, sectionTo, title, description, icon: Icon, helpTopic }: Props) {
   const root = title === section;
   const SectionIcon = sectionTo === "/setting" ? GearIcon : sectionTo === "/tools" ? CubeIcon : PersonIcon;
 
   return (
-    <header className="page-guide" dir="rtl" data-root={root}>
+    <header className="page-guide" dir="rtl" data-root={root} data-section={sectionTo.slice(1)}>
       <div className="page-guide-heading">
         <span className="page-guide-page-icon" aria-hidden="true"><Icon width="22" height="22" /></span>
         <div className="page-guide-title-row">
@@ -38,6 +39,12 @@ export function PageGuide({ section, sectionTo, title, description, icon: Icon }
       <div className="page-guide-description">
         <InfoCircledIcon className="page-guide-description-icon" width="20" height="20" aria-hidden="true" />
         <p>{description}</p>
+        {helpTopic ? (
+          <a href={`/tools/help#${helpTopic}`} className="page-guide-help-link">
+            <QuestionMarkCircledIcon aria-hidden="true" />
+            راهنمای این بخش
+          </a>
+        ) : null}
       </div>
     </header>
   );

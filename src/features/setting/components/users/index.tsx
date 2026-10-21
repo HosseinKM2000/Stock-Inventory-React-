@@ -141,21 +141,21 @@ export default function UsersSettings({ hideHeading = false }: { hideHeading?: b
     );
 
   return (
-    <Box>
+    <Box className="admin-users-workspace">
       {!hideHeading ? <>
         <Text size="6" weight="bold">کاربران</Text>
         <Text as="div" size="2" color="gray" mt="1">
           حساب‌ها، نقش مدیریتی، وضعیت دسترسی و اشتراک کاربران را مدیریت کنید. این عملیات مستقیماً روی سرور اعمال می‌شود.
         </Text>
       </> : null}
-      <Flex direction="column" gap="3" mt={hideHeading ? "0" : "5"}>
+      <Flex direction="column" gap="3" mt={hideHeading ? "0" : "5"} className="admin-users-list">
         {(users.data ?? []).map((user) => {
           const immutable = user.is_system_admin;
           const self = user.id === current?.id;
           return (
-            <Card key={user.id}>
+            <Card key={user.id} className="admin-user-card">
               <Flex justify="between" align="start" gap="4" wrap="wrap">
-                <Box className="min-w-0 flex-1">
+                <Box className="admin-user-summary min-w-0 flex-1">
                   <Flex align="center" gap="2" wrap="wrap">
                     <Flex
                       align="center"
@@ -201,7 +201,7 @@ export default function UsersSettings({ hideHeading = false }: { hideHeading?: b
                     <Text>آخرین فعالیت: {date(user.last_activity_at)}</Text>
                   </Box>
                 </Box>
-                <Flex direction="column" gap="2" className="w-full sm:w-60">
+                <Flex direction="column" gap="2" className="admin-user-controls w-full sm:w-60">
                   <DevicePolicyEditor user={user} />
                   <Select.Root
                     value={user.plan}

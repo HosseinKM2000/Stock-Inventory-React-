@@ -67,9 +67,12 @@ const PersonalInformationFields = () => {
     >
       <Box
         mt="6"
-        className="bg-foreground/5 p-5 rounded-2xl border border-foreground/20"
+        className="settings-form-panel"
       >
-        <Text className="text-xl font-medium">اطلاعات کاربری</Text>
+        <Box className="settings-panel-heading">
+          <Text as="div" size="5" weight="bold">اطلاعات کاربری</Text>
+          <Text as="p" size="2" color="gray">مشخصات پایه‌ای که برای شناسایی حساب شما استفاده می‌شود.</Text>
+        </Box>
 
         {errorMessage && (
           <Callout.Root color="red" dir="rtl" mt="4">
@@ -140,7 +143,7 @@ const PersonalInformationFields = () => {
 
         <Grid mt="6">
           <Button type="submit" loading={updateProfile.isPending}>
-            ویرایش
+            ذخیره اطلاعات
           </Button>
         </Grid>
       </Box>

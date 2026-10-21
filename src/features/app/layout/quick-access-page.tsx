@@ -1,7 +1,7 @@
 import { useAuth } from "@/shared/auth/use-auth";
 import { Link } from "@tanstack/react-router";
-import { Box, Flex, Text } from "@radix-ui/themes";
-import { ChevronLeftIcon } from "@radix-ui/react-icons";
+import { Box, Text } from "@radix-ui/themes";
+import { ChevronLeftIcon, GlobeIcon } from "@radix-ui/react-icons";
 import type { ReactNode } from "react";
 import { useEntitlementAccess } from "@/shared/access/use-entitlement";
 import type { ComponentType } from "react";
@@ -28,7 +28,7 @@ export function QuickAccessPage({ title, description, items, icon, sectionTo, fo
   const guidedSection = title === "تنظیمات" || title === "ابزارها" || title === "مدیریت" ? title : null;
 
   return (
-    <Box dir="rtl" className="mx-auto w-full max-w-3xl">
+    <Box dir="rtl" className="quick-access-page mx-auto w-full max-w-5xl">
       {guidedSection && icon && sectionTo ? (
         <PageGuide section={guidedSection} sectionTo={sectionTo} title={title} description={description} icon={icon} />
       ) : (
@@ -38,27 +38,31 @@ export function QuickAccessPage({ title, description, items, icon, sectionTo, fo
         </Box>
       )}
 
-      <nav aria-label={title} className="quick-access-menu mx-auto mt-4 max-w-xl overflow-hidden border">
+      <nav aria-label={title} className="quick-access-menu mt-4">
         {visibleItems.map((item) => {
           const Icon = item.icon;
           return (
             <Link
               key={item.id}
               to={item.to}
-              className="quick-access-menu-item group flex min-h-14 items-center gap-3 px-3 py-2 outline-none transition-colors hover:bg-[var(--accent-a2)] focus-visible:bg-[var(--accent-a3)] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[var(--accent-8)] sm:px-4"
+              className="quick-access-menu-item group outline-none"
             >
-              <Flex align="center" justify="center" className="h-9 w-9 shrink-0 rounded-lg bg-[var(--accent-a3)] text-[var(--accent-11)]" aria-hidden="true">
+              <span className="quick-access-item-icon" aria-hidden="true">
                 <Icon width="18" height="18" />
-              </Flex>
-              <Text as="div" size="3" weight="bold" className="min-w-0 flex-1">
-                {item.label}
-              </Text>
-              <ChevronLeftIcon className="shrink-0 text-foreground/45 transition-transform group-hover:-translate-x-0.5" aria-hidden="true" />
+              </span>
+              <span className="quick-access-item-copy">
+                <Text as="span" size="3" weight="bold" className="quick-access-item-title">{item.label}</Text>
+                {item.description ? <Text as="span" size="2" color="gray" className="quick-access-item-description">{item.description}</Text> : null}
+              </span>
+              <span className="quick-access-item-side">
+                {item.requiresOnline ? <span className="quick-access-online"><GlobeIcon width="13" height="13" /> آنلاین</span> : <span className="quick-access-local">روی دستگاه</span>}
+                <ChevronLeftIcon className="quick-access-arrow" aria-hidden="true" />
+              </span>
             </Link>
           );
         })}
       </nav>
-      {footer && <Box mt="5" className="mx-auto max-w-xl">{footer}</Box>}
+      {footer && <Box mt="5" className="quick-access-footer">{footer}</Box>}
     </Box>
   );
 }

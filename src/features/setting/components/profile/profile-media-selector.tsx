@@ -63,7 +63,7 @@ export function ProfileMediaSelector() {
   };
 
   return (
-    <Card mt="6" className="overflow-hidden rounded-2xl border border-foreground/20 bg-foreground/5">
+    <Card mt="6" className="profile-media-panel overflow-hidden">
       <input
         ref={inputRef}
         hidden

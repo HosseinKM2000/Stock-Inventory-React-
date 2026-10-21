@@ -3,12 +3,18 @@ import { preventEventHandler } from "@/shared/lib/prevent-event";
 import { FormField } from "@/shared/ui/form/field/form-field";
 import { Form } from "@/shared/ui/form/form";
 import { SelectInput } from "@/shared/ui/form/input/select-input";
-import { Box, Button, Callout, Flex, Link, Text } from "@radix-ui/themes";
+import { Box, Button, Callout, Flex, Heading, Link, Text } from "@radix-ui/themes";
+import { CubeIcon } from "@radix-ui/react-icons";
 import { useState } from "react";
 import { useIndustries, useSetIndustry } from "../../mutations/use-industry";
 import { ApiError } from "@/shared/api/api-error";
 
-function IndustryForm({ embedded = false }: { embedded?: boolean }) {
+type IndustryFormProps = {
+  mode?: "onboarding" | "settings";
+};
+
+function IndustryForm({ mode = "onboarding" }: IndustryFormProps) {
+  const embedded = mode === "settings";
   const setIndustryMutation = useSetIndustry();
   const [industry, setIndustry] = useState<string>("");
 
@@ -31,25 +37,31 @@ function IndustryForm({ embedded = false }: { embedded?: boolean }) {
         : null;
 
   return (
-    <Flex>
+    <Flex className="industry-selector-shell" data-embedded={embedded || undefined} data-mode={mode}>
       <Form
-        className={embedded ? "min-h-[60dvh] w-full" : "h-dvh w-full"}
+        className={embedded ? "industry-selector-form w-full" : "industry-selector-form min-h-dvh w-full"}
         isSubmitting={setIndustryMutation.isPending}
         onSubmit={preventEventHandler(loginHandler)}
       >
         <Flex
-          height="100%"
           direction="column"
-          align="center"
-          justify="center"
-          gapY="4"
+          gapY="5"
+          className="industry-selector-panel"
         >
-          <Text size="6" weight="bold">
-            برای ادامه حوزه کاری خود را انتخاب کنید
-          </Text>
+          <Box className="industry-selector-heading">
+            <span className="industry-selector-icon" aria-hidden="true"><CubeIcon width="22" height="22" /></span>
+            <Box>
+              <Heading as="h2" size="6">{embedded ? "تغییر حوزه کاری" : "حوزه کاری مجموعه"}</Heading>
+              <Text as="p" size="2" color="gray">
+                {embedded
+                  ? "حوزه مناسب مجموعه را انتخاب کنید؛ کاتالوگ و ابزارهای مرتبط با انتخاب تازه به‌روزرسانی می‌شوند."
+                  : "برای آماده‌سازی کاتالوگ و ابزارهای مرتبط، حوزه فعالیت مجموعه را انتخاب کنید."}
+              </Text>
+            </Box>
+          </Box>
 
           {serverError && (
-            <Callout.Root color="red" dir="rtl" className="w-[90%] sm:w-90">
+            <Callout.Root color="red" dir="rtl" className="w-full">
               <Callout.Text>{serverError}</Callout.Text>
             </Callout.Root>
           )}
@@ -63,10 +75,10 @@ function IndustryForm({ embedded = false }: { embedded?: boolean }) {
             </Callout.Root>
           )}
 
-          <Box className="w-[90%] sm:w-90">
-            <FormField id="username">
+          <Box className="industry-selector-control">
+            <FormField id="industry" label="حوزه فعالیت">
               <SelectInput
-                name="username"
+                name="industry"
                 size="3"
                 options={
                   industries?.map((industry) => ({
@@ -74,26 +86,26 @@ function IndustryForm({ embedded = false }: { embedded?: boolean }) {
                     value: industry.id.toString(),
                   })) ?? []
                 }
-                placeholder="حوزه کاری"
+                placeholder={industriesLoading ? "در حال دریافت حوزه‌ها…" : "انتخاب حوزه کاری"}
                 value={industry ?? ""}
                 onValueChange={(value: string) => setIndustry(value ?? "")}
               />
             </FormField>
           </Box>
-          <Box className="w-[90%] sm:w-90">
+          <Box className="industry-selector-actions">
             <Button
               type="submit"
               style={{ width: "100%" }}
               loading={setIndustryMutation.isPending}
               disabled={industriesLoading || !industry}
             >
-              ثبت
+              {embedded ? "ذخیره تغییرات" : "ذخیره و ادامه"}
             </Button>
-          </Box>
-          <Box className="w-[90%] sm:w-90 text-center">
-            <Link href="/dashboard" style={{ width: "100%" }}>
-              رد کردن
-            </Link>
+            {!embedded ? (
+              <Link href="/dashboard" style={{ width: "100%" }}>
+                فعلاً رد کردن
+              </Link>
+            ) : null}
           </Box>
         </Flex>
       </Form>

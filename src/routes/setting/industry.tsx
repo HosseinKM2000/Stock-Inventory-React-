@@ -9,9 +9,9 @@ export const Route = createFileRoute("/setting/industry")({ component: IndustryP
 
 function IndustryPage() {
   return (
-    <Box dir="rtl" className="mx-auto w-full max-w-3xl">
-      <PageGuide section="تنظیمات" sectionTo="/setting" title="حوزه کاری" description="حوزه فعالیت حساب خود را انتخاب کنید تا کاتالوگ و امکانات مرتبط نمایش داده شوند. تغییر این گزینه نیازمند اینترنت است." icon={CubeIcon} />
-      <OnlineGuard><IndustryForm embedded /></OnlineGuard>
+    <Box dir="rtl" className="settings-detail-workspace mx-auto w-full max-w-4xl">
+      <PageGuide section="تنظیمات" sectionTo="/setting" title="حوزه کاری" description="حوزه فعالیت حساب خود را انتخاب کنید تا کاتالوگ و امکانات مرتبط نمایش داده شوند. تغییر این گزینه نیازمند اینترنت است." icon={CubeIcon} helpTopic="account" />
+      <OnlineGuard><IndustryForm mode="settings" /></OnlineGuard>
     </Box>
   );
 }

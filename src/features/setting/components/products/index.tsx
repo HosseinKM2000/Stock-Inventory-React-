@@ -14,7 +14,7 @@ export default function ProductSettings() {
 
   return (
     <Box className="space-y-5" dir="rtl">
-      <PageGuide section="ابزارها" sectionTo="/tools" title="بازیابی" description="همگام‌سازی تغییرات محلی و دریافت دوباره نسخه معتبر محصولات از سرور" icon={ReloadIcon} />
+      <PageGuide section="ابزارها" sectionTo="/tools" title="بازیابی" description="کارهای در انتظار را بررسی کنید و تازه‌ترین اطلاعات تأییدشده مجموعه را دوباره دریافت کنید." icon={ReloadIcon} helpTopic="recovery" />
 
       {!online && (
         <Callout.Root color="amber">
@@ -34,8 +34,7 @@ export default function ProductSettings() {
           <Box>
             <Text as="div" size="4" weight="bold">به‌روزرسانی محصولات از سرور</Text>
             <Text as="div" size="2" color="gray" mt="2">
-              ابتدا تغییرات محلی همگام می‌شوند و سپس نسخه معتبر محصولات و اطلاعات
-              کاتالوگ از سرور با IndexedDB تطبیق داده می‌شود.
+              ابتدا کارهای در انتظار بررسی می‌شوند و سپس تازه‌ترین اطلاعات تأییدشده مجموعه دریافت می‌شود. تا پایان این کار صفحه را نبندید.
             </Text>
           </Box>
           <Button
@@ -45,7 +44,7 @@ export default function ProductSettings() {
             onClick={() => setConfirmOpen(true)}
           >
             <ReloadIcon />
-            دریافت از سرور
+            تازه‌سازی اطلاعات
           </Button>
         </Flex>
       </Card>
@@ -53,7 +52,7 @@ export default function ProductSettings() {
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         title="محصولات تازه‌سازی شوند؟"
-        description="نسخهٔ معتبر سرور با محصولات فعلی تطبیق داده می‌شود."
+        description="کارهای در انتظار بررسی می‌شوند و تازه‌ترین اطلاعات تأییدشده مجموعه دریافت می‌شود. تا پایان این کار صفحه را نبندید."
         confirmLabel="تازه‌سازی"
         variant="warning"
         loading={refresh.isPending}

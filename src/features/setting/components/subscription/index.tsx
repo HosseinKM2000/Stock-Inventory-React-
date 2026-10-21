@@ -86,7 +86,7 @@ export default function SubscriptionSettings() {
 
   return (
     <Box>
-      <PageGuide section="تنظیمات" sectionTo="/setting" title="اشتراک من" description="وضعیت طرح، زمان باقی‌مانده و دسترسی‌های فعال حساب" icon={StarIcon} />
+      <PageGuide section="تنظیمات" sectionTo="/setting" title="اشتراک من" description="وضعیت طرح، زمان باقی‌مانده و دسترسی‌های فعال حساب" icon={StarIcon} helpTopic="account" />
 
       {expired && (
         <Callout.Root color="red" mt="5" dir="rtl">

@@ -46,7 +46,7 @@ export default function LabelsPage() {
 
   return (
     <Box dir="rtl" className="space-y-6">
-      <PageGuide section="ابزارها" sectionTo="/tools" title="برچسب‌ها" description="برای گروه‌بندی منعطف محصولات چند برچسب بسازید. برچسب‌ها متعلق به حساب شما هستند و تغییرات حتی در حالت آفلاین ذخیره می‌شوند." icon={BookmarkIcon} />
+      <PageGuide section="ابزارها" sectionTo="/tools" title="برچسب‌ها" description="برای ویژگی‌های منعطف مثل پرفروش، فصلی یا تأمین‌کننده برچسب بسازید و محصولات را سریع‌تر پیدا کنید." icon={BookmarkIcon} helpTopic="classification" />
       <Card size="3">
         <Flex gap="3" align="end" wrap="wrap">
           <Box className="grow">
