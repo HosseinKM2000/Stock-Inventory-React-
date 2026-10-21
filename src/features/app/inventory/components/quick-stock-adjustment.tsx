@@ -1,5 +1,5 @@
 import { CubeIcon, MinusIcon, PlusIcon } from "@radix-ui/react-icons";
-import { Flex, Text } from "@radix-ui/themes";
+import { Flex } from "@radix-ui/themes";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -16,6 +16,7 @@ import {
   packagingOf,
   type QuantityOperationMode,
 } from "../domain/packaging";
+import { normalizeIntegerText } from "../services/localized-integer";
 
 type Props = { product: Product };
 
@@ -33,6 +34,8 @@ export function QuickStockAdjustment({ product }: Props) {
   const [pendingDelta, setPendingDelta] = useState(0);
   const [awaitingDecision, setAwaitingDecision] = useState(false);
   const [confirmationOpen, setConfirmationOpen] = useState(false);
+  const [editingQuantity, setEditingQuantity] = useState(false);
+  const [quantityDraft, setQuantityDraft] = useState(String(product.quantity));
   const pendingDeltaRef = useRef(0);
   const confirmationTimer = useRef<number | null>(null);
   const mutation = useAdjustProductQuantity();
@@ -60,6 +63,33 @@ export function QuickStockAdjustment({ product }: Props) {
     setPendingDelta(0);
     setAwaitingDecision(false);
     setConfirmationOpen(false);
+    setEditingQuantity(false);
+    setQuantityDraft(String(product.quantity));
+  };
+
+  const beginDirectEdit = () => {
+    clearConfirmationTimer();
+    setQuantityDraft(previewQuantity === 0 ? "" : String(previewQuantity));
+    setEditingQuantity(true);
+  };
+
+  const commitDirectQuantity = () => {
+    const normalized = normalizeIntegerText(quantityDraft);
+    const nextQuantity = normalized === "" ? 0 : Number(normalized);
+    const nextDelta = nextQuantity - product.quantity;
+    setEditingQuantity(false);
+    setQuantityDraft(String(nextQuantity));
+
+    if (nextDelta === 0) {
+      pendingDeltaRef.current = 0;
+      setPendingDelta(0);
+      return;
+    }
+
+    pendingDeltaRef.current = nextDelta;
+    setPendingDelta(nextDelta);
+    setAwaitingDecision(true);
+    setConfirmationOpen(true);
   };
 
   const applyStep = (amount: -1 | 1) => {
@@ -205,16 +235,39 @@ export function QuickStockAdjustment({ product }: Props) {
               {pendingDelta.toLocaleString("fa-IR")}
             </span>
           )}
-          <Text
-            size="3"
-            as="span"
-            weight="bold"
-            className={
-              changing ? "quick-stock-count is-changing" : "quick-stock-count"
-            }
-          >
-            {previewQuantity.toLocaleString("fa-IR")}
-          </Text>
+          {editingQuantity ? (
+            <input
+              autoFocus
+              type="number"
+              min="0"
+              inputMode="numeric"
+              aria-label="موجودی جدید"
+              className="quick-stock-count quick-stock-input"
+              value={quantityDraft}
+              onChange={(event) => setQuantityDraft(normalizeIntegerText(event.target.value))}
+              onBlur={commitDirectQuantity}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  commitDirectQuantity();
+                } else if (event.key === "Escape") {
+                  event.preventDefault();
+                  setEditingQuantity(false);
+                  setQuantityDraft(String(previewQuantity));
+                }
+              }}
+            />
+          ) : (
+            <button
+              type="button"
+              className={changing ? "quick-stock-count is-changing" : "quick-stock-count"}
+              disabled={busy || pendingDelta !== 0}
+              aria-label={`ویرایش مستقیم موجودی ${previewQuantity === 0 ? "صفر" : previewQuantity.toLocaleString("fa-IR")}`}
+              onClick={beginDirectEdit}
+            >
+              {previewQuantity.toLocaleString("fa-IR")}
+            </button>
+          )}
         </div>
 
         <Button

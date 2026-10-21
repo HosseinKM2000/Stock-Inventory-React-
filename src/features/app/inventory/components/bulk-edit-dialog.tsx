@@ -10,7 +10,7 @@ import {
   type BulkAlertChoice,
   type BulkCategoryChoice,
 } from "../services/bulk-edit-intent";
-import { normalizeIntegerText, normalizeOptionalInteger } from "../services/localized-integer";
+import { formatGroupedIntegerText, normalizeOptionalInteger } from "../services/localized-integer";
 import { LowStockThresholdField } from "./low-stock-threshold-field";
 
 type Props = {
@@ -92,7 +92,7 @@ export function BulkEditDialog({ open, selectedIds, onOpenChange, onComplete }: 
           </Flex>
           <Flex direction="column" gap="2">
             <Text as="label" htmlFor="bulk-price" size="2" weight="medium">افزایش قیمت</Text>
-            <TextField.Root id="bulk-price" value={price} inputMode="numeric" placeholder="بدون تغییر" onChange={(event) => setPrice(normalizeIntegerText(event.target.value))}>
+            <TextField.Root id="bulk-price" value={price} inputMode="numeric" placeholder="بدون تغییر" onChange={(event) => setPrice(formatGroupedIntegerText(event.target.value))}>
               <TextField.Slot side="right">تومان</TextField.Slot>
             </TextField.Root>
           </Flex>

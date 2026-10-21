@@ -10,9 +10,9 @@ import { Form } from "@/shared/ui/form/form";
 import { SelectInput } from "@/shared/ui/form/input/select-input";
 import { TextAreaInput } from "@/shared/ui/form/input/text-area";
 import { TextInput } from "@/shared/ui/form/input/text-input";
-import { CubeIcon, EyeOpenIcon, GearIcon, Pencil2Icon, PlusIcon } from "@radix-ui/react-icons";
-import { Box, Callout, Card, Flex, Grid, Switch, Text } from "@radix-ui/themes";
-import { type ChangeEvent, useRef, useState } from "react";
+import { CheckIcon, ChevronDownIcon, Cross2Icon, CubeIcon, EyeOpenIcon, GearIcon, Pencil2Icon, PlusIcon, TokensIcon } from "@radix-ui/react-icons";
+import { Badge, Box, Callout, Card, Checkbox, Flex, Grid, Popover, Switch, Text } from "@radix-ui/themes";
+import { type ChangeEvent, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { createProductInitialValues } from "../form/product-form.initial";
 import { productSchema } from "../schema/product.schema";
@@ -27,25 +27,12 @@ import { generateInternalBarcode } from "@/features/barcode/domain/barcode";
 import { barcodeRepository } from "@/features/barcode/services/barcode-repository";
 import type { BarcodeMeaning, BarcodeSource } from "@/features/barcode/types";
 import { accessState } from "@/shared/access/access-state";
+import { formatGroupedIntegerText, normalizeIntegerText } from "../services/localized-integer";
+import { BarcodeCaptureField } from "@/features/barcode/components/barcode-capture-field";
+import type { Label } from "@/features/setting/types";
 
 type ProductFormMode = "create" | "edit" | "view";
 export type PendingBarcodeInput = { value: string; source: BarcodeSource; meaning: BarcodeMeaning; scanQuantity: number };
-
-const priceFormatter = new Intl.NumberFormat("en-US", {
-  maximumFractionDigits: 0,
-  useGrouping: true,
-});
-
-function normalizePriceDigits(value: string) {
-  return value
-    .replace(/[۰-۹]/g, (digit) => String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit)))
-    .replace(/[٠-٩]/g, (digit) => String("٠١٢٣٤٥٦٧٨٩".indexOf(digit)))
-    .replace(/\D/g, "");
-}
-
-function formatPrice(value: number) {
-  return Number.isFinite(value) ? priceFormatter.format(value) : "";
-}
 
 type ProductFormProps = {
   mode: ProductFormMode;
@@ -76,14 +63,29 @@ export function ProductForm({
   const { data: labels = [] } = useLabels();
   const readOnly = mode === "view";
   const [displaySalePrice, setDisplaySalePrice] = useState(() =>
-    initial?.sale_price != null ? formatPrice(initial.sale_price) : initial && !initial.price_missing ? formatPrice(initial.price) : "",
+    initial?.sale_price != null ? formatGroupedIntegerText(initial.sale_price) : initial && !initial.price_missing ? formatGroupedIntegerText(initial.price) : "",
   );
   const [displayPurchasePrice, setDisplayPurchasePrice] = useState(() =>
-    initial?.purchase_price != null ? formatPrice(initial.purchase_price) : "",
+    initial?.purchase_price != null ? formatGroupedIntegerText(initial.purchase_price) : "",
   );
   const [pendingBarcodes, setPendingBarcodes] = useState<PendingBarcodeInput[]>([]);
   const [pendingBarcodeValue, setPendingBarcodeValue] = useState("");
   const [pendingBarcodeMeaning, setPendingBarcodeMeaning] = useState<BarcodeMeaning>("unit");
+  const [actionDocked, setActionDocked] = useState(mode !== "view");
+  const actionAnchorRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (mode === "view" || !actionAnchorRef.current) return;
+    const anchor = actionAnchorRef.current;
+    const scrollRoot = anchor.closest("main[data-scroll-restoration-id='app-shell']");
+    setActionDocked(true);
+    const observer = new IntersectionObserver(
+      ([entry]) => setActionDocked(entry.intersectionRatio < 0.98),
+      { root: scrollRoot, threshold: [0, 0.98, 1] },
+    );
+    observer.observe(anchor);
+    return () => observer.disconnect();
+  }, [mode]);
 
   const form = useAppForm({
     schema: productSchema,
@@ -186,7 +188,7 @@ export function ProductForm({
   };
 
   const handlePriceChange = (kind: "sale" | "purchase", event: ChangeEvent<HTMLInputElement>) => {
-    const digits = normalizePriceDigits(event.target.value);
+    const digits = normalizeIntegerText(event.target.value);
 
     if (!digits) {
       if (kind === "sale") {
@@ -203,11 +205,11 @@ export function ProductForm({
     const price = Number(digits);
     if (!Number.isSafeInteger(price)) return;
     if (kind === "sale") {
-      setDisplaySalePrice(formatPrice(price));
+      setDisplaySalePrice(formatGroupedIntegerText(price));
       form.setValue("sale_price", price);
       form.setValue("price", price);
     } else {
-      setDisplayPurchasePrice(formatPrice(price));
+      setDisplayPurchasePrice(formatGroupedIntegerText(price));
       form.setValue("purchase_price", price);
     }
   };
@@ -319,13 +321,19 @@ export function ProductForm({
               name="quantity"
               value={form.values.quantity}
               placeholder="۰"
-              onFocus={(event) => event.currentTarget.select()}
+              onFocus={(event) => {
+                if (Number(form.values.quantity) === 0) event.currentTarget.value = "";
+                else event.currentTarget.select();
+              }}
+              onBlur={(event) => {
+                if (event.currentTarget.value === "") form.setValue("quantity", 0);
+              }}
               onChange={form.handleChange}
               disabled={readOnly}
             />
           </FormField>
 
-          {canViewSalePrice ? <FormField id="sale_price" label="قیمت فروش (تومان)" error={form.errors.sale_price}>
+          {canViewSalePrice ? <FormField id="sale_price" label="قیمت (تومان)" error={form.errors.sale_price}>
             <TextInput
               id="sale_price"
               size="3"
@@ -352,6 +360,16 @@ export function ProductForm({
               disabled={readOnly || !canEditPurchasePrice}
             />
           </FormField> : null}
+
+          <FormField id="category_id" label="دسته‌بندی">
+            <SelectInput
+              size="3"
+              value={form.values.category_id == null ? "none" : String(form.values.category_id)}
+              onValueChange={(value) => form.setValue("category_id", value === "none" ? null : Number(value))}
+              options={[{ label: "بدون دسته‌بندی", value: "none" }, ...categoryOptions]}
+              disabled={readOnly}
+            />
+          </FormField>
 
           <Box className="md:col-span-3">
             <FormField id="note" label="یادداشت">
@@ -384,51 +402,17 @@ export function ProductForm({
             />
           </Box>
 
-          <FormField id="category_id" label="دسته‌بندی">
-            <SelectInput
-              size="3"
-              value={
-                form.values.category_id == null
-                  ? "none"
-                  : String(form.values.category_id)
-              }
-              onValueChange={(value) =>
-                form.setValue(
-                  "category_id",
-                  value === "none" ? null : Number(value),
-                )
-              }
-              options={[
-                { label: "بدون دسته‌بندی", value: "none" },
-                ...categoryOptions,
-              ]}
-              disabled={readOnly}
-            />
-          </FormField>
-
-          <Box className="md:col-span-2">
+          <Box className="md:col-span-3">
             <FormField id="label_ids" label="برچسب‌ها">
               {labels.length === 0 ? (
                 <Text size="2" color="gray">از بخش ابزارها، برچسب‌های مورد نیاز را بسازید.</Text>
               ) : (
-                <Flex gap="2" wrap="wrap" mt="2">
-                  {labels.map((label) => {
-                    const checked = form.values.label_ids.includes(label.id);
-                    return (
-                      <label key={label.id} className="flex cursor-pointer items-center gap-2 rounded-xl border border-gray-5 px-3 py-2">
-                        <input
-                          type="checkbox"
-                          checked={checked}
-                          disabled={readOnly}
-                          onChange={() => form.setValue("label_ids", checked
-                            ? form.values.label_ids.filter((id) => id !== label.id)
-                            : [...form.values.label_ids, label.id])}
-                        />
-                        <Text size="2">{label.name}</Text>
-                      </label>
-                    );
-                  })}
-                </Flex>
+                <ProductLabelsSelect
+                  labels={labels}
+                  selectedIds={form.values.label_ids}
+                  disabled={readOnly}
+                  onChange={(next) => form.setValue("label_ids", next)}
+                />
               )}
             </FormField>
           </Box>
@@ -492,27 +476,40 @@ export function ProductForm({
           </Box>
 
           {initial ? <BarcodeManager product={initial} readOnly={readOnly} /> : (
-            <Card size="3" className="rounded-3xl md:col-span-3">
-              <Text as="div" weight="bold">بارکد محصول (اختیاری)</Text>
-              <Text as="div" size="2" color="gray" mt="1">کد را اسکن/وارد کنید یا یک شناسه داخلی بسازید. ثبت نهایی همراه ساخت محصول انجام می‌شود.</Text>
-              <Grid columns={{ initial: "1", sm: "3" }} gap="3" mt="4">
-                <TextInput value={pendingBarcodeValue} placeholder="بارکد" dir="ltr" onChange={(event) => setPendingBarcodeValue(event.target.value)} />
-                <SelectInput value={pendingBarcodeMeaning} onValueChange={(next) => setPendingBarcodeMeaning(next as BarcodeMeaning)} options={[{ label: "یک واحد", value: "unit" }, { label: "یک بسته", value: "package" }]} />
-                <Flex gap="2">
-                  <Button type="button" variant="outline" color="green" disabled={!pendingBarcodeValue.trim()} onClick={() => {
+            <Card size="3" className="product-barcode-card rounded-3xl md:col-span-3">
+              <Flex align="center" gap="3" className="product-barcode-header">
+                <Box className="product-barcode-title-icon" aria-hidden="true"><TokensIcon width="24" height="24" /></Box>
+                <Box>
+                  <Text as="div" size="5" weight="bold">بارکدها</Text>
+                  <Text as="div" size="2" color="gray">اختیاری؛ هر محصول می‌تواند چند شناسه داشته باشد.</Text>
+                </Box>
+              </Flex>
+              <Box mt="4" className="product-barcode-composer">
+                <Grid columns={{ initial: "1", sm: "2" }} gap="3" className="product-barcode-inputs">
+                  <Box>
+                    <Text as="div" size="2" weight="medium" mb="2">کد بارکد</Text>
+                    <BarcodeCaptureField value={pendingBarcodeValue} onValueChange={setPendingBarcodeValue} placeholder="اسکن یا ورود دستی" />
+                  </Box>
+                  <Box>
+                    <Text as="div" size="2" weight="medium" mb="2">مبنا</Text>
+                    <SelectInput value={pendingBarcodeMeaning} onValueChange={(next) => setPendingBarcodeMeaning(next as BarcodeMeaning)} options={[{ label: "یک واحد", value: "unit" }, { label: "یک بسته", value: "package" }]} />
+                  </Box>
+                </Grid>
+                <Flex direction="column" gap="2" mt="3">
+                  <Button className="product-barcode-add" type="button" variant="outline" color="green" disabled={!pendingBarcodeValue.trim()} onClick={() => {
                     const scanQuantity = pendingBarcodeMeaning === "package" ? Number(packaging.pack_size) : 1;
                     if (!Number.isSafeInteger(scanQuantity) || scanQuantity < 1) return toast.error("ابتدا تعداد واحد هر بسته را مشخص کنید");
                     setPendingBarcodes((current) => [...current, { value: pendingBarcodeValue, source: "manufacturer", meaning: pendingBarcodeMeaning, scanQuantity }]);
                     setPendingBarcodeValue("");
-                  }}>افزودن بارکد</Button>
-                  <Button type="button" variant="soft" onClick={() => void generateInternalBarcode({ exists: async (candidate) => (await barcodeRepository.findByValue(candidate)).length > 0 }).then((generated) => {
+                  }} leftIcon={<PlusIcon />}>افزودن کد موجود</Button>
+                  <Button className="product-barcode-generate" type="button" variant="soft" onClick={() => void generateInternalBarcode({ exists: async (candidate) => (await barcodeRepository.findByValue(candidate)).length > 0 }).then((generated) => {
                     const scanQuantity = pendingBarcodeMeaning === "package" ? Number(packaging.pack_size) : 1;
                     if (!Number.isSafeInteger(scanQuantity) || scanQuantity < 1) return toast.error("ابتدا تعداد واحد هر بسته را مشخص کنید");
                     setPendingBarcodes((current) => [...current, { value: generated, source: "tanzim", meaning: pendingBarcodeMeaning, scanQuantity }]);
-                  })}>ساخت کد</Button>
+                  })}>ساخت بارکد تنظیم</Button>
                 </Flex>
-              </Grid>
-              {pendingBarcodes.length ? <Flex direction="column" gap="2" mt="3">{pendingBarcodes.map((item, index) => <Flex key={`${item.value}-${index}`} justify="between" className="rounded-xl bg-[var(--gray-2)] p-3"><Text dir="ltr">{item.value}</Text><Button type="button" size="1" color="red" variant="ghost" onClick={() => setPendingBarcodes((current) => current.filter((_, currentIndex) => currentIndex !== index))}>حذف</Button></Flex>)}</Flex> : null}
+              </Box>
+              {pendingBarcodes.length ? <Flex direction="column" gap="2" mt="4" className="product-barcode-list">{pendingBarcodes.map((item, index) => <Flex key={`${item.value}-${index}`} justify="between" align="center" gap="3" className="product-barcode-row product-barcode-row--pending"><Box className="product-barcode-row-main"><Text as="div" weight="bold" dir="ltr">{item.value}</Text><Text as="div" size="1" color="gray">{item.meaning === "package" ? `بسته — هر اسکن ${item.scanQuantity.toLocaleString("fa-IR")} واحد` : "واحد — هر اسکن یک واحد"}</Text></Box><Button className="product-barcode-pending-remove" type="button" size="2" color="red" variant="soft" aria-label={`برداشتن بارکد ${item.value} از فرم`} onClick={() => setPendingBarcodes((current) => current.filter((_, currentIndex) => currentIndex !== index))}>برداشتن</Button></Flex>)}</Flex> : null}
             </Card>
           )}
 
@@ -520,8 +517,15 @@ export function ProductForm({
 
         {mode !== "view" && (
           <Grid mt="6" className="product-form-actions">
-            <Button type="submit" loading={submitting} className="product-form-primary-action">
-              {mode === "create" ? "افزودن" : "ثبت تغییرات"}
+            <div ref={actionAnchorRef} className="product-form-action-anchor" aria-hidden="true" />
+            <Button
+              type="submit"
+              loading={submitting}
+              aria-label={mode === "create" ? "ثبت محصول" : "ثبت تغییرات"}
+              data-floating={actionDocked}
+              className="product-form-primary-action"
+            >
+              {actionDocked ? <CheckIcon width="22" height="22" aria-hidden="true" /> : mode === "create" ? "ثبت محصول" : "ثبت تغییرات"}
             </Button>
 
             {mode === "edit" && onDelete && (
@@ -545,5 +549,61 @@ export function ProductForm({
         )}
       </Box>
     </Form>
+  );
+}
+
+function ProductLabelsSelect({ labels, selectedIds, disabled, onChange }: {
+  labels: Label[];
+  selectedIds: number[];
+  disabled: boolean;
+  onChange(ids: number[]): void;
+}) {
+  const selected = labels.filter((label) => selectedIds.includes(label.id));
+  const toggle = (id: number) => onChange(
+    selectedIds.includes(id) ? selectedIds.filter((current) => current !== id) : [...selectedIds, id],
+  );
+
+  return (
+    <Box className="product-label-select">
+      <Popover.Root>
+        <Popover.Trigger>
+          <Button
+            type="button"
+            variant="surface"
+            color="gray"
+            disabled={disabled}
+            className="product-label-select-trigger"
+            aria-label="انتخاب برچسب‌های محصول"
+          >
+            <span>{selected.length ? `${selected.length.toLocaleString("fa-IR")} برچسب انتخاب شده` : "انتخاب برچسب‌ها"}</span>
+            <ChevronDownIcon aria-hidden="true" />
+          </Button>
+        </Popover.Trigger>
+        <Popover.Content dir="rtl" width="min(360px, calc(100vw - 2rem))">
+          <Flex direction="column" gap="1" className="max-h-64 overflow-y-auto">
+            {labels.map((label) => (
+              <Text as="label" key={label.id} size="2" className="product-label-option">
+                <Checkbox checked={selectedIds.includes(label.id)} onCheckedChange={() => toggle(label.id)} />
+                <span>{label.name}</span>
+              </Text>
+            ))}
+          </Flex>
+        </Popover.Content>
+      </Popover.Root>
+      {selected.length ? (
+        <Flex gap="2" wrap="wrap" mt="2" className="product-label-selected" aria-label="برچسب‌های انتخاب‌شده">
+          {selected.map((label) => (
+            <Badge key={label.id} size="2" variant="soft" color="violet">
+              {label.name}
+              {!disabled ? (
+                <button type="button" aria-label={`حذف برچسب ${label.name}`} onClick={() => toggle(label.id)}>
+                  <Cross2Icon />
+                </button>
+              ) : null}
+            </Badge>
+          ))}
+        </Flex>
+      ) : null}
+    </Box>
   );
 }

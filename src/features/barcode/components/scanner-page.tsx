@@ -387,7 +387,16 @@ export function ScannerPage() {
               {mode === "correction" ? (
                 <label>
                   <Text as="div" size="2" weight="medium" mb="2">موجودی نهایی</Text>
-                  <TextField.Root autoFocus type="number" inputMode="numeric" min="0" value={finalQuantity} onChange={(event) => setFinalQuantity(event.target.value)} />
+                  <TextField.Root
+                    autoFocus
+                    type="number"
+                    inputMode="numeric"
+                    min="0"
+                    value={finalQuantity}
+                    onFocus={() => { if (Number(finalQuantity) === 0) setFinalQuantity(""); }}
+                    onBlur={() => { if (finalQuantity === "") setFinalQuantity("0"); }}
+                    onChange={(event) => setFinalQuantity(event.target.value)}
+                  />
                 </label>
               ) : null}
               <Grid columns="3" gap="2" className="rounded-2xl bg-[var(--gray-2)] p-3 text-center">

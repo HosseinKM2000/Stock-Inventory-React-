@@ -13,3 +13,8 @@ export function normalizeOptionalInteger(value: string): number | undefined {
   const normalized = normalizeIntegerText(value);
   return normalized === "" ? undefined : Number(normalized);
 }
+
+export function formatGroupedIntegerText(value: string | number): string {
+  const normalized = normalizeIntegerText(String(value));
+  return normalized.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}

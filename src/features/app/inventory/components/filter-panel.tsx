@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 
 import { Dialog, IconButton, Select, Switch, Text } from "@radix-ui/themes";
+import { useState } from "react";
 
 import type { ProductSort } from "../types";
 import type { ProductViewMode } from "../services/inventory-list-preferences";
@@ -75,6 +76,57 @@ export default function FilterPanel({
   viewMode,
   onViewModeChange,
 }: Props) {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [draftSort, setDraftSort] = useState<ProductSort>(sort);
+  const [draftCategoryId, setDraftCategoryId] = useState<number | null>(categoryId);
+  const [draftLabelIds, setDraftLabelIds] = useState<number[]>(selectedLabelIds);
+  const [draftCatalogHidden, setDraftCatalogHidden] = useState(catalogProductsHidden);
+
+  const activeFilterCount =
+    (categoryId == null ? 0 : 1) +
+    selectedLabelIds.length +
+    (catalogProductsHidden ? 1 : 0) +
+    (sort === "newest" ? 0 : 1);
+  const sameLabels =
+    draftLabelIds.length === selectedLabelIds.length &&
+    draftLabelIds.every((id) => selectedLabelIds.includes(id));
+  const hasDraftChanges =
+    draftSort !== sort ||
+    draftCategoryId !== categoryId ||
+    !sameLabels ||
+    draftCatalogHidden !== catalogProductsHidden;
+  const draftIsReset =
+    draftSort === "newest" &&
+    draftCategoryId == null &&
+    draftLabelIds.length === 0 &&
+    !draftCatalogHidden;
+
+  const handleDialogOpenChange = (open: boolean) => {
+    if (open) {
+      setDraftSort(sort);
+      setDraftCategoryId(categoryId);
+      setDraftLabelIds(selectedLabelIds);
+      setDraftCatalogHidden(catalogProductsHidden);
+    }
+    setDialogOpen(open);
+  };
+
+  const applyDraftFilters = () => {
+    if (!hasDraftChanges) return;
+    if (draftSort !== sort) setSort(draftSort);
+    if (draftCategoryId !== categoryId) setCategoryId(draftCategoryId);
+    selectedLabelIds
+      .filter((id) => !draftLabelIds.includes(id))
+      .forEach(onRemoveLabel);
+    draftLabelIds
+      .filter((id) => !selectedLabelIds.includes(id))
+      .forEach(onToggleLabel);
+    if (draftCatalogHidden !== catalogProductsHidden) {
+      onCatalogVisibilityChange(draftCatalogHidden);
+    }
+    setDialogOpen(false);
+  };
+
   return (
     <div className="inventory-filter-panel" dir="rtl">
       <div className="inventory-filter-topline">
@@ -99,11 +151,16 @@ export default function FilterPanel({
           ))}
         </div>
 
-        <Dialog.Root>
+        <Dialog.Root open={dialogOpen} onOpenChange={handleDialogOpenChange}>
           <Dialog.Trigger>
-            <Button type="button" variant="soft" className="inventory-mobile-filter-trigger">
+            <Button type="button" variant="outline" className="inventory-mobile-filter-trigger">
               <Filter size={23} strokeWidth={1.9} aria-hidden="true" />
               <span>فیلترها</span>
+              {activeFilterCount > 0 ? (
+                <span className="inventory-mobile-filter-count" aria-label={`${activeFilterCount.toLocaleString("fa-IR")} فیلتر فعال`}>
+                  {activeFilterCount.toLocaleString("fa-IR")}
+                </span>
+              ) : null}
             </Button>
           </Dialog.Trigger>
           <Dialog.Content dir="rtl" maxWidth="680px" className="inventory-filter-dialog">
@@ -116,11 +173,12 @@ export default function FilterPanel({
                 type="button"
                 variant="outline"
                 className="inventory-filter-reset"
+                disabled={draftIsReset}
                 onClick={() => {
-                  setCategoryId(null);
-                  setSort("newest");
-                  onClearLabels();
-                  if (catalogProductsHidden) onCatalogVisibilityChange(false);
+                  setDraftCategoryId(null);
+                  setDraftSort("newest");
+                  setDraftLabelIds([]);
+                  setDraftCatalogHidden(false);
                 }}
               >
                 <RotateCcw size={19} aria-hidden="true" />
@@ -142,7 +200,7 @@ export default function FilterPanel({
                 <Text as="span" weight="bold" className="inventory-filter-dialog-label">دسته‌بندی</Text>
                 <div className="inventory-filter-control inventory-category-control">
                   <Box className="inventory-filter-leading-icon" size={25} strokeWidth={1.8} aria-hidden="true" />
-                  <Select.Root value={categoryId == null ? "all" : String(categoryId)} onValueChange={(value) => setCategoryId(value === "all" ? null : Number(value))}>
+                  <Select.Root value={draftCategoryId == null ? "all" : String(draftCategoryId)} onValueChange={(value) => setDraftCategoryId(value === "all" ? null : Number(value))}>
                     <Select.Trigger aria-label="فیلتر دسته‌بندی در پنجره فیلترها" className="inventory-filter-select" />
                     <Select.Content>
                       <Select.Item value="all">همه دسته‌بندی‌ها</Select.Item>
@@ -156,7 +214,7 @@ export default function FilterPanel({
                 <Text as="span" weight="bold" className="inventory-filter-dialog-label">مرتب‌سازی</Text>
                 <div className="inventory-filter-control inventory-sort-control">
                   <ArrowUpDown className="inventory-filter-leading-icon" size={25} strokeWidth={1.8} aria-hidden="true" />
-                  <Select.Root value={sort} onValueChange={(value) => setSort(value as ProductSort)}>
+                  <Select.Root value={draftSort} onValueChange={(value) => setDraftSort(value as ProductSort)}>
                     <Select.Trigger aria-label="مرتب‌سازی محصولات در پنجره فیلترها" className="inventory-filter-select" />
                     <Select.Content>
                       {(Object.keys(SORT_LABELS) as ProductSort[]).map((key) => <Select.Item key={key} value={key}>{SORT_LABELS[key]}</Select.Item>)}
@@ -169,7 +227,14 @@ export default function FilterPanel({
                 <Text as="span" weight="bold" className="inventory-filter-dialog-label">برچسب‌ها</Text>
                 <div className="inventory-filter-control inventory-label-control">
                   <Tag className="inventory-filter-leading-icon" size={25} strokeWidth={1.8} aria-hidden="true" />
-                  <LabelFilter labels={labels} selectedIds={selectedLabelIds} onToggle={onToggleLabel} onRemove={onRemoveLabel} onClear={onClearLabels} emptyLabel="همه برچسب‌ها" />
+                  <LabelFilter
+                    labels={labels}
+                    selectedIds={draftLabelIds}
+                    onToggle={(id) => setDraftLabelIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id])}
+                    onRemove={(id) => setDraftLabelIds((current) => current.filter((item) => item !== id))}
+                    onClear={() => setDraftLabelIds([])}
+                    emptyLabel="همه برچسب‌ها"
+                  />
                 </div>
               </div>
             </div>
@@ -179,13 +244,18 @@ export default function FilterPanel({
                 <EyeOff size={25} strokeWidth={1.8} aria-hidden="true" />
                 <Text as="span" size="3" weight="medium">مخفی کردن کاتالوگ</Text>
               </div>
-              <Switch checked={catalogProductsHidden} onCheckedChange={onCatalogVisibilityChange} aria-label="مخفی کردن محصولات کاتالوگ در پنجره فیلترها" />
+              <Switch checked={draftCatalogHidden} onCheckedChange={setDraftCatalogHidden} aria-label="مخفی کردن محصولات کاتالوگ در پنجره فیلترها" />
               <Text as="p" size="2" color="gray">محصولات کاتالوگ در نتایج نمایش داده نشوند.</Text>
             </div>
 
-            <Dialog.Close>
-              <Button type="button" className="inventory-filter-dialog-close">بستن</Button>
-            </Dialog.Close>
+            <Button
+              type="button"
+              className="inventory-filter-dialog-submit"
+              disabled={!hasDraftChanges}
+              onClick={applyDraftFilters}
+            >
+              مشاهده نتایج
+            </Button>
           </Dialog.Content>
         </Dialog.Root>
       </div>

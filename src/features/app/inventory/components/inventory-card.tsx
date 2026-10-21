@@ -18,7 +18,7 @@ import { copyPlainText, productClipboardText } from "../services/clipboard.servi
 
 const STATUS_META: Record<ProductStatus, { label: string; color: "green" | "yellow" | "red" }> = {
   in_stock: { label: "موجود", color: "green" },
-  low_stock: { label: "کم موجود", color: "yellow" },
+  low_stock: { label: "کمبود", color: "yellow" },
   out_of_stock: { label: "ناموجود", color: "red" },
 };
 

@@ -52,4 +52,40 @@ describe("QuickStockAdjustment confirmation", () => {
       expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
     );
   });
+
+  it("accepts a direct keyboard quantity from the count control", () => {
+    render(
+      <Theme>
+        <QuickStockAdjustment product={product({ id: 41, quantity: 6 })} />
+      </Theme>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /ویرایش مستقیم موجودی/ }));
+    const input = screen.getByRole("spinbutton", { name: "موجودی جدید" });
+    fireEvent.change(input, { target: { value: "12" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(screen.getByRole("alertdialog")).toHaveTextContent("۱۲");
+    fireEvent.click(screen.getByRole("button", { name: "تأیید" }));
+    expect(mutate).toHaveBeenCalledWith(
+      { id: 41, delta: 6 },
+      expect.objectContaining({ onSuccess: expect.any(Function), onError: expect.any(Function) }),
+    );
+  });
+
+  it("clears zero while editing and restores it when left empty", () => {
+    render(
+      <Theme>
+        <QuickStockAdjustment product={product({ id: 41, quantity: 0 })} />
+      </Theme>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /ویرایش مستقیم موجودی/ }));
+    const input = screen.getByRole("spinbutton", { name: "موجودی جدید" });
+    fireEvent.focus(input);
+    expect(input).toHaveValue(null);
+    fireEvent.blur(input);
+    expect(screen.getByRole("button", { name: /ویرایش مستقیم موجودی صفر/ })).toBeVisible();
+    expect(mutate).not.toHaveBeenCalled();
+  });
 });

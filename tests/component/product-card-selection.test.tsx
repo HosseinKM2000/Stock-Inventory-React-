@@ -56,7 +56,7 @@ describe("product-card selection interaction", () => {
 
     const { container } = renderCard({ product: item, viewMode: "comfortable" });
 
-    expect(container.querySelector(".inventory-card-media .inventory-card-image-status")).toHaveTextContent("کم موجود");
+    expect(container.querySelector(".inventory-card-media .inventory-card-image-status")).toHaveTextContent("کمبود");
     expect(container.querySelector(".inventory-card-identity")).toHaveTextContent("لامپ LED 12W");
     expect(container.querySelector(".inventory-card-mobile-meta")).toHaveTextContent("Tanzim Demo");
     expect(container.querySelector(".inventory-card-code")).toHaveTextContent("TZ-010");

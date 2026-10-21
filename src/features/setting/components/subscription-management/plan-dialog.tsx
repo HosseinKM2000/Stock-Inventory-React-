@@ -8,6 +8,7 @@ import { useCreatePlan, useUpdatePlan } from "../../mutations/use-admin";
 import type { SubscriptionPlan, SubscriptionPlanInput } from "../../types";
 import { adminErrorMessage } from "../admin-error";
 import { PLAN_FEATURE_OPTIONS, PLAN_LIMIT_OPTIONS, priceMinorToToman, tomanToPriceMinor } from "./plan-options";
+import { formatGroupedIntegerText, normalizeOptionalInteger } from "@/features/app/inventory/services/localized-integer";
 
 type Props = { plan?: SubscriptionPlan; trigger: ReactNode };
 type DurationUnit = "day" | "month" | "year";
@@ -42,10 +43,11 @@ export default function PlanDialog({ plan, trigger }: Props) {
   }, [features]);
 
   function resetForm() {
+    const planPrice = priceMinorToToman(plan?.price_minor ?? null);
     setId(plan?.id ?? "");
     setName(plan?.name ?? "");
     setDescription(plan?.description ?? "");
-    setPrice(plan?.price_minor == null ? "" : String(priceMinorToToman(plan.price_minor)));
+    setPrice(planPrice == null ? "" : formatGroupedIntegerText(planPrice));
     setDuration(plan?.duration == null ? "" : String(plan.duration));
     setUnit(plan?.duration_unit ?? "day");
     setActive(plan?.is_active ?? true);
@@ -69,7 +71,7 @@ export default function PlanDialog({ plan, trigger }: Props) {
       toast.error("شناسه و نام طرح الزامی هستند");
       return;
     }
-    const parsedPrice = price === "" ? null : Number(price);
+    const parsedPrice = normalizeOptionalInteger(price) ?? null;
     const parsedDuration = duration === "" ? null : Number(duration);
     const parsedLimits = Object.fromEntries(Object.entries(limits).map(([key, value]) => [key, value === "" ? null : Number(value)]));
     if ((parsedPrice !== null && (!Number.isInteger(parsedPrice) || parsedPrice < 0)) ||
@@ -113,7 +115,7 @@ export default function PlanDialog({ plan, trigger }: Props) {
               <label><Text size="2">شناسه پایدار</Text><TextField.Root value={id} disabled={Boolean(plan)} onChange={(event) => setId(event.target.value)} /></label>
               <label><Text size="2">نام طرح</Text><TextField.Root value={name} onChange={(event) => setName(event.target.value)} /></label>
               <label className="sm:col-span-2"><Text size="2">توضیحات</Text><TextArea value={description} onChange={(event) => setDescription(event.target.value)} /></label>
-              <label><Text size="2">قیمت (تومان)</Text><TextField.Root type="number" min="0" inputMode="numeric" value={price} onChange={(event) => setPrice(event.target.value)} /></label>
+              <label><Text size="2">قیمت (تومان)</Text><TextField.Root type="text" inputMode="numeric" value={price} onChange={(event) => setPrice(formatGroupedIntegerText(event.target.value))} /></label>
               <Grid columns="2" gap="2">
                 <label><Text size="2">مدت</Text><TextField.Root type="number" min="1" inputMode="numeric" value={duration} onChange={(event) => setDuration(event.target.value)} /></label>
                 <label><Text size="2">واحد</Text><Select.Root value={unit} onValueChange={(value) => setUnit(value as DurationUnit)} disabled={!duration}><Select.Trigger /><Select.Content><Select.Item value="day">روز</Select.Item><Select.Item value="month">ماه</Select.Item><Select.Item value="year">سال</Select.Item></Select.Content></Select.Root></label>

@@ -18,7 +18,7 @@ async function seedOfflineUser(page: Page) {
       role: "USER",
       is_system_admin: false,
       is_store_owner: false,
-      store_permissions: ["products.view", "products.create", "products.edit", "products.delete", "products.quantity.change", "products.sale_price.view", "products.sale_price.change", "barcodes.lookup"],
+      store_permissions: ["products.view", "products.create", "products.edit", "products.delete", "products.quantity.change", "products.sale_price.view", "products.sale_price.change", "barcodes.lookup", "barcodes.manage", "labels.print"],
       subscription_started_at: now,
       subscription_expires_at: "2099-01-01T00:00:00.000Z",
       created_at: now,
@@ -38,7 +38,7 @@ async function seedOfflineUser(page: Page) {
       verified_at: now,
       captured_at_ms: Date.now(),
       last_observed_at_ms: Date.now(),
-      capabilities: { "inventory.read": true, "inventory.write": true, "barcode.lookup": true },
+      capabilities: { "inventory.read": true, "inventory.write": true, "barcode.lookup": true, "barcode.manage": true, "label.print": true },
       limits: { inventory_items: null },
     }));
   });
@@ -54,7 +54,7 @@ async function seedProduct(page: Page, options: { name?: string; packaged?: bool
       request.onerror = () => reject(request.error);
     });
     const now = new Date().toISOString();
-    const transaction = database.transaction(["inventoryItems", "categories", "barcodes"], "readwrite");
+    const transaction = database.transaction(["inventoryItems", "categories", "labels", "barcodes"], "readwrite");
     transaction.objectStore("inventoryItems").put({
       local_key: "7111:7111:8101", local_user_id: 7111, local_store_id: 7111,
       id: 8101, catalog_product_id: 8101, is_catalog_backed: false, category_id: categoryName ? 9101 : null,
@@ -67,6 +67,10 @@ async function seedProduct(page: Page, options: { name?: string; packaged?: bool
     if (categoryName) transaction.objectStore("categories").put({
       local_key: "7111:7111:9101", local_user_id: 7111, local_store_id: 7111,
       id: 9101, name: categoryName, description: "", created_at: now, updated_at: now,
+    });
+    transaction.objectStore("labels").put({
+      local_key: "7111:7111:9201", local_user_id: 7111, local_store_id: 7111,
+      id: 9201, name: "ویژه", normalized_name: "ویژه", version: 1, created_at: now, updated_at: now,
     });
     if (barcode) transaction.objectStore("barcodes").put({
       local_key: "7111:7111:9102", local_user_id: 7111, local_store_id: 7111, store_id: 7111,
@@ -84,12 +88,101 @@ async function seedProduct(page: Page, options: { name?: string; packaged?: bool
   });
 }
 
+async function seedMixedCompactProducts(page: Page) {
+  await page.goto("/dashboard");
+  await page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open("inventory-db");
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const transaction = database.transaction(["inventoryItems"], "readwrite");
+    const store = transaction.objectStore("inventoryItems");
+    const now = new Date().toISOString();
+    for (let index = 0; index < 12; index += 1) {
+      const id = 8200 + index;
+      const packaged = index % 3 === 0;
+      store.put({
+        local_key: `7111:7111:${id}`, local_user_id: 7111, local_store_id: 7111,
+        id, catalog_product_id: id, is_catalog_backed: false, category_id: null,
+        label_ids: [], version: 1, quantity: index * 3, price: 120000 + index * 1000,
+        sale_price: 120000 + index * 1000, purchase_price: null, price_missing: false,
+        custom_label: `محصول آزمایشی ${index + 1}`, note: null, low_stock_threshold: 5,
+        low_stock_alert: true, is_hidden: false, image_url: null, deleted_at: null,
+        status: index % 3 === 0 ? "low_stock" : index % 3 === 1 ? "in_stock" : "out_of_stock", created_at: now, updated_at: now,
+        catalog_product: {
+          id, industry_id: 1, is_active: true, name: `محصول آزمایشی ${index + 1}`,
+          description: null, brand: null, image_url: null, is_packaged: packaged,
+          pack_size: packaged ? 4 : null, created_at: now,
+        },
+      });
+    }
+    await new Promise<void>((resolve, reject) => {
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    });
+    database.close();
+  });
+}
+
 function boxesOverlap(first: { x: number; y: number; width: number; height: number }, second: { x: number; y: number; width: number; height: number }) {
   return first.x < second.x + second.width
     && first.x + first.width > second.x
     && first.y < second.y + second.height
     && first.y + first.height > second.y;
 }
+
+test("compact virtual rows remain separated when the mobile keyboard changes the viewport", async ({ page }) => {
+  await seedOfflineUser(page);
+  await seedMixedCompactProducts(page);
+  await page.setViewportSize({ width: 390, height: 700 });
+  await page.goto("/inventory/list");
+  await page.getByRole("button", { name: "نمای فشرده", exact: true }).click();
+  await expect(page.locator(".inventory-card--compact").first()).toBeVisible();
+
+  const assertRowsAreSeparated = async () => {
+    const rows = await page.locator(".inventory-list-results [data-index]").evaluateAll((elements) =>
+      elements.map((element) => {
+        const row = element.getBoundingClientRect();
+        const card = element.querySelector(".inventory-card--compact")!.getBoundingClientRect();
+        const quick = element.querySelector(".inventory-compact-quick")!.getBoundingClientRect();
+        const status = element.querySelector(".inventory-compact-status")!.getBoundingClientRect();
+        return {
+          row: { top: row.top, bottom: row.bottom },
+          card: { top: card.top, bottom: card.bottom },
+          quick: { top: quick.top, bottom: quick.bottom },
+          statusWidth: status.width,
+        };
+      }).sort((first, second) => first.row.top - second.row.top),
+    );
+
+    for (const item of rows) {
+      expect(item.card.top).toBeGreaterThanOrEqual(item.row.top);
+      expect(item.card.bottom).toBeLessThanOrEqual(item.row.bottom);
+      expect(item.quick.top).toBeGreaterThanOrEqual(item.card.top);
+      expect(item.quick.bottom).toBeLessThanOrEqual(item.card.bottom);
+      expect(item.statusWidth).toBeLessThan(90);
+    }
+    for (let index = 1; index < rows.length; index += 1) {
+      expect(rows[index].row.top).toBeGreaterThanOrEqual(rows[index - 1].row.bottom);
+    }
+  };
+
+  await assertRowsAreSeparated();
+  const statusSurfaces = await page.locator(".inventory-compact-status").evaluateAll((badges) => badges.map((badge) => {
+    const style = getComputedStyle(badge);
+    return { color: badge.getAttribute("data-accent-color"), opacity: style.opacity, background: style.backgroundColor };
+  }));
+  expect(new Set(statusSurfaces.map((surface) => surface.color))).toEqual(new Set(["green", "yellow", "red"]));
+  for (const surface of statusSurfaces) {
+    expect(surface.opacity).toBe("1");
+    expect(surface.background).not.toBe("transparent");
+  }
+  await page.getByRole("button", { name: /ویرایش مستقیم موجودی/ }).first().click();
+  await page.setViewportSize({ width: 391, height: 430 });
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await assertRowsAreSeparated();
+});
 
 test("product filters use one responsive panel across desktop and mobile", async ({ page }) => {
   await seedOfflineUser(page);
@@ -123,7 +216,7 @@ test("product filters use one responsive panel across desktop and mobile", async
   await page.addStyleTag({
     content: ".inventory-filter-heading{display:flex!important}.inventory-filter-row{display:grid!important}",
   });
-  await page.setViewportSize({ width: 375, height: 480 });
+  await page.setViewportSize({ width: 358, height: 680 });
   await expect(panel).toHaveCount(1);
   await expect(search).toHaveValue("چای سبز");
   await expect(page.getByRole("heading", { name: "جستجو و فیلتر" })).toBeHidden();
@@ -131,6 +224,18 @@ test("product filters use one responsive panel across desktop and mobile", async
   await expect(filterTrigger).toBeVisible();
   const mobileSearchBox = (await search.boundingBox())!;
   const mobileFilterBox = (await filterTrigger.boundingBox())!;
+  const mobileFilterStyle = await filterTrigger.evaluate((element) => {
+    const style = getComputedStyle(element);
+    const iconStyle = getComputedStyle(element.querySelector("svg")!);
+    return {
+      backgroundImage: style.backgroundImage,
+      iconBackground: iconStyle.backgroundColor,
+      iconPadding: iconStyle.padding,
+    };
+  });
+  expect(mobileFilterStyle.backgroundImage).toBe("none");
+  expect(mobileFilterStyle.iconBackground).toBe("rgba(0, 0, 0, 0)");
+  expect(mobileFilterStyle.iconPadding).toBe("0px");
   await expect(panel.locator(":scope > .inventory-catalog-filter")).toBeHidden();
   expect(mobileSearchBox.y).toBeLessThan(mobileFilterBox.y);
   expect(mobileSearchBox.height).toBeLessThanOrEqual(46);
@@ -145,15 +250,76 @@ test("product filters use one responsive panel across desktop and mobile", async
   await expect(dialog.getByText("مرتب‌سازی", { exact: true })).toBeVisible();
   await expect(dialog.getByText("برچسب‌ها", { exact: true })).toBeVisible();
   await expect(dialog.getByRole("switch", { name: "مخفی کردن محصولات کاتالوگ در پنجره فیلترها" })).toBeVisible();
+  const modalLayout = await dialog.evaluate((element) => {
+    const box = (selector: string) => {
+      const rect = element.querySelector(selector)!.getBoundingClientRect();
+      return { left: rect.left, right: rect.right, top: rect.top, bottom: rect.bottom };
+    };
+    return {
+      title: box(".inventory-filter-dialog-title-wrap"),
+      reset: box(".inventory-filter-reset"),
+      resetWhiteSpace: getComputedStyle(element.querySelector(".inventory-filter-reset")!).whiteSpace,
+      resetFits: (() => {
+        const reset = element.querySelector(".inventory-filter-reset")!;
+        return reset.scrollWidth <= reset.clientWidth && reset.scrollHeight <= reset.clientHeight;
+      })(),
+      close: box(".inventory-filter-dialog-x"),
+      firstLabel: box(".inventory-filter-dialog-field:first-child .inventory-filter-dialog-label"),
+      firstControl: box(".inventory-filter-dialog-field:first-child .inventory-filter-control"),
+      catalogTitle: box(".inventory-filter-dialog-catalog-title"),
+      catalogSwitch: box(".inventory-filter-dialog-catalog .rt-SwitchRoot"),
+      catalogDescription: box(".inventory-filter-dialog-catalog > .rt-Text"),
+      fieldControls: Array.from(element.querySelectorAll(".inventory-filter-dialog-field .inventory-filter-control"), (control) => {
+        const rect = control.getBoundingClientRect();
+        const leading = control.querySelector(":scope > .inventory-filter-leading-icon")!.getBoundingClientRect();
+        const value = control.querySelector(".rt-SelectTriggerInner > span, .inventory-filter-button > span")!.getBoundingClientRect();
+        const valueContainer = control.querySelector(".rt-SelectTriggerInner") as HTMLElement | null;
+        const trailing = control.querySelector(".rt-SelectIcon, .inventory-filter-chevron-icon")!.getBoundingClientRect();
+        return {
+          width: rect.width,
+          height: rect.height,
+          scrollWidth: control.scrollWidth,
+          leadingLeft: leading.left,
+          valueLeft: value.left,
+          valueRight: value.right,
+          trailingRight: trailing.right,
+          valueClientWidth: valueContainer?.clientWidth ?? 0,
+          valueScrollWidth: valueContainer?.scrollWidth ?? 0,
+        };
+      }),
+      descriptionPosition: getComputedStyle(element.querySelector(".inventory-filter-dialog-description")!).position,
+    };
+  });
+  expect(modalLayout.close.right).toBeLessThan(modalLayout.reset.left);
+  expect(modalLayout.reset.right).toBeLessThan(modalLayout.title.left);
+  expect(modalLayout.resetWhiteSpace).toBe("nowrap");
+  expect(modalLayout.resetFits).toBe(true);
+  expect(modalLayout.firstControl.right).toBeLessThan(modalLayout.firstLabel.left);
+  expect(modalLayout.catalogSwitch.right).toBeLessThan(modalLayout.catalogTitle.left);
+  expect(modalLayout.catalogDescription.top).toBeGreaterThanOrEqual(modalLayout.catalogTitle.bottom);
+  for (const control of modalLayout.fieldControls) {
+    expect(control.width).toBeGreaterThanOrEqual(160);
+    expect(control.height).toBeLessThanOrEqual(80);
+    expect(control.scrollWidth).toBeLessThanOrEqual(Math.ceil(control.width));
+    expect(control.valueRight).toBeLessThanOrEqual(control.leadingLeft);
+    expect(control.valueLeft).toBeGreaterThanOrEqual(control.trailingRight);
+    expect(control.valueScrollWidth).toBeLessThanOrEqual(control.valueClientWidth);
+  }
+  expect(modalLayout.descriptionPosition).toBe("absolute");
+  await expect(dialog.getByRole("button", { name: "مشاهده نتایج", exact: true })).toBeInViewport();
   await dialog.getByRole("combobox").first().click();
   const selectContent = page.locator(".rt-SelectContent[data-state='open']");
   await expect(selectContent).toBeVisible();
   expect(await selectContent.locator(".rt-SelectItem").first().evaluate((element) => getComputedStyle(element).animationName)).toContain("app-menu-item-enter");
   await page.keyboard.press("Escape");
-  const closeDialog = dialog.getByRole("button", { name: "بستن", exact: true });
+  const closeDialog = dialog.getByRole("button", { name: "بستن فیلترها", exact: true });
   await closeDialog.scrollIntoViewIfNeeded();
   await expect(closeDialog).toBeInViewport();
   await closeDialog.click();
+  await expect(dialog).toBeHidden();
+  await filterTrigger.click();
+  await expect(dialog).toBeVisible();
+  await page.mouse.click(2, 2);
   await expect(dialog).toBeHidden();
   await expect(panel.locator(":scope > .inventory-filter-row")).toBeHidden();
   await expect(panel.locator(".inventory-filter-heading")).toBeHidden();
@@ -164,6 +330,7 @@ test("product filters use one responsive panel across desktop and mobile", async
 
 test("product form order, mode accent, and fixed-navigation clearance remain visible", async ({ page }) => {
   await seedOfflineUser(page);
+  await seedProduct(page, { barcode: "6261234567890" });
   await page.setViewportSize({ width: 390, height: 700 });
   await page.goto("/inventory/add");
 
@@ -175,24 +342,79 @@ test("product form order, mode accent, and fixed-navigation clearance remain vis
 
   const ordered = [
     page.getByText("نام محصول", { exact: true }).first(),
-    page.getByText("قیمت فروش (تومان)", { exact: true }).first(),
-    page.getByText("یادداشت", { exact: true }).first(),
+    page.getByText("قیمت (تومان)", { exact: true }).first(),
     page.getByText("دسته‌بندی", { exact: true }).first(),
+    page.getByText("یادداشت", { exact: true }).first(),
     page.getByText("برچسب‌ها", { exact: true }).first(),
     page.getByText("پیکربندی محصول", { exact: true }).first(),
   ];
   const offsets = await Promise.all(ordered.map((locator) => locator.evaluate((element) => element.getBoundingClientRect().top + window.scrollY)));
   expect(offsets).toEqual([...offsets].sort((a, b) => a - b));
 
+  await page.getByRole("button", { name: "انتخاب برچسب‌های محصول", exact: true }).click();
+  await page.getByText("ویژه", { exact: true }).last().click();
+  await expect(page.getByLabel("برچسب‌های انتخاب‌شده")).toContainText("ویژه");
+
+  const submit = page.getByRole("button", { name: "ثبت محصول", exact: true });
+  await expect(submit).toHaveCount(1);
+  await expect(submit).toHaveAttribute("data-floating", "true");
+  const floatingSubmitBox = (await submit.boundingBox())!;
+  expect(390 - (floatingSubmitBox.x + floatingSubmitBox.width)).toBeLessThanOrEqual(12);
+  expect(await form.locator(".product-form-heading").evaluate((element) => getComputedStyle(element).position)).toBe("sticky");
+
   const main = page.locator("main[data-scroll-restoration-id='app-shell']");
+  await main.evaluate((element) => {
+    const anchor = document.querySelector<HTMLElement>(".product-form-action-anchor");
+    if (!anchor) throw new Error("Product form action anchor was not found");
+    const mainBox = element.getBoundingClientRect();
+    const anchorBox = anchor.getBoundingClientRect();
+    const anchorOffset = anchorBox.top - mainBox.top + element.scrollTop;
+    element.scrollTop = Math.max(0, anchorOffset - element.clientHeight + 8);
+  });
+  await expect(submit).toHaveAttribute("data-floating", "true");
+  await expect(submit).toBeInViewport();
+
   await main.evaluate((element) => { element.scrollTop = element.scrollHeight; });
-  const submitBox = await page.getByRole("button", { name: "افزودن", exact: true }).boundingBox();
+  await expect(submit).toHaveAttribute("data-floating", "false");
+  const submitBox = await submit.boundingBox();
   const navigationBox = await page.getByRole("navigation", { name: "ناوبری اصلی" }).boundingBox();
   expect(submitBox!.y + submitBox!.height).toBeLessThanOrEqual(navigationBox!.y);
 
   const addButton = await page.getByRole("link", { name: "افزودن محصول" }).locator("span").boundingBox();
   expect(addButton!.width).toBeGreaterThanOrEqual(70);
   expect(addButton!.height).toBeGreaterThanOrEqual(70);
+
+  await page.goto("/inventory/edit?id=8101");
+  await expect(form).toHaveAttribute("data-mode", "edit");
+  const editAccent = await form.evaluate((element) => getComputedStyle(element).getPropertyValue("--product-form-accent").trim());
+  expect(editAccent).toBe("#c47f00");
+  await expect(page.getByRole("button", { name: "ثبت تغییرات", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "ثبت تغییرات", exact: true })).toHaveCount(1);
+  await expect(page.locator(".product-barcode-card")).toBeVisible();
+  await expect(page.locator(".product-barcode-composer")).toBeVisible();
+  await page.locator(".product-barcode-card").scrollIntoViewIfNeeded();
+  const editSubmit = page.getByRole("button", { name: "ثبت تغییرات", exact: true });
+  await expect(editSubmit).toHaveAttribute("data-floating", "true");
+  await expect(editSubmit).toBeInViewport();
+  await expect(page.getByRole("button", { name: "اسکن بارکد با دوربین", exact: true })).toBeVisible();
+  const printBarcode = page.getByRole("button", { name: "چاپ بارکد 6261234567890", exact: true });
+  await expect(printBarcode).toBeVisible();
+  await expect(page.getByRole("button", { name: "غیرفعال کردن بارکد", exact: true })).toBeVisible();
+  const barcodeActionSizes = await page.locator(".product-barcode-row-actions button").evaluateAll((buttons) => buttons.map((button) => {
+    const box = button.getBoundingClientRect();
+    return { width: box.width, height: box.height };
+  }));
+  expect(barcodeActionSizes.every(({ width, height }) => width >= 44 && height >= 44)).toBe(true);
+  await printBarcode.click();
+  await expect(page.getByRole("dialog").getByText("چاپ لیبل محصولات", { exact: true })).toBeVisible();
+  await page.getByRole("dialog").getByRole("button", { name: "بستن", exact: true }).click();
+  const deleteBarcode = page.getByRole("button", { name: "حذف بارکد 6261234567890", exact: true });
+  await deleteBarcode.click();
+  const deleteDialog = page.getByRole("alertdialog");
+  await expect(deleteDialog.getByRole("heading", { name: "حذف بارکد", exact: true })).toBeVisible();
+  await expect(deleteDialog).toContainText("6261234567890");
+  await deleteDialog.getByRole("button", { name: "حذف بارکد", exact: true }).click();
+  await expect(printBarcode).toHaveCount(0);
 });
 
 test("all three product card modes retain core information and fit narrow screens", async ({ page }) => {
@@ -224,8 +446,14 @@ test("all three product card modes retain core information and fit narrow screen
   expect(mediaBox.width / cardBox.width).toBeLessThan(0.95);
   expect(mediaBox.width / mediaBox.height).toBeGreaterThan(2.4);
   expect(mediaBox.width / mediaBox.height).toBeLessThan(2.82);
-  expect(statusBox.width / mediaBox.width).toBeGreaterThan(0.22);
-  expect(statusBox.width / mediaBox.width).toBeLessThan(0.3);
+  expect(statusBox.width / mediaBox.width).toBeGreaterThan(0.14);
+  expect(statusBox.width / mediaBox.width).toBeLessThan(0.24);
+  const statusStyle = await comfortableCard.locator(".inventory-card-image-status").evaluate((element) => {
+    const style = getComputedStyle(element);
+    return { opacity: style.opacity, backgroundColor: style.backgroundColor };
+  });
+  expect(statusStyle.opacity).toBe("1");
+  expect(statusStyle.backgroundColor).not.toBe("transparent");
   expect(actionBoxes).toHaveLength(3);
   for (const actionBox of actionBoxes) {
     expect(actionBox.width / cardBox.width).toBeGreaterThan(0.09);
@@ -238,7 +466,7 @@ test("all three product card modes retain core information and fit narrow screen
   expect(quickBoxes[1].width / cardBox.width).toBeLessThan(0.23);
   expect(quickBoxes[2].width / cardBox.width).toBeGreaterThan(0.32);
   expect(quickBoxes[2].width / cardBox.width).toBeLessThan(0.36);
-  await expect(comfortableCard.locator(".inventory-card-image-status")).toContainText("کم موجود");
+  await expect(comfortableCard.locator(".inventory-card-image-status")).toContainText("کمبود");
   await expect(comfortableCard.locator(".inventory-card-mobile-meta")).toContainText("Tanzim Demo");
   await expect(comfortableCard.locator(".inventory-card-price")).toContainText("۳۵۰٬۰۰۰");
   await expect(comfortableCard.locator(".quick-stock-control")).toBeVisible();

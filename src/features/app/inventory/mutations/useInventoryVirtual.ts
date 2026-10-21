@@ -16,12 +16,31 @@ export function useInventoryVirtual(count: number, estimateSize = 250) {
   });
 
   useEffect(() => {
-    const measure = () => window.requestAnimationFrame(() => virtualizer.measure());
-    window.addEventListener(DISPLAY_SIZE_EVENT, measure);
-    window.addEventListener("resize", measure);
+    let frame: number | null = null;
+    let measuredWidth = parentRef.current?.clientWidth ?? window.innerWidth;
+    const scheduleMeasure = () => {
+      if (frame !== null) window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => {
+        frame = null;
+        virtualizer.measure();
+        parentRef.current
+          ?.querySelectorAll<HTMLElement>("[data-index]")
+          .forEach((element) => virtualizer.measureElement(element));
+      });
+    };
+    const handleResize = () => {
+      const nextWidth = parentRef.current?.clientWidth ?? window.innerWidth;
+      if (Math.abs(nextWidth - measuredWidth) < 1) return;
+      measuredWidth = nextWidth;
+      scheduleMeasure();
+    };
+
+    window.addEventListener(DISPLAY_SIZE_EVENT, scheduleMeasure);
+    window.addEventListener("resize", handleResize);
     return () => {
-      window.removeEventListener(DISPLAY_SIZE_EVENT, measure);
-      window.removeEventListener("resize", measure);
+      if (frame !== null) window.cancelAnimationFrame(frame);
+      window.removeEventListener(DISPLAY_SIZE_EVENT, scheduleMeasure);
+      window.removeEventListener("resize", handleResize);
     };
   }, [virtualizer]);
 

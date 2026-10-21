@@ -12,9 +12,9 @@ import { labelProfileStore } from "../labels/label-profiles";
 import type { LabelProfile, ProductBarcode } from "../types";
 import { barcodeRepository } from "../services/barcode-repository";
 
-type Props = { open: boolean; productIds: number[]; onOpenChange(open: boolean): void };
+type Props = { open: boolean; productIds: number[]; barcodeId?: number | null; onOpenChange(open: boolean): void };
 
-export function LabelPrintDialog({ open, productIds, onOpenChange }: Props) {
+export function LabelPrintDialog({ open, productIds, barcodeId = null, onOpenChange }: Props) {
   const [products, setProducts] = useState<Product[]>([]);
   const [barcodes, setBarcodes] = useState<ProductBarcode[]>([]);
   const [copies, setCopies] = useState<Record<number, number>>({});
@@ -40,9 +40,10 @@ export function LabelPrintDialog({ open, productIds, onOpenChange }: Props) {
 
   const items = useMemo<LabelItem[]>(() => products.flatMap((product) => {
     const choices = barcodes.filter((item) => item.product_id === product.id);
-    const barcode = choices.find((item) => item.is_default) ?? choices[0];
+    const requested = barcodeId == null ? null : choices.find((item) => item.id === barcodeId);
+    const barcode = requested ?? choices.find((item) => item.is_default) ?? choices[0];
     return barcode ? [{ product, barcode, copies: copies[product.id] ?? 1 }] : [];
-  }), [barcodes, copies, products]);
+  }), [barcodeId, barcodes, copies, products]);
   const missing = products.length - items.length;
 
   const saveProfile = (patch: Partial<LabelProfile>) => {

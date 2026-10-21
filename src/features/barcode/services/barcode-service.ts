@@ -107,6 +107,27 @@ export const barcodeService = {
     return updated;
   },
 
+  async remove(id: number) {
+    accessState.requireWrite();
+    accessState.requireCapability("barcode.manage");
+    accessState.requireStorePermission("barcodes.manage");
+    const current = await barcodeRepository.get(id);
+    if (!current) throw new Error("بارکد یافت نشد");
+    const fallback = current.is_default
+      ? (await barcodeRepository.forProduct(current.product_id)).find((item) => item.id !== id && item.is_active)
+      : undefined;
+
+    await localMutationStorage.barcode(async () => {
+      await barcodeRepository.remove(id);
+      await queueService.enqueue(BARCODE_ENTITY, id, "DELETE", null);
+      if (fallback) {
+        const updated = { ...fallback, is_default: true, updated_at: new Date().toISOString() };
+        await barcodeRepository.save(updated);
+        await queueService.enqueue(BARCODE_ENTITY, updated.id, "UPDATE", updated);
+      }
+    });
+  },
+
   async setDefault(productId: number, id: number) {
     accessState.requireWrite();
     accessState.requireCapability("barcode.manage");

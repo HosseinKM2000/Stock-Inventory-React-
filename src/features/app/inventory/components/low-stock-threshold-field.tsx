@@ -34,7 +34,13 @@ export function LowStockThresholdField({
       name={id}
       value={value}
       placeholder={optional ? "بدون تغییر" : "۰"}
-      onFocus={(event) => { if (event.currentTarget.value) event.currentTarget.select(); }}
+      onFocus={(event) => {
+        if (!optional && Number(event.currentTarget.value) === 0) onValueChange("");
+        else if (event.currentTarget.value) event.currentTarget.select();
+      }}
+      onBlur={(event) => {
+        if (!optional && event.currentTarget.value === "") onValueChange("0");
+      }}
       onChange={(event) => onValueChange(normalizeIntegerText(event.target.value))}
       disabled={disabled}
     />

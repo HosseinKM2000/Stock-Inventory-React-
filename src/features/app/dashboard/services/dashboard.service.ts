@@ -125,7 +125,7 @@ class DashboardService {
       case DashboardFilters.INVENTORY_VALUE:
         return { title: "ارزش موجودی", products };
       case DashboardFilters.LOW_STOCK:
-        return { title: "کالاهای کم موجود", products: products.filter((product) => product.status === "low_stock") };
+        return { title: "کالاهای دچار کمبود", products: products.filter((product) => product.status === "low_stock") };
       case DashboardFilters.OUT_OF_STOCK:
         return { title: "کالاهای ناموجود", products: products.filter((product) => product.status === "out_of_stock") };
       case DashboardFilters.HIDDEN:
