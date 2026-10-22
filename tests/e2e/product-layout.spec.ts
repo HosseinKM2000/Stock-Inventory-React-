@@ -45,9 +45,9 @@ async function seedOfflineUser(page: Page) {
   await page.route("http://localhost:8000/api/**", (route) => route.abort());
 }
 
-async function seedProduct(page: Page, options: { name?: string; packaged?: boolean; categoryName?: string; barcode?: string; salePrice?: number } = {}) {
+async function seedProduct(page: Page, options: { name?: string; packaged?: boolean; categoryName?: string; barcode?: string; salePrice?: number; quantity?: number } = {}) {
   await page.goto("/dashboard");
-  await page.evaluate(async ({ name, packaged, categoryName, barcode, salePrice }) => {
+  await page.evaluate(async ({ name, packaged, categoryName, barcode, salePrice, quantity }) => {
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
       const request = indexedDB.open("inventory-db");
       request.onsuccess = () => resolve(request.result);
@@ -58,7 +58,7 @@ async function seedProduct(page: Page, options: { name?: string; packaged?: bool
     transaction.objectStore("inventoryItems").put({
       local_key: "7111:7111:8101", local_user_id: 7111, local_store_id: 7111,
       id: 8101, catalog_product_id: 8101, is_catalog_backed: false, category_id: categoryName ? 9101 : null,
-      label_ids: [], version: 1, quantity: 6, price: salePrice, sale_price: salePrice,
+      label_ids: [], version: 1, quantity, price: salePrice, sale_price: salePrice,
       purchase_price: null, price_missing: false, custom_label: name, note: "نور گرم کم‌مصرف",
       low_stock_threshold: 8, low_stock_alert: true, is_hidden: false, image_url: null,
       deleted_at: null, status: "low_stock", created_at: now, updated_at: now,
@@ -85,6 +85,7 @@ async function seedProduct(page: Page, options: { name?: string; packaged?: bool
     categoryName: options.categoryName ?? null,
     barcode: options.barcode ?? null,
     salePrice: options.salePrice ?? 350000,
+    quantity: options.quantity ?? 6,
   });
 }
 
@@ -144,14 +145,12 @@ test("compact virtual rows remain separated when the mobile keyboard changes the
     const rows = await page.locator(".inventory-list-results [data-index]").evaluateAll((elements) =>
       elements.map((element) => {
         const row = element.getBoundingClientRect();
-        const card = element.querySelector(".inventory-card--compact")!.getBoundingClientRect();
-        const quick = element.querySelector(".inventory-compact-quick")!.getBoundingClientRect();
-        const status = element.querySelector(".inventory-compact-status")!.getBoundingClientRect();
+        const card = element.querySelector(".inventory-card")!.getBoundingClientRect();
+        const quick = element.querySelector(".quick-stock-wrapper")!.getBoundingClientRect();
         return {
           row: { top: row.top, bottom: row.bottom },
           card: { top: card.top, bottom: card.bottom },
           quick: { top: quick.top, bottom: quick.bottom },
-          statusWidth: status.width,
         };
       }).sort((first, second) => first.row.top - second.row.top),
     );
@@ -161,10 +160,9 @@ test("compact virtual rows remain separated when the mobile keyboard changes the
       expect(item.card.bottom).toBeLessThanOrEqual(item.row.bottom);
       expect(item.quick.top).toBeGreaterThanOrEqual(item.card.top);
       expect(item.quick.bottom).toBeLessThanOrEqual(item.card.bottom);
-      expect(item.statusWidth).toBeLessThan(90);
     }
     for (let index = 1; index < rows.length; index += 1) {
-      expect(rows[index].row.top).toBeGreaterThanOrEqual(rows[index - 1].row.bottom);
+      expect(rows[index].card.top).toBeGreaterThanOrEqual(rows[index - 1].card.bottom);
     }
   };
 
@@ -179,9 +177,80 @@ test("compact virtual rows remain separated when the mobile keyboard changes the
     expect(surface.background).not.toBe("transparent");
   }
   await page.getByRole("button", { name: /ویرایش مستقیم موجودی/ }).first().click();
-  await page.setViewportSize({ width: 391, height: 430 });
+  await page.setViewportSize({ width: 390, height: 430 });
   await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await expect(page.locator(".app-bottom-navigation")).toHaveAttribute("data-hidden", "true");
   await assertRowsAreSeparated();
+  await expect(page.getByRole("spinbutton", { name: "موجودی جدید" })).toBeInViewport();
+
+  await page.keyboard.press("Escape");
+  await page.setViewportSize({ width: 390, height: 700 });
+  await page.getByRole("button", { name: "نمای راحت", exact: true }).click();
+  await expect(page.locator(".inventory-card--comfortable").first()).toBeVisible();
+  await page.getByRole("button", { name: /ویرایش مستقیم موجودی/ }).first().click();
+  await page.setViewportSize({ width: 390, height: 430 });
+  await page.evaluate(() => new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve()))));
+  await expect(page.locator(".app-bottom-navigation")).toHaveAttribute("data-hidden", "true");
+  await assertRowsAreSeparated();
+  await expect(page.getByRole("spinbutton", { name: "موجودی جدید" })).toBeInViewport();
+});
+
+test("long stock quantities use a full-width mobile row and stay clear of desktop actions", async ({ page }) => {
+  await seedOfflineUser(page);
+  await seedProduct(page, { quantity: 22322222 });
+  await page.setViewportSize({ width: 390, height: 700 });
+  await page.goto("/inventory/list");
+
+  const assertMobileWideLayout = async (cardSelector: string) => {
+    const control = page.locator(`${cardSelector} .quick-stock-control`);
+    const quantity = control.locator(".quick-stock-quantity");
+    const increase = control.locator('[data-stock-action="increase"]');
+    const decrease = control.locator('[data-stock-action="decrease"]');
+    await expect(control).toHaveAttribute("data-quantity-layout", "wide");
+
+    const controlBox = (await control.boundingBox())!;
+    const quantityBox = (await quantity.boundingBox())!;
+    const increaseBox = (await increase.boundingBox())!;
+    const decreaseBox = (await decrease.boundingBox())!;
+    expect(Math.abs(quantityBox.width - controlBox.width)).toBeLessThanOrEqual(2);
+    expect(increaseBox.y).toBeGreaterThanOrEqual(quantityBox.y + quantityBox.height);
+    expect(Math.abs(increaseBox.y - decreaseBox.y)).toBeLessThanOrEqual(1);
+    expect(await quantity.locator(".quick-stock-count").evaluate((element) => getComputedStyle(element).whiteSpace)).toBe("nowrap");
+  };
+
+  await page.getByRole("button", { name: "نمای راحت", exact: true }).click();
+  await assertMobileWideLayout(".inventory-card--comfortable");
+
+  await page.getByRole("button", { name: "نمای فشرده", exact: true }).click();
+  await assertMobileWideLayout(".inventory-card--compact");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+
+  await page.setViewportSize({ width: 1440, height: 900 });
+  const desktopControl = page.locator(".inventory-card--compact .quick-stock-control");
+  const desktopQuantity = desktopControl.locator(".quick-stock-quantity");
+  const desktopQuantityBox = (await desktopQuantity.boundingBox())!;
+  const desktopButtonBoxes = await desktopControl.locator(".quick-stock-button").evaluateAll((buttons) =>
+    buttons.map((button) => button.getBoundingClientRect().y),
+  );
+  expect(desktopQuantityBox.width).toBeGreaterThanOrEqual(70);
+  expect(Math.abs(desktopButtonBoxes[0] - desktopButtonBoxes[1])).toBeLessThanOrEqual(1);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+
+  await page.getByRole("button", { name: "نمای راحت", exact: true }).click();
+  const desktopCard = page.locator(".inventory-card--comfortable");
+  const desktopActions = desktopCard.locator(".inventory-card-desktop-end .inventory-card-actions");
+  const desktopQuick = desktopCard.locator(".inventory-card-quick");
+  await desktopCard.getByRole("button", { name: /ویرایش مستقیم موجودی/ }).click();
+  const desktopInput = desktopCard.getByRole("spinbutton", { name: "موجودی جدید" });
+  const cardBox = (await desktopCard.boundingBox())!;
+  const actionsBox = (await desktopActions.boundingBox())!;
+  const quickBox = (await desktopQuick.boundingBox())!;
+  const inputBox = (await desktopInput.boundingBox())!;
+  expect(quickBox.y).toBeGreaterThanOrEqual(actionsBox.y + actionsBox.height);
+  expect(boxesOverlap(actionsBox, quickBox)).toBe(false);
+  expect(inputBox.width).toBeGreaterThan(72);
+  expect(inputBox.width).toBeLessThanOrEqual(cardBox.width * .8);
+  expect(await desktopInput.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
 });
 
 test("product filters use one responsive panel across desktop and mobile", async ({ page }) => {
@@ -333,6 +402,7 @@ test("product form order, mode accent, and fixed-navigation clearance remain vis
   await seedProduct(page, { barcode: "6261234567890" });
   await page.setViewportSize({ width: 390, height: 700 });
   await page.goto("/inventory/add");
+  await expect(page.getByRole("navigation", { name: "ناوبری اصلی" }).getByRole("link", { name: "محصولات" })).toHaveAttribute("data-active", "true");
 
   const form = page.locator(".product-form");
   await expect(form).toHaveAttribute("data-mode", "create");
@@ -355,11 +425,19 @@ test("product form order, mode accent, and fixed-navigation clearance remain vis
   await page.getByText("ویژه", { exact: true }).last().click();
   await expect(page.getByLabel("برچسب‌های انتخاب‌شده")).toContainText("ویژه");
 
+  await page.getByRole("button", { name: "اسکن بارکد با دوربین", exact: true }).click();
+  const createScannerDialog = page.getByRole("dialog", { name: "اسکن بارکد با دوربین" });
+  await expect(createScannerDialog).toHaveAttribute("data-tone", "create");
+  expect(await createScannerDialog.evaluate((element) => getComputedStyle(element).getPropertyValue("--barcode-scanner-accent").trim())).toBe("#6e56cf");
+  await createScannerDialog.getByRole("button", { name: "بستن اسکنر", exact: true }).click();
+  await page.locator("main[data-scroll-restoration-id='app-shell']").evaluate((element) => { element.scrollTop = 0; });
+
   const submit = page.getByRole("button", { name: "ثبت محصول", exact: true });
   await expect(submit).toHaveCount(1);
   await expect(submit).toHaveAttribute("data-floating", "true");
   const floatingSubmitBox = (await submit.boundingBox())!;
-  expect(390 - (floatingSubmitBox.x + floatingSubmitBox.width)).toBeLessThanOrEqual(12);
+  expect(floatingSubmitBox.x).toBeGreaterThanOrEqual(12);
+  expect(floatingSubmitBox.x).toBeLessThanOrEqual(24);
   expect(await form.locator(".product-form-heading").evaluate((element) => getComputedStyle(element).position)).toBe("sticky");
 
   const main = page.locator("main[data-scroll-restoration-id='app-shell']");
@@ -385,6 +463,7 @@ test("product form order, mode accent, and fixed-navigation clearance remain vis
   expect(addButton!.height).toBeGreaterThanOrEqual(70);
 
   await page.goto("/inventory/edit?id=8101");
+  await expect(page.getByRole("navigation", { name: "ناوبری اصلی" }).getByRole("link", { name: "محصولات" })).toHaveAttribute("data-active", "true");
   await expect(form).toHaveAttribute("data-mode", "edit");
   const editAccent = await form.evaluate((element) => getComputedStyle(element).getPropertyValue("--product-form-accent").trim());
   expect(editAccent).toBe("#c47f00");
@@ -396,7 +475,15 @@ test("product form order, mode accent, and fixed-navigation clearance remain vis
   const editSubmit = page.getByRole("button", { name: "ثبت تغییرات", exact: true });
   await expect(editSubmit).toHaveAttribute("data-floating", "true");
   await expect(editSubmit).toBeInViewport();
-  await expect(page.getByRole("button", { name: "اسکن بارکد با دوربین", exact: true })).toBeVisible();
+  const cameraButton = page.getByRole("button", { name: "اسکن بارکد با دوربین", exact: true });
+  await expect(cameraButton).toBeVisible();
+  await cameraButton.click();
+  const scannerDialog = page.getByRole("dialog", { name: "اسکن بارکد با دوربین" });
+  await expect(scannerDialog).toHaveAttribute("data-tone", "edit");
+  await expect(scannerDialog.locator(".barcode-scanner-frame")).toBeVisible();
+  await expect(scannerDialog.locator(".barcode-scanner-line")).toBeVisible();
+  expect(await scannerDialog.evaluate((element) => getComputedStyle(element).getPropertyValue("--barcode-scanner-accent").trim())).toBe("#c47f00");
+  await scannerDialog.getByRole("button", { name: "بستن اسکنر", exact: true }).click();
   const printBarcode = page.getByRole("button", { name: "چاپ بارکد 6261234567890", exact: true });
   await expect(printBarcode).toBeVisible();
   await expect(page.getByRole("button", { name: "غیرفعال کردن بارکد", exact: true })).toBeVisible();
@@ -440,6 +527,17 @@ test("all three product card modes retain core information and fit narrow screen
       return { width: box.width, height: box.height };
     }),
   );
+  const quickButtonStyles = await comfortableCard.locator(".quick-stock-button").evaluateAll((buttons) =>
+    buttons.map((button) => {
+      const style = getComputedStyle(button);
+      return {
+        action: button.getAttribute("data-stock-action"),
+        color: style.color,
+        backgroundColor: style.backgroundColor,
+        borderStyle: style.borderStyle,
+      };
+    }),
+  );
   expect(cardBox.width / cardBox.height).toBeGreaterThan(1.16);
   expect(cardBox.width / cardBox.height).toBeLessThan(1.25);
   expect(mediaBox.width / cardBox.width).toBeGreaterThan(0.92);
@@ -466,6 +564,10 @@ test("all three product card modes retain core information and fit narrow screen
   expect(quickBoxes[1].width / cardBox.width).toBeLessThan(0.23);
   expect(quickBoxes[2].width / cardBox.width).toBeGreaterThan(0.32);
   expect(quickBoxes[2].width / cardBox.width).toBeLessThan(0.36);
+  expect(quickButtonStyles.map(({ action }) => action)).toEqual(["increase", "decrease"]);
+  expect(quickButtonStyles.every(({ borderStyle }) => borderStyle === "solid")).toBe(true);
+  expect(quickButtonStyles[0].color).not.toBe(quickButtonStyles[1].color);
+  expect(quickButtonStyles[0].backgroundColor).not.toBe(quickButtonStyles[1].backgroundColor);
   await expect(comfortableCard.locator(".inventory-card-image-status")).toContainText("کمبود");
   await expect(comfortableCard.locator(".inventory-card-mobile-meta")).toContainText("Tanzim Demo");
   await expect(comfortableCard.locator(".inventory-card-price")).toContainText("۳۵۰٬۰۰۰");
@@ -763,10 +865,36 @@ test("desktop product cards keep long content and packaged stock controls aligne
   const comfortableTitle = comfortableCard.locator(".inventory-card-title");
   const comfortableBox = (await comfortableCard.boundingBox())!;
   const comfortableImage = (await comfortableCard.locator(".inventory-card-image").boundingBox())!;
-  expect(comfortableBox.height).toBeLessThanOrEqual(180);
+  const comfortableContent = (await comfortableCard.locator(".inventory-card-content").boundingBox())!;
+  const comfortableControls = (await comfortableCard.locator(".inventory-card-controls").boundingBox())!;
+  const comfortableActions = (await comfortableCard.locator(".inventory-card-desktop-end .inventory-card-actions").boundingBox())!;
+  const comfortableStatus = (await comfortableCard.locator(".inventory-card-desktop-status").boundingBox())!;
+  const comfortableMode = (await comfortableCard.locator(".quick-stock-mode").boundingBox())!;
+  const comfortableStockControl = (await comfortableCard.locator(".quick-stock-control").boundingBox())!;
+  const comfortableActionButtons = await comfortableCard.locator(".inventory-card-desktop-end .inventory-card-actions button").evaluateAll((buttons) =>
+    buttons.map((button) => {
+      const box = button.getBoundingClientRect();
+      return { width: box.width, height: box.height };
+    }),
+  );
+  expect(comfortableBox.height).toBeGreaterThanOrEqual(170);
+  expect(comfortableBox.height).toBeLessThanOrEqual(184);
+  expect(comfortableImage.width).toBeGreaterThanOrEqual(170);
   expect(await comfortableTitle.evaluate((element) => getComputedStyle(element).whiteSpace)).toBe("nowrap");
   expect(await comfortableTitle.evaluate((element) => Number.parseFloat(getComputedStyle(element).fontSize))).toBeLessThanOrEqual(16.2);
   expect(Math.abs(comfortableImage.width - comfortableImage.height)).toBeLessThanOrEqual(1);
+  expect(comfortableControls.x).toBeLessThan(comfortableContent.x);
+  expect(comfortableContent.x + comfortableContent.width).toBeLessThanOrEqual(comfortableImage.x + 1);
+  expect(comfortableImage.x + comfortableImage.width).toBeGreaterThanOrEqual(comfortableBox.x + comfortableBox.width - 2);
+  expect(Math.abs(comfortableActions.y - comfortableStatus.y)).toBeLessThanOrEqual(4);
+  expect(comfortableMode.y).toBeGreaterThanOrEqual(comfortableActions.y + comfortableActions.height + 8);
+  expect(comfortableStockControl.y).toBeGreaterThanOrEqual(comfortableMode.y + comfortableMode.height + 6);
+  expect(Math.abs(comfortableMode.width - comfortableStockControl.width)).toBeLessThanOrEqual(2);
+  expect(comfortableStockControl.width).toBeGreaterThanOrEqual(168);
+  for (const button of comfortableActionButtons) {
+    expect(button.width).toBeGreaterThanOrEqual(40);
+    expect(button.height).toBeGreaterThanOrEqual(40);
+  }
   await expect(comfortableCard.locator(".inventory-card-category")).toHaveText("ظروف آشپزخانه");
   await expect(comfortableCard.locator(".inventory-card-barcode")).toHaveText("6261234567890");
   await expect(comfortableCard.locator(".inventory-card-classification")).toBeVisible();

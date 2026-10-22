@@ -1,6 +1,7 @@
 import type { Product } from "@/features/app/inventory/types";
 import type { BackupStatus } from "@/features/backup/types";
-import type { BackupNotification, InventoryNotification } from "../types";
+import type { BackupNotification, InventoryNotification, UpdateNotification } from "../types";
+import type { AppUpdateSnapshot } from "@/features/app-update/types";
 import { backupErrorMessage } from "@/features/backup/services/backup-error";
 
 function productName(product: Product): string {
@@ -58,6 +59,18 @@ function deriveProductNotification(product: Product): InventoryNotification | nu
 }
 
 export const notificationService = {
+  deriveUpdate(update: AppUpdateSnapshot): UpdateNotification[] {
+    if (update.status !== "available" && update.status !== "installing") return [];
+    return [{
+      id: "app-update-ready",
+      kind: "app_update_ready",
+      severity: "info",
+      title: "نسخه جدید تنظیم آماده است",
+      description: update.release?.summary ?? "آخرین نسخه برنامه برای نصب روی این دستگاه آماده شده است.",
+      context: update.release ? `نسخه ${update.release.version}` : "برای مشاهده جزئیات، بخش بروزرسانی را باز کنید.",
+      route: "/setting/update",
+    }];
+  },
   derive(products: readonly Product[]): InventoryNotification[] {
     return products
       .map(deriveProductNotification)

@@ -1,6 +1,7 @@
 export type ServiceWorkerLifecycle = {
   onOfflineReady?(): void;
   onUpdateReady?(activate: () => void): void;
+  onRegistered?(registration: ServiceWorkerRegistration): void;
 };
 
 export function registerServiceWorker(lifecycle: ServiceWorkerLifecycle = {}) {
@@ -23,6 +24,7 @@ export function registerServiceWorker(lifecycle: ServiceWorkerLifecycle = {}) {
     void navigator.serviceWorker
       .register(new URL("sw.js", base).toString(), { scope: base.pathname })
       .then((registration) => {
+        lifecycle.onRegistered?.(registration);
         const offerUpdate = (worker: ServiceWorker | null) => {
           if (!worker) return;
           lifecycle.onUpdateReady?.(() => {

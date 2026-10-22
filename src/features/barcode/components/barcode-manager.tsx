@@ -29,9 +29,9 @@ import type { BarcodeMeaning, ProductBarcode } from "../types";
 import { LabelPrintDialog } from "./label-print-dialog";
 import { BarcodeCaptureField } from "./barcode-capture-field";
 
-type Props = { product: Product; readOnly?: boolean };
+type Props = { product: Product; readOnly?: boolean; tone?: "create" | "edit" };
 
-export function BarcodeManager({ product, readOnly = false }: Props) {
+export function BarcodeManager({ product, readOnly = false, tone = "edit" }: Props) {
   const [items, setItems] = useState<ProductBarcode[]>([]);
   const [value, setValue] = useState("");
   const [meaning, setMeaning] = useState<BarcodeMeaning>("unit");
@@ -176,6 +176,7 @@ export function BarcodeManager({ product, readOnly = false }: Props) {
               );
             }}
             onQuantity={setScanQuantity}
+            tone={tone}
           />
           <Flex direction="column" gap="2">
             <Button
@@ -368,6 +369,7 @@ function GridInputs(props: {
   onValue(value: string): void;
   onMeaning(value: BarcodeMeaning): void;
   onQuantity(value: string): void;
+  tone: "create" | "edit";
 }) {
   return (
     <Flex
@@ -382,6 +384,7 @@ function GridInputs(props: {
         <BarcodeCaptureField
           value={props.value}
           onValueChange={props.onValue}
+          tone={props.tone}
         />
       </Box>
       <label>

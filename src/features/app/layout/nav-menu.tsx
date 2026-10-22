@@ -1,7 +1,7 @@
 import { Box, Text } from "@radix-ui/themes";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { primaryNavigationItems } from "./navigation-items";
-import { isPathActive } from "@/shared/lib/navigation/is-path-active";
+import { isPathActive, isPrimaryNavigationActive } from "@/shared/lib/navigation/is-path-active";
 import { useAuth } from "@/shared/auth/use-auth";
 import { PersonIcon, PlusIcon } from "@radix-ui/react-icons";
 import { accessState } from "@/shared/access/access-state";
@@ -100,7 +100,7 @@ const NavMenu = ({ hidden = false }: Props) => {
         "
       >
         {beforeAction.map((item) => (
-          <NavigationLink key={item.to} item={item} active={isPathActive(pathname, item.to)} />
+          <NavigationLink key={item.to} item={item} active={isPrimaryNavigationActive(pathname, item.to)} />
         ))}
         {canAddProduct && (
           <Link
@@ -114,7 +114,7 @@ const NavMenu = ({ hidden = false }: Props) => {
           </Link>
         )}
         {afterAction.map((item) => (
-          <NavigationLink key={item.to} item={item} active={isPathActive(pathname, item.to)} />
+          <NavigationLink key={item.to} item={item} active={isPrimaryNavigationActive(pathname, item.to)} />
         ))}
       </Box>
     </nav>

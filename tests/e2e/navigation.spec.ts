@@ -98,7 +98,8 @@ test("standard navigation separates Settings and Tools with contextual back beha
   await expect(bottomNavigation.getByRole("link", { name: "مدیریت" })).toHaveCount(0);
   await expect(bottomNavigation.getByRole("link", { name: "تنظیمات" })).toBeVisible();
   await expect(bottomNavigation.getByRole("link", { name: "افزودن محصول" })).toBeVisible();
-  const activeGlow = await bottomNavigation.getByRole("link", { name: "داشبورد" }).locator(".app-navigation-indicator").evaluate((element) => {
+  const activeIndicator = bottomNavigation.getByRole("link", { name: "داشبورد" }).locator(".app-navigation-indicator");
+  const activeGlow = await activeIndicator.evaluate((element) => {
     const glow = getComputedStyle(element, "::after");
     return { content: glow.content, backgroundImage: glow.backgroundImage, opacity: glow.opacity };
   });
@@ -106,15 +107,26 @@ test("standard navigation separates Settings and Tools with contextual back beha
   expect(activeGlow.backgroundImage).not.toBe("none");
   expect(Number(activeGlow.opacity)).toBeGreaterThanOrEqual(.38);
   expect(Number(activeGlow.opacity)).toBeLessThanOrEqual(.6);
+  const indicatorBox = (await activeIndicator.boundingBox())!;
+  const navigationSurfaceBox = (await bottomNavigation.locator(".app-bottom-navigation-surface").boundingBox())!;
+  const indicatorTopOffset = indicatorBox.y - navigationSurfaceBox.y;
+  expect(indicatorTopOffset).toBeGreaterThanOrEqual(2);
+  expect(indicatorTopOffset).toBeLessThanOrEqual(5);
 
   await bottomNavigation.getByRole("link", { name: "تنظیمات" }).click();
   await expect(page).toHaveURL(/\/setting\/?$/);
   await expect(page.getByRole("heading", { name: "تنظیمات" })).toBeVisible();
   await expect(page.getByRole("link", { name: /پروفایل/ })).toHaveAttribute("href", "/setting/profile");
   await expect(page.getByRole("link", { name: /اشتراک/ })).toHaveAttribute("href", "/setting/subscription");
+  await expect(page.getByRole("link", { name: /بروزرسانی/ })).toHaveAttribute("href", "/setting/update");
   await expect(page.getByRole("button", { name: "بازگشت" })).toBeVisible();
   await expect(header.getByRole("button", { name: "بازگشت" })).toHaveCount(0);
   await expect(page.locator(".page-guide").getByRole("button", { name: "بازگشت" })).toBeVisible();
+
+  await page.goto("/setting/update");
+  await expect(page.getByRole("heading", { name: "بروزرسانی برنامه" })).toBeVisible();
+  await expect(page.getByText("نسخه نصب‌شده")).toBeVisible();
+  await expect(page.getByRole("button", { name: /بررسی دوباره/ })).toBeVisible();
 
   await page.goto("/tools");
   await expect(page.getByRole("heading", { name: "ابزارها" })).toBeVisible();
@@ -410,8 +422,8 @@ test("sync status links expose responsive details", async ({ page }) => {
 
   await expect(page.getByRole("heading", { name: "همگام‌سازی", exact: true })).toBeVisible();
   await expect(page.getByRole("button", { name: "همگام‌سازی اکنون" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "صف تغییرات" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "آخرین رخدادها" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "کارهای در انتظار" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "گزارش وضعیت اخیر" })).toBeVisible();
 
   const header = page.locator(".app-header");
   await expect(header.getByRole("link", { name: /مشاهده جزئیات همگام‌سازی/ })).toHaveAttribute("href", "/setting/sync");

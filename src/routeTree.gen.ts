@@ -28,6 +28,7 @@ import { Route as ToolsCategoriesRouteImport } from './routes/tools/categories'
 import { Route as ToolsCatalogRouteImport } from './routes/tools/catalog'
 import { Route as ToolsActivityRouteImport } from './routes/tools/activity'
 import { Route as SettingUsersRouteImport } from './routes/setting/users'
+import { Route as SettingUpdateRouteImport } from './routes/setting/update'
 import { Route as SettingSyncRouteImport } from './routes/setting/sync'
 import { Route as SettingSubscriptionManagementRouteImport } from './routes/setting/subscription-management'
 import { Route as SettingSubscriptionRouteImport } from './routes/setting/subscription'
@@ -162,6 +163,11 @@ const ToolsActivityRoute = ToolsActivityRouteImport.update({
 const SettingUsersRoute = SettingUsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => SettingRouteRoute,
+} as any)
+const SettingUpdateRoute = SettingUpdateRouteImport.update({
+  id: '/update',
+  path: '/update',
   getParentRoute: () => SettingRouteRoute,
 } as any)
 const SettingSyncRoute = SettingSyncRouteImport.update({
@@ -412,6 +418,7 @@ export interface FileRoutesByFullPath {
   '/setting/subscription': typeof SettingSubscriptionRoute
   '/setting/subscription-management': typeof SettingSubscriptionManagementRoute
   '/setting/sync': typeof SettingSyncRoute
+  '/setting/update': typeof SettingUpdateRoute
   '/setting/users': typeof SettingUsersRoute
   '/tools/activity': typeof ToolsActivityRoute
   '/tools/catalog': typeof ToolsCatalogRoute
@@ -468,6 +475,7 @@ export interface FileRoutesByTo {
   '/setting/subscription': typeof SettingSubscriptionRoute
   '/setting/subscription-management': typeof SettingSubscriptionManagementRoute
   '/setting/sync': typeof SettingSyncRoute
+  '/setting/update': typeof SettingUpdateRoute
   '/setting/users': typeof SettingUsersRoute
   '/tools/activity': typeof ToolsActivityRoute
   '/tools/catalog': typeof ToolsCatalogRoute
@@ -531,6 +539,7 @@ export interface FileRoutesById {
   '/setting/subscription': typeof SettingSubscriptionRoute
   '/setting/subscription-management': typeof SettingSubscriptionManagementRoute
   '/setting/sync': typeof SettingSyncRoute
+  '/setting/update': typeof SettingUpdateRoute
   '/setting/users': typeof SettingUsersRoute
   '/tools/activity': typeof ToolsActivityRoute
   '/tools/catalog': typeof ToolsCatalogRoute
@@ -594,6 +603,7 @@ export interface FileRouteTypes {
     | '/setting/subscription'
     | '/setting/subscription-management'
     | '/setting/sync'
+    | '/setting/update'
     | '/setting/users'
     | '/tools/activity'
     | '/tools/catalog'
@@ -650,6 +660,7 @@ export interface FileRouteTypes {
     | '/setting/subscription'
     | '/setting/subscription-management'
     | '/setting/sync'
+    | '/setting/update'
     | '/setting/users'
     | '/tools/activity'
     | '/tools/catalog'
@@ -712,6 +723,7 @@ export interface FileRouteTypes {
     | '/setting/subscription'
     | '/setting/subscription-management'
     | '/setting/sync'
+    | '/setting/update'
     | '/setting/users'
     | '/tools/activity'
     | '/tools/catalog'
@@ -888,6 +900,13 @@ declare module '@tanstack/react-router' {
       path: '/users'
       fullPath: '/setting/users'
       preLoaderRoute: typeof SettingUsersRouteImport
+      parentRoute: typeof SettingRouteRoute
+    }
+    '/setting/update': {
+      id: '/setting/update'
+      path: '/update'
+      fullPath: '/setting/update'
+      preLoaderRoute: typeof SettingUpdateRouteImport
       parentRoute: typeof SettingRouteRoute
     }
     '/setting/sync': {
@@ -1320,6 +1339,7 @@ interface SettingRouteRouteChildren {
   SettingSubscriptionRoute: typeof SettingSubscriptionRoute
   SettingSubscriptionManagementRoute: typeof SettingSubscriptionManagementRoute
   SettingSyncRoute: typeof SettingSyncRoute
+  SettingUpdateRoute: typeof SettingUpdateRoute
   SettingUsersRoute: typeof SettingUsersRoute
   SettingIndexRoute: typeof SettingIndexRoute
 }
@@ -1339,6 +1359,7 @@ const SettingRouteRouteChildren: SettingRouteRouteChildren = {
   SettingSubscriptionRoute: SettingSubscriptionRoute,
   SettingSubscriptionManagementRoute: SettingSubscriptionManagementRoute,
   SettingSyncRoute: SettingSyncRoute,
+  SettingUpdateRoute: SettingUpdateRoute,
   SettingUsersRoute: SettingUsersRoute,
   SettingIndexRoute: SettingIndexRoute,
 }

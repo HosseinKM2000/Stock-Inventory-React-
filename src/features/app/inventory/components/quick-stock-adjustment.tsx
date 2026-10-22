@@ -172,6 +172,11 @@ export function QuickStockAdjustment({ product }: Props) {
 
   const busy = !canWrite || awaitingDecision || mutation.isPending;
   const changing = decrement.repeating || increment.repeating;
+  const quantityDigitCount = Math.max(
+    String(previewQuantity).length,
+    editingQuantity ? normalizeIntegerText(quantityDraft).length : 0,
+  );
+  const quantityLayout = quantityDigitCount >= 4 ? "wide" : "standard";
 
   return (
     <>
@@ -204,12 +209,13 @@ export function QuickStockAdjustment({ product }: Props) {
         justify={"center"}
         aria-label="تنظیم سریع موجودی"
         className="quick-stock-control"
+        data-quantity-layout={quantityLayout}
       >
         <Button
           size="3"
           type="button"
-          color="green"
-          variant="soft"
+          variant="outline"
+          data-stock-action="increase"
           disabled={busy}
           aria-label={
             effectiveMode === "pack" ? "افزایش یک بسته" : "افزایش یک واحد"
@@ -272,9 +278,9 @@ export function QuickStockAdjustment({ product }: Props) {
 
         <Button
           size="3"
-          color="red"
           type="button"
-          variant="soft"
+          variant="outline"
+          data-stock-action="decrease"
           disabled={busy}
           aria-label={
             effectiveMode === "pack" ? "کاهش یک بسته" : "کاهش یک واحد"

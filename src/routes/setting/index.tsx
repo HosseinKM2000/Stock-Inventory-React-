@@ -17,8 +17,8 @@ function SettingsAccessPage() {
       icon={GearIcon}
       sectionTo="/setting"
       footer={
-        <Button color="red" variant="soft" onClick={logout} className="min-h-11">
-          <ExitIcon />
+        <Button color="red" variant="soft" onClick={logout} className="settings-logout-button">
+          <ExitIcon width="18" height="18" aria-hidden="true" />
           خروج از حساب کاربری
         </Button>
       }

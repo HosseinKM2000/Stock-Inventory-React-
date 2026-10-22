@@ -475,7 +475,7 @@ export function ProductForm({
             </Grid>
           </Box>
 
-          {initial ? <BarcodeManager product={initial} readOnly={readOnly} /> : (
+          {initial ? <BarcodeManager product={initial} readOnly={readOnly} tone="edit" /> : (
             <Card size="3" className="product-barcode-card rounded-3xl md:col-span-3">
               <Flex align="center" gap="3" className="product-barcode-header">
                 <Box className="product-barcode-title-icon" aria-hidden="true"><TokensIcon width="24" height="24" /></Box>
@@ -488,7 +488,7 @@ export function ProductForm({
                 <Grid columns={{ initial: "1", sm: "2" }} gap="3" className="product-barcode-inputs">
                   <Box>
                     <Text as="div" size="2" weight="medium" mb="2">کد بارکد</Text>
-                    <BarcodeCaptureField value={pendingBarcodeValue} onValueChange={setPendingBarcodeValue} placeholder="اسکن یا ورود دستی" />
+                    <BarcodeCaptureField value={pendingBarcodeValue} onValueChange={setPendingBarcodeValue} placeholder="اسکن یا ورود دستی" tone="create" />
                   </Box>
                   <Box>
                     <Text as="div" size="2" weight="medium" mb="2">مبنا</Text>

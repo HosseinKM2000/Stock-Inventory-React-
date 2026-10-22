@@ -38,6 +38,30 @@ describe("inventory virtual list measurement", () => {
     unmount();
   });
 
+  it("preserves measured row heights when the keyboard resizes a focused stock input", () => {
+    const { result, unmount } = renderHook(() => useInventoryVirtual(1, 250));
+    const scrollElement = document.createElement("div");
+    const row = document.createElement("div");
+    const input = document.createElement("input");
+    row.dataset.index = "0";
+    row.append(input);
+    scrollElement.append(row);
+    document.body.append(scrollElement);
+    const scrollIntoView = vi.fn();
+    input.scrollIntoView = scrollIntoView;
+    Object.defineProperty(scrollElement, "clientWidth", { configurable: true, value: 390 });
+    Object.defineProperty(result.current.parentRef, "current", { configurable: true, value: scrollElement });
+
+    input.focus();
+    act(() => window.dispatchEvent(new Event("resize")));
+
+    expect(measure).not.toHaveBeenCalled();
+    expect(measureElement).toHaveBeenCalledWith(row);
+    expect(scrollIntoView).toHaveBeenCalledWith({ block: "center", inline: "nearest" });
+    scrollElement.remove();
+    unmount();
+  });
+
   it("remeasures mounted rows after invalidating the size cache", () => {
     const { result, unmount } = renderHook(() => useInventoryVirtual(2, 86));
     const scrollElement = document.createElement("div");

@@ -1,4 +1,4 @@
-import { CameraIcon, Cross2Icon } from "@radix-ui/react-icons";
+import { CameraIcon, Cross2Icon, InfoCircledIcon } from "@radix-ui/react-icons";
 import { Box, Callout, Dialog, Flex, Text, TextField } from "@radix-ui/themes";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -11,9 +11,10 @@ type Props = {
   onValueChange(value: string): void;
   disabled?: boolean;
   placeholder?: string;
+  tone?: "create" | "edit";
 };
 
-export function BarcodeCaptureField({ value, onValueChange, disabled = false, placeholder = "اسکن یا ورود دستی" }: Props) {
+export function BarcodeCaptureField({ value, onValueChange, disabled = false, placeholder = "اسکن یا ورود دستی", tone = "create" }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const sessionRef = useRef<CameraSession | null>(null);
   const cameraRequestRef = useRef(0);
@@ -96,24 +97,41 @@ export function BarcodeCaptureField({ value, onValueChange, disabled = false, pl
       </Flex>
 
       <Dialog.Root open={cameraOpen} onOpenChange={handleOpenChange}>
-        <Dialog.Content maxWidth="460px" dir="rtl">
-          <Dialog.Title>اسکن بارکد با دوربین</Dialog.Title>
-          <Dialog.Description color="gray">بارکد را روبه‌روی دوربین نگه دارید؛ پس از تشخیص، کد داخل فرم قرار می‌گیرد.</Dialog.Description>
-          <Box mt="4" className="relative min-h-56 overflow-hidden rounded-3xl bg-[var(--gray-3)]">
-            <video ref={videoRef} muted playsInline className="aspect-video h-full w-full object-cover" />
+        <Dialog.Content maxWidth="560px" dir="rtl" className="barcode-scanner-dialog" data-tone={tone}>
+          <Flex align="center" justify="between" gap="3" className="barcode-scanner-header">
+            <Dialog.Title className="barcode-scanner-title">اسکن بارکد با دوربین</Dialog.Title>
+            <Dialog.Close>
+              <Button type="button" color="gray" variant="soft" className="barcode-scanner-close-icon" aria-label="بستن اسکنر">
+                <Cross2Icon width="22" height="22" aria-hidden="true" />
+              </Button>
+            </Dialog.Close>
+          </Flex>
+          <Dialog.Description color="gray" className="barcode-scanner-description">بارکد را روبه‌روی دوربین نگه دارید؛ پس از تشخیص، کد به‌صورت خودکار در فرم قرار می‌گیرد.</Dialog.Description>
+          <Box className="barcode-scanner-viewport">
+            <video ref={videoRef} muted playsInline className="barcode-scanner-video" />
+            <div className="barcode-scanner-shade" aria-hidden="true" />
+            <div className="barcode-scanner-frame" aria-hidden="true">
+              <span className="barcode-scanner-corner barcode-scanner-corner--top-start" />
+              <span className="barcode-scanner-corner barcode-scanner-corner--top-end" />
+              <span className="barcode-scanner-corner barcode-scanner-corner--bottom-start" />
+              <span className="barcode-scanner-corner barcode-scanner-corner--bottom-end" />
+              <span className="barcode-scanner-focus" />
+              <span className="barcode-scanner-line" />
+            </div>
             {!cameraActive ? (
-              <Flex position="absolute" inset="0" align="center" justify="center">
-                <Button type="button" variant="soft" loading={starting} onClick={() => void startCamera()} leftIcon={<CameraIcon />}>
+              <Flex position="absolute" inset="0" align="center" justify="center" className="barcode-scanner-start-layer">
+                <Button type="button" variant="soft" loading={starting} onClick={() => void startCamera()} leftIcon={<CameraIcon />} className="barcode-scanner-start-button">
                   فعال‌کردن دوربین
                 </Button>
               </Flex>
             ) : null}
           </Box>
           {cameraError ? <Callout.Root color="red" role="alert" mt="3"><Callout.Text>{cameraError}</Callout.Text></Callout.Root> : null}
-          <Flex justify="between" align="center" gap="3" mt="4">
-            <Text size="1" color="gray">اسکنرهای فروشگاهی نیز با قرار دادن نشانگر داخل فیلد بارکد قابل استفاده‌اند.</Text>
-            <Dialog.Close><Button type="button" color="gray" variant="soft" leftIcon={<Cross2Icon />}>بستن</Button></Dialog.Close>
+          <Flex align="center" gap="3" className="barcode-scanner-tip">
+            <span className="barcode-scanner-tip-icon" aria-hidden="true"><InfoCircledIcon width="21" height="21" /></span>
+            <Text size="2" color="gray">اسکنرهای فروشگاهی نیز با قرار دادن نشانگر داخل فیلد بارکد قابل استفاده‌اند.</Text>
           </Flex>
+          <Dialog.Close><Button type="button" color="gray" variant="soft" className="barcode-scanner-close-button">بستن</Button></Dialog.Close>
         </Dialog.Content>
       </Dialog.Root>
     </>

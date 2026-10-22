@@ -37,6 +37,11 @@ describe("QuickStockAdjustment confirmation", () => {
     );
 
     const increase = screen.getByRole("button", { name: "افزایش یک واحد" });
+    const decrease = screen.getByRole("button", { name: "کاهش یک واحد" });
+    expect(increase).toHaveAttribute("data-stock-action", "increase");
+    expect(decrease).toHaveAttribute("data-stock-action", "decrease");
+    expect(increase).toHaveClass("rt-variant-outline");
+    expect(decrease).toHaveClass("rt-variant-outline");
     fireEvent.keyDown(increase, { key: "Enter" });
     fireEvent.keyUp(increase, { key: "Enter" });
     act(() => vi.advanceTimersByTime(1_000));
@@ -87,5 +92,23 @@ describe("QuickStockAdjustment confirmation", () => {
     fireEvent.blur(input);
     expect(screen.getByRole("button", { name: /ویرایش مستقیم موجودی صفر/ })).toBeVisible();
     expect(mutate).not.toHaveBeenCalled();
+  });
+
+  it("marks four-digit quantities for the wider responsive layout", () => {
+    const { container } = render(
+      <Theme>
+        <QuickStockAdjustment product={product({ id: 41, quantity: 999 })} />
+      </Theme>,
+    );
+
+    const control = container.querySelector(".quick-stock-control");
+    expect(control).toHaveAttribute("data-quantity-layout", "standard");
+
+    fireEvent.click(screen.getByRole("button", { name: /ویرایش مستقیم موجودی/ }));
+    fireEvent.change(screen.getByRole("spinbutton", { name: "موجودی جدید" }), {
+      target: { value: "1010" },
+    });
+
+    expect(control).toHaveAttribute("data-quantity-layout", "wide");
   });
 });

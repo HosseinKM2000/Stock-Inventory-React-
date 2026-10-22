@@ -6,7 +6,7 @@ import { ActivityLogIcon, ArchiveIcon, BookmarkIcon, ClipboardIcon, CubeIcon, Da
 import type { ComponentType } from "react";
 
 export type NavigationGroup = "primary" | "settings" | "tools" | "management";
-export type NavigationRoute = "/dashboard" | "/inventory/list" | "/setting" | "/setting/sync" | "/setting/profile" | "/setting/security" | "/setting/appearance" | "/setting/backup" | "/setting/industry" | "/setting/subscription" | "/setting/personnel" | "/setting/roles" | "/tools" | "/tools/scanner" | "/tools/categories" | "/tools/export" | "/tools/catalog" | "/tools/recovery" | "/tools/import" | "/tools/labels" | "/tools/help" | "/tools/activity" | "/management" | "/management/subscriptions" | "/management/users" | "/management/catalogs" | "/management/industries";
+export type NavigationRoute = "/dashboard" | "/inventory/list" | "/setting" | "/setting/sync" | "/setting/update" | "/setting/profile" | "/setting/security" | "/setting/appearance" | "/setting/backup" | "/setting/industry" | "/setting/subscription" | "/setting/personnel" | "/setting/roles" | "/tools" | "/tools/scanner" | "/tools/categories" | "/tools/export" | "/tools/catalog" | "/tools/recovery" | "/tools/import" | "/tools/labels" | "/tools/help" | "/tools/activity" | "/management" | "/management/subscriptions" | "/management/users" | "/management/catalogs" | "/management/industries";
 type NavigationIcon = ComponentType<{ width?: number | string; height?: number | string }>;
 
 export type NavigationItem = { id: string; label: string; description?: string; to: NavigationRoute; icon: NavigationIcon; group: NavigationGroup; adminOnly?: boolean; ownerOnly?: boolean; storePermission?: string; requiresOnline?: boolean; toolId?: DomainToolId };
@@ -19,15 +19,16 @@ const basePrimaryNavigationItems = [
 ] as const satisfies readonly NavigationItem[];
 
 export const settingsNavigationItems = [
+  { id: "profile", label: "پروفایل", description: "اطلاعات حساب و تصویر پروفایل", to: "/setting/profile", icon: PersonIcon, group: "settings", requiresOnline: true },
+  { id: "appearance", label: "ظاهر", description: "رنگ و حالت نمایش برنامه", to: "/setting/appearance", icon: MixerHorizontalIcon, group: "settings" },
+  { id: "security", label: "امنیت", description: "تغییر رمز عبور و تنظیمات امنیتی", to: "/setting/security", icon: LockClosedIcon, group: "settings", requiresOnline: true },
+  { id: "industry", label: "حوزه کاری", description: "انتخاب حوزه فعالیت حساب", to: "/setting/industry", icon: CubeIcon, group: "settings", requiresOnline: true },
   { id: "personnel", label: "پرسنل", description: "اعضا، وضعیت دسترسی و ظرفیت مجموعه", to: "/setting/personnel", icon: PersonIcon, group: "settings", ownerOnly: true, requiresOnline: true },
   { id: "roles", label: "نقش‌ها", description: "نقش‌های مجموعه و مجوزهای هر نقش", to: "/setting/roles", icon: LockClosedIcon, group: "settings", ownerOnly: true, requiresOnline: true },
   { id: "sync", label: "همگام‌سازی", description: "وضعیت اتصال، صف تغییرات، آخرین رویدادها و خطاهای همگام‌سازی", to: "/setting/sync", icon: ReloadIcon, group: "settings" },
   { id: "local-backup", label: "فایل پشتیبان محلی", description: "ذخیره و بازیابی نسخه کامل داده‌ها روی همین دستگاه", to: "/setting/backup", icon: ArchiveIcon, group: "settings", ownerOnly: true },
-  { id: "profile", label: "پروفایل", description: "اطلاعات حساب و تصویر پروفایل", to: "/setting/profile", icon: PersonIcon, group: "settings", requiresOnline: true },
-  { id: "security", label: "امنیت", description: "تغییر رمز عبور و تنظیمات امنیتی", to: "/setting/security", icon: LockClosedIcon, group: "settings", requiresOnline: true },
-  { id: "appearance", label: "ظاهر", description: "رنگ و حالت نمایش برنامه", to: "/setting/appearance", icon: MixerHorizontalIcon, group: "settings" },
-  { id: "industry", label: "حوزه کاری", description: "انتخاب حوزه فعالیت حساب", to: "/setting/industry", icon: CubeIcon, group: "settings", requiresOnline: true },
   { id: "subscription", label: "اشتراک", description: "طرح، محدودیت‌ها و وضعیت اشتراک مجموعه", to: "/setting/subscription", icon: StarIcon, group: "settings", ownerOnly: true, requiresOnline: true },
+  { id: "app-update", label: "بروزرسانی", description: "بررسی و نصب آخرین نسخه برنامه و مشاهده امکانات تازه", to: "/setting/update", icon: DownloadIcon, group: "settings" },
 ] as const satisfies readonly NavigationItem[];
 
 export const toolsNavigationItems = [

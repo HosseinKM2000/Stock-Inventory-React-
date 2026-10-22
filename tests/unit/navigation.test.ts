@@ -11,6 +11,7 @@ import {
   contextualBackFallback,
   contextualSection,
 } from "@/shared/lib/navigation/contextual-back";
+import { isPrimaryNavigationActive } from "@/shared/lib/navigation/is-path-active";
 
 const standardUser: User = {
   id: 1,
@@ -31,6 +32,13 @@ const standardUser: User = {
 };
 
 describe("navigation metadata", () => {
+  it.each(["/inventory/list", "/inventory/add", "/inventory/edit"])(
+    "keeps Products active on %s",
+    (pathname) => {
+      expect(isPrimaryNavigationActive(pathname, "/inventory/list")).toBe(true);
+    },
+  );
+
   it("keeps Settings in primary navigation and Management out of the bottom menu", () => {
     expect(primaryNavigationItems(standardUser).map((item) => item.to)).toEqual([
       "/dashboard",
@@ -47,9 +55,18 @@ describe("navigation metadata", () => {
   });
 
   it("separates personal subscription, tools, and administrative destinations", () => {
-    expect(settingsNavigationItems.map((item) => item.to)).toContain("/setting/subscription");
-    expect(settingsNavigationItems.map((item) => item.to)).toContain("/setting/sync");
-    expect(settingsNavigationItems.map((item) => item.to)).toContain("/setting/roles");
+    expect(settingsNavigationItems.map((item) => item.to)).toEqual([
+      "/setting/profile",
+      "/setting/appearance",
+      "/setting/security",
+      "/setting/industry",
+      "/setting/personnel",
+      "/setting/roles",
+      "/setting/sync",
+      "/setting/backup",
+      "/setting/subscription",
+      "/setting/update",
+    ]);
     expect(toolsNavigationItems.map((item) => item.to)).toEqual([
       "/tools/scanner",
       "/tools/activity",

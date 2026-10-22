@@ -1,12 +1,13 @@
 import { Button } from "@/shared/ui/button/button";
-import { CrossCircledIcon, ExclamationTriangleIcon } from "@radix-ui/react-icons";
+import { CrossCircledIcon, DownloadIcon, ExclamationTriangleIcon } from "@radix-ui/react-icons";
 import { Badge, Box, Card, Flex, Text } from "@radix-ui/themes";
 import { Link } from "@tanstack/react-router";
 import type { AppNotification } from "../types";
 
 export function NotificationItem({ item, onNavigate }: { item: AppNotification; onNavigate: () => void }) {
   const critical = item.severity === "critical";
-  const StatusIcon = critical ? CrossCircledIcon : ExclamationTriangleIcon;
+  const informational = item.severity === "info";
+  const StatusIcon = critical ? CrossCircledIcon : informational ? DownloadIcon : ExclamationTriangleIcon;
   return (
     <Card size="1" className="app-notification-card" data-severity={item.severity}>
       <Flex gap="3" align="start" className="app-notification-layout">
@@ -16,13 +17,17 @@ export function NotificationItem({ item, onNavigate }: { item: AppNotification; 
         <Box className="min-w-0 flex-1">
           <Flex justify="between" align="start" gap="2" wrap="wrap">
             <Text size="2" weight="bold" className="app-notification-title">{item.title}</Text>
-            <Badge color={critical ? "red" : "amber"} variant="soft" radius="full">{critical ? "بحرانی" : "هشدار"}</Badge>
+            <Badge color={critical ? "red" : informational ? "violet" : "amber"} variant="soft" radius="full">{critical ? "بحرانی" : informational ? "جدید" : "هشدار"}</Badge>
           </Flex>
           <Text as="div" size="2" mt="2" className="app-notification-description">{item.description}</Text>
           <Text as="div" size="1" color="gray" mt="1" className="app-notification-context">{item.context}</Text>
           {"productId" in item ? (
             <Link to="/inventory/edit" search={{ id: item.productId }} onClick={onNavigate}>
               <Button size="2" variant="soft" mt="3" className="app-notification-action w-full sm:w-auto">مشاهده و ویرایش محصول</Button>
+            </Link>
+          ) : item.kind === "app_update_ready" ? (
+            <Link to={item.route} onClick={onNavigate}>
+              <Button size="2" variant="soft" mt="3" className="app-notification-action w-full sm:w-auto">مشاهده و نصب بروزرسانی</Button>
             </Link>
           ) : (
             <Link to={item.route} onClick={onNavigate}>

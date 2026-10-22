@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import { Badge, Card, Flex, IconButton, Text } from "@radix-ui/themes";
-import { Barcode, Check, Copy, Package, Pencil, ShoppingCart, Store, Trash2 } from "lucide-react";
+import { Barcode, Check, Copy, Database, House, Package, Pencil, ShoppingBag, ShoppingCart, Store, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -210,15 +210,21 @@ export function ProductCard({
           )}
           {packageBreakdown && viewMode !== "grid" && (
             <Flex gap="3" wrap="wrap" className="inventory-card-stock-details">
-              <Text size="2"><Text color="gray">بسته: </Text>{packageBreakdown.completePackages.toLocaleString("fa-IR")}</Text>
-              <Text size="2"><Text color="gray">تعداد کل: </Text>{product.quantity.toLocaleString("fa-IR")}</Text>
+              <Text size="2" className="inventory-card-stock-fact">
+                {viewMode === "comfortable" ? <Package size={16} aria-hidden="true" className="inventory-card-list-icon" /> : null}
+                <Text color="gray">بسته: </Text>{packageBreakdown.completePackages.toLocaleString("fa-IR")}
+              </Text>
+              <Text size="2" className="inventory-card-stock-fact">
+                {viewMode === "comfortable" ? <Database size={16} aria-hidden="true" className="inventory-card-list-icon" /> : null}
+                <Text color="gray">تعداد کل: </Text>{product.quantity.toLocaleString("fa-IR")}
+              </Text>
             </Flex>
           )}
           {!packageBreakdown && <Text size="2" color="gray" className={`inventory-card-stock-details ${viewMode === "grid" ? "inventory-grid-quantity" : ""}`}><Package size={16} className="inline-block align-middle" /> {product.quantity.toLocaleString("fa-IR")} عدد</Text>}
           <Flex justify="between" gap="3" className="inventory-card-footer min-w-0">
             <Flex gap="2" wrap="wrap" className="min-w-0">
               {canViewSalePrice && <Badge size="3" color="green" data-long-price={salePrice != null && String(salePrice).length >= 10} className="inventory-card-price max-w-full overflow-hidden"><ShoppingCart size={15} aria-hidden="true" />{salePrice == null ? "قیمت ثبت نشده" : <><strong>{salePrice.toLocaleString("fa-IR")}</strong><span>تومان</span></>}</Badge>}
-              {canViewPurchasePrice && <Badge size="2" color="blue" className="inventory-card-purchase-price">خرید: {product.purchase_price == null ? "نامشخص" : `${product.purchase_price.toLocaleString("fa-IR")} تومان`}</Badge>}
+              {canViewPurchasePrice && <Badge size="2" color="blue" className="inventory-card-purchase-price">{viewMode === "comfortable" ? <ShoppingBag size={15} aria-hidden="true" className="inventory-card-list-icon" /> : null}خرید: {product.purchase_price == null ? "نامشخص" : `${product.purchase_price.toLocaleString("fa-IR")} تومان`}</Badge>}
             </Flex>
             {showActions && !selectionMode && <Flex gap="2" justify="end" data-product-action className="inventory-card-actions inventory-card-mobile-actions">
               <IconButton type="button" size="2" variant="soft" aria-label={`کپی نام و قیمت ${name}`} onClick={(event) => { event.stopPropagation(); void copy(); }}><Copy size={17} /></IconButton>
@@ -234,7 +240,10 @@ export function ProductCard({
             </Flex>}
           </Flex>
           <Flex direction="column" gap="1" className="inventory-card-classification min-w-0">
-            {categoryName && <Badge size="1" color="violet" variant="soft" className="inventory-card-category">{categoryName}</Badge>}
+            {categoryName && <Badge size="1" color="violet" variant="soft" className="inventory-card-category">
+              {viewMode === "comfortable" ? <House size={15} aria-hidden="true" className="inventory-card-list-icon" /> : null}
+              {categoryName}
+            </Badge>}
             <Text size="1" color="gray" dir={barcode ? "ltr" : "rtl"} data-empty={!barcode} className="inventory-card-barcode"><Barcode size={13} aria-hidden="true" /><span>{barcode ?? "بدون بارکد"}</span></Text>
           </Flex>
         </Flex>
@@ -243,7 +252,7 @@ export function ProductCard({
             <QuickStockAdjustment key={`${product.id}-${product.catalog_product?.is_packaged}-${product.catalog_product?.pack_size ?? "none"}`} product={product} />
           </div>}
           <Flex align="center" gap="3" className="inventory-card-desktop-end">
-            <Badge color={status.color} className="inventory-card-desktop-status shrink-0">{status.label}</Badge>
+            <Badge color={status.color} className="inventory-card-desktop-status shrink-0"><span className="inventory-card-status-dot" aria-hidden="true" />{status.label}</Badge>
             <Flex gap="2" className="inventory-card-actions">
               <IconButton type="button" size="2" variant="soft" aria-label={`کپی نام و قیمت ${name}`} onClick={(event) => { event.stopPropagation(); void copy(); }}><Copy size={17} /></IconButton>
               {canEdit && <Link to="/inventory/edit" search={{ id: product.id }} onClick={() => onEdit?.(product)}>

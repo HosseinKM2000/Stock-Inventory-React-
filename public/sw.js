@@ -1,8 +1,8 @@
-const CACHE_NAME = "tanzim-app-v12";
+const CACHE_NAME = "tanzim-app-v13";
 const OWNED_CACHE_PREFIXES = ["tanzim-", "inventory-shell-"];
 const scopeUrl = new URL(self.registration.scope);
 const scoped = (path) => new URL(path, scopeUrl).toString();
-const READY_MARKER = scoped(".__offline-ready-v12");
+const READY_MARKER = scoped(".__offline-ready-v13");
 const APP_SHELL = [
   "./",
   "index.html",
@@ -13,6 +13,7 @@ const APP_SHELL = [
   "pwa-icon-maskable-512.png",
   "apple-touch-icon.png",
   "manifest.webmanifest",
+  "app-release.json",
   "fonts/vazirmatn/Vazirmatn-Variable.woff2",
 ].map(scoped);
 
@@ -126,6 +127,13 @@ self.addEventListener("fetch", (event) => {
       fetch(request).catch(async () => {
         return (await caches.match(scoped("index.html"))) || Response.error();
       }),
+    );
+    return;
+  }
+
+  if (relativePath === "app-release.json") {
+    event.respondWith(
+      fetch(request, { cache: "no-store" }).catch(() => caches.match(request)),
     );
     return;
   }

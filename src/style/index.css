@@ -404,9 +404,9 @@ html { font-size: 16px; }
 .product-form-primary-action[data-floating="true"] {
   position: fixed;
   z-index: 35;
-  right: max(.5rem, env(safe-area-inset-right)) !important;
-  left: auto !important;
-  bottom: max(1rem, env(safe-area-inset-bottom));
+  right: auto !important;
+  left: max(1rem, env(safe-area-inset-left)) !important;
+  bottom: calc(var(--app-content-bottom-inset) + .35rem);
   width: 3.65rem !important;
   height: 3.65rem !important;
   min-width: 3.65rem !important;
@@ -519,6 +519,173 @@ html { font-size: 16px; }
 .product-barcode-capture { position: relative; }
 .product-barcode-camera-button { min-width: 3rem !important; border-radius: .8rem !important; }
 
+.barcode-scanner-dialog {
+  --barcode-scanner-accent: var(--product-create-accent);
+  --barcode-scanner-accent-soft: var(--product-create-accent-soft);
+  width: min(calc(100vw - 1.5rem), 35rem) !important;
+  max-height: calc(100dvh - 1.5rem);
+  padding: 1.5rem !important;
+  overflow-y: auto;
+  border: 1px solid color-mix(in srgb, var(--barcode-scanner-accent) 24%, var(--gray-a5));
+  border-radius: 1.75rem !important;
+  background:
+    radial-gradient(circle at 100% 0, var(--barcode-scanner-accent-soft), transparent 18rem),
+    var(--color-panel-solid) !important;
+  box-shadow: 0 28px 80px color-mix(in srgb, var(--app-overlay) 38%, transparent) !important;
+}
+
+.barcode-scanner-dialog[data-tone="edit"] {
+  --barcode-scanner-accent: var(--product-edit-accent);
+  --barcode-scanner-accent-soft: var(--product-edit-accent-soft);
+}
+
+.barcode-scanner-header { min-height: 3.25rem; }
+.barcode-scanner-title {
+  margin: 0 !important;
+  color: var(--gray-12);
+  font-size: 1.45rem !important;
+  line-height: 1.4 !important;
+}
+.barcode-scanner-close-icon {
+  width: 3rem !important;
+  height: 3rem !important;
+  flex: 0 0 3rem;
+  padding: 0 !important;
+  border-radius: 1rem !important;
+  color: var(--gray-11) !important;
+  background: var(--gray-a3) !important;
+}
+.barcode-scanner-description {
+  max-width: 33rem;
+  margin-top: .75rem;
+  line-height: 1.9 !important;
+}
+
+.barcode-scanner-viewport {
+  position: relative;
+  isolation: isolate;
+  min-height: 18rem;
+  max-height: 56dvh;
+  aspect-ratio: 4 / 3;
+  margin-top: 1.15rem;
+  overflow: hidden;
+  border: 2px solid color-mix(in srgb, var(--barcode-scanner-accent) 20%, white);
+  border-radius: 1.5rem;
+  background:
+    radial-gradient(circle at 28% 18%, color-mix(in srgb, var(--barcode-scanner-accent) 19%, transparent), transparent 32%),
+    linear-gradient(145deg, #25252b, #0f1014 68%, #1d1a18);
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 8%), 0 14px 30px color-mix(in srgb, var(--app-overlay) 22%, transparent);
+}
+.barcode-scanner-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.barcode-scanner-shade {
+  position: absolute;
+  z-index: 1;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(ellipse at center, transparent 18%, rgb(5 6 9 / 12%) 58%, rgb(5 6 9 / 48%) 100%);
+}
+.barcode-scanner-frame {
+  position: absolute;
+  z-index: 2;
+  inset: 17% 16%;
+  pointer-events: none;
+}
+.barcode-scanner-corner {
+  position: absolute;
+  width: 3.6rem;
+  height: 3.6rem;
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--barcode-scanner-accent) 62%, transparent));
+}
+.barcode-scanner-corner--top-start { inset: 0 auto auto 0; border-top: 5px solid var(--barcode-scanner-accent); border-left: 5px solid var(--barcode-scanner-accent); border-radius: 1.25rem 0 0; }
+.barcode-scanner-corner--top-end { inset: 0 0 auto auto; border-top: 5px solid var(--barcode-scanner-accent); border-right: 5px solid var(--barcode-scanner-accent); border-radius: 0 1.25rem 0 0; }
+.barcode-scanner-corner--bottom-start { inset: auto auto 0 0; border-bottom: 5px solid var(--barcode-scanner-accent); border-left: 5px solid var(--barcode-scanner-accent); border-radius: 0 0 0 1.25rem; }
+.barcode-scanner-corner--bottom-end { inset: auto 0 0 auto; border-right: 5px solid var(--barcode-scanner-accent); border-bottom: 5px solid var(--barcode-scanner-accent); border-radius: 0 0 1.25rem; }
+.barcode-scanner-focus {
+  position: absolute;
+  width: 48%;
+  height: 42%;
+  inset: 29% 26%;
+  border: 1px solid rgb(255 255 255 / 16%);
+  border-radius: 1rem;
+  background: rgb(255 255 255 / 3%);
+}
+.barcode-scanner-line {
+  position: absolute;
+  right: 0;
+  left: 0;
+  top: 50%;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--barcode-scanner-accent);
+  box-shadow: 0 0 7px var(--barcode-scanner-accent), 0 0 18px var(--barcode-scanner-accent);
+  animation: barcode-scanner-sweep 2.4s ease-in-out infinite alternate;
+}
+.barcode-scanner-start-layer { z-index: 3; background: rgb(9 10 14 / 24%); }
+.barcode-scanner-start-button {
+  min-height: 3.15rem !important;
+  padding-inline: 1.15rem !important;
+  color: white !important;
+  border: 1px solid color-mix(in srgb, var(--barcode-scanner-accent) 55%, white) !important;
+  border-radius: 999px !important;
+  background: color-mix(in srgb, var(--barcode-scanner-accent) 82%, transparent) !important;
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--barcode-scanner-accent) 38%, transparent) !important;
+  backdrop-filter: blur(10px);
+}
+.barcode-scanner-tip {
+  margin-top: 1rem;
+  padding: .85rem 1rem;
+  border: 1px solid color-mix(in srgb, var(--barcode-scanner-accent) 12%, var(--gray-a4));
+  border-radius: 1rem;
+  background: color-mix(in srgb, var(--barcode-scanner-accent-soft) 72%, var(--gray-a2));
+  line-height: 1.75;
+}
+.barcode-scanner-tip-icon {
+  display: grid;
+  width: 2.5rem;
+  height: 2.5rem;
+  flex: 0 0 2.5rem;
+  place-items: center;
+  border-radius: .8rem;
+  color: var(--barcode-scanner-accent);
+  background: color-mix(in srgb, var(--barcode-scanner-accent-soft) 82%, var(--color-panel-solid));
+}
+.barcode-scanner-close-button {
+  width: 100%;
+  min-height: 3.15rem !important;
+  margin-top: .85rem !important;
+  justify-content: center;
+  border-radius: 1rem !important;
+  color: var(--gray-12) !important;
+  background: var(--gray-a3) !important;
+  font-weight: 700 !important;
+}
+
+@keyframes barcode-scanner-sweep {
+  from { transform: translateY(-3.25rem); }
+  to { transform: translateY(3.25rem); }
+}
+
+@media (max-width: 639px) {
+  .barcode-scanner-dialog { padding: 1rem !important; border-radius: 1.35rem !important; }
+  .barcode-scanner-title { font-size: 1.2rem !important; }
+  .barcode-scanner-close-icon { width: 2.75rem !important; height: 2.75rem !important; flex-basis: 2.75rem; }
+  .barcode-scanner-description { margin-top: .5rem; font-size: .85rem !important; }
+  .barcode-scanner-viewport { min-height: 15.5rem; margin-top: .85rem; border-radius: 1.15rem; }
+  .barcode-scanner-frame { inset: 18% 12%; }
+  .barcode-scanner-corner { width: 2.85rem; height: 2.85rem; }
+  .barcode-scanner-tip { padding: .7rem .75rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .barcode-scanner-line { animation: none; }
+}
+
 .product-barcode-add,
 .product-barcode-generate {
   width: 100%;
@@ -591,12 +758,6 @@ html { font-size: 16px; }
 @keyframes product-form-action-dock {
   from { opacity: 0; transform: translateY(10px) scale(.9); }
   to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-@media (max-width: 1023px) {
-  .product-form-primary-action[data-floating="true"] {
-    bottom: calc(var(--app-content-bottom-inset) + .35rem);
-  }
 }
 
 .inventory-list-workspace {
@@ -1224,6 +1385,7 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
 
 .app-navigation-indicator {
   position: relative;
+  top: 3px;
   isolation: isolate;
   background: var(--accent-9);
   box-shadow: 0 0 9px var(--accent-a8);
@@ -1863,6 +2025,11 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
   --notification-tone-soft: var(--red-a3);
 }
 
+.app-notification-card[data-severity="info"] {
+  --notification-tone: var(--violet-9);
+  --notification-tone-soft: var(--violet-a3);
+}
+
 .app-notification-icon {
   display: grid;
   width: 40px;
@@ -2198,7 +2365,8 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
   transition: opacity 160ms ease, transform 180ms cubic-bezier(.2,.8,.2,1);
 }
 
-.app-bottom-navigation[data-hidden="true"] {
+.app-bottom-navigation[data-hidden="true"],
+html[data-keyboard-open="true"] .app-bottom-navigation {
   opacity: 0;
   transform: translateY(110%);
   pointer-events: none;
@@ -2335,6 +2503,10 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
 
 .inventory-card {
   container-type: inline-size;
+}
+
+.inventory-card-list-icon {
+  display: none;
 }
 
 .inventory-card-layout {
@@ -2582,6 +2754,30 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
   transition: transform 120ms ease, filter 120ms ease;
 }
 
+.quick-stock-button[data-stock-action="increase"] {
+  color: var(--amber-11) !important;
+  border: 1px solid var(--amber-a7) !important;
+  background: color-mix(in srgb, var(--amber-9) 8%, var(--color-panel-solid)) !important;
+  box-shadow: none !important;
+}
+
+.quick-stock-button[data-stock-action="decrease"] {
+  color: var(--accent-11) !important;
+  border: 1px solid var(--accent-a7) !important;
+  background: color-mix(in srgb, var(--accent-9) 8%, var(--color-panel-solid)) !important;
+  box-shadow: none !important;
+}
+
+.quick-stock-button[data-stock-action="increase"]:hover:not(:disabled) {
+  border-color: var(--amber-a8) !important;
+  background: color-mix(in srgb, var(--amber-9) 14%, var(--color-panel-solid)) !important;
+}
+
+.quick-stock-button[data-stock-action="decrease"]:hover:not(:disabled) {
+  border-color: var(--accent-a8) !important;
+  background: color-mix(in srgb, var(--accent-9) 14%, var(--color-panel-solid)) !important;
+}
+
 .quick-stock-button.is-pressing {
   transform: scale(.96);
   filter: saturate(1.12);
@@ -2624,7 +2820,11 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
   font: inherit;
   font-size: 1rem;
   font-weight: 700;
+  line-height: 1.2;
   text-align: center;
+  white-space: nowrap;
+  overflow-wrap: normal;
+  word-break: normal;
   cursor: text;
   transition: transform 100ms ease, color 100ms ease;
 }
@@ -2644,6 +2844,7 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
   background: var(--color-panel-solid);
   box-shadow: 0 0 0 3px var(--accent-a3);
   appearance: textfield;
+  direction: ltr;
 }
 
 .quick-stock-input::-webkit-inner-spin-button,
@@ -3298,148 +3499,261 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
   .inventory-card--grid .inventory-card-desktop-end { display: none !important; }
 
   @container (min-width: 640px) {
-    .inventory-card--comfortable .inventory-card-content {
-      justify-content: flex-start;
-      gap: 4px;
-    }
-
-    .inventory-card--comfortable .inventory-card-identity { order: 0; }
-    .inventory-card--comfortable .inventory-card-mobile-meta,
-    .inventory-card--comfortable .inventory-card-description { display: none !important; }
-    .inventory-card--comfortable .inventory-card-classification {
-      display: flex !important;
-      order: 1;
-      align-items: flex-start;
-      gap: 2px;
-    }
-    .inventory-card--comfortable .inventory-card-category {
-      min-height: 20px;
-      padding-inline: 6px;
-      border-radius: 5px;
-      font-size: .68rem;
-    }
-    .inventory-card--comfortable .inventory-card-barcode {
-      font-size: .7rem;
-      line-height: 1.25;
-    }
-    .inventory-card--comfortable .inventory-card-stock-details {
-      order: 2;
-      margin-top: auto;
-    }
-    .inventory-card--comfortable .inventory-card-footer {
-      order: 3;
-      padding-top: 2px;
-    }
-
-    .inventory-card-layout {
-      min-height: 140px;
-      grid-template-columns: 140px minmax(0, 1fr) 284px;
+    .inventory-card--comfortable .inventory-card-layout {
+      --comfortable-card-size: clamp(156px, 17cqi, 176px);
+      min-height: var(--comfortable-card-size);
+      grid-template-columns:
+        var(--comfortable-card-size)
+        minmax(0, 1fr)
+        clamp(284px, 29cqi, 320px);
       grid-template-areas: "image content quick";
       align-items: stretch;
     }
 
-    .inventory-card--readonly .inventory-card-layout {
-      grid-template-columns: 140px minmax(0, 1fr);
+    .inventory-card--comfortable.inventory-card--readonly .inventory-card-layout {
+      grid-template-columns: var(--comfortable-card-size) minmax(0, 1fr);
       grid-template-areas: "image content";
     }
 
-    .inventory-card-image {
-      width: 140px;
-      height: 140px;
-      min-height: 140px;
+    .inventory-card--comfortable .inventory-card-media,
+    .inventory-card--comfortable .inventory-card-image {
+      width: var(--comfortable-card-size);
+      height: var(--comfortable-card-size);
+      min-height: var(--comfortable-card-size);
       aspect-ratio: 1;
     }
 
-    .inventory-card-content {
-      min-height: 140px;
-      padding: 12px !important;
+    .inventory-card--comfortable .inventory-card-content {
+      display: grid !important;
+      grid-template-columns: max-content max-content minmax(0, 1fr);
+      grid-template-rows: auto auto minmax(0, 1fr) auto;
+      grid-template-areas:
+        "identity identity identity"
+        "classification stock stock"
+        ". . ."
+        "footer footer footer";
+      align-content: stretch;
+      gap: 8px 18px;
+      min-height: var(--comfortable-card-size);
+      padding: 16px !important;
     }
 
-    .inventory-card-footer {
-      align-items: center;
-      padding-top: 6px;
+    .inventory-card--comfortable .inventory-card-identity {
+      grid-area: identity;
+      min-width: 0;
     }
 
-    .inventory-card-mobile-status,
-    .inventory-card-mobile-actions {
+    .inventory-card--comfortable .inventory-card-title {
+      display: block;
+      overflow: hidden;
+      font-size: 1rem !important;
+      line-height: 1.5;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .inventory-card--comfortable .inventory-card-mobile-meta,
+    .inventory-card--comfortable .inventory-card-description,
+    .inventory-card--comfortable .inventory-card-mobile-status,
+    .inventory-card--comfortable .inventory-card-mobile-actions {
       display: none !important;
     }
 
-    .inventory-card-controls {
-      position: relative;
-      display: block;
-      width: 284px;
-      min-height: 140px;
+    .inventory-card--comfortable .inventory-card-classification {
+      grid-area: classification;
+      display: flex !important;
+      min-width: 0;
+      align-self: center;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 3px;
     }
 
-    .inventory-card-desktop-end {
+    .inventory-card--comfortable .inventory-card-category {
+      min-height: 30px;
+      gap: 7px;
+      padding-inline: 12px;
+      border-radius: 999px;
+      color: var(--gray-11);
+      background: var(--gray-a3) !important;
+      font-size: .78rem;
+    }
+
+    .inventory-card--comfortable .inventory-card-barcode {
+      display: inline-flex;
+      max-width: 100%;
+      overflow: hidden;
+      font-size: .68rem;
+      line-height: 1.2;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .inventory-card--comfortable .inventory-card-stock-details {
+      grid-area: stock;
+      display: flex !important;
+      align-self: center;
+      align-items: center;
+      gap: 0 !important;
+      min-width: 0;
+      color: var(--gray-11);
+    }
+
+    .inventory-card--comfortable .inventory-card-stock-fact {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      padding-inline: 16px;
+      border-inline-start: 1px solid var(--gray-a5);
+      font-size: .78rem;
+      white-space: nowrap;
+    }
+
+    .inventory-card--comfortable .inventory-card-stock-fact svg {
+      flex: none;
+      color: var(--gray-10);
+    }
+
+    .inventory-card--comfortable .inventory-card-list-icon {
+      display: block;
+    }
+
+    .inventory-card--comfortable .inventory-card-footer {
+      grid-area: footer;
+      align-items: center;
+      justify-content: flex-start;
+      gap: 10px !important;
+      padding-top: 0;
+    }
+
+    .inventory-card--comfortable .inventory-card-price,
+    .inventory-card--comfortable .inventory-card-purchase-price {
+      min-height: 40px;
+      padding-inline: 12px !important;
+      border-radius: 8px;
+      font-size: .9rem;
+    }
+
+    .inventory-card--comfortable .inventory-card-controls {
+      position: relative;
+      display: block;
+      width: 100%;
+      min-height: var(--comfortable-card-size);
+    }
+
+    .inventory-card--comfortable .inventory-card-desktop-end {
       display: contents !important;
     }
 
-    .inventory-card-desktop-status {
+    .inventory-card--comfortable .inventory-card-desktop-status {
       position: absolute;
-      top: 14px;
-      left: 14px;
+      top: 16px;
+      right: 18px;
+      min-height: 40px;
+      gap: 8px;
+      padding-inline: 14px;
+      border-radius: 999px;
+      font-size: .82rem;
     }
 
-    .inventory-card-desktop-end .inventory-card-actions {
-      position: absolute;
-      bottom: 12px;
-      left: 14px;
-      gap: 5px;
+    .inventory-card--comfortable .inventory-card-status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: currentColor;
+      flex: none;
     }
 
-    .inventory-card-desktop-end .inventory-card-actions > :is(button, a),
-    .inventory-card-desktop-end .inventory-card-actions > a > button,
-    .inventory-card-desktop-end .inventory-card-actions :is(button, .rt-IconButton) {
-      width: 34px !important;
-      min-width: 34px;
-      height: 34px;
-      min-height: 34px;
+    .inventory-card--comfortable .inventory-card-desktop-end .inventory-card-actions {
+      position: absolute;
+      top: 16px;
+      left: 18px;
+      gap: 8px;
+      padding-inline-end: 16px;
+      border-inline-end: 1px solid var(--gray-a5);
+    }
+
+    .inventory-card--comfortable .inventory-card-desktop-end .inventory-card-actions > :is(button, a),
+    .inventory-card--comfortable .inventory-card-desktop-end .inventory-card-actions > a > button,
+    .inventory-card--comfortable .inventory-card-desktop-end .inventory-card-actions :is(button, .rt-IconButton) {
+      width: 42px !important;
+      min-width: 42px;
+      height: 42px;
+      min-height: 42px;
       padding: 0 !important;
-      border-radius: 7px;
+      border-radius: 10px;
     }
 
-    .inventory-card-quick {
+    .inventory-card--comfortable .inventory-card-quick {
       position: absolute;
-      right: 14px;
-      bottom: 12px;
-      width: auto;
+      right: auto;
+      bottom: 14px;
+      left: 18px;
+      width: fit-content;
+      max-width: 80cqi;
       padding: 0;
       border-width: 0;
       background: transparent !important;
     }
 
-    .inventory-card-quick .quick-stock-control {
-      width: auto;
-      min-height: 32px;
+    .inventory-card--comfortable .inventory-card-quick .quick-stock-control {
+      display: inline-grid !important;
+      grid-template-columns: 48px minmax(68px, auto) 48px;
+      width: fit-content;
+      min-width: 172px;
+      max-width: 80cqi;
+      min-height: 40px;
       padding: 0;
       border: 1px solid var(--gray-a5);
-      border-radius: 8px;
+      border-radius: 10px;
       background: var(--gray-a2);
       flex-direction: row;
       justify-content: flex-start;
     }
 
-    .inventory-card-quick .quick-stock-wrapper {
-      width: 138px !important;
+    .inventory-card--comfortable .inventory-card-quick .quick-stock-wrapper {
+      width: fit-content !important;
+      min-width: 172px;
+      max-width: 80cqi;
+      align-items: flex-start;
+      gap: 8px;
     }
 
-    .inventory-card-quick .quick-stock-mode {
+    .inventory-card--comfortable .inventory-card-quick .quick-stock-mode {
+      width: 172px;
       padding: 0;
     }
 
-    .inventory-card-quick .quick-stock-button {
-      width: 40px !important;
-      min-width: 40px;
+    .inventory-card--comfortable .inventory-card-quick .quick-stock-mode .rt-SelectTrigger {
+      width: 100% !important;
       height: 32px;
-      min-height: 32px;
     }
 
-    .inventory-card-quick .quick-stock-quantity {
-      width: 48px;
+    .inventory-card--comfortable .inventory-card-quick .quick-stock-button {
+      width: 48px !important;
       min-width: 48px;
-      min-height: 32px;
+      height: 40px;
+      min-height: 40px;
+    }
+
+    .inventory-card--comfortable .inventory-card-quick .quick-stock-quantity {
+      width: fit-content;
+      min-width: 68px;
+      max-width: calc(80cqi - 104px);
+      min-height: 40px;
+    }
+
+    .inventory-card--comfortable .inventory-card-quick .quick-stock-count {
+      width: fit-content;
+      min-width: 68px;
+      max-width: calc(80cqi - 104px);
+      padding-inline: 12px;
+      font-size: 1rem;
+    }
+
+    .inventory-card--comfortable .inventory-card-quick .quick-stock-input {
+      field-sizing: content;
     }
   }
 }
@@ -4294,6 +4608,57 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
   .inventory-card--compact .quick-stock-count {
     font-size: 1.25rem;
   }
+
+  /* Long quantities get their own row without changing the card's other regions. */
+  .inventory-card:is(.inventory-card--comfortable, .inventory-card--compact)
+    .quick-stock-control[data-quantity-layout="wide"] {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-areas:
+      "quantity quantity"
+      "increase decrease";
+    width: 100%;
+    min-height: 0;
+    gap: 6px 8px !important;
+    direction: ltr !important;
+  }
+
+  .inventory-card:is(.inventory-card--comfortable, .inventory-card--compact)
+    .quick-stock-control[data-quantity-layout="wide"] .quick-stock-quantity {
+    grid-area: quantity;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 44px;
+    flex-basis: auto;
+  }
+
+  .inventory-card:is(.inventory-card--comfortable, .inventory-card--compact)
+    .quick-stock-control[data-quantity-layout="wide"]
+    .quick-stock-button[data-stock-action="increase"] {
+    grid-area: increase;
+  }
+
+  .inventory-card:is(.inventory-card--comfortable, .inventory-card--compact)
+    .quick-stock-control[data-quantity-layout="wide"]
+    .quick-stock-button[data-stock-action="decrease"] {
+    grid-area: decrease;
+  }
+}
+
+@media (min-width: 1024px) {
+  .inventory-card--compact .quick-stock-control[data-quantity-layout="wide"] {
+    grid-template-columns: 40px 72px 40px;
+    width: 160px;
+    flex-basis: 160px;
+  }
+
+  .inventory-card--compact
+    .quick-stock-control[data-quantity-layout="wide"]
+    .quick-stock-quantity {
+    width: 72px;
+    min-width: 72px;
+  }
+
 }
 
 @media (max-width: 359px) {
@@ -4818,10 +5183,85 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
 .quick-access-local { color: var(--green-11); border-color: var(--green-a4); background: var(--green-a3); }
 .quick-access-arrow { color: var(--gray-8); transition: translate var(--app-motion-fast) ease; }
 .quick-access-menu-item:hover .quick-access-arrow { color: var(--accent-10); translate: -.2rem 0; }
-.quick-access-footer { display: flex; justify-content: flex-end; padding-inline: .35rem; }
+.quick-access-footer {
+  display: flex;
+  justify-content: stretch;
+  padding-inline: .35rem;
+  border: 0;
+  background: transparent;
+}
+.settings-logout-button {
+  width: 100%;
+  min-height: 3rem !important;
+  justify-content: center;
+  gap: .65rem;
+  color: var(--red-11) !important;
+  border: 1px solid transparent !important;
+  border-radius: 10px !important;
+  background: var(--red-a3) !important;
+  box-shadow: none !important;
+  font-weight: 700 !important;
+  transition: border-color var(--app-motion-fast) ease, background-color var(--app-motion-fast) ease !important;
+}
+.settings-logout-button:hover {
+  border-color: var(--red-a5) !important;
+  background: var(--red-a4) !important;
+}
+.settings-logout-button:focus-visible {
+  outline: 3px solid var(--red-a6);
+  outline-offset: 2px;
+}
 
 .management-workspace > .page-guide + *,
 .settings-detail-workspace > .page-guide + * { margin-top: 1.25rem; }
+
+.app-update-page { max-width: 64rem; margin-inline: auto; }
+.app-update-hero {
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--accent-9) 24%, var(--gray-a5));
+  background:
+    radial-gradient(circle at 100% 0%, color-mix(in srgb, var(--accent-a4) 58%, transparent), transparent 38%),
+    var(--app-surface-card);
+}
+.app-update-hero-icon {
+  display: inline-grid;
+  width: 3.25rem;
+  height: 3.25rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--accent-9) 24%, transparent);
+  border-radius: 1rem;
+  color: var(--accent-10);
+  background: var(--accent-a3);
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--accent-9) 12%, transparent);
+}
+.app-update-version-card {
+  min-width: 0;
+  padding: .9rem 1rem;
+  border: 1px solid var(--gray-a5);
+  border-radius: .9rem;
+  background: color-mix(in srgb, var(--color-panel-solid) 82%, transparent);
+}
+.app-update-release-card { border-color: var(--gray-a5); }
+.app-update-feature {
+  padding: .85rem;
+  border: 1px solid var(--gray-a4);
+  border-radius: .9rem;
+  background: color-mix(in srgb, var(--gray-a2) 65%, transparent);
+}
+.app-update-feature-icon {
+  display: inline-grid;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: .75rem;
+  color: var(--amber-10);
+  background: var(--amber-a3);
+}
+.app-update-feature-icon[data-included="true"] { color: var(--green-10); background: var(--green-a3); }
+.app-inline-link { color: var(--accent-11); font-weight: 600; text-underline-offset: 3px; }
+.app-inline-link:hover { text-decoration: underline; }
 
 .management-workspace > .page-guide ~ * > .rt-Flex:first-child,
 .management-workspace > .page-guide ~ .rt-Flex:first-child {

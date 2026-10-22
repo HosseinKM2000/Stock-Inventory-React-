@@ -98,6 +98,7 @@ const InventoryList = () => {
   const { parentRef, virtualizer } = useInventoryVirtual(
     viewMode === "grid" ? 0 : products.length,
     viewMode === "compact" ? 86 : 250,
+    viewMode === "compact" ? 8 : 16,
   );
   const deleteProduct = useDeleteProduct();
   const bulkDeleteProducts = useBulkDeleteProducts();
@@ -284,7 +285,6 @@ const InventoryList = () => {
                         key={product.id}
                         data-index={virtualRow.index}
                         ref={virtualizer.measureElement}
-                        className={viewMode === "compact" ? "pb-2" : "pb-4"}
                         style={{ position: "absolute", top: 0, left: 0, width: "100%", transform: `translateY(${virtualRow.start}px)` }}
                       >
                         {productCard(product)}

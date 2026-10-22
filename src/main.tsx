@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { accessState } from "@/shared/access/access-state";
 import { accountScrollRestorationKey } from "@/shared/lib/navigation/scroll-restoration";
 import { startBackupAutomation } from "@/features/backup/services/backup-bootstrap";
+import { appUpdateService } from "@/features/app-update/services/app-update.service";
 
 const router = createRouter({
   routeTree,
@@ -25,13 +26,18 @@ const router = createRouter({
     accountScrollRestorationKey(location, accessState.user()?.id),
 });
 
+appUpdateService.initialize();
 registerServiceWorker({
+  onRegistered(registration) {
+    appUpdateService.connectRegistration(registration);
+  },
   onOfflineReady() {
     if (sessionStorage.getItem("tanzim-offline-ready-notified") === "1") return;
     sessionStorage.setItem("tanzim-offline-ready-notified", "1");
     toast.success("برنامه برای استفاده آفلاین آماده است");
   },
   onUpdateReady(activate) {
+    appUpdateService.notifyUpdateReady(activate);
     toast("نسخه جدید برنامه آماده است", {
       id: "tanzim-update-ready",
       duration: Infinity,
