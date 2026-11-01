@@ -1,4 +1,6 @@
 import json
+import hashlib
+import hmac
 import uuid
 import re
 from pathlib import Path
@@ -52,6 +54,62 @@ _IMAGE_EXTENSIONS = {
 }
 _MAX_IMAGE_BYTES = 10 * 1024 * 1024
 _MINIMUM_CLIENT_DATA_SCHEMA = 2
+
+
+async def _operation_fingerprint(
+    operation: SyncOperationIn,
+    image: UploadFile | None,
+) -> str:
+    semantic = operation.model_dump(mode="json")
+    if image is not None:
+        content = await image.read()
+        await image.seek(0)
+        semantic["attached_image"] = {
+            "content_type": image.content_type,
+            "sha256": hashlib.sha256(content).hexdigest(),
+        }
+    canonical = json.dumps(
+        semantic,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def _serialize_operation_submission(
+    db: DbSession,
+    owner_user_id: int,
+    operation_id: str,
+) -> None:
+    """Serialize one tenant-scoped idempotency key for PostgreSQL writers."""
+    if db.bind is None or db.bind.dialect.name != "postgresql":
+        return
+    digest = hashlib.sha256(f"{owner_user_id}:{operation_id}".encode("utf-8")).digest()
+    lock_key = int.from_bytes(digest[:8], byteorder="big", signed=True)
+    db.execute(select(func.pg_advisory_xact_lock(lock_key)))
+
+
+def _duplicate_result(
+    previous: SyncOperation,
+    operation: SyncOperationIn,
+    fingerprint: str,
+) -> SyncOperationResult:
+    if previous.request_fingerprint is None:
+        return SyncOperationResult(
+            operation_id=operation.operation_id,
+            status="fatal_error",
+            entity_id=operation.entity_id,
+            error="OPERATION_PAYLOAD_UNVERIFIED",
+        )
+    if not hmac.compare_digest(previous.request_fingerprint, fingerprint):
+        return SyncOperationResult(
+            operation_id=operation.operation_id,
+            status="fatal_error",
+            entity_id=operation.entity_id,
+            error="OPERATION_PAYLOAD_MISMATCH",
+        )
+    return _result_from_json(previous.result_payload)
 
 
 def _require_store_aware_client(value: int | None) -> None:
@@ -672,6 +730,99 @@ def _record_change(
     return change
 
 
+async def _apply_product_operation(
+    db: DbSession,
+    current_user: User,
+    operation: SyncOperationIn,
+    image_files: dict[str, UploadFile],
+) -> SyncOperationResult:
+    item = db.scalar(
+        select(InventoryItem)
+        .options(joinedload(InventoryItem.catalog_product), selectinload(InventoryItem.labels))
+        .where(
+            InventoryItem.id == operation.entity_id,
+            InventoryItem.user_id == current_user.data_owner_id,
+        )
+    )
+
+    if operation.operation == "DELETE":
+        if item is not None:
+            if item.is_catalog_backed:
+                raise ValueError("CATALOG_BACKED_PRODUCT_DELETE_FORBIDDEN")
+            private_catalog = item.catalog_product if not item.catalog_product.is_shared else None
+            if item.image_url and item.image_url.startswith("/uploads/"):
+                (settings.UPLOAD_DIR / Path(item.image_url).name).unlink(missing_ok=True)
+            db.delete(item)
+            db.flush()
+            if private_catalog is not None:
+                db.delete(private_catalog)
+                db.flush()
+        _record_change(db, current_user.data_owner_id, operation.entity_id, "DELETE", None)
+        return SyncOperationResult(
+            operation_id=operation.operation_id,
+            status="applied",
+            entity_id=operation.entity_id,
+        )
+
+    payload = operation.payload or {}
+    if operation.operation == "UPDATE" and item is None:
+        raise ValueError("PRODUCT_NOT_FOUND")
+    if item is not None and operation.base_version is not None and item.version != operation.base_version:
+        return SyncOperationResult(
+            operation_id=operation.operation_id,
+            status="conflict",
+            entity_id=operation.entity_id,
+            record=InventoryOut.model_validate(item),
+            error="Server record has a newer version",
+        )
+
+    created = item is None
+    if item is None:
+        limit = None if is_admin(current_user) else entitlement_for_user(db, current_user)["limits"]["inventory_items"]
+        count = db.scalar(
+            select(func.count(InventoryItem.id)).where(
+                InventoryItem.user_id == current_user.data_owner_id
+            )
+        ) or 0
+        if limit is not None and count >= limit:
+            raise ValueError("INVENTORY_LIMIT_REACHED")
+        catalog = _catalog_for_operation(db, current_user, operation)
+        item = InventoryItem(
+            store_id=current_user.store_id,
+            id=operation.entity_id,
+            user_id=current_user.data_owner_id,
+            catalog_product_id=catalog.id,
+            catalog_product=catalog,
+            is_catalog_backed=catalog.is_shared,
+        )
+        db.add(item)
+    before_quantity = item.quantity or 0
+    _apply_fields(db, current_user.data_owner_id, item, payload)
+    _record_quantity_change(db, current_user.data_owner_id, item, before_quantity)
+    if (
+        operation.operation == "UPDATE"
+        and "image_url" in payload
+        and payload.get("image_url") is None
+    ):
+        if item.image_url and item.image_url.startswith("/uploads/"):
+            (settings.UPLOAD_DIR / Path(item.image_url).name).unlink(missing_ok=True)
+        item.image_url = None
+    image = image_files.get(operation.operation_id)
+    if image is not None:
+        item.image_url = await _save_image(image, item.image_url)
+    item.version = 1 if created else (item.version or 1) + 1
+    db.flush()
+    db.refresh(item)
+    record = _serialize(item)
+    _record_change(db, current_user.data_owner_id, item.id, "UPSERT", record)
+    return SyncOperationResult(
+        operation_id=operation.operation_id,
+        status="applied",
+        entity_id=item.id,
+        record=InventoryOut.model_validate(item),
+    )
+
+
 @router.post("/batch", response_model=SyncBatchResponse)
 async def push_batch(
     operations_json: Annotated[str, Form()],
@@ -688,6 +839,15 @@ async def push_batch(
     results: list[SyncOperationResult] = []
 
     for operation in request.operations:
+        fingerprint = await _operation_fingerprint(
+            operation,
+            image_files.get(operation.operation_id),
+        )
+        _serialize_operation_submission(
+            db,
+            current_user.data_owner_id,
+            operation.operation_id,
+        )
         previous = db.scalar(
             select(SyncOperation).where(
                 SyncOperation.user_id == current_user.data_owner_id,
@@ -695,7 +855,8 @@ async def push_batch(
             )
         )
         if previous is not None:
-            results.append(_result_from_json(previous.result_payload))
+            results.append(_duplicate_result(previous, operation, fingerprint))
+            db.commit()
             continue
 
         try:
@@ -703,17 +864,17 @@ async def push_batch(
         except ValueError as error:
             result = SyncOperationResult(operation_id=operation.operation_id, status="fatal_error", entity_id=operation.entity_id, error=str(error))
             record_store_activity(db, current_user, action=f"sync.{operation.operation.lower()}", target_entity=operation.entity, target_id=operation.entity_id, operation_id=operation.operation_id, outcome="rejected", client_occurred_at=operation.client_occurred_at)
-            db.add(SyncOperation(store_id=current_user.store_id, actor_user_id=current_user.id, user_id=current_user.data_owner_id, operation_id=operation.operation_id, result_payload=result.model_dump_json()))
+            db.add(SyncOperation(store_id=current_user.store_id, actor_user_id=current_user.id, user_id=current_user.data_owner_id, operation_id=operation.operation_id, request_fingerprint=fingerprint, result_payload=result.model_dump_json()))
             db.commit(); results.append(result); continue
 
         if operation.entity in {"barcode", "inventory_movement"}:
             try:
-                if operation.entity == "barcode":
-                    result = _apply_barcode(db, current_user, operation)
-                else:
-                    result = _apply_inventory_movement(db, current_user, operation)
+                with db.begin_nested():
+                    if operation.entity == "barcode":
+                        result = _apply_barcode(db, current_user, operation)
+                    else:
+                        result = _apply_inventory_movement(db, current_user, operation)
             except ValueError as error:
-                db.rollback()
                 result = SyncOperationResult(operation_id=operation.operation_id, status="fatal_error", entity_id=operation.entity_id, error=str(error))
             action = (
                 f"barcode.{operation.operation.lower()}"
@@ -730,135 +891,44 @@ async def push_batch(
                 outcome="applied" if result.status == "applied" else ("conflict" if result.status == "conflict" else "rejected"),
                 client_occurred_at=operation.client_occurred_at,
             )
-            db.add(SyncOperation(store_id=current_user.store_id, actor_user_id=current_user.id, user_id=current_user.data_owner_id, operation_id=operation.operation_id, result_payload=result.model_dump_json()))
+            db.add(SyncOperation(store_id=current_user.store_id, actor_user_id=current_user.id, user_id=current_user.data_owner_id, operation_id=operation.operation_id, request_fingerprint=fingerprint, result_payload=result.model_dump_json()))
             db.commit()
             results.append(result)
             continue
 
         if operation.entity in {"label", "category"}:
             try:
-                tool_id = "labels" if operation.entity == "label" else "categories"
-                capability = "labels.write" if operation.entity == "label" else "categories.write"
-                if not is_admin(current_user) and not entitlement_for_user(db, current_user)["capabilities"].get(capability, False):
-                    raise ValueError(f"CAPABILITY_REQUIRED:{capability}")
-                if not tool_allowed(db, current_user, tool_id):
-                    raise ValueError(f"DOMAIN_TOOL_DISABLED:{tool_id}")
-                result = (_apply_label if operation.entity == "label" else _apply_category)(
-                    db, current_user.data_owner_id, operation
-                )
-                entity_model = Label if operation.entity == "label" else Category
-                entity_record = db.get(entity_model, operation.entity_id)
-                if entity_record is not None:
-                    entity_record.store_id = current_user.store_id
+                with db.begin_nested():
+                    tool_id = "labels" if operation.entity == "label" else "categories"
+                    capability = "labels.write" if operation.entity == "label" else "categories.write"
+                    if not is_admin(current_user) and not entitlement_for_user(db, current_user)["capabilities"].get(capability, False):
+                        raise ValueError(f"CAPABILITY_REQUIRED:{capability}")
+                    if not tool_allowed(db, current_user, tool_id):
+                        raise ValueError(f"DOMAIN_TOOL_DISABLED:{tool_id}")
+                    result = (_apply_label if operation.entity == "label" else _apply_category)(
+                        db, current_user.data_owner_id, operation
+                    )
+                    entity_model = Label if operation.entity == "label" else Category
+                    entity_record = db.get(entity_model, operation.entity_id)
+                    if entity_record is not None:
+                        entity_record.store_id = current_user.store_id
             except ValueError as error:
-                db.rollback()
                 result = SyncOperationResult(operation_id=operation.operation_id, status="fatal_error", entity_id=operation.entity_id, error=str(error))
             record_store_activity(db, current_user, action=f"sync.{operation.operation.lower()}", target_entity=operation.entity, target_id=operation.entity_id, operation_id=operation.operation_id, outcome="applied" if result.status == "applied" else "rejected", client_occurred_at=operation.client_occurred_at)
-            db.add(SyncOperation(store_id=current_user.store_id, actor_user_id=current_user.id, user_id=current_user.data_owner_id, operation_id=operation.operation_id, result_payload=result.model_dump_json()))
+            db.add(SyncOperation(store_id=current_user.store_id, actor_user_id=current_user.id, user_id=current_user.data_owner_id, operation_id=operation.operation_id, request_fingerprint=fingerprint, result_payload=result.model_dump_json()))
             db.commit()
             results.append(result)
             continue
 
         try:
-            item = db.scalar(
-                select(InventoryItem)
-                .options(joinedload(InventoryItem.catalog_product), selectinload(InventoryItem.labels))
-                .where(
-                    InventoryItem.id == operation.entity_id,
-                    InventoryItem.user_id == current_user.data_owner_id,
+            with db.begin_nested():
+                result = await _apply_product_operation(
+                    db,
+                    current_user,
+                    operation,
+                    image_files,
                 )
-            )
-
-            if operation.operation == "DELETE":
-                if item is not None:
-                    if item.is_catalog_backed:
-                        raise ValueError("CATALOG_BACKED_PRODUCT_DELETE_FORBIDDEN")
-                    private_catalog = (
-                        item.catalog_product
-                        if not item.catalog_product.is_shared
-                        else None
-                    )
-                    if item.image_url and item.image_url.startswith("/uploads/"):
-                        (settings.UPLOAD_DIR / Path(item.image_url).name).unlink(missing_ok=True)
-                    db.delete(item)
-                    db.flush()
-                    if private_catalog is not None:
-                        db.delete(private_catalog)
-                        db.flush()
-                _record_change(db, current_user.data_owner_id, operation.entity_id, "DELETE", None)
-                result = SyncOperationResult(
-                    operation_id=operation.operation_id,
-                    status="applied",
-                    entity_id=operation.entity_id,
-                )
-            else:
-                payload = operation.payload or {}
-                if operation.operation == "UPDATE" and item is None:
-                    # The server is authoritative for an item that previously
-                    # existed but was permanently removed by an administrator.
-                    # Return a terminal domain result instead of recreating it.
-                    raise ValueError("PRODUCT_NOT_FOUND")
-                if item is not None and operation.base_version is not None and item.version != operation.base_version:
-                    result = SyncOperationResult(
-                        operation_id=operation.operation_id,
-                        status="conflict",
-                        entity_id=operation.entity_id,
-                        record=InventoryOut.model_validate(item),
-                        error="Server record has a newer version",
-                    )
-                else:
-                    created = item is None
-                    if item is None:
-                        limit = None if is_admin(current_user) else entitlement_for_user(db, current_user)["limits"]["inventory_items"]
-                        count = db.scalar(
-                            select(func.count(InventoryItem.id)).where(
-                                InventoryItem.user_id == current_user.data_owner_id
-                            )
-                        ) or 0
-                        if limit is not None and count >= limit:
-                            raise ValueError("INVENTORY_LIMIT_REACHED")
-                        catalog = _catalog_for_operation(db, current_user, operation)
-                        item = InventoryItem(
-                            store_id=current_user.store_id,
-                            id=operation.entity_id,
-                            user_id=current_user.data_owner_id,
-                            catalog_product_id=catalog.id,
-                            catalog_product=catalog,
-                            is_catalog_backed=catalog.is_shared,
-                        )
-                        db.add(item)
-                    before_quantity = item.quantity or 0
-                    _apply_fields(db, current_user.data_owner_id, item, payload)
-                    _record_quantity_change(
-                        db,
-                        current_user.data_owner_id,
-                        item,
-                        before_quantity,
-                    )
-                    if (
-                        operation.operation == "UPDATE"
-                        and "image_url" in payload
-                        and payload.get("image_url") is None
-                    ):
-                        if item.image_url and item.image_url.startswith("/uploads/"):
-                            (settings.UPLOAD_DIR / Path(item.image_url).name).unlink(missing_ok=True)
-                        item.image_url = None
-                    image = image_files.get(operation.operation_id)
-                    if image is not None:
-                        item.image_url = await _save_image(image, item.image_url)
-                    item.version = 1 if created else (item.version or 1) + 1
-                    db.flush()
-                    db.refresh(item)
-                    record = _serialize(item)
-                    _record_change(db, current_user.data_owner_id, item.id, "UPSERT", record)
-                    result = SyncOperationResult(
-                        operation_id=operation.operation_id,
-                        status="applied",
-                        entity_id=item.id,
-                        record=InventoryOut.model_validate(item),
-                    )
         except ValueError as error:
-            db.rollback()
             result = SyncOperationResult(
                 operation_id=operation.operation_id,
                 status="fatal_error",
@@ -872,6 +942,7 @@ async def push_batch(
                 actor_user_id=current_user.id,
                 user_id=current_user.data_owner_id,
                 operation_id=operation.operation_id,
+                request_fingerprint=fingerprint,
                 result_payload=result.model_dump_json(),
             )
         )

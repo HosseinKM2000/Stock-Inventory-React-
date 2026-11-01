@@ -2,6 +2,7 @@ import json
 import os
 import tempfile
 import unittest
+import uuid
 from unittest.mock import patch
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -24,6 +25,7 @@ from app.models import (
     InventoryTransaction,
     ProductBarcode,
     SyncChange,
+    SyncOperation,
     User,
     UserSession,
 )
@@ -222,6 +224,21 @@ class SyncApiTest(unittest.TestCase):
         self.assertEqual(replay.status_code, 200, replay.text)
         self.assertEqual(replay.json()["results"], first.json()["results"])
 
+        reordered_replay = self.push([{
+            **create,
+            "payload": dict(reversed(list(create["payload"].items()))),
+        }])
+        self.assertEqual(reordered_replay.status_code, 200, reordered_replay.text)
+        self.assertEqual(reordered_replay.json()["results"], first.json()["results"])
+
+        mismatched_replay = self.push([{**create, "payload": {**create["payload"], "quantity": 999}}])
+        self.assertEqual(mismatched_replay.status_code, 200, mismatched_replay.text)
+        self.assertEqual(mismatched_replay.json()["results"][0]["status"], "fatal_error")
+        self.assertEqual(
+            mismatched_replay.json()["results"][0]["error"],
+            "OPERATION_PAYLOAD_MISMATCH",
+        )
+
         update = {
             **create,
             "operation_id": "update-product-1",
@@ -278,6 +295,127 @@ class SyncApiTest(unittest.TestCase):
                 for change in changes.json()["changes"]
             )
         )
+
+    def test_historical_operation_without_fingerprint_is_not_assumed_equivalent(self) -> None:
+        operation_id = "historical-unverified-operation"
+        with SessionLocal() as db:
+            db.add(SyncOperation(
+                user_id=self.user_id,
+                operation_id=operation_id,
+                request_fingerprint=None,
+                result_payload=json.dumps({
+                    "operation_id": operation_id,
+                    "status": "applied",
+                    "entity_id": 1_700_000_000_019,
+                    "record": None,
+                    "error": None,
+                }),
+            ))
+            db.commit()
+
+        replay = self.push([{
+            "operation_id": operation_id,
+            "entity": "product",
+            "entity_id": 1_700_000_000_019,
+            "operation": "UPDATE",
+            "payload": {"quantity": 8},
+        }])
+        self.assertEqual(replay.status_code, 200, replay.text)
+        self.assertEqual(replay.json()["results"][0]["status"], "fatal_error")
+        self.assertEqual(
+            replay.json()["results"][0]["error"],
+            "OPERATION_PAYLOAD_UNVERIFIED",
+        )
+
+    def test_rebased_successor_conflicts_after_another_device_advances_version(self) -> None:
+        username = f"rebase-device-{uuid.uuid4().hex[:8]}"
+        signup = self.client.post("/api/auth/signup", json={
+            "first_name": "Rebase", "last_name": "Owner", "username": username,
+            "password": "StrongPass123!", "device_fingerprint": "rebase-device-a",
+        })
+        self.assertEqual(signup.status_code, 201, signup.text)
+        user_id = signup.json()["user"]["id"]
+        with SessionLocal() as db:
+            user = db.get(User, user_id)
+            user.device_limit_mode = "unlimited"
+            user.device_limit_override = None
+            user.industry_id = self.industry_id
+            db.commit()
+
+        second_login = self.client.post("/api/auth/login", json={
+            "username": username, "password": "StrongPass123!",
+            "device_fingerprint": "rebase-device-b",
+        })
+        self.assertEqual(second_login.status_code, 200, second_login.text)
+        first_headers = {
+            "Authorization": f"Bearer {signup.json()['access_token']}",
+            "X-Device-Fingerprint": "rebase-device-a",
+            "X-Client-Data-Schema": "2",
+        }
+        second_headers = {
+            "Authorization": f"Bearer {second_login.json()['access_token']}",
+            "X-Device-Fingerprint": "rebase-device-b",
+            "X-Client-Data-Schema": "2",
+        }
+
+        def push(headers, operation):
+            return self.client.post(
+                "/api/sync/batch",
+                headers=headers,
+                data={"operations_json": json.dumps({"operations": [operation]})},
+            )
+
+        entity_id = 1_700_000_000_021
+        create = {
+            "operation_id": "rebase-create",
+            "entity": "product",
+            "entity_id": entity_id,
+            "operation": "CREATE",
+            "payload": {
+                "quantity": 1, "price": 10, "custom_label": "Rebase product",
+                "catalog_product": {"id": 0, "name": "Rebase product"},
+            },
+        }
+        created = push(first_headers, create)
+        self.assertEqual(created.status_code, 200, created.text)
+        self.assertEqual(created.json()["results"][0]["status"], "applied", created.text)
+        self.assertEqual(created.json()["results"][0]["record"]["version"], 1)
+
+        predecessor = push(first_headers, {
+            **create,
+            "operation_id": "rebase-predecessor",
+            "operation": "UPDATE",
+            "base_version": 1,
+            "payload": {"quantity": 2, "version": 1},
+        })
+        self.assertEqual(predecessor.status_code, 200, predecessor.text)
+        self.assertEqual(predecessor.json()["results"][0]["status"], "applied", predecessor.text)
+        self.assertEqual(predecessor.json()["results"][0]["record"]["version"], 2)
+
+        other_device = push(second_headers, {
+            **create,
+            "operation_id": "rebase-other-device",
+            "operation": "UPDATE",
+            "base_version": 2,
+            "payload": {"quantity": 9, "version": 2},
+        })
+        self.assertEqual(other_device.status_code, 200, other_device.text)
+        self.assertEqual(other_device.json()["results"][0]["status"], "applied", other_device.text)
+        self.assertEqual(other_device.json()["results"][0]["record"]["version"], 3)
+
+        successor = push(first_headers, {
+            **create,
+            "operation_id": "rebase-successor",
+            "operation": "UPDATE",
+            # The client rebases B only to A's accepted version. It must not
+            # adopt the other device's later version and bypass the conflict.
+            "base_version": 2,
+            "payload": {"quantity": 3, "version": 2},
+        })
+        result = successor.json()["results"][0]
+        self.assertEqual(result["status"], "conflict")
+        self.assertEqual(result["record"]["quantity"], 9)
+        self.assertEqual(result["record"]["version"], 3)
 
     def test_partial_batch_failure_preserves_and_replays_committed_results(self) -> None:
         entity_id = 1_700_000_000_020
@@ -400,6 +538,16 @@ class SyncApiTest(unittest.TestCase):
         self.assertEqual(created.status_code, 200, created.text)
         image_url = created.json()["results"][0]["record"]["image_url"]
         self.assertTrue(image_url.startswith("/uploads/sync-"))
+
+        mismatched_image_replay = self.push(
+            [create],
+            files=[("files", (operation_id, b"different-webp-content", "image/webp"))],
+        )
+        self.assertEqual(mismatched_image_replay.status_code, 200, mismatched_image_replay.text)
+        self.assertEqual(
+            mismatched_image_replay.json()["results"][0]["error"],
+            "OPERATION_PAYLOAD_MISMATCH",
+        )
 
         deleted = self.push(
             [

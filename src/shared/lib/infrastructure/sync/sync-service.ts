@@ -140,30 +140,37 @@ async function runSync() {
   }
 
   const writeAllowed = accessState.canWrite();
-  const items = writeAllowed ? await queueService.getDue() : [];
-
-  syncStatusStore.set({ state: "syncing", pending: items.length, error: null });
+  syncStatusStore.set({ state: "syncing", pending: await queueService.count(), error: null });
 
   let changed = false;
   let lastError: string | null = writeAllowed ? null : "SUBSCRIPTION_EXPIRED";
 
-  const groups = new Map<string, SyncQueueItem[]>();
-  for (const item of items) {
-    groups.set(item.entity, [...(groups.get(item.entity) ?? []), item]);
-  }
+  const attemptedThisRun = new Set<string>();
+  while (writeAllowed && networkService.isOnline()) {
+    const items = (await queueService.getDue()).filter(
+      (item) => !attemptedThisRun.has(item.operationId),
+    );
+    if (items.length === 0) break;
+    items.forEach((item) => attemptedThisRun.add(item.operationId));
 
-  const orderedGroups = [...groups.entries()].sort(
-    ([a], [b]) => (ENTITY_ORDER.indexOf(a) < 0 ? 99 : ENTITY_ORDER.indexOf(a)) -
-      (ENTITY_ORDER.indexOf(b) < 0 ? 99 : ENTITY_ORDER.indexOf(b)),
-  );
-  for (const [entity, group] of orderedGroups) {
-    for (let offset = 0; offset < group.length; offset += BATCH_SIZE) {
-      const result = await processGroup(entity, group.slice(offset, offset + BATCH_SIZE));
-      changed ||= result.changed;
-      lastError = result.error ?? lastError;
+    const groups = new Map<string, SyncQueueItem[]>();
+    for (const item of items) {
+      groups.set(item.entity, [...(groups.get(item.entity) ?? []), item]);
+    }
+
+    const orderedGroups = [...groups.entries()].sort(
+      ([a], [b]) => (ENTITY_ORDER.indexOf(a) < 0 ? 99 : ENTITY_ORDER.indexOf(a)) -
+        (ENTITY_ORDER.indexOf(b) < 0 ? 99 : ENTITY_ORDER.indexOf(b)),
+    );
+    for (const [entity, group] of orderedGroups) {
+      for (let offset = 0; offset < group.length; offset += BATCH_SIZE) {
+        const result = await processGroup(entity, group.slice(offset, offset + BATCH_SIZE));
+        changed ||= result.changed;
+        lastError = result.error ?? lastError;
+        if (networkService.isOffline()) break;
+      }
       if (networkService.isOffline()) break;
     }
-    if (networkService.isOffline()) break;
   }
 
   if (networkService.isOnline()) {

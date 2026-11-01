@@ -12,6 +12,8 @@ const mocks = vi.hoisted(() => ({
   queueAll: vi.fn(),
   markConflict: vi.fn(),
   removeIfUnchanged: vi.fn(),
+  hasSuccessor: vi.fn(),
+  prepareSuccessor: vi.fn(),
   metadataGet: vi.fn(),
   metadataSet: vi.fn(),
   inventoryGet: vi.fn(),
@@ -33,6 +35,8 @@ vi.mock("@/shared/lib/infrastructure/sync/queue.service", () => ({
   queueService: {
     markConflict: mocks.markConflict,
     removeIfUnchanged: mocks.removeIfUnchanged,
+    hasSuccessor: mocks.hasSuccessor,
+    prepareSuccessorAfterAcknowledgement: mocks.prepareSuccessor,
     getAll: mocks.queueAll,
     getForEntity: (...args: unknown[]) => mocks.queueGet(...args).then(
       (item: SyncQueueItem | undefined) => item ? [item] : [],
@@ -97,6 +101,8 @@ describe("product synchronization reconciliation", () => {
     mocks.metadataSet.mockResolvedValue(undefined);
     mocks.markConflict.mockResolvedValue(true);
     mocks.removeIfUnchanged.mockResolvedValue(true);
+    mocks.hasSuccessor.mockResolvedValue(false);
+    mocks.prepareSuccessor.mockResolvedValue(false);
     registerProductSync();
   });
 
@@ -120,6 +126,40 @@ describe("product synchronization reconciliation", () => {
     }]);
     expect(mocks.inventoryRemove).not.toHaveBeenCalled();
     expect(mocks.imageRemove).not.toHaveBeenCalled();
+  });
+
+  it("does not overwrite newer local intent with an older or duplicate acknowledgement", async () => {
+    const item = queued();
+    const newerLocal = product({ id: 10, quantity: 23, version: 1 });
+    const acknowledged = product({ id: 10, quantity: 17, version: 2 });
+    mocks.inventoryGet.mockResolvedValue(newerLocal);
+    mocks.hasSuccessor.mockResolvedValue(true);
+    mocks.pushBatch.mockResolvedValue({
+      cursor: 4,
+      results: [{
+        operation_id: item.operationId,
+        entity_id: item.entityId,
+        status: "applied",
+        record: acknowledged,
+        error: null,
+      }],
+    });
+
+    await expect(mocks.outbound?.([item])).resolves.toEqual([{
+      itemId: item.id,
+      status: "applied",
+      error: null,
+    }]);
+    await expect(mocks.outbound?.([item])).resolves.toEqual([{
+      itemId: item.id,
+      status: "applied",
+      error: null,
+    }]);
+    expect(mocks.hasSuccessor).toHaveBeenCalledTimes(2);
+    expect(mocks.hasSuccessor).toHaveBeenCalledWith(item);
+    expect(mocks.prepareSuccessor).toHaveBeenCalledTimes(2);
+    expect(mocks.prepareSuccessor).toHaveBeenCalledWith(item, acknowledged.version);
+    expect(mocks.inventorySave).not.toHaveBeenCalled();
   });
 
   it("restores a product deleted by an older client from its retained conflict payload", async () => {

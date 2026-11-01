@@ -1,5 +1,5 @@
 import { queueStorage } from "../storage/queue-storage";
-import type { QueueAction, SyncQueueItem } from "../storage/types";
+import { syncResourceKey, type QueueAction, type SyncQueueItem } from "../storage/types";
 import { accessState } from "@/shared/access/access-state";
 import { requestBackgroundSync } from "./background-sync";
 
@@ -76,19 +76,30 @@ export const queueService = {
     payload: unknown,
     options: { operationId?: string } = {},
   ) {
-    const existing = await queueStorage.getForEntity(entity, entityId);
-    const pending = existing.find(
-      (item) => item.status === "pending" || item.status === "retryable_error",
+    const all = await queueStorage.getAll();
+    const existing = all.filter(
+      (item) => item.entity === entity && item.entityId === entityId,
     );
-    const inFlight = existing.find((item) => item.status === "in_flight");
-    const id = pending?.id ?? queueId(entity, entityId, existing.length ? `:${crypto.randomUUID()}` : "");
+    const compactable = entity === "inventory_movement"
+      ? undefined
+      : [...existing].reverse().find(
+        (item) => item.status === "pending" && item.attemptState === "never",
+      );
+    const resourceKey = syncResourceKey({ entity, entityId, payload });
+    const latestCreatedAt = all
+      .filter((item) => syncResourceKey(item) === resourceKey)
+      .reduce((latest, item) => Math.max(latest, item.createdAt), 0);
+    const id = compactable?.id ?? queueId(entity, entityId, existing.length ? `:${crypto.randomUUID()}` : "");
+    const hasPossiblyTransmittedPredecessor = existing.some(
+      (item) => item.id !== compactable?.id && item.attemptState !== "never",
+    );
 
     // Once a CREATE has crossed the claim boundary it may already exist on the
     // server. A later DELETE must survive as a follow-up operation, even when
     // another pending CREATE/UPDATE exists for the same local entity.
-    const result = action === "DELETE" && inFlight
+    const result = action === "DELETE" && hasPossiblyTransmittedPredecessor
       ? { action: "DELETE" as const, payload }
-      : consolidate(pending, action, payload);
+      : consolidate(compactable, action, payload);
 
     if (!result) {
       await queueStorage.remove(id);
@@ -98,17 +109,19 @@ export const queueService = {
 
     const now = Date.now();
 
-    const updatedAt = Math.max(now, (pending?.updatedAt ?? 0) + 1);
+    const updatedAt = Math.max(now, (compactable?.updatedAt ?? 0) + 1);
 
     await queueStorage.upsert({
       id,
 
       ownerUserId: accessState.user()?.id,
 
+      attemptState: "never",
+
+      resourceKey,
+
       operationId:
-        options.operationId ?? (pending?.status === "pending" || pending?.status === "retryable_error"
-          ? pending.operationId
-          : crypto.randomUUID()),
+        options.operationId ?? compactable?.operationId ?? crypto.randomUUID(),
 
       entity,
 
@@ -118,7 +131,7 @@ export const queueService = {
 
       payload: result.payload,
 
-      createdAt: pending?.createdAt ?? now,
+      createdAt: compactable?.createdAt ?? Math.max(now, latestCreatedAt + 1),
 
       updatedAt,
 
@@ -129,7 +142,7 @@ export const queueService = {
       nextAttemptAt: now,
     });
     void requestBackgroundSync();
-    return options.operationId ?? pending?.operationId;
+    return options.operationId ?? compactable?.operationId;
   },
 
   async getAll() {
@@ -146,8 +159,13 @@ export const queueService = {
 
   async getDue(now = Date.now()) {
     const items = await queueStorage.getAll();
+    const heads = new Map<string, SyncQueueItem>();
+    for (const item of items) {
+      const key = syncResourceKey(item);
+      if (!heads.has(key)) heads.set(key, item);
+    }
 
-    return items.filter(
+    return [...heads.values()].filter(
       (item) =>
         (item.status === "pending" ||
           item.status === "retryable_error" ||
@@ -155,6 +173,38 @@ export const queueService = {
         item.retryCount < MAX_RETRIES &&
         item.nextAttemptAt <= now,
     );
+  },
+
+  async hasSuccessor(item: SyncQueueItem) {
+    const operations = await queueStorage.getAll();
+    const resource = syncResourceKey(item);
+    const position = operations.findIndex((candidate) => candidate.id === item.id);
+    if (position < 0) return false;
+    return operations.slice(position + 1).some(
+      (candidate) => syncResourceKey(candidate) === resource,
+    );
+  },
+
+  async prepareSuccessorAfterAcknowledgement(item: SyncQueueItem, acceptedVersion: number) {
+    if (item.entity === "inventory_movement") return false;
+    const successor = (await queueStorage.getAll()).find(
+      (candidate) =>
+        candidate.entity === item.entity &&
+        candidate.entityId === item.entityId &&
+        candidate.id !== item.id &&
+        candidate.createdAt > item.createdAt &&
+        candidate.status === "pending" &&
+        candidate.attemptState === "never",
+    );
+    if (!successor || successor.action === "DELETE" || !successor.payload || typeof successor.payload !== "object") {
+      return false;
+    }
+    await queueStorage.upsert({
+      ...successor,
+      payload: { ...(successor.payload as Record<string, unknown>), version: acceptedVersion },
+      updatedAt: Math.max(Date.now(), successor.updatedAt + 1),
+    });
+    return true;
   },
 
   async count() {
@@ -260,7 +310,7 @@ export const queueService = {
   async removeIfUnchanged(item: SyncQueueItem) {
     const current = await queueStorage.get(item.id);
 
-    if (current?.updatedAt === item.updatedAt) {
+    if (current?.updatedAt === item.updatedAt && current.operationId === item.operationId) {
       await queueStorage.remove(item.id);
 
       return true;

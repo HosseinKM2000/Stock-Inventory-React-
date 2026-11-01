@@ -35,7 +35,7 @@ os.environ["SYSTEM_ADMIN_PASSWORD"] = "Test-only-system-admin-password-123!"
 from fastapi.testclient import TestClient
 from app.database import SessionLocal, engine
 from app.main import app
-from app.models import User
+from app.models import Category, SyncOperation, User
 from app.services.bootstrap_service import ensure_system_admin
 from app.services.subscription_service import seed_default_plans
 
@@ -96,11 +96,13 @@ def signup(client: TestClient):
 def test_migration_reaches_head_with_all_expected_tables(migrated_empty_database):
     assert EXPECTED_TABLES <= set(inspect(engine).get_table_names())
     with engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261017_0007"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261101_0008"
         columns = {column["name"] for column in inspect(engine).get_columns("industries")}
         assert "tools_json" in columns
         inventory_columns = {column["name"] for column in inspect(engine).get_columns("inventory_items")}
         assert {"sale_price", "purchase_price"} <= inventory_columns
+        operation_columns = {column["name"] for column in inspect(engine).get_columns("sync_operations")}
+        assert "request_fingerprint" in operation_columns
 
 
 @pytest.mark.postgres
@@ -163,6 +165,45 @@ def test_concurrent_device_admission_respects_user_limit(client):
     with ThreadPoolExecutor(max_workers=2) as pool:
         statuses = list(pool.map(login, ["concurrent-device-a", "concurrent-device-b"]))
     assert sorted(statuses) == [200, 403]
+
+
+@pytest.mark.postgres
+def test_concurrent_equivalent_sync_submission_applies_once(client):
+    created = signup(client)
+    user_id = created.json()["user"]["id"]
+    headers = {
+        "Authorization": f"Bearer {created.json()['access_token']}",
+        "X-Device-Fingerprint": "postgres-device",
+        "X-Client-Data-Schema": "2",
+    }
+    operation = {
+        "operation_id": "postgres-concurrent-category",
+        "entity": "category",
+        "entity_id": 1_700_000_880_001,
+        "operation": "CREATE",
+        "payload": {"name": "Concurrent category", "description": "one effect"},
+    }
+
+    def submit():
+        return client.post(
+            "/api/sync/batch",
+            headers=headers,
+            data={"operations_json": __import__("json").dumps({"operations": [operation]})},
+        )
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        responses = list(pool.map(lambda _: submit(), range(2)))
+
+    assert [response.status_code for response in responses] == [200, 200]
+    assert responses[0].json()["results"] == responses[1].json()["results"]
+    assert responses[0].json()["results"][0]["status"] == "applied"
+    with SessionLocal() as db:
+        assert db.query(Category).filter_by(id=operation["entity_id"]).count() == 1
+        stored = db.query(SyncOperation).filter_by(
+            user_id=user_id,
+            operation_id=operation["operation_id"],
+        ).one()
+        assert stored.request_fingerprint is not None
 
 
 @pytest.mark.postgres

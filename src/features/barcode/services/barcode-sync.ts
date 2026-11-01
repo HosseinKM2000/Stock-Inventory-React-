@@ -13,7 +13,12 @@ async function push(items: SyncQueueItem[]): Promise<SyncHandlerResult[]> {
     const item = items.find((candidate) => candidate.operationId === result.operation_id);
     if (!item) continue;
     if (result.record && result.status === "applied") {
-      await barcodeRepository.save(result.record as unknown as ProductBarcode);
+      const record = result.record as unknown as ProductBarcode & { version?: number };
+      const hasSuccessor = await queueService.hasSuccessor(item);
+      if (hasSuccessor && typeof record.version === "number") {
+        await queueService.prepareSuccessorAfterAcknowledgement(item, record.version);
+      }
+      if (!hasSuccessor) await barcodeRepository.save(record);
     }
     output.push({ itemId: item.id, status: result.status, error: result.error });
   }

@@ -73,6 +73,50 @@ describe("synchronization orchestration", () => {
     expect(mocks.setStatus).toHaveBeenLastCalledWith(expect.objectContaining({ state: "synced", pending: 0 }));
   });
 
+  it("does not dispatch when the durable in-flight claim fails", async () => {
+    const entity = "claim-failure-test";
+    const queued = item(entity);
+    const handler = vi.fn();
+    mocks.getDue.mockResolvedValue([queued]);
+    mocks.markInFlight.mockRejectedValue(new Error("indexeddb unavailable"));
+    registerSyncHandler(entity, handler);
+
+    await syncService.sync();
+
+    expect(handler).not.toHaveBeenCalled();
+    expect(mocks.removeIfUnchanged).not.toHaveBeenCalled();
+    expect(mocks.setStatus).toHaveBeenLastCalledWith(expect.objectContaining({
+      state: "failed",
+      error: "indexeddb unavailable",
+    }));
+  });
+
+  it("drains a newly unblocked successor in the same synchronization run", async () => {
+    const entity = "successor-test";
+    const first = item(entity);
+    const successor = {
+      ...first,
+      id: `1:${entity}-2`,
+      operationId: "operation-2",
+      createdAt: 2,
+      updatedAt: 2,
+    };
+    const handler = vi.fn(async (items: SyncQueueItem[]) => (
+      items.map((queued) => ({ itemId: queued.id, status: "applied" as const }))
+    ));
+    mocks.getDue
+      .mockResolvedValueOnce([first])
+      .mockResolvedValueOnce([successor])
+      .mockResolvedValueOnce([]);
+    registerSyncHandler(entity, handler);
+
+    await syncService.sync();
+
+    expect(handler).toHaveBeenNthCalledWith(1, [first]);
+    expect(handler).toHaveBeenNthCalledWith(2, [successor]);
+    expect(mocks.removeIfUnchanged).toHaveBeenCalledTimes(2);
+  });
+
   it("retains an operation for retry when the server omits its result", async () => {
     const entity = "omitted-test";
     const queued = item(entity);
