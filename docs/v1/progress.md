@@ -56,7 +56,8 @@ Verification for TZ-V1-01A:
 - Successor rebasing is limited to `pending` operations whose `attemptState` is `never`; an attempted or uncertain successor remains byte-for-byte frozen.
 - The successor base advances only to the accepted predecessor version. A focused two-device server regression proved that if device B advances the resource afterward, the successor receives a version conflict and does not overwrite device B's state.
 - Review corrections change tests and documentation only; the committed 1A runtime implementation and additive migrations remain unchanged.
-- Integration into local `draft` is recorded after the non-destructive merge below.
+- Local `draft` integrated the reviewed task branch with non-destructive merge commit `1c5ef3603c4467de628b8d1bf151e40bd0de101c` (`merge: integrate sync operation integrity`). Task history was preserved; nothing was pushed, deployed, or merged to `develop`.
+- Task 1B is ready to begin from local `draft`, subject to the remaining ownership, restore, and operating-mode acceptance boundaries below. It was not started automatically.
 
 ## UI baseline artifacts
 
