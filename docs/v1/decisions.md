@@ -1,0 +1,81 @@
+# Commercial V1 decisions
+
+This document records target policy. It does not claim that the current implementation already complies. Current behavior and evidence are mapped in [architecture-map.md](architecture-map.md), and executed checks are in [progress.md](progress.md).
+
+## Confirmed target policy
+
+### Operating mode
+
+- The server controls an explicit store operating mode: `solo` or `team`.
+- Solo mode uses durable local-first writes. When server synchronization is entitled, those writes enter a persistent outbox.
+- Team mode allows cached offline reading, but every shared mutation requires current server authorization and server acceptance, including owner mutations. Offline drafts may be retained but cannot change shared inventory.
+- A team-capable plan, personnel capacity, and active personnel count are not operating-mode switches. Team activation is an explicit controlled transition that accounts for pending operations and stale devices.
+- Subscription expiry must not silently change a team store to solo mode.
+- Multiple devices are permitted in V1. The model must retain an extension point for future device policy without enforcing a new restriction now.
+
+### Plans, permissions, and administration
+
+- Commercial tiers are Free, Pro, and VIP; Persian display names remain configurable.
+- Real launch restrictions are enforced. Initial users receive an explicit, auditable, time-bounded grant to a real paid tier; entitlement checks are never bypassed.
+- Plan entitlements, store-member permissions, operating mode, and device policy are distinct inputs. The backend is authoritative for server access.
+- Plan changes preserve existing data. Platform administrators manage centralized capability and capacity definitions with validation and an audit trail, only in their isolated administrator workspace unless an explicit customer-store access workflow is later introduced.
+
+### Durability, synchronization, media, and backup
+
+- UI success follows the required durable write. Local durability, server acceptance, media transfer, and independent backup are separate states.
+- Once transmitted, an operation identity and payload are immutable. A later mutation gets a new identity. Terminal or unknown outcomes remain recoverable and do not retry forever.
+- Product metadata and image bytes have coordinated but independent transfer states. Entitled recovery restores actual bytes to local storage; OPFS alone is not an independent backup.
+- Catalog media is administrator-managed and referenced by customer data. Plan changes and catalog hiding never delete shared catalog files. Backend storage exposes stable object references rather than temporary delivery URLs so a CDN can be added later.
+- Backup/restore cannot restore identity, authority, credentials, memberships, roles, or subscriptions; it cannot cross owner/store boundaries. Restored work is reviewed and reconciled, never silently discarded or replayed under an old actor.
+
+### Experience and dates
+
+- Preserve established navigation, responsive layouts, tokens, components, both themes, and compact/normal/large display preferences.
+- Persian RTL copy is warm, concise, respectful, and understandable to beginners. Activity describes business actions rather than transport events.
+- Human-facing input, display, print, and export use one Jalali convention such as `۱۴۰۳/۱۲/۰۱`, accepting Persian and Latin input digits. Backend-compatible internal timestamps remain allowed.
+- Calendar conversion uses a compatible, maintained library; required UI/calendar assets work offline.
+
+## Safety invariants
+
+- Business data is store-owned; a user is an actor. Store ownership does not confer platform authority.
+- Store context comes from the authenticated active membership. Client store, actor, role, and permission claims are never authoritative.
+- Unknown permissions deny by default. Permission dependencies and subscription capacity remain centralized.
+- Personnel and role administration is online-only and owner-only and never enters the operational outbox.
+- Every sync operation is authorized at acceptance. Rejected payloads remain non-retrying recovery data and are never marked synchronized.
+- Local projections, cursors, and outbox state are partitioned by authenticated person and store; personnel authorization expires after its configured lease.
+- Activity uses stable server-derived actor and membership identifiers. Passwords and tokens are never stored in activity or backup artifacts.
+
+## Unresolved business decisions
+
+- Exact tier capacities, capability allocations, paid prices, gift duration, renewal/grace rules, and retention periods.
+- Team activation approval, transition UX, stale-device policy, and disposition of every pending/in-flight/unknown/terminal operation.
+- Whether team users may keep private offline drafts, their retention, and who may submit them.
+- Conflict policy for concurrent absolute quantity changes and operator handling of unknown outcomes.
+- Media completion criteria, download-to-OPFS policy, quotas, retention, and original-versus-derivative recovery promise.
+- Backup encryption/key ownership, frequency, retention, RPO/RTO, and restore-drill ownership.
+- Whether V1 includes true purchase/sale documents and realized financial reporting, or only inventory movements and valuation.
+- Production SLOs, monitoring/incident ownership, deployment approval, and rollback procedure.
+
+Illustrative values already present in code are observed defaults, not confirmation of these open decisions.
+
+## Scope exclusions for this baseline
+
+- No feature, UI, schema, dependency, entitlement, customer data, deployment, or production configuration is changed.
+- No payment provider, CDN, device restriction, multi-store selector, or speculative post-V1 feature is selected here.
+- This baseline does not merge into `draft`/`develop` and does not begin implementation task 1.
+
+## Remaining task order
+
+The proposed order is valid with one scope clarification: task 1 must include the store-ownership/catalog and restore-reconciliation integrity defects because operating mode cannot be safe on top of ambiguous ownership or discardable work.
+
+1. Synchronization integrity, store-native ownership paths, safe restore reconciliation, and explicit solo/team modes.
+2. Central plan entitlements, administrator controls, and explicit early-user grants.
+3. Simplified registration and actionable notifications.
+4. Media durability, backend object storage, transfer state, and byte recovery.
+5. Safe PWA updates, local/server migrations, and subscription/mode lifecycle transitions.
+6. Atomic purchase/sale invoices, then PDF/print/sharing.
+7. Dashboard completion from verified domain sources.
+8. Application-wide language, contextual help, activity presentation, and Jalali consistency.
+9. Hardening, observability, recovery drills, and release validation.
+
+Language/date conventions and diagnostic instrumentation apply within every relevant task, not only tasks 8–9.
