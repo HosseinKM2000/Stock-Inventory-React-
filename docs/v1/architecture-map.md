@@ -9,10 +9,10 @@ Evidence is from source commit `16064aba18c57ca92866251fcba3aca543df6409`. Insta
 | Application shell | React 19/Vite SPA; TanStack Router in `src/main.tsx`; generated routes in `src/routes/`; React Query in `src/shared/api/query-client.ts`; shared Radix/Tailwind UI and tokens in `src/shared/ui/` and `src/style/`. |
 | Theme and scale | `AppTheme` in `src/shared/theme/app-theme.tsx`; `getDisplaySize`/`setDisplaySize` in `display-size.ts`; CSS variables and RTL/responsive rules in `src/style/index.css`. |
 | PWA lifecycle | `registerServiceWorker` in `src/shared/lib/infrastructure/pwa/`; update orchestration in `src/features/app-update/`; shell/cache/message handlers in `public/sw.js`. The service worker does not own credentials or perform closed-page outbox synchronization. |
-| Local data | Dexie `InventoryDatabase` versions 1–10 in `src/shared/lib/infrastructure/storage/db.ts`; actor/store keys in `keys.ts` and repository modules; products/categories/labels/barcodes/movements, sync queue, metadata/cursors, and backup settings are IndexedDB-backed. |
+| Local data | Dexie `InventoryDatabase` versions 1–11 in `src/shared/lib/infrastructure/storage/db.ts`; actor/store keys in `keys.ts` and repository modules; products/categories/labels/barcodes/movements, sync queue, metadata/cursors, and backup settings are IndexedDB-backed. Version 11 records attempt state and a logical resource key for queued operations. |
 | Local media | OPFS access through `imageRepository`, processing through `imageService`, and object URL/authenticated fallback through `useResolvedImage` under `src/shared/lib/infrastructure/media/`. |
 | Sync | Durable queue and compaction in `queue.service.ts`; transactional claim in `queue-storage.ts`; orchestration in `sync-service.ts`; multipart metadata/media push in `src/features/app/inventory/api/sync.api.ts`; service startup in `sync-bootstrap.ts`. |
-| Backend | FastAPI application in `backend/app/main.py`; SQLAlchemy models in `models.py`; Alembic revisions through `20261017_0007`; PostgreSQL is the intended engine. |
+| Backend | FastAPI application in `backend/app/main.py`; SQLAlchemy models in `models.py`; Alembic revisions through `20261101_0008`; PostgreSQL is the intended engine. |
 | Identity/store authorization | JWT/device sessions in `auth_service.py`, `session_service.py`, and `security.py`; membership context in `store_service.active_store_context`; effective permission checks in `store_authorization.py`; request dependencies in `deps.py`. |
 | Plans | Central built-in catalog in `backend/app/plans.py`; policy/entitlement resolution in `plan_policy.py` and `subscription_service.py`; frontend cached access in `src/shared/access/`. |
 | Inventory and catalog | API routers for products/categories/labels/inventory/transactions; frontend inventory repository/services/forms under `src/features/app/inventory/`; catalog reconciliation in `catalog_product_service._reconcile_catalog_assignments`. |
@@ -40,7 +40,13 @@ The server-controlled mode must be read with current membership/entitlement. In 
 
 ### Synchronization and retry
 
-`queueStorage.claim` leases work; expired in-flight items can retry. Server `SyncOperation` deduplicates by legacy owner/operation identity and stores the result. Rejected operations are classified per item. However, a `retryable_error` item can currently receive a new merged payload while retaining the transmitted `operationId`, so a cached response for the old payload may acknowledge and remove the new edit.
+The verified SYNC-001 root cause had two cooperating parts: client compaction could replace the payload of a `retryable_error` operation while retaining its already-transmitted id, and acknowledgement reconciliation could write the older server record before accounting for a newer successor. Server deduplication then correctly returned A's recorded result, but the client could misapply it to the mutated local snapshot and lose edit B.
+
+`queueStorage.claim` durably records an attempt before dispatch and leases the operation. Only never-attempted pending absolute mutations may compact; after any possible transmission the operation identity and payload are frozen, and a later edit receives a new operation id. Additive inventory movements never compact. Queue selection preserves order per logical resource while allowing independent resources to progress, and an accepted predecessor rebases a never-attempted absolute successor onto the accepted version without changing its identity or intent.
+
+Server `SyncOperation` stores a canonical SHA-256 request fingerprint with the result. An exact replay returns the recorded result; reuse of an operation id with different semantics is a terminal `OPERATION_PAYLOAD_MISMATCH`. Historical rows without a fingerprint are rejected conservatively as `OPERATION_PAYLOAD_UNVERIFIED`. PostgreSQL advisory serialization and one transaction cover duplicate detection, domain application, and result persistence for a given actor/operation id.
+
+Dexie version 11 marks pre-existing queue entries with unknown attempt history as `uncertain`, so they cannot be compacted after upgrade. This preserves their current payload and backup compatibility, but it cannot reconstruct an older payload that a previous application version had already overwritten before the migration.
 
 ### Media
 
@@ -58,7 +64,7 @@ Forms process/store local image bytes in OPFS and put the local reference in pro
 | Active store | `active_store_context` selects the first membership, preferring owner; there is no session-bound selector. | Context comes from an authenticated active membership, never a client store claim. |
 | Mode | No explicit server-controlled solo/team mode; cached local-first mutations apply to team members and owners. | Solo is local-first; team shared mutations require current online authorization and acceptance. |
 | Plans | Free/Starter/Pro/VIP code defaults exist; some limits/capabilities are enforced, prices/payment/grants/admin coverage are incomplete. | Free/Pro/VIP launch restrictions, explicit early-user paid grants, validated centralized admin model. |
-| Operation identity | Pending/retryable payloads can be merged under an existing operation id. | Transmitted identity/payload is immutable; new mutation gets a new identity. |
+| Operation identity | Never-attempted pending absolute mutations may compact. Attempted/uncertain payloads and additive movements are immutable; same-resource successors remain ordered. The server verifies exact replay fingerprints. | Transmitted identity/payload is immutable; new mutation gets a new identity. |
 | Media | Metadata can complete without bytes; no transfer state or local rehydration. | Coordinated independent states and entitled byte recovery. |
 | Backup | External local backup is real and store-bound; restore queue review currently ends by deleting restored operations; server restore is absent. | Independent backup plus non-destructive, authority-safe reconciliation and tested server recovery. |
 | Dates | Shared Jalali formatting exists in many flows, but consistency across every input/print/export was not exhaustively verified. | One Jalali convention everywhere human-facing, Persian/Latin input digits, maintained library, offline assets. |
@@ -67,7 +73,7 @@ Forms process/store local image bytes in OPFS and put the local reference in pro
 
 | ID / severity | Classification | Evidence | Affected flow | Owning task |
 |---|---|---|---|---|
-| SYNC-001 / critical | Observed static defect | `queue.service.enqueue` reuses `operationId` for `retryable_error`; server sync deduplicates and returns the prior result. No direct fault-injection test. | Lost-response retry followed by a newer edit can silently lose the edit. | 1 |
+| SYNC-001 / resolved in TZ-V1-01A | Verified implementation and regression coverage | Attempt state is persisted before dispatch; successors use new identities and are ordered per resource; stale acknowledgements preserve/rebase newer local intent; server fingerprints exact submissions and serializes concurrent duplicate ids. SQLite and PostgreSQL regressions cover mismatch, historical rows, and concurrent equivalent replay. | The known lost-response/newer-edit path is closed. Legacy payloads overwritten before the v11 upgrade cannot be reconstructed. | 1A |
 | OWN-001 / critical | Observed architectural defect | `store_data_owner_id`, legacy `user_id` constraints/models, and sync keys remain owner-user-based. | Ownership, migration, future multi-store, authorization proofs. | 1 |
 | CAT-001 / critical | Observed static defect | `_reconcile_catalog_assignments` selects `User` by industry and creates `InventoryItem(user_id=...)`. | Personnel can receive separate/inaccessible catalog rows instead of store rows. | 1 |
 | REST-001 / critical | Observed static defect | Restore deletes the current queue; resume deletes restored conflict entries before pull/sync. | Local-only restored or pre-restore work can be discarded. | 1 |

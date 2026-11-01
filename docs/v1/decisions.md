@@ -42,7 +42,7 @@ This document records target policy. It does not claim that the current implemen
 - Unknown permissions deny by default. Permission dependencies and subscription capacity remain centralized.
 - Personnel and role administration is online-only and owner-only and never enters the operational outbox.
 - Every sync operation is authorized at acceptance. Rejected payloads remain non-retrying recovery data and are never marked synchronized.
-- Local projections, cursors, and outbox state are partitioned by authenticated person and store; personnel authorization expires after its configured lease.
+- Local projections, cursors, and outbox state are partitioned by authenticated person and store. If offline personnel authorization is enabled, it expires according to centralized policy; the current 24-hour lease is observed implementation, not a newly confirmed Commercial V1 duration or requirement.
 - Activity uses stable server-derived actor and membership identifiers. Passwords and tokens are never stored in activity or backup artifacts.
 
 ## Unresolved business decisions
@@ -53,7 +53,7 @@ This document records target policy. It does not claim that the current implemen
 - Conflict policy for concurrent absolute quantity changes and operator handling of unknown outcomes.
 - Media completion criteria, download-to-OPFS policy, quotas, retention, and original-versus-derivative recovery promise.
 - Backup encryption/key ownership, frequency, retention, RPO/RTO, and restore-drill ownership.
-- Whether V1 includes true purchase/sale documents and realized financial reporting, or only inventory movements and valuation.
+- Purchase and sale invoices are planned Commercial V1 scope. The accounting definition, source events, and presentation of realized profit remain unresolved.
 - Production SLOs, monitoring/incident ownership, deployment approval, and rollback procedure.
 
 Illustrative values already present in code are observed defaults, not confirmation of these open decisions.

@@ -35,7 +35,9 @@ export const queueStorage = {
   async getAll() {
     const owner = ownerId();
     if (!owner) return [];
-    return (await db.syncQueue.where("ownerUserId").equals(owner).toArray()).filter((item) => item.storeId == null || item.storeId === storeId()).sort((a, b) => a.createdAt - b.createdAt);
+    return (await db.syncQueue.where("ownerUserId").equals(owner).toArray())
+      .filter((item) => item.storeId == null || item.storeId === storeId())
+      .sort((a, b) => a.createdAt - b.createdAt || a.id.localeCompare(b.id));
   },
 
   async getForEntity(entity: string, entityId: number) {
@@ -72,6 +74,8 @@ export const queueStorage = {
       const claimed = {
         ...item,
         status: "in_flight" as const,
+        attemptState: "attempted" as const,
+        attemptedAt: item.attemptedAt ?? Date.now(),
         nextAttemptAt: leaseUntil,
       };
       await db.syncQueue.put(claimed);

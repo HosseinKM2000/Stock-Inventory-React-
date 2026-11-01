@@ -69,8 +69,15 @@ async function push(items: SyncQueueItem[]): Promise<SyncHandlerResult[]> {
     }
 
     if (result.record) {
-      const local = await inventoryRepository.get(item.entityId);
-      await inventoryRepository.save(localRepresentation(result.record as Product, local));
+      const serverRecord = result.record as Product;
+      const hasSuccessor = await queueService.hasSuccessor(item);
+      if (result.status === "applied" && hasSuccessor && typeof serverRecord.version === "number") {
+        await queueService.prepareSuccessorAfterAcknowledgement(item, serverRecord.version);
+      }
+      if (!hasSuccessor) {
+        const local = await inventoryRepository.get(item.entityId);
+        await inventoryRepository.save(localRepresentation(serverRecord, local));
+      }
     }
 
     output.push({

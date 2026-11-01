@@ -597,6 +597,7 @@ class SyncOperation(Base):
     actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     operation_id: Mapped[str] = mapped_column(String(64), index=True)
+    request_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True)
     result_payload: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now)
 

@@ -27,6 +27,30 @@ Environment: Windows/PowerShell, Node `v24.12.0`, npm `10.8.1`, Python `3.13.13`
 
 The production preview used the fresh build at `127.0.0.1:4173`, API mocks, isolated browser contexts/profiles, and synthetic non-personal data. No destructive seed, restore, or migration touched a non-test database.
 
+## TZ-V1-01A synchronization integrity
+
+Branch `fix/v1-sync-operation-integrity` closes the known lost-edit sequence without changing UI, commercial policy, ownership, restore, or operating-mode behavior:
+
+- A queue claim persists `attempted` state before network dispatch. After any possible attempt, the operation id and payload are immutable; a later mutation receives a new operation id.
+- Never-attempted pending absolute mutations may still compact safely. Additive inventory movements never compact.
+- Operations are ordered per logical resource, while unrelated resources can continue. Acknowledging predecessor A cannot overwrite successor B's local projection; B is rebased to the accepted server version and can drain in the same sync run.
+- Server replays require the same canonical request fingerprint. Mismatched reuse is terminal, historical fingerprint-less rows are conservatively unverified, and PostgreSQL serializes concurrent submissions of the same actor/operation id.
+- Dexie schema 11 derives resource keys and marks legacy queue entries `uncertain`; Alembic `20261101_0008` adds nullable request fingerprints. Existing backup shapes remain readable because the new client fields are optional.
+
+The compatibility limit is explicit: the migration freezes the payload currently present in a legacy entry, but cannot recover an original payload already overwritten by an older application build.
+
+Verification for TZ-V1-01A:
+
+| Command / scope | Result |
+|---|---|
+| Focused client regressions | Passed: lost response + edit B, in-flight edit/delete dependencies, restart, delayed/duplicate acknowledgement, safe pre-attempt compaction, additive movements, independent resources, legacy uncertainty, and claim-storage failure. |
+| `npm.cmd test` | Passed: 69 files, 277 unit/component tests. |
+| Backend tests excluding PostgreSQL | Passed: 43 tests, including canonical replay, payload/image mismatch, and historical fingerprint handling. |
+| `npm.cmd run test:backend:postgres:local` | Passed: 7 tests, including migrations and concurrent equivalent submission. Pytest cache still reports the known workspace-permission warning. |
+| `npm.cmd run test:typecheck` and `npm.cmd run lint` | Passed. |
+| `npm.cmd run build` | Passed with the existing stale Browserslist data and large-chunk warnings. |
+| Critical `pwa.spec.ts` journeys | Offline cold-page/CRUD passed in focused production-preview coverage and in both viewports during the full run. The full run reached 7/8; the remaining isolated-profile case is timing-sensitive around post-`goto` navigation/context cleanup and has alternated between desktop/mobile passes and failures. Its assertions and application behavior were not weakened for this task. |
+
 ## UI baseline artifacts
 
 Current supplemental screenshots are local-only under ignored `test-results/v1-baseline/`:
@@ -47,22 +71,21 @@ Observed UI issues are recorded separately:
 
 ## Outstanding release risks
 
-1. Operation-id/payload mutation after an attempted send can silently lose a newer edit.
-2. Legacy owner-user ownership remains in tables, sync identity, and catalog provisioning; catalog assignment is user-oriented.
-3. Restore/reconciliation deletes quarantined restored operations instead of providing a safe apply/discard workflow.
-4. No explicit server operating mode; team owners and personnel still follow local-first shared mutation behavior.
-5. Metadata and image-byte completion are conflated; clean-device OPFS recovery is absent.
-6. Commercial plan/grant/payment/admin policy is incomplete and contains an extra observed Starter tier not present in confirmed target policy.
-7. Server restore, deploy/rollback, monitoring, alerting, and backup drills are not evidenced end to end.
-8. Persistent dashboard scroll regression and the mobile status overlap remain.
+1. Legacy owner-user ownership remains in tables, sync identity, and catalog provisioning; catalog assignment is user-oriented.
+2. Restore/reconciliation deletes quarantined restored operations instead of providing a safe apply/discard workflow.
+3. No explicit server operating mode; team owners and personnel still follow local-first shared mutation behavior.
+4. Metadata and image-byte completion are conflated; clean-device OPFS recovery is absent.
+5. Commercial plan/grant/payment/admin policy is incomplete and contains an extra observed Starter tier not present in confirmed target policy.
+6. Server restore, deploy/rollback, monitoring, alerting, and backup drills are not evidenced end to end.
+7. Persistent dashboard scroll regression and the mobile status overlap remain.
 
-## Task 1 readiness
+## Task 1 continuation
 
-Task 1 is ready to start as a scoped implementation task after the following inputs are made explicit in its acceptance tests:
+TZ-V1-01A addresses only immutable sync-operation integrity. The next Task 1 slice must retain these acceptance boundaries:
 
 - Operating mode is a server-controlled store property; purchasing a plan or adding personnel does not switch it.
 - Team activation inventories and resolves pending, in-flight, retryable, terminal, restored, and unknown-outcome operations before activation.
-- Transmitted operation identity/payload becomes immutable; later edits use a new operation id.
+- Transmitted operation identity/payload remains immutable; later edits use a new operation id.
 - Store-native ownership and catalog provisioning are included, with migration and PostgreSQL regression coverage.
 - Restore review has explicit apply/discard/export actions and never silently drops local-only work.
 - Team mutation tests cover owner and personnel, online authorization/acceptance, offline drafts, revocation, stale devices, and subscription expiry without a solo fallback.

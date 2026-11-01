@@ -2,6 +2,7 @@ import { pushJsonBatch } from "@/features/app/inventory/api/sync.api";
 import { inventoryRepository } from "@/features/app/inventory/services/inventory.repository";
 import type { SyncQueueItem } from "@/shared/lib/infrastructure/storage/types";
 import { registerSyncHandler, type SyncHandlerResult } from "@/shared/lib/infrastructure/sync/sync-service";
+import { queueService } from "@/shared/lib/infrastructure/sync/queue.service";
 import type { InventoryMovement } from "../types";
 import { INVENTORY_MOVEMENT_ENTITY } from "./movement-service";
 import { movementRepository } from "./movement-repository";
@@ -14,12 +15,13 @@ async function push(items: SyncQueueItem[]): Promise<SyncHandlerResult[]> {
     if (!item) continue;
     const movement = item.payload as InventoryMovement;
     const record = result.record as { movement?: InventoryMovement; product?: import("@/features/app/inventory/types").Product } | null;
+    const hasSuccessor = await queueService.hasSuccessor(item);
     if (result.status === "applied") {
       await movementRepository.save({ ...movement, ...record?.movement, sync_status: "accepted", updated_at: record?.movement?.updated_at ?? new Date().toISOString() });
-      if (record?.product) await inventoryRepository.save(record.product);
+      if (record?.product && !hasSuccessor) await inventoryRepository.save(record.product);
     } else {
       await movementRepository.save({ ...movement, sync_status: result.status === "conflict" ? "conflict" : "rejected", updated_at: new Date().toISOString() });
-      if (record?.product) await inventoryRepository.save(record.product);
+      if (record?.product && !hasSuccessor) await inventoryRepository.save(record.product);
       else if (result.status === "fatal_error") {
         const current = await inventoryRepository.get(movement.product_id);
         if (current) {

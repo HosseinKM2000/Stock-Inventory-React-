@@ -24,6 +24,7 @@ from app.models import (
     InventoryTransaction,
     ProductBarcode,
     SyncChange,
+    SyncOperation,
     User,
     UserSession,
 )
@@ -222,6 +223,21 @@ class SyncApiTest(unittest.TestCase):
         self.assertEqual(replay.status_code, 200, replay.text)
         self.assertEqual(replay.json()["results"], first.json()["results"])
 
+        reordered_replay = self.push([{
+            **create,
+            "payload": dict(reversed(list(create["payload"].items()))),
+        }])
+        self.assertEqual(reordered_replay.status_code, 200, reordered_replay.text)
+        self.assertEqual(reordered_replay.json()["results"], first.json()["results"])
+
+        mismatched_replay = self.push([{**create, "payload": {**create["payload"], "quantity": 999}}])
+        self.assertEqual(mismatched_replay.status_code, 200, mismatched_replay.text)
+        self.assertEqual(mismatched_replay.json()["results"][0]["status"], "fatal_error")
+        self.assertEqual(
+            mismatched_replay.json()["results"][0]["error"],
+            "OPERATION_PAYLOAD_MISMATCH",
+        )
+
         update = {
             **create,
             "operation_id": "update-product-1",
@@ -277,6 +293,37 @@ class SyncApiTest(unittest.TestCase):
                 and change["operation"] == "DELETE"
                 for change in changes.json()["changes"]
             )
+        )
+
+    def test_historical_operation_without_fingerprint_is_not_assumed_equivalent(self) -> None:
+        operation_id = "historical-unverified-operation"
+        with SessionLocal() as db:
+            db.add(SyncOperation(
+                user_id=self.user_id,
+                operation_id=operation_id,
+                request_fingerprint=None,
+                result_payload=json.dumps({
+                    "operation_id": operation_id,
+                    "status": "applied",
+                    "entity_id": 1_700_000_000_019,
+                    "record": None,
+                    "error": None,
+                }),
+            ))
+            db.commit()
+
+        replay = self.push([{
+            "operation_id": operation_id,
+            "entity": "product",
+            "entity_id": 1_700_000_000_019,
+            "operation": "UPDATE",
+            "payload": {"quantity": 8},
+        }])
+        self.assertEqual(replay.status_code, 200, replay.text)
+        self.assertEqual(replay.json()["results"][0]["status"], "fatal_error")
+        self.assertEqual(
+            replay.json()["results"][0]["error"],
+            "OPERATION_PAYLOAD_UNVERIFIED",
         )
 
     def test_partial_batch_failure_preserves_and_replays_committed_results(self) -> None:
@@ -400,6 +447,16 @@ class SyncApiTest(unittest.TestCase):
         self.assertEqual(created.status_code, 200, created.text)
         image_url = created.json()["results"][0]["record"]["image_url"]
         self.assertTrue(image_url.startswith("/uploads/sync-"))
+
+        mismatched_image_replay = self.push(
+            [create],
+            files=[("files", (operation_id, b"different-webp-content", "image/webp"))],
+        )
+        self.assertEqual(mismatched_image_replay.status_code, 200, mismatched_image_replay.text)
+        self.assertEqual(
+            mismatched_image_replay.json()["results"][0]["error"],
+            "OPERATION_PAYLOAD_MISMATCH",
+        )
 
         deleted = self.push(
             [

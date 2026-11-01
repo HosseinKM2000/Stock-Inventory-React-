@@ -11,12 +11,22 @@ export type QueueStatus =
   | "fatal_error"
   | "dead_letter";
 
+export type QueueAttemptState = "never" | "attempted" | "uncertain";
+
 export interface SyncQueueItem {
 
   id: string;
 
   ownerUserId?: number;
   storeId?: number;
+
+  /** Missing on legacy/backup records and therefore treated as uncertain. */
+  attemptState?: QueueAttemptState;
+
+  attemptedAt?: number;
+
+  /** Orders operations that affect the same logical server resource. */
+  resourceKey?: string;
 
   operationId: string;
 
@@ -40,6 +50,17 @@ export interface SyncQueueItem {
 
   lastError?: string;
 
+}
+
+export function syncResourceKey(
+  item: Pick<SyncQueueItem, "entity" | "entityId" | "payload" | "resourceKey">,
+) {
+  if (item.resourceKey) return item.resourceKey;
+  if (item.entity === "inventory_movement" && item.payload && typeof item.payload === "object") {
+    const productId = (item.payload as { product_id?: unknown }).product_id;
+    if (typeof productId === "number") return `product:${productId}`;
+  }
+  return `${item.entity}:${item.entityId}`;
 }
 
 export interface SyncMetadataItem {

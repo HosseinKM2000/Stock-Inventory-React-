@@ -18,7 +18,14 @@ async function push(items: SyncQueueItem[]): Promise<SyncHandlerResult[]> {
   for (const result of response.results) {
     const item = byOperation.get(result.operation_id);
     if (!item) continue;
-    if (result.record && result.status === "applied") await categoryStorage.save(result.record as unknown as Category);
+    if (result.record && result.status === "applied") {
+      const record = result.record as unknown as Category & { version?: number };
+      const hasSuccessor = await queueService.hasSuccessor(item);
+      if (hasSuccessor && typeof record.version === "number") {
+        await queueService.prepareSuccessorAfterAcknowledgement(item, record.version);
+      }
+      if (!hasSuccessor) await categoryStorage.save(record);
+    }
     results.push({ itemId: item.id, status: result.status, error: result.error });
   }
   return results;
