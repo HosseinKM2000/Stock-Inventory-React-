@@ -355,32 +355,18 @@ test("two isolated browser profiles keep the same account's local state independ
 
   try {
     const states = await Promise.all(contexts.map(async (context, index) => {
-      await context.addInitScript(({ id }) => {
-        localStorage.setItem("access_token", JSON.stringify("multi-device-test-token"));
-        localStorage.setItem("inventory-last-user", JSON.stringify({
-          id,
-          first_name: "Device",
-          last_name: "User",
-          username: "multi-device-user",
-          email: null,
-          phone: null,
-          industry_id: 1,
-          plan: "pro",
-          is_active: true,
-          is_admin: true,
-          role: "ADMIN",
-          is_system_admin: false,
-          subscription_started_at: null,
-          subscription_expires_at: null,
-          created_at: "2026-10-12T00:00:00.000Z",
-        }));
-      }, { id: userId });
-
       const page = await context.newPage();
-      await page.goto("/dashboard");
+      // This assertion is about browser-profile storage isolation. Use a
+      // stable same-origin document so authentication redirects cannot race
+      // the IndexedDB transaction under test.
+      await page.goto("/manifest.webmanifest");
       return page.evaluate(async ({ id, quantity, operationId }) => {
         const database = await new Promise<IDBDatabase>((resolve, reject) => {
-          const request = indexedDB.open("inventory-db");
+          const request = indexedDB.open("inventory-db", 1);
+          request.onupgradeneeded = () => {
+            request.result.createObjectStore("inventoryItems", { keyPath: "local_key" });
+            request.result.createObjectStore("syncQueue", { keyPath: "id" });
+          };
           request.onsuccess = () => resolve(request.result);
           request.onerror = () => reject(request.error);
         });

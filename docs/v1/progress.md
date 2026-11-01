@@ -43,13 +43,20 @@ Verification for TZ-V1-01A:
 
 | Command / scope | Result |
 |---|---|
-| Focused client regressions | Passed: lost response + edit B, in-flight edit/delete dependencies, restart, delayed/duplicate acknowledgement, safe pre-attempt compaction, additive movements, independent resources, legacy uncertainty, and claim-storage failure. |
-| `npm.cmd test` | Passed: 69 files, 277 unit/component tests. |
-| Backend tests excluding PostgreSQL | Passed: 43 tests, including canonical replay, payload/image mismatch, and historical fingerprint handling. |
+| Focused client regressions | Passed: lost response + edit B, in-flight edit/delete dependencies, restart, delayed/duplicate acknowledgement, safe pre-attempt compaction, additive movements, independent resources, legacy uncertainty, claim-storage failure, and refusal to rebase a successor after its own attempt begins. |
+| `npm.cmd test` | Final review passed: 69 files, 278 unit/component tests. |
+| Backend tests excluding PostgreSQL | Passed before final review: 43 tests, including canonical replay, payload/image mismatch, and historical fingerprint handling. Final review additionally passed the complete 20-test sync module with a two-device concurrency regression. |
 | `npm.cmd run test:backend:postgres:local` | Passed: 7 tests, including migrations and concurrent equivalent submission. Pytest cache still reports the known workspace-permission warning. |
 | `npm.cmd run test:typecheck` and `npm.cmd run lint` | Passed. |
 | `npm.cmd run build` | Passed with the existing stale Browserslist data and large-chunk warnings. |
-| Critical `pwa.spec.ts` journeys | Offline cold-page/CRUD passed in focused production-preview coverage and in both viewports during the full run. The full run reached 7/8; the remaining isolated-profile case is timing-sensitive around post-`goto` navigation/context cleanup and has alternated between desktop/mobile passes and failures. Its assertions and application behavior were not weakened for this task. |
+| Critical `pwa.spec.ts` journeys | Final review passed all 8 production-preview cases. The earlier isolated-profile failure was reproduced 11/20 times and traced to the test's fake token triggering an unmocked `/api/auth/me` failure and hard navigation to `/auth/login` during `page.evaluate`. The storage-isolation assertion now uses a stable same-origin document and explicit disposable IndexedDB stores; it passed 20/20 repeated desktop/mobile cases without sleeps or weaker assertions. This was a test lifecycle defect, not an application synchronization regression. |
+
+## TZ-V1-01A final review
+
+- Successor rebasing is limited to `pending` operations whose `attemptState` is `never`; an attempted or uncertain successor remains byte-for-byte frozen.
+- The successor base advances only to the accepted predecessor version. A focused two-device server regression proved that if device B advances the resource afterward, the successor receives a version conflict and does not overwrite device B's state.
+- Review corrections change tests and documentation only; the committed 1A runtime implementation and additive migrations remain unchanged.
+- Integration into local `draft` is recorded after the non-destructive merge below.
 
 ## UI baseline artifacts
 
@@ -60,7 +67,7 @@ Current supplemental screenshots are local-only under ignored `test-results/v1-b
 - `product-filter-modal-mobile-dark-large.png` — 390×844, filter dialog, dark, large.
 - `product-form-mobile-dark-large.png` — 390×844, `/inventory/add`, dark, large.
 
-The tracked gallery at `artifacts/ui-layout-gallery-2026-10-20/` remains representative for settings, tools, and administrator management on desktop/mobile because runtime implementation has not changed since its capture. It is supporting evidence, not a claim that every theme/size combination is correct.
+The tracked gallery at `artifacts/ui-layout-gallery-2026-10-20/` remains a visual baseline for settings, tools, and administrator management on desktop/mobile because TZ-V1-01A intentionally made no UI or styling changes. Runtime synchronization and persistence implementation has changed since the screenshots were captured, so they are visual evidence only, not evidence that runtime behavior is unchanged or that every theme/size combination is correct.
 
 Observed UI issues are recorded separately:
 

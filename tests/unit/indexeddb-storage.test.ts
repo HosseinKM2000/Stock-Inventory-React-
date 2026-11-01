@@ -445,4 +445,26 @@ describe("IndexedDB repositories", () => {
     expect(operations.find((item) => item.status === "conflict")?.operationId)
       .toBe(original?.operationId);
   });
+
+  it("never rebases a successor after its own attempt has started", async () => {
+    accessState.saveUser(user(1));
+    await queueService.enqueue("product", 607, "UPDATE", { quantity: 4, version: 1 });
+    const predecessor = (await queueService.getDue())[0];
+    const attemptedPredecessor = await queueService.markInFlight(predecessor);
+    await queueService.markFailed(attemptedPredecessor!, new Error("response lost"));
+
+    await queueService.enqueue("product", 607, "UPDATE", { quantity: 5, version: 1 });
+    await queueStorage.upsert({ ...attemptedPredecessor!, nextAttemptAt: Number.MAX_SAFE_INTEGER });
+    const successor = (await queueService.getForEntity("product", 607))[1];
+    const attemptedSuccessor = await queueService.markInFlight(successor);
+
+    await expect(
+      queueService.prepareSuccessorAfterAcknowledgement(predecessor, 2),
+    ).resolves.toBe(false);
+    expect(await queueStorage.get(successor.id)).toMatchObject({
+      operationId: attemptedSuccessor?.operationId,
+      attemptState: "attempted",
+      payload: { quantity: 5, version: 1 },
+    });
+  });
 });
