@@ -12,6 +12,16 @@ The IndexedDB v8 migration keeps pending operations and cursors and partitions p
 
 Alembic `20261101_0009` completes the server-side ownership transition for operational tables. It is not compatible with a rolling mixture of pre-1B and 1B backend processes: old processes still query/deduplicate by legacy owner-user keys while the new constraints use store plus actor. Stop all old backend workers, run the preflight/upgrade transaction against a backed-up database with the reviewed release artifact, and start only the 1B-or-newer backend after `alembic current` reports `20261101_0009`. A preflight failure rolls the PostgreSQL migration back to `0008`; its error contains the total and a sample of affected record/group identifiers for explicit remediation.
 
+Alembic `20261102_0010` adds the server-owned `solo`/`team` mode, monotonic policy version, transition journal, and nullable immutable policy context on sync history. Legacy stores with active non-owner personnel become `team`; owner-only stores become `solo`. Missing or multiple active-owner membership aborts transactionally with `STORE_MODE_PREFLIGHT:ACTIVE_OWNER:store_ids=...`; operators must correct the listed source memberships explicitly and retry. IDs, operational rows, quantities, prices, actor/history fields, operation IDs, stored results, and fingerprints are not rewritten.
+
+Schema `0010` is not safe with pre-1D workers because their direct routes and sync code do not enforce the mode boundary. Deployment requires controlled replacement: stop old workers, verify backup and run the `0009 -> 0010` preflight on a current copy, apply the migration, verify Alembic head `20261102_0010`, and start only 1D-or-newer workers. A preflight failure leaves the database at `0009`.
+
+## Operating modes
+
+Plan eligibility permits explicit team activation but never switches mode. Personnel count, plan purchase/downgrade, and subscription expiry also never switch it. Activation is one-way in this release; there is no routine team-to-solo endpoint. Creating or reactivating personnel requires team mode.
+
+In solo mode the owner retains the durable local-first operational path. In team mode owner and personnel use the same server-accepted sync command path. Every new command carries its captured mode and policy version; missing or stale context is rejected and preserved as non-retrying recovery evidence. Exact committed replay is resolved first under the same server-derived store and actor plus canonical fingerprint, so policy changes do not duplicate a previously accepted effect. No original request is reassigned to another actor.
+
 ## Permission catalog and dependencies
 
 | Group | Permission |

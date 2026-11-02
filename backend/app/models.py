@@ -144,6 +144,12 @@ class Store(Base):
     industry_id: Mapped[int | None] = mapped_column(
         ForeignKey("industries.id", ondelete="RESTRICT"), nullable=True, index=True
     )
+    operating_mode: Mapped[str] = mapped_column(String(10), default="solo")
+    policy_version: Mapped[int] = mapped_column(Integer, default=1)
+    policy_changed_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now)
+    policy_changed_by_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now)
     updated_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now, onupdate=_now)
 
@@ -154,6 +160,24 @@ class Store(Base):
     roles: Mapped[list["StoreRole"]] = relationship(
         back_populates="store", cascade="all, delete-orphan"
     )
+
+
+class StoreModeTransition(Base):
+    __tablename__ = "store_mode_transitions"
+    __table_args__ = (
+        UniqueConstraint("store_id", "transition_id", name="uq_store_mode_transition_request"),
+    )
+
+    id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True)
+    store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), index=True)
+    actor_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), index=True)
+    actor_membership_id: Mapped[int] = mapped_column(ForeignKey("store_memberships.id", ondelete="RESTRICT"))
+    transition_id: Mapped[str] = mapped_column(String(64))
+    from_mode: Mapped[str] = mapped_column(String(10))
+    to_mode: Mapped[str] = mapped_column(String(10))
+    from_policy_version: Mapped[int] = mapped_column(Integer)
+    to_policy_version: Mapped[int] = mapped_column(Integer)
+    created_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now)
 
 
 class StoreRole(Base):
@@ -644,6 +668,8 @@ class SyncOperation(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     operation_id: Mapped[str] = mapped_column(String(64), index=True)
     request_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    execution_mode: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    policy_version: Mapped[int | None] = mapped_column(Integer, nullable=True)
     result_payload: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now)
 

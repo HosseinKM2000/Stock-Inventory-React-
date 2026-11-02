@@ -357,6 +357,9 @@ export const backupRestoreService = {
       await queueService.enqueue(fresh.entity, fresh.entityId, fresh.action, fresh.payload, {
         operationId, forceNew: true, attemptState: replay ? (fresh.originalOperation!.attemptState ?? "uncertain") : "never",
         attemptedAt: replay ? fresh.originalOperation!.attemptedAt : undefined, recoverySourceId: fresh.id,
+        preservePolicyContext: Boolean(replay),
+        executionMode: replay ? fresh.originalOperation!.executionMode : undefined,
+        policyVersion: replay ? fresh.originalOperation!.policyVersion : undefined,
       });
       Object.assign(fresh, { appliedOperationId: operationId, decision: "queued" as const, updatedAt: Date.now() });
       await db.recoveryItems.put(fresh);

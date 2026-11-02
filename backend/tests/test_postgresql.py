@@ -52,6 +52,7 @@ EXPECTED_TABLES = {
     "labels", "inventory_item_labels",
     "stores", "store_roles", "store_memberships", "store_activity",
     "product_barcodes", "inventory_movements",
+    "store_mode_transitions",
 }
 MIGRATION_EVIDENCE = {}
 
@@ -76,7 +77,10 @@ def migrated_empty_database():
         payload={"quantity": 23},
     )
     canonical = json.dumps(
-        legacy_operation.model_dump(mode="json"),
+        {
+            key: value for key, value in legacy_operation.model_dump(mode="json").items()
+            if key not in {"execution_mode", "policy_version"}
+        },
         ensure_ascii=False,
         sort_keys=True,
         separators=(",", ":"),
@@ -90,10 +94,12 @@ def migrated_empty_database():
         connection.execute(text("""
             INSERT INTO users (id,first_name,last_name,username,hashed_password,industry_id)
             VALUES (9101,'Legacy','Owner','legacy-owner','hash',9101),
-                   (9102,'Legacy','Member','legacy-member','hash',9101)
+                   (9102,'Legacy','Member','legacy-member','hash',9101),
+                   (9201,'Solo','Owner','legacy-solo-owner','hash',9101)
         """))
         connection.execute(text("""
-            INSERT INTO stores (id,name,owner_user_id) VALUES (9101,'Legacy store',9101)
+            INSERT INTO stores (id,name,owner_user_id)
+            VALUES (9101,'Legacy store',9101), (9201,'Legacy solo store',9201)
         """))
         connection.execute(text("""
             INSERT INTO store_roles (id,store_id,name,permissions_json)
@@ -102,7 +108,8 @@ def migrated_empty_database():
         connection.execute(text("""
             INSERT INTO store_memberships (id,store_id,user_id,role_id,status,is_owner)
             VALUES (9101,9101,9101,NULL,'active',true),
-                   (9102,9101,9102,9101,'active',false)
+                   (9102,9101,9102,9101,'active',false),
+                   (9201,9201,9201,NULL,'active',true)
         """))
         connection.execute(text("""
             INSERT INTO catalog_products (id,industry_id,name) VALUES (9101,9101,'Legacy catalog')
@@ -152,6 +159,30 @@ def migrated_empty_database():
         )
     with reset_engine.begin() as connection:
         connection.execute(text("DELETE FROM inventory_items WHERE id=9102"))
+    command.upgrade(config, "20261101_0009")
+    with reset_engine.begin() as connection:
+        connection.execute(text(
+            "INSERT INTO users (id,first_name,last_name,username,hashed_password) "
+            "VALUES (9301,'Ambiguous','Owner','ambiguous-owner','hash')"
+        ))
+        connection.execute(text(
+            "INSERT INTO store_memberships (id,store_id,user_id,status,is_owner) "
+            "VALUES (9301,9201,9301,'active',true)"
+        ))
+    try:
+        command.upgrade(config, "head")
+    except Exception as error:
+        MIGRATION_EVIDENCE["mode_preflight"] = str(error)
+    else:
+        raise AssertionError("Multiple active owners must block operating-mode migration")
+    with reset_engine.connect() as connection:
+        MIGRATION_EVIDENCE["mode_rollback"] = (
+            connection.scalar(text("SELECT version_num FROM alembic_version")),
+            "operating_mode" not in {column["name"] for column in inspect(connection).get_columns("stores")},
+        )
+    with reset_engine.begin() as connection:
+        connection.execute(text("DELETE FROM store_memberships WHERE id=9301"))
+        connection.execute(text("DELETE FROM users WHERE id=9301"))
     command.upgrade(config, "head")
     with reset_engine.connect() as connection:
         row = connection.execute(text("""
@@ -164,6 +195,12 @@ def migrated_empty_database():
             WHERE i.id=9101
         """)).one()
         MIGRATION_EVIDENCE["preserved"] = tuple(row)
+        MIGRATION_EVIDENCE["legacy_mode"] = connection.execute(text(
+            "SELECT operating_mode, policy_version, policy_changed_by_user_id FROM stores WHERE id=9101"
+        )).one()
+        MIGRATION_EVIDENCE["legacy_solo_mode"] = connection.execute(text(
+            "SELECT operating_mode, policy_version, policy_changed_by_user_id FROM stores WHERE id=9201"
+        )).one()
     with SessionLocal() as db:
         stored = db.get(SyncOperation, 9101)
         replay = _duplicate_result(stored, legacy_operation, legacy_fingerprint)
@@ -215,16 +252,21 @@ def test_migration_reaches_head_with_all_expected_tables(migrated_empty_database
     )
     assert len(MIGRATION_EVIDENCE["preserved"][10]) == 64
     assert MIGRATION_EVIDENCE["replay"] == ("applied", 1, 23)
+    assert "STORE_MODE_PREFLIGHT:ACTIVE_OWNER" in MIGRATION_EVIDENCE["mode_preflight"]
+    assert "9201" in MIGRATION_EVIDENCE["mode_preflight"]
+    assert MIGRATION_EVIDENCE["mode_rollback"] == ("20261101_0009", True)
     assert EXPECTED_TABLES <= set(inspect(engine).get_table_names())
     with engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261101_0009"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261102_0010"
         columns = {column["name"] for column in inspect(engine).get_columns("industries")}
         assert "tools_json" in columns
         inventory_columns = {column["name"] for column in inspect(engine).get_columns("inventory_items")}
         assert {"sale_price", "purchase_price"} <= inventory_columns
         operation_columns = {column["name"] for column in inspect(engine).get_columns("sync_operations")}
-        assert "request_fingerprint" in operation_columns
+        assert {"request_fingerprint", "execution_mode", "policy_version"} <= operation_columns
         assert next(column for column in inspect(engine).get_columns("inventory_items") if column["name"] == "store_id")["nullable"] is False
+        assert tuple(MIGRATION_EVIDENCE["legacy_mode"]) == ("team", 1, 9101)
+        assert tuple(MIGRATION_EVIDENCE["legacy_solo_mode"]) == ("solo", 1, 9201)
 
 
 @pytest.mark.postgres
@@ -485,6 +527,53 @@ def test_concurrent_equivalent_sync_submission_applies_once(client):
             operation_id=operation["operation_id"],
         ).one()
         assert stored.request_fingerprint is not None
+
+
+@pytest.mark.postgres
+def test_team_activation_serializes_with_inflight_solo_mutation(client):
+    created = signup(client)
+    user_id = created.json()["user"]["id"]
+    headers = {
+        "Authorization": f"Bearer {created.json()['access_token']}",
+        "X-Device-Fingerprint": "postgres-device",
+        "X-Client-Data-Schema": "2",
+    }
+    with SessionLocal() as db:
+        db.get(User, user_id).plan = "vip"
+        db.commit()
+    mode = client.get("/api/store/operating-mode", headers=headers).json()
+    operation = {
+        "operation_id": "activation-race-category",
+        "entity": "category",
+        "entity_id": 1_700_000_990_001,
+        "operation": "CREATE",
+        "payload": {"name": "Activation race"},
+    }
+
+    def activate():
+        return client.post("/api/store/operating-mode/activate-team", headers=headers, json={
+            "expected_policy_version": mode["policy_version"],
+            "transition_id": "activation-race-transition",
+        })
+
+    def mutate():
+        return client.post("/api/sync/batch", headers=headers, data={
+            "operations_json": json.dumps({"operations": [operation]}),
+        })
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        activation_response, mutation_response = list(pool.map(lambda fn: fn(), [activate, mutate]))
+
+    assert activation_response.status_code == 200, activation_response.text
+    mutation_result = mutation_response.json()["results"][0]
+    assert mutation_result["status"] in {"applied", "fatal_error"}
+    if mutation_result["status"] == "fatal_error":
+        assert mutation_result["error"] == "STORE_POLICY_CONTEXT_REQUIRED"
+    with SessionLocal() as db:
+        store = db.scalar(select(Store).where(Store.owner_user_id == user_id))
+        assert store.operating_mode == "team"
+        expected_count = 1 if mutation_result["status"] == "applied" else 0
+        assert db.query(Category).filter_by(id=operation["entity_id"]).count() == expected_count
 
 
 @pytest.mark.postgres

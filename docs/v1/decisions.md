@@ -8,8 +8,8 @@ This document records target policy. It does not claim that the current implemen
 
 - The server controls an explicit store operating mode: `solo` or `team`.
 - Solo mode uses durable local-first writes. When server synchronization is entitled, those writes enter a persistent outbox.
-- Team mode allows cached offline reading, but every shared mutation requires current server authorization and server acceptance, including owner mutations. Offline drafts may be retained but cannot change shared inventory.
-- A team-capable plan, personnel capacity, and active personnel count are not operating-mode switches. Team activation is an explicit controlled transition that accounts for pending operations and stale devices.
+- Team mode allows cached offline reading, but every shared mutation requires current server authorization and server acceptance, including owner mutations. TZ-V1-01D does not retain ordinary offline shared-mutation drafts: offline input fails before an executable command is persisted.
+- A team-capable plan, personnel capacity, and active personnel count are not operating-mode switches. Team activation is explicit: the activating browser pauses local writers, attempts to drain eligible work under its existing operation identities, and blocks while any outbox or recovery work remains unresolved. Other devices are warned and stale/missing policy context is rejected by the server; this does not claim instant control of a disconnected device.
 - Subscription expiry must not silently change a team store to solo mode.
 - Multiple devices are permitted in V1. The model must retain an extension point for future device policy without enforcing a new restriction now.
 
@@ -58,8 +58,7 @@ This document records target policy. It does not claim that the current implemen
 ## Unresolved business decisions
 
 - Exact tier capacities, capability allocations, paid prices, gift duration, renewal/grace rules, and retention periods.
-- Team activation approval, transition UX, stale-device policy, and disposition of every pending/in-flight/unknown/terminal operation.
-- Whether team users may keep private offline drafts, their retention, and who may submit them.
+- Future private, non-executable team drafts, their retention, and who may submit them. They are not implemented by TZ-V1-01D.
 - Conflict policy for concurrent absolute quantity changes and operator handling of unknown outcomes.
 - Media completion criteria, download-to-OPFS policy, quotas, retention, and original-versus-derivative recovery promise.
 - Backup encryption/key ownership, frequency, retention, RPO/RTO, and restore-drill ownership.

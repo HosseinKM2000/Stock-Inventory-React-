@@ -53,6 +53,11 @@ export interface SyncQueueItem {
   /** Links an explicitly approved recovery action to its immutable source evidence. */
   recoverySourceId?: string;
 
+  /** Server policy context captured before dispatch; immutable after attempt. */
+  executionMode?: "solo" | "team";
+
+  policyVersion?: number;
+
 }
 
 export function syncResourceKey(

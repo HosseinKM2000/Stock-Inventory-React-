@@ -2,6 +2,7 @@ import { accessState } from "@/shared/access/access-state";
 import { createLocalEntityId } from "@/shared/lib/infrastructure/storage/local-entity-id";
 import { localMutationStorage } from "@/shared/lib/infrastructure/storage/local-mutation-storage";
 import { queueService } from "@/shared/lib/infrastructure/sync/queue.service";
+import { isTeamMode, teamCommandService } from "@/shared/lib/infrastructure/sync/team-command.service";
 import { inventoryRepository } from "@/features/app/inventory/services/inventory.repository";
 import { barcodeLookupCandidates, generateInternalBarcode, inferSymbology, validateBarcode } from "../domain/barcode";
 import type { BarcodeMeaning, BarcodeSource, BarcodeSymbology, ProductBarcode } from "../types";
@@ -74,6 +75,18 @@ export const barcodeService = {
       created_at: now,
       updated_at: now,
     };
+    if (isTeamMode()) {
+      if (barcode.is_default) {
+        for (const current of existing.filter((item) => item.is_default)) {
+          const updated = { ...current, is_default: false, updated_at: now };
+          await teamCommandService.submit(BARCODE_ENTITY, updated.id, "UPDATE", updated);
+        }
+      }
+      await teamCommandService.submit(BARCODE_ENTITY, barcode.id, "CREATE", barcode);
+      const confirmed = await barcodeRepository.get(barcode.id);
+      if (!confirmed) throw new Error("TEAM_RESULT_MISSING");
+      return confirmed;
+    }
     await localMutationStorage.barcode(async () => {
       if (barcode.is_default) {
         for (const current of existing.filter((item) => item.is_default)) {
@@ -100,6 +113,12 @@ export const barcodeService = {
     const current = await barcodeRepository.get(id);
     if (!current) throw new Error("بارکد یافت نشد");
     const updated = { ...current, is_active: false, is_default: false, updated_at: new Date().toISOString() };
+    if (isTeamMode()) {
+      await teamCommandService.submit(BARCODE_ENTITY, id, "UPDATE", updated);
+      const confirmed = await barcodeRepository.get(id);
+      if (!confirmed) throw new Error("TEAM_RESULT_MISSING");
+      return confirmed;
+    }
     await localMutationStorage.barcode(async () => {
       await barcodeRepository.save(updated);
       await queueService.enqueue(BARCODE_ENTITY, id, "UPDATE", updated);
@@ -116,6 +135,15 @@ export const barcodeService = {
     const fallback = current.is_default
       ? (await barcodeRepository.forProduct(current.product_id)).find((item) => item.id !== id && item.is_active)
       : undefined;
+
+    if (isTeamMode()) {
+      await teamCommandService.submit(BARCODE_ENTITY, id, "DELETE", null);
+      if (fallback) {
+        const updated = { ...fallback, is_default: true, updated_at: new Date().toISOString() };
+        await teamCommandService.submit(BARCODE_ENTITY, updated.id, "UPDATE", updated);
+      }
+      return;
+    }
 
     await localMutationStorage.barcode(async () => {
       await barcodeRepository.remove(id);
@@ -136,6 +164,14 @@ export const barcodeService = {
     const target = existing.find((item) => item.id === id && item.is_active);
     if (!target) throw new Error("بارکد فعال پیدا نشد");
     const now = new Date().toISOString();
+    if (isTeamMode()) {
+      for (const current of existing) {
+        if (current.is_default === (current.id === id)) continue;
+        const updated = { ...current, is_default: current.id === id, updated_at: now };
+        await teamCommandService.submit(BARCODE_ENTITY, updated.id, "UPDATE", updated);
+      }
+      return;
+    }
     await localMutationStorage.barcode(async () => {
       for (const current of existing) {
         if (current.is_default === (current.id === id)) continue;

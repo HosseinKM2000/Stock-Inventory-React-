@@ -5,6 +5,7 @@ import { inventoryService } from "@/features/app/inventory/services/inventory-se
 import { accessState } from "@/shared/access/access-state";
 import { createLocalEntityId } from "@/shared/lib/infrastructure/storage/local-entity-id";
 import { localMutationStorage } from "@/shared/lib/infrastructure/storage/local-mutation-storage";
+import { isTeamMode, teamCommandService } from "@/shared/lib/infrastructure/sync/team-command.service";
 
 export const CATEGORY_ENTITY = "category";
 
@@ -21,6 +22,12 @@ export const categoryService = {
       created_at: now,
       updated_at: now,
     };
+    if (isTeamMode()) {
+      await teamCommandService.submit(CATEGORY_ENTITY, category.id, "CREATE", category);
+      const confirmed = await categoryStorage.get(category.id);
+      if (!confirmed) throw new Error("TEAM_RESULT_MISSING");
+      return confirmed;
+    }
     await localMutationStorage.category(async () => {
       await categoryStorage.save(category);
       await queueService.enqueue(CATEGORY_ENTITY, category.id, "CREATE", category);
@@ -38,6 +45,12 @@ export const categoryService = {
       description: input.description ?? "",
       updated_at: new Date().toISOString(),
     };
+    if (isTeamMode()) {
+      await teamCommandService.submit(CATEGORY_ENTITY, id, "UPDATE", category);
+      const confirmed = await categoryStorage.get(id);
+      if (!confirmed) throw new Error("TEAM_RESULT_MISSING");
+      return confirmed;
+    }
     await localMutationStorage.category(async () => {
       await categoryStorage.save(category);
       await queueService.enqueue(CATEGORY_ENTITY, id, "UPDATE", category);
@@ -49,6 +62,10 @@ export const categoryService = {
     accessState.requireTool("categories");
     for (const product of await inventoryService.getAll({ category_id: id })) {
       await inventoryService.update(product.id, { category_id: null });
+    }
+    if (isTeamMode()) {
+      await teamCommandService.submit(CATEGORY_ENTITY, id, "DELETE", null);
+      return;
     }
     await localMutationStorage.category(async () => {
       await categoryStorage.remove(id);

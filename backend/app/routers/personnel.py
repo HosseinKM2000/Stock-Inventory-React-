@@ -13,6 +13,7 @@ from ..models import Store, StoreActivity, StoreMembership, StoreRole, User, Use
 from ..schemas import (
     ActivityOut, ActivityPage, PersonnelCapacityOut, PersonnelCreate, PersonnelCreated,
     PersonnelOut, PersonnelUpdate, StoreRoleCreate, StoreRoleOut, StoreRoleUpdate,
+    StoreOperatingModeOut, TeamActivationRequest,
 )
 from ..security import hash_password
 from ..services.activity_service import record_store_activity
@@ -21,8 +22,14 @@ from ..services.authorization_service import is_admin
 from ..services.store_authorization import normalize_permissions
 from ..services.store_service import active_personnel_count, active_store_context, owner_store_context
 from ..services.subscription_service import entitlement_for_store
+from ..services.store_mode_policy import activate_team_mode, mode_payload
 
 router = APIRouter(tags=["store personnel"])
+
+
+def _require_team_mode(store: Store) -> None:
+    if store.operating_mode != "team":
+        raise HTTPException(status_code=409, detail="TEAM_MODE_REQUIRED_FOR_PERSONNEL")
 
 
 def _role_out(db: Session, role: StoreRole) -> StoreRoleOut:
@@ -130,6 +137,34 @@ def personnel_capacity(current_user: CurrentUser, db: DbSession):
     return _capacity(db, owner_store_context(db, current_user).store, current_user)
 
 
+@router.get("/store/operating-mode", response_model=StoreOperatingModeOut)
+def operating_mode(current_user: CurrentUser, db: DbSession):
+    context = owner_store_context(db, current_user)
+    return mode_payload(db, context, current_user)
+
+
+@router.post("/store/operating-mode/activate-team", response_model=StoreOperatingModeOut)
+def activate_team(payload: TeamActivationRequest, current_user: CurrentUser, db: DbSession):
+    result = activate_team_mode(db, current_user, payload)
+    existing_activity = db.scalar(select(StoreActivity.id).where(
+        StoreActivity.store_id == current_user.store_id,
+        StoreActivity.actor_user_id == current_user.id,
+        StoreActivity.operation_id == payload.transition_id,
+    ))
+    if existing_activity is None:
+        record_store_activity(
+            db,
+            current_user,
+            action="store.team_mode_activated",
+            target_entity="store",
+            target_id=current_user.store_id,
+            operation_id=payload.transition_id,
+            after={"operating_mode": result.operating_mode, "policy_version": result.policy_version},
+        )
+    db.commit()
+    return result
+
+
 @router.get("/store/personnel", response_model=list[PersonnelOut])
 def list_personnel(current_user: CurrentUser, db: DbSession):
     context = owner_store_context(db, current_user)
@@ -141,6 +176,7 @@ def list_personnel(current_user: CurrentUser, db: DbSession):
 def create_personnel(payload: PersonnelCreate, current_user: CurrentUser, db: DbSession):
     context = owner_store_context(db, current_user)
     store = db.scalar(select(Store).where(Store.id == context.store.id).with_for_update())
+    _require_team_mode(store)
     capacity = _require_personnel_management(db, store, current_user)
     if capacity.available is not None and capacity.available <= 0: raise HTTPException(status_code=409, detail="PERSONNEL_CAPACITY_REACHED")
     role = db.scalar(select(StoreRole).where(StoreRole.id == payload.role_id, StoreRole.store_id == store.id))
@@ -168,7 +204,8 @@ def update_personnel(membership_id: int, payload: PersonnelUpdate, current_user:
         membership.role_id = role.id
     if payload.active is not None:
         if payload.active and membership.status != "active":
-            db.execute(select(Store).where(Store.id == context.store.id).with_for_update())
+            store = db.scalar(select(Store).where(Store.id == context.store.id).with_for_update())
+            _require_team_mode(store)
             available = _capacity(db, context.store, current_user).available
             if available is not None and available <= 0: raise HTTPException(status_code=409, detail="PERSONNEL_CAPACITY_REACHED")
         membership.status = "active" if payload.active else "inactive"

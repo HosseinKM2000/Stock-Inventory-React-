@@ -4,6 +4,7 @@ import { createLocalEntityId } from "@/shared/lib/infrastructure/storage/local-e
 import { labelStorage } from "@/shared/lib/infrastructure/storage/label-storage";
 import { localMutationStorage } from "@/shared/lib/infrastructure/storage/local-mutation-storage";
 import { queueService } from "@/shared/lib/infrastructure/sync/queue.service";
+import { isTeamMode, teamCommandService } from "@/shared/lib/infrastructure/sync/team-command.service";
 import {
   PRODUCT_ENTITY,
   productSyncAction,
@@ -38,6 +39,12 @@ export const labelService = {
       id: createLocalEntityId(), name, normalized_name: normalized,
       created_at: now, updated_at: now,
     };
+    if (isTeamMode()) {
+      await teamCommandService.submit(LABEL_ENTITY, label.id, "CREATE", label);
+      const confirmed = await labelStorage.get(label.id);
+      if (!confirmed) throw new Error("TEAM_RESULT_MISSING");
+      return confirmed;
+    }
     await localMutationStorage.label(async () => {
       await labelStorage.save(label);
       await queueService.enqueue(LABEL_ENTITY, label.id, "CREATE", label);
@@ -51,6 +58,12 @@ export const labelService = {
     if (!current) throw new Error("برچسب پیدا نشد");
     const { name, normalized } = await validatedName(input, id);
     const label = { ...current, name, normalized_name: normalized, updated_at: new Date().toISOString() };
+    if (isTeamMode()) {
+      await teamCommandService.submit(LABEL_ENTITY, id, "UPDATE", label);
+      const confirmed = await labelStorage.get(id);
+      if (!confirmed) throw new Error("TEAM_RESULT_MISSING");
+      return confirmed;
+    }
     await localMutationStorage.label(async () => {
       await labelStorage.save(label);
       await queueService.enqueue(LABEL_ENTITY, id, "UPDATE", label);
@@ -60,6 +73,18 @@ export const labelService = {
 
   async remove(id: number) {
     accessState.requireTool("labels");
+    if (isTeamMode()) {
+      for (const product of await db.inventoryItems.toArray()) {
+        if (product.local_user_id !== accessState.user()?.id || !product.label_ids?.includes(id)) continue;
+        await teamCommandService.submit(PRODUCT_ENTITY, product.id, productSyncAction(product), {
+          id: product.id,
+          version: product.version,
+          label_ids: product.label_ids.filter((labelId) => labelId !== id),
+        });
+      }
+      await teamCommandService.submit(LABEL_ENTITY, id, "DELETE", null);
+      return;
+    }
     await localMutationStorage.label(async () => {
       for (const product of await db.inventoryItems.toArray()) {
         if (product.local_user_id !== accessState.user()?.id || !product.label_ids?.includes(id)) continue;

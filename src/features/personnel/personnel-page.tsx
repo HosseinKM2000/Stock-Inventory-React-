@@ -26,6 +26,7 @@ import {
   type PersonnelCreated,
   type StoreRole,
 } from "./api";
+import { teamActivationService } from "./services/team-activation.service";
 
 type PersonnelForm = {
   first_name: string;
@@ -60,9 +61,11 @@ export function PersonnelPage() {
 function PersonnelContent() {
   const client = useQueryClient();
   const capacity = useQuery({ queryKey: personnelKeys.capacity, queryFn: personnelApi.capacity });
+  const mode = useQuery({ queryKey: personnelKeys.mode, queryFn: personnelApi.operatingMode });
   const managementEnabled = capacity.data?.enabled === true;
-  const roles = useQuery({ queryKey: personnelKeys.roles, queryFn: personnelApi.roles, enabled: managementEnabled });
-  const people = useQuery({ queryKey: personnelKeys.all, queryFn: personnelApi.personnel, enabled: managementEnabled });
+  const teamActive = mode.data?.operating_mode === "team";
+  const roles = useQuery({ queryKey: personnelKeys.roles, queryFn: personnelApi.roles, enabled: managementEnabled && teamActive });
+  const people = useQuery({ queryKey: personnelKeys.all, queryFn: personnelApi.personnel, enabled: managementEnabled && teamActive });
   const [credentials, setCredentials] = useState<PersonnelCreated | null>(null);
   const [person, setPerson] = useState<PersonnelForm>(emptyPersonnelForm);
 
@@ -104,6 +107,15 @@ function PersonnelContent() {
     },
     onError: () => toast.error("صدور رمز موقت انجام نشد"),
   });
+  const activateTeam = useMutation({
+    mutationFn: () => teamActivationService.activate(mode.data!.policy_version),
+    onSuccess: () => {
+      toast.success("حالت تیمی فروشگاه فعال شد");
+      void client.invalidateQueries({ queryKey: personnelKeys.mode });
+      void refresh();
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : "فعال‌سازی حالت تیمی انجام نشد"),
+  });
 
   const hasCapacity = capacity.data?.enabled === true && (capacity.data.available === null || capacity.data.available > 0);
   const hasRoles = (roles.data?.length ?? 0) > 0;
@@ -122,6 +134,24 @@ function PersonnelContent() {
     <div className="personnel-workspace">
       <CapacitySummary capacity={capacity.data} hasCapacity={hasCapacity} />
 
+      {mode.data && !teamActive ? (
+        <section className="personnel-plan-notice" aria-labelledby="team-mode-title">
+          <InfoCircledIcon width="22" height="22" aria-hidden="true" />
+          <div>
+            <h2 id="team-mode-title">فعال‌سازی صریح حالت تیمی</h2>
+            <p>پیش از فعال‌سازی، همه عملیات محلی و بازیابی باید تعیین‌تکلیف شوند. پس از فعال‌سازی، تغییرات مشترک فقط با پذیرش سرور نمایش داده می‌شوند و دستگاه‌های دیگر نیز باید به‌روز شوند.</p>
+            <Button
+              type="button"
+              loading={activateTeam.isPending}
+              disabled={!mode.data.team_eligible || activateTeam.isPending}
+              onClick={() => activateTeam.mutate()}
+            >
+              فعال‌سازی حالت تیمی
+            </Button>
+          </div>
+        </section>
+      ) : null}
+
       {capacity.data && !capacity.data.enabled ? (
         <section className="personnel-plan-notice" aria-labelledby="personnel-plan-title">
           <InfoCircledIcon width="22" height="22" aria-hidden="true" />
@@ -134,7 +164,7 @@ function PersonnelContent() {
 
       {credentials ? <CredentialsPanel credentials={credentials} onClose={() => setCredentials(null)} /> : null}
 
-      {managementEnabled ? (
+      {managementEnabled && teamActive ? (
         <div className="personnel-main-grid">
           <AddPersonnelCard
             form={person}

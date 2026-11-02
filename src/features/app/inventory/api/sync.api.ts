@@ -48,6 +48,8 @@ export async function pushProductBatch(items: SyncQueueItem[]) {
           operation: item.action,
           payload: product,
           base_version: product?.version,
+          execution_mode: item.executionMode,
+          policy_version: item.policyVersion,
         };
       }),
     }),
@@ -84,6 +86,8 @@ export async function pushJsonBatch(items: SyncQueueItem[]) {
       operation: item.action,
       payload: item.payload,
       base_version: (item.payload as { version?: number } | null)?.version,
+      execution_mode: item.executionMode,
+      policy_version: item.policyVersion,
     })),
   }));
   return apiFetch<SyncBatchResponse>("/sync/batch", { method: "POST", formData });

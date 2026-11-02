@@ -1,6 +1,6 @@
 # Commercial V1 architecture map
 
-The original map was established from source commit `16064aba18c57ca92866251fcba3aca543df6409`; synchronization integrity from TZ-V1-01A, store ownership from TZ-V1-01B, and the task-branch implementation of safe restore reconciliation from TZ-V1-01C are incorporated below. Installed packages are not treated as active features without imports or call paths.
+The original map was established from source commit `16064aba18c57ca92866251fcba3aca543df6409`; synchronization integrity from TZ-V1-01A, store ownership from TZ-V1-01B, safe restore reconciliation from TZ-V1-01C, and the task-branch operating-mode implementation from TZ-V1-01D are incorporated below. Installed packages are not treated as active features without imports or call paths.
 
 ## Current module boundaries
 
@@ -12,7 +12,7 @@ The original map was established from source commit `16064aba18c57ca92866251fcba
 | Local data | Dexie `InventoryDatabase` versions 1–12 in `src/shared/lib/infrastructure/storage/db.ts`; actor/store keys in `keys.ts` and repository modules; products/categories/labels/barcodes/movements, sync queue, metadata/cursors, backup settings, and recovery sessions/items are IndexedDB-backed. Version 11 records attempt state/resource keys; version 12 adds durable recovery journals and review mappings. |
 | Local media | OPFS access through `imageRepository`, processing through `imageService`, and object URL/authenticated fallback through `useResolvedImage` under `src/shared/lib/infrastructure/media/`. |
 | Sync | Durable queue and compaction in `queue.service.ts`; transactional claim in `queue-storage.ts`; orchestration in `sync-service.ts`; multipart metadata/media push in `src/features/app/inventory/api/sync.api.ts`; service startup in `sync-bootstrap.ts`. |
-| Backend | FastAPI application in `backend/app/main.py`; SQLAlchemy models in `models.py`; Alembic revisions through `20261101_0009`; PostgreSQL is the intended engine. |
+| Backend | FastAPI application in `backend/app/main.py`; SQLAlchemy models in `models.py`; Alembic revisions through `20261102_0010`; PostgreSQL is the intended engine. |
 | Identity/store authorization | JWT/device sessions in `auth_service.py`, `session_service.py`, and `security.py`; membership context in `store_service.active_store_context`; effective permission checks in `store_authorization.py`; request dependencies in `deps.py`. Exactly one active membership is resolved in current V1; multiple active memberships fail closed as `STORE_CONTEXT_AMBIGUOUS`. |
 | Plans | Central built-in catalog in `backend/app/plans.py`; policy/entitlement resolution in `plan_policy.py` and `subscription_service.py`; frontend cached access in `src/shared/access/`. |
 | Inventory and catalog | API routers for products/categories/labels/inventory/transactions scope operational access by authenticated `store_id`; frontend inventory repository/services/forms under `src/features/app/inventory/`; catalog reconciliation in `catalog_product_service._reconcile_catalog_assignments` locks and provisions eligible stores, not users. |
@@ -24,7 +24,7 @@ The original map was established from source commit `16064aba18c57ca92866251fcba
 
 ## End-to-end paths
 
-### Current solo-style mutation path
+### Solo mutation path
 
 1. Inventory form/service validates input and calls a local repository.
 2. `local-mutation-storage.ts` commits the projection and outbox record in one Dexie transaction; UI success follows that local commit.
@@ -34,11 +34,15 @@ The original map was established from source commit `16064aba18c57ca92866251fcba
 
 Operational reads, writes, bulk paths, file authorization, categories, labels, custom products, transactions, and sync pull use the authenticated store boundary. `user_id` remains on transitional tables as the original owner compatibility value; `actor_user_id` and membership IDs retain server-derived attribution. PostgreSQL relation constraints reject cross-store category, inventory, barcode, movement, and transaction references; a migration trigger protects the legacy inventory-label join shape.
 
-This path is active for both owners and personnel when cached access allows it. There is no explicit operating-mode field or team-only server-acceptance mutation path.
+This local-first path is active only for the owner while the server-resolved store mode is `solo`. Personnel creation or reactivation requires `team`.
 
-### Target team mutation path (not implemented)
+### Team mutation path
 
-The server-controlled mode must be read with current membership/entitlement. In `team`, UI input may be retained as an actor/store-scoped draft, but the shared projection changes only after an online server request is authorized and accepted. Owner and personnel follow the same acceptance boundary. Mode activation must first reconcile queued and stale-device work.
+`Store.operating_mode` and monotonic `policy_version` are server-owned. `queue.service.ts` captures both before dispatch; after an attempt they are immutable command semantics. `team-command.service.ts` persists a new command before dispatch, requires Web Locks and online connectivity, waits for sync resolution, and never updates the projection optimistically. Existing entity sync handlers persist only accepted server records. An unknown response keeps the same operation ID for restart/retry; conflict and rejection remain recovery evidence.
+
+`sync.py` locks the store row while validating policy, serializing acceptance with activation. Exact historical replay is resolved by server-derived store/actor, operation ID, and fingerprint before current-policy validation, so a committed pre-transition request returns its recorded result without another domain effect. A new request with missing/stale policy context is stored as a non-retrying rejection. Direct legacy operational routes reject team writes, so an older client cannot bypass the idempotent command path.
+
+Owner activation uses a distinct transition ID and expected policy version. The browser requires Web Locks, sets a maintenance marker checked by local mutation transactions, refuses unfinished recovery review, drains sync, and rechecks the scoped outbox/recovery journal before the short atomic server transition. It does not hold a database transaction while client work drains. There is no ordinary team offline-draft implementation.
 
 ### Synchronization and retry
 

@@ -3,6 +3,7 @@ import { accessState } from "@/shared/access/access-state";
 import { createLocalEntityId } from "@/shared/lib/infrastructure/storage/local-entity-id";
 import { localMutationStorage } from "@/shared/lib/infrastructure/storage/local-mutation-storage";
 import { queueService } from "@/shared/lib/infrastructure/sync/queue.service";
+import { isTeamMode, teamCommandService } from "@/shared/lib/infrastructure/sync/team-command.service";
 import type { InventoryMovement, InventoryMovementKind, ProductBarcode, ScanInputSource } from "../types";
 import { movementRepository } from "./movement-repository";
 
@@ -67,6 +68,12 @@ export const movementService = {
       created_at: now,
       updated_at: now,
     };
+    if (isTeamMode()) {
+      await teamCommandService.submit(INVENTORY_MOVEMENT_ENTITY, movement.id, "CREATE", movement, operationId);
+      const confirmed = await movementRepository.byOperationId(operationId);
+      if (!confirmed) throw new Error("TEAM_RESULT_MISSING");
+      return confirmed;
+    }
     await localMutationStorage.movement(async () => {
       await inventoryRepository.save({
         ...current,
@@ -109,6 +116,12 @@ export const movementService = {
       created_at: now,
       updated_at: now,
     };
+    if (isTeamMode()) {
+      await teamCommandService.submit(INVENTORY_MOVEMENT_ENTITY, reversal.id, "CREATE", reversal, reversalOperationId);
+      const confirmed = await movementRepository.byOperationId(reversalOperationId);
+      if (!confirmed) throw new Error("TEAM_RESULT_MISSING");
+      return confirmed;
+    }
     await localMutationStorage.movement(async () => {
       await inventoryRepository.save({ ...current, quantity: after, status: quantityStatus(after, current.low_stock_threshold), updated_at: now });
       await movementRepository.save(reversal);

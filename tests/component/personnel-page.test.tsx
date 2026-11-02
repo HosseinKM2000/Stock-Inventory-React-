@@ -10,7 +10,11 @@ const api = vi.hoisted(() => ({
   create: vi.fn(),
   update: vi.fn(),
   resetCredentials: vi.fn(),
+  operatingMode: vi.fn(),
+  activateTeam: vi.fn(),
 }));
+
+const activation = vi.hoisted(() => ({ activate: vi.fn() }));
 
 vi.mock("@/features/app/layout/page-guide", () => ({
   PageGuide: ({ section, title }: { section: string; title: string }) => (
@@ -30,8 +34,13 @@ vi.mock("@/features/personnel/api", () => ({
     all: ["store-personnel"],
     roles: ["store-roles"],
     capacity: ["personnel-capacity"],
+    mode: ["store-operating-mode"],
   },
   personnelApi: api,
+}));
+
+vi.mock("@/features/personnel/services/team-activation.service", () => ({
+  teamActivationService: activation,
 }));
 
 import { PersonnelPage } from "@/features/personnel/personnel-page";
@@ -65,7 +74,9 @@ describe("personnel page", () => {
     api.capacity.mockResolvedValue({ enabled: true, used: 1, limit: 4, available: 3 });
     api.roles.mockResolvedValue([{ id: 2, name: "مشاهده‌گر", permissions: [], assigned_count: 1 }]);
     api.personnel.mockResolvedValue([member]);
+    api.operatingMode.mockResolvedValue({ operating_mode: "team", policy_version: 2, team_eligible: true });
     api.resetCredentials.mockResolvedValue({ ...member, temporary_password: "temporary-secret" });
+    activation.activate.mockResolvedValue({ operating_mode: "team", policy_version: 2 });
   });
 
   it("shows the responsive management sections and member controls", async () => {
@@ -92,5 +103,14 @@ describe("personnel page", () => {
     expect(screen.getByRole("button", { name: "کپی نام کاربری" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "کپی رمز موقت" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /کپی اطلاعات ورود/ })).toBeInTheDocument();
+  });
+
+  it("requires an explicit activation before personnel controls are shown", async () => {
+    api.operatingMode.mockResolvedValue({ operating_mode: "solo", policy_version: 1, team_eligible: true });
+    renderPage();
+    expect(await screen.findByRole("heading", { name: "فعال‌سازی صریح حالت تیمی" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "افزودن پرسنل" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "فعال‌سازی حالت تیمی" }));
+    await waitFor(() => expect(activation.activate).toHaveBeenCalledWith(1));
   });
 });

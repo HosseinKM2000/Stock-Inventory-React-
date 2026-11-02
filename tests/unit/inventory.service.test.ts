@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
   getAll: vi.fn(), get: vi.fn(), save: vi.fn(), remove: vi.fn(), getAllStored: vi.fn(),
   enqueue: vi.fn(), requireWrite: vi.fn(), requireInventoryCapacity: vi.fn(), removeImage: vi.fn(),
   getLabels: vi.fn(), user: vi.fn(),
+  isTeamMode: vi.fn(), submitTeam: vi.fn(),
 }));
 
 vi.mock("@/features/app/inventory/services/inventory.repository", () => ({
@@ -17,6 +18,10 @@ vi.mock("@/features/app/inventory/services/inventory.repository", () => ({
   },
 }));
 vi.mock("@/shared/lib/infrastructure/sync/queue.service", () => ({ queueService: { enqueue: mocks.enqueue } }));
+vi.mock("@/shared/lib/infrastructure/sync/team-command.service", () => ({
+  isTeamMode: mocks.isTeamMode,
+  teamCommandService: { submit: mocks.submitTeam },
+}));
 vi.mock("@/shared/access/access-state", () => ({
   accessState: {
     user: mocks.user,
@@ -38,6 +43,7 @@ describe("local-first inventory service", () => {
     Object.values(mocks).forEach((mock) => mock.mockReset());
     mocks.getLabels.mockResolvedValue([]);
     mocks.user.mockReturnValue({ id: 7, store_id: 7 });
+    mocks.isTeamMode.mockReturnValue(false);
   });
 
   it("sanitizes corrupted values and derives boundary stock status", async () => {
@@ -48,6 +54,21 @@ describe("local-first inventory service", () => {
     const records = await inventoryService.getAll();
     expect(records[0]).toMatchObject({ id: 2, quantity: 5, status: "low_stock" });
     expect(records[1]).toMatchObject({ id: 1, quantity: 0, price: 0, low_stock_threshold: 0, status: "out_of_stock" });
+  });
+
+  it("does not project a team update before the server command is accepted", async () => {
+    const current = product({ id: 9, version: 3, quantity: 4 });
+    const confirmed = product({ id: 9, version: 4, quantity: 7 });
+    mocks.isTeamMode.mockReturnValue(true);
+    mocks.get.mockResolvedValueOnce(current).mockResolvedValueOnce(confirmed);
+    mocks.submitTeam.mockResolvedValue("team-operation");
+
+    await expect(inventoryService.update(9, { quantity: 7 })).resolves.toEqual(confirmed);
+    expect(mocks.submitTeam).toHaveBeenCalledWith(
+      "product", 9, "UPDATE", { id: 9, version: 3, quantity: 7 },
+    );
+    expect(mocks.save).not.toHaveBeenCalled();
+    expect(mocks.enqueue).not.toHaveBeenCalled();
   });
 
   it("filters ineligible records without deleting hidden data and preserves valid zero prices", async () => {
