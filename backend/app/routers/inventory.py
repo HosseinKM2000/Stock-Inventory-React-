@@ -33,7 +33,7 @@ def trash_inventory(
     stmt = (
         select(InventoryItem)
         .where(
-            InventoryItem.user_id == current_user.data_owner_id,
+            InventoryItem.store_id == current_user.store_id,
             InventoryItem.deleted_at.is_not(None),
         )
         .order_by(InventoryItem.created_at.desc(), InventoryItem.id.desc())
@@ -54,7 +54,7 @@ def list_inventory(
     base_query = (
         select(InventoryItem)
         .where(
-            InventoryItem.user_id == current_user.data_owner_id,
+            InventoryItem.store_id == current_user.store_id,
             InventoryItem.deleted_at.is_(None),
             InventoryItem.is_hidden.is_(False),
         )
@@ -95,7 +95,7 @@ def get_inventory_item(
     return project_inventory_item(db, current_user, get_inventory_item_or_404(
         db,
         item_id,
-        current_user.data_owner_id,
+        current_user.store_id,
     ))
 
 
@@ -118,7 +118,7 @@ def update_inventory_item(
     item = get_inventory_item_or_404(
         db,
         item_id,
-        current_user.data_owner_id,
+        current_user.store_id,
     )
 
     apply_inventory_update(
@@ -141,7 +141,7 @@ def delete_inventory_item(
     item = get_inventory_item_or_404(
         db,
         item_id,
-        current_user.data_owner_id,
+        current_user.store_id,
     )
 
     if item.is_catalog_backed:
@@ -165,7 +165,7 @@ def create_transaction(
     item = get_inventory_item_or_404(
         db,
         item_id,
-        current_user.data_owner_id,
+        current_user.store_id,
     )
 
     before_quantity = item.quantity
@@ -212,7 +212,7 @@ def list_transactions(
     get_inventory_item_or_404(
         db,
         item_id,
-        current_user.data_owner_id,
+        current_user.store_id,
     )
 
     stmt = (
@@ -238,7 +238,7 @@ def hide_inventory_item(
     item = get_inventory_item_or_404(
         db,
         item_id,
-        current_user.data_owner_id,
+        current_user.store_id,
     )
 
     item.is_hidden = True
@@ -258,7 +258,7 @@ def restore_inventory_item(
     item = get_inventory_item_or_404(
         db,
         item_id,
-        current_user.data_owner_id,
+        current_user.store_id,
     )
 
     item.is_hidden = False
@@ -279,7 +279,7 @@ def force_delete_inventory_item(
     item = get_inventory_item_or_404(
         db,
         item_id,
-        current_user.data_owner_id,
+        current_user.store_id,
     )
 
     if item.is_catalog_backed:
@@ -308,7 +308,7 @@ def bulk_sync_inventory(
         if item is None:
             continue
 
-        if item.user_id != current_user.data_owner_id:
+        if item.store_id != current_user.store_id:
             continue
 
         if item.deleted_at is not None:

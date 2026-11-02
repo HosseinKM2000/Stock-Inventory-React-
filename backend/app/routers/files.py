@@ -21,7 +21,7 @@ def protected_product_image(filename: str, current_user: CurrentProductReader, d
         select(InventoryItem.id)
         .join(CatalogProduct, CatalogProduct.id == InventoryItem.catalog_product_id)
         .where(
-            InventoryItem.user_id == current_user.data_owner_id,
+            InventoryItem.store_id == current_user.store_id,
             or_(InventoryItem.image_url == image_url, CatalogProduct.image_url == image_url),
         )
         .limit(1)

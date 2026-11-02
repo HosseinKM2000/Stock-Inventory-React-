@@ -57,7 +57,50 @@ Verification for TZ-V1-01A:
 - The successor base advances only to the accepted predecessor version. A focused two-device server regression proved that if device B advances the resource afterward, the successor receives a version conflict and does not overwrite device B's state.
 - Review corrections change tests and documentation only; the committed 1A runtime implementation and additive migrations remain unchanged.
 - Local `draft` integrated the reviewed task branch with non-destructive merge commit `1c5ef3603c4467de628b8d1bf151e40bd0de101c` (`merge: integrate sync operation integrity`). Task history was preserved; nothing was pushed, deployed, or merged to `develop`.
-- Task 1B is ready to begin from local `draft`, subject to the remaining ownership, restore, and operating-mode acceptance boundaries below. It was not started automatically.
+- Task 1B subsequently began from local `draft`; its completed result is recorded below.
+
+## TZ-V1-01B store-owned operational data
+
+Branch `fix/v1-store-data-ownership`, based on local `draft` at `090fcd1`, completes the ownership and catalog-provisioning slice in implementation commit `898ff23aef13dd79b7ef5076874d594e23f29440`:
+
+- Operational rows, sync history, cursors, and catalog assignments are now authorized and queried by the server-resolved active store membership. A user remains the actor; legacy `user_id`/`data_owner_id` fields are compatibility metadata rather than the authorization boundary.
+- Store context fails closed with `STORE_CONTEXT_AMBIGUOUS` when an account has multiple active memberships. Inactive or revoked memberships do not provide operational access, and client-supplied store, actor, role, or permission claims are not trusted.
+- Catalog reconciliation provisions each eligible store once from `Store.industry_id`, preserves store overrides, and hides versioned assignments that no longer match the store domain instead of deleting them.
+- Sync pull, cursors, change history, replay deduplication, and inventory movement reversals are store-scoped while retaining server-derived actor attribution. The immutable-operation guarantees from TZ-V1-01A remain intact.
+- The existing client database already partitions projections, cursors, and outbox state by authenticated person and store. No Dexie, backup-format, UI, styling, commercial-policy, restore-workflow, or operating-mode change was included in this slice.
+
+Alembic `20261101_0009` adds authoritative store ownership and store-domain data, backfills only unambiguous legacy rows, validates duplicates and cross-store references, then installs non-null, uniqueness, foreign-key, index, and PostgreSQL trigger protections. It preserves identifiers, quantities, prices, transaction history, sync fingerprints, and actor history. It deliberately refuses ambiguous data with `STORE_OWNERSHIP_PREFLIGHT:<table>:<reason>` rather than merging, summing, deleting, or guessing. Before production upgrade, an operator must run the migration against a current database copy, investigate every reported preflight row, correct the source data explicitly, and rerun the migration. No non-test database was touched during this task.
+
+Verification for TZ-V1-01B:
+
+| Command / scope | Result |
+|---|---|
+| `npm.cmd run test:backend` | Passed: 47 tests, including shared owner/personnel data, unrelated-store isolation, cross-store reference rejection, revoked and ambiguous memberships, catalog override preservation, and admin-deletion safety. |
+| `npm.cmd run test:backend:postgres:local` | Passed: 9 tests, including clean migration to head, legacy `0008` to `0009` preflight/remediation, identifier and history preservation, replay without duplicate application, concurrent catalog reconciliation, and cross-store database constraints. |
+| `npm.cmd test` | Passed: 69 files, 278 unit/component tests. |
+| `npm.cmd run test:typecheck` and `npm.cmd run lint` | Passed. |
+| `npm.cmd run build` | Passed with the existing stale Browserslist data and large-chunk warnings; the largest reported `bwip-js` chunk remains about 930 kB. |
+| Focused production-preview E2E | Passed: 28 cases across `pwa.spec.ts`, `product-layout.spec.ts`, and `authentication.spec.ts`; 2 live-credential authentication cases were skipped because credentials were not supplied. Offline, profile-isolation, and inventory layout coverage passed in both configured viewports. |
+
+No frontend or styling source changed, so the existing screenshots remain a visual baseline only. TZ-V1-01B is complete on its task branch; it has not been merged, pushed, deployed, or applied to `develop`.
+
+## TZ-V1-01B final review
+
+- The reported implementation and documentation commits were confirmed as `898ff23aef13dd79b7ef5076874d594e23f29440` and `e68328f`; both descend directly from local `draft` at `090fcd1`.
+- Review found one migration-operability defect: preflight named only the table and reason, not the affected records. The focused correction reports the total plus up to 20 record/group identifiers. A PostgreSQL regression first reproduced the insufficient diagnostic, then proved the corrected diagnostic and full transactional rollback to `0008` with both conflicting rows intact.
+- Store-scoped filtering was rechecked across list/detail/mutation/bulk, transaction history, export/backup, protected files, sync batch/snapshots/pull, catalog relationships, and database foreign-key/trigger boundaries. Related objects are validated in the authenticated store. Revoked membership remains server-denied.
+- Multiple active memberships now have API-level coverage: `/api/auth/me`, products, and sync pull all return controlled `409 STORE_CONTEXT_AMBIGUOUS`; no alternate membership is selected and no sync handler runs. Platform-administrator coverage confirms the administrator's isolated workspace cannot list a customer's inventory.
+- Replay review confirmed that `0009` does not alter operation IDs, semantic payloads, stored fingerprints, results, or actor IDs. A committed `0008` result is found by the migrated store/actor key and returned without applying the domain mutation again. TZ-V1-01A acknowledgement and successor ordering code was unchanged.
+- Concurrent catalog reconciliation is serialized by the catalog row lock and protected by store/catalog uniqueness. Both concurrent sessions remain usable, one assignment per store is retained, and customer quantity, label, note, and visibility overrides survive. Personnel membership does not provision a separate inventory.
+
+Final-review verification:
+
+| Command / scope | Result |
+|---|---|
+| `npm.cmd run test:backend:postgres:local` | Passed: 9 tests. This includes `0008` preflight failure/diagnostics/rollback, explicit synthetic remediation, upgrade to `0009`, preserved IDs/values/relationships/fingerprint/actor, replay without a second effect, same-store/cross-store constraints, and concurrent catalog reconciliation with override preservation. |
+| `npm.cmd run test:backend` | Passed: 47 tests. This includes controlled ambiguous-context API failures, server-side revocation, shared owner/personnel inventory, unrelated-store and related-object isolation, administrator workspace isolation, sync regressions, and admin deletion safety. |
+
+Deployment compatibility is intentionally limited: pre-1B backend processes must not coexist with schema `0009`. The current repository documents manual Alembic/start commands and has no rolling-deployment automation. Production therefore requires a controlled replacement: stop old workers, verify a backup and preflight on a current copy, apply `0009`, confirm the Alembic head, and start only 1B-or-newer workers. A preflight failure leaves the database at `0008`; operators must remediate the reported source records explicitly and retry. No customer or production database was used in this review.
 
 ## UI baseline artifacts
 
@@ -79,23 +122,24 @@ Observed UI issues are recorded separately:
 
 ## Outstanding release risks
 
-1. Legacy owner-user ownership remains in tables, sync identity, and catalog provisioning; catalog assignment is user-oriented.
-2. Restore/reconciliation deletes quarantined restored operations instead of providing a safe apply/discard workflow.
-3. No explicit server operating mode; team owners and personnel still follow local-first shared mutation behavior.
-4. Metadata and image-byte completion are conflated; clean-device OPFS recovery is absent.
-5. Commercial plan/grant/payment/admin policy is incomplete and contains an extra observed Starter tier not present in confirmed target policy.
-6. Server restore, deploy/rollback, monitoring, alerting, and backup drills are not evidenced end to end.
-7. Persistent dashboard scroll regression and the mobile status overlap remain.
+1. Restore/reconciliation deletes quarantined restored operations instead of providing a safe apply/discard/export workflow.
+2. No explicit server operating mode; team owners and personnel still follow local-first shared mutation behavior.
+3. Metadata and image-byte completion are conflated; clean-device OPFS recovery is absent.
+4. Commercial plan/grant/payment/admin policy is incomplete and contains an extra observed Starter tier not present in confirmed target policy.
+5. Server restore, deploy/rollback, monitoring, alerting, and backup drills are not evidenced end to end.
+6. Persistent dashboard scroll regression and the mobile status overlap remain.
+7. Schema `0009` is not rolling-compatible with pre-1B backend workers and requires a controlled backend replacement after preflight and backup verification.
 
-## Task 1 continuation
+## Task 1C readiness
 
-TZ-V1-01A addresses only immutable sync-operation integrity. The next Task 1 slice must retain these acceptance boundaries:
+TZ-V1-01A and TZ-V1-01B now provide immutable transmitted operations and store-native ownership/catalog provisioning. Task 1C is ready to start as the restore/reconciliation slice, but it was not started automatically. Its prerequisites and acceptance boundaries are:
 
-- Operating mode is a server-controlled store property; purchasing a plan or adding personnel does not switch it.
-- Team activation inventories and resolves pending, in-flight, retryable, terminal, restored, and unknown-outcome operations before activation.
-- Transmitted operation identity/payload remains immutable; later edits use a new operation id.
-- Store-native ownership and catalog provisioning are included, with migration and PostgreSQL regression coverage.
-- Restore review has explicit apply/discard/export actions and never silently drops local-only work.
-- Team mutation tests cover owner and personnel, online authorization/acceptance, offline drafts, revocation, stale devices, and subscription expiry without a solo fallback.
+- Inventory existing local projections and every pending, attempted, retryable, terminal, restored, and unknown-outcome operation before replacing or reconciling restore state.
+- Restore review provides explicit apply/discard/export actions and never silently deletes local-only or pre-restore work.
+- Applying restored work creates a new operation identity and preserves the immutable transmitted identity/payload guarantees from 1A.
+- Restore remains bound to the authenticated owner and store and cannot import authority, credentials, memberships, roles, subscription state, or another store's data.
+- Recovery and review actions preserve actor/history attribution and have focused restart, duplicate, failure, and store-boundary coverage.
+
+Explicit server operating mode, team activation, online-only shared mutation acceptance, offline-draft policy, stale-device behavior, revocation transitions, and subscription-expiry-without-solo-fallback tests belong to task 1D. Task 1C must preserve these future constraints but must not implement or guess them.
 
 Open capacities, gifts, retention, conflict UX, and detailed draft policy do not block beginning integrity/model work, but they must not be guessed or encoded as final commercial values.

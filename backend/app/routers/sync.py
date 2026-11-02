@@ -79,13 +79,16 @@ async def _operation_fingerprint(
 
 def _serialize_operation_submission(
     db: DbSession,
-    owner_user_id: int,
+    store_id: int,
+    actor_user_id: int,
     operation_id: str,
 ) -> None:
     """Serialize one tenant-scoped idempotency key for PostgreSQL writers."""
     if db.bind is None or db.bind.dialect.name != "postgresql":
         return
-    digest = hashlib.sha256(f"{owner_user_id}:{operation_id}".encode("utf-8")).digest()
+    digest = hashlib.sha256(
+        f"{store_id}:{actor_user_id}:{operation_id}".encode("utf-8")
+    ).digest()
     lock_key = int.from_bytes(digest[:8], byteorder="big", signed=True)
     db.execute(select(func.pg_advisory_xact_lock(lock_key)))
 
@@ -248,7 +251,7 @@ def _catalog_for_operation(
 
 def _apply_fields(
     db: DbSession,
-    user_id: int,
+    store_id: int,
     item: InventoryItem,
     payload: dict,
 ) -> None:
@@ -308,7 +311,7 @@ def _apply_fields(
             category = db.scalar(
                 select(Category).where(
                     Category.id == value,
-                    Category.user_id == user_id,
+                    Category.store_id == store_id,
                 )
             )
             if category is None:
@@ -321,7 +324,7 @@ def _apply_fields(
             raise ValueError("label_ids must be an integer list")
         unique_ids = list(dict.fromkeys(values))
         labels = list(db.scalars(select(Label).where(
-            Label.user_id == user_id, Label.id.in_(unique_ids)
+            Label.store_id == store_id, Label.id.in_(unique_ids)
         ))) if unique_ids else []
         if len(labels) != len(unique_ids):
             raise ValueError("LABEL_NOT_AVAILABLE")
@@ -336,8 +339,8 @@ def _normalize_label(value: str) -> tuple[str, str]:
     return name, name.casefold()
 
 
-def _apply_label(db: DbSession, user_id: int, operation: SyncOperationIn) -> SyncOperationResult:
-    label = db.scalar(select(Label).where(Label.id == operation.entity_id, Label.user_id == user_id))
+def _apply_label(db: DbSession, user: User, operation: SyncOperationIn) -> SyncOperationResult:
+    label = db.scalar(select(Label).where(Label.id == operation.entity_id, Label.store_id == user.store_id))
     if operation.operation == "DELETE":
         if label is not None:
             affected = list(label.inventory_items)
@@ -345,7 +348,7 @@ def _apply_label(db: DbSession, user_id: int, operation: SyncOperationIn) -> Syn
                 item.labels = [existing for existing in item.labels if existing.id != label.id]
             db.flush()
             for item in affected:
-                _record_change(db, user_id, item.id, "UPSERT", _serialize(item))
+                _record_change(db, user, item.id, "UPSERT", _serialize(item))
             db.delete(label)
         return SyncOperationResult(operation_id=operation.operation_id, status="applied", entity_id=operation.entity_id)
     payload = operation.payload or {}
@@ -354,14 +357,17 @@ def _apply_label(db: DbSession, user_id: int, operation: SyncOperationIn) -> Syn
         raise ValueError("LABEL_NAME_INVALID")
     name, normalized = _normalize_label(raw_name)
     duplicate = db.scalar(select(Label).where(
-        Label.user_id == user_id, Label.normalized_name == normalized, Label.id != operation.entity_id
+        Label.store_id == user.store_id, Label.normalized_name == normalized, Label.id != operation.entity_id
     ))
     if duplicate is not None:
         raise ValueError("LABEL_NAME_EXISTS")
     if label is None:
         if operation.operation == "UPDATE":
             raise ValueError("LABEL_NOT_FOUND")
-        label = Label(id=operation.entity_id, user_id=user_id, name=name, normalized_name=normalized)
+        label = Label(
+            id=operation.entity_id, store_id=user.store_id,
+            user_id=user.data_owner_id, name=name, normalized_name=normalized,
+        )
         db.add(label)
     else:
         if operation.base_version is not None and label.version != operation.base_version:
@@ -377,16 +383,16 @@ def _apply_label(db: DbSession, user_id: int, operation: SyncOperationIn) -> Syn
     )
 
 
-def _apply_category(db: DbSession, user_id: int, operation: SyncOperationIn) -> SyncOperationResult:
-    category = db.scalar(select(Category).where(Category.id == operation.entity_id, Category.user_id == user_id))
+def _apply_category(db: DbSession, user: User, operation: SyncOperationIn) -> SyncOperationResult:
+    category = db.scalar(select(Category).where(Category.id == operation.entity_id, Category.store_id == user.store_id))
     if operation.operation == "DELETE":
         if category is not None:
             for item in list(db.scalars(select(InventoryItem).where(
-                InventoryItem.user_id == user_id, InventoryItem.category_id == category.id
+                InventoryItem.store_id == user.store_id, InventoryItem.category_id == category.id
             ))):
                 item.category_id = None
                 db.flush()
-                _record_change(db, user_id, item.id, "UPSERT", _serialize(item))
+                _record_change(db, user, item.id, "UPSERT", _serialize(item))
             db.delete(category)
         return SyncOperationResult(operation_id=operation.operation_id, status="applied", entity_id=operation.entity_id)
     payload = operation.payload or {}
@@ -394,14 +400,17 @@ def _apply_category(db: DbSession, user_id: int, operation: SyncOperationIn) -> 
     if not isinstance(name, str) or not name.strip() or len(name.strip()) > 120:
         raise ValueError("CATEGORY_NAME_INVALID")
     duplicate = db.scalar(select(Category).where(
-        Category.user_id == user_id, Category.name == name.strip(), Category.id != operation.entity_id
+        Category.store_id == user.store_id, Category.name == name.strip(), Category.id != operation.entity_id
     ))
     if duplicate is not None:
         raise ValueError("CATEGORY_NAME_EXISTS")
     if category is None:
         if operation.operation == "UPDATE":
             raise ValueError("CATEGORY_NOT_FOUND")
-        category = Category(id=operation.entity_id, user_id=user_id, name=name.strip())
+        category = Category(
+            id=operation.entity_id, store_id=user.store_id,
+            user_id=user.data_owner_id, name=name.strip(),
+        )
         db.add(category)
     category.name = name.strip()
     description = payload.get("description")
@@ -595,12 +604,14 @@ def _apply_inventory_movement(db: DbSession, user: User, operation: SyncOperatio
             raise ValueError("REVERSAL_REFERENCE_REQUIRED")
         original = db.scalar(select(InventoryMovement).where(
             InventoryMovement.store_id == user.store_id,
+            InventoryMovement.actor_user_id == user.id,
             InventoryMovement.operation_id == reverses,
         ))
         if original is None or original.product_id != item.id or delta != -original.delta:
             raise ValueError("REVERSAL_REFERENCE_INVALID")
         already_reversed = db.scalar(select(InventoryMovement).where(
             InventoryMovement.store_id == user.store_id,
+            InventoryMovement.actor_user_id == user.id,
             InventoryMovement.reverses_operation_id == reverses,
         ))
         if already_reversed is not None:
@@ -659,7 +670,7 @@ def _apply_inventory_movement(db: DbSession, user: User, operation: SyncOperatio
     ))
     db.flush()
     record = _serialize(item)
-    _record_change(db, user.data_owner_id, item.id, "UPSERT", record)
+    _record_change(db, user, item.id, "UPSERT", record)
     return SyncOperationResult(
         operation_id=operation.operation_id,
         status="applied",
@@ -673,7 +684,7 @@ def _apply_inventory_movement(db: DbSession, user: User, operation: SyncOperatio
 
 def _record_quantity_change(
     db: DbSession,
-    user_id: int,
+    user: User,
     item: InventoryItem,
     before_quantity: int,
 ) -> None:
@@ -682,7 +693,9 @@ def _record_quantity_change(
         return
     db.add(
         InventoryTransaction(
-            user_id=user_id,
+            store_id=user.store_id,
+            actor_user_id=user.id,
+            user_id=user.data_owner_id,
             inventory_item_id=item.id,
             type="stock_in" if delta > 0 else "stock_out",
             quantity=abs(delta),
@@ -713,13 +726,15 @@ async def _save_image(file: UploadFile, previous: str | None) -> str:
 
 def _record_change(
     db: DbSession,
-    user_id: int,
+    user: User,
     entity_id: int,
     operation: str,
     payload: dict | None,
 ) -> SyncChange:
     change = SyncChange(
-        user_id=user_id,
+        store_id=user.store_id,
+        actor_user_id=user.id,
+        user_id=user.data_owner_id,
         entity="product",
         entity_id=entity_id,
         operation=operation,
@@ -741,7 +756,7 @@ async def _apply_product_operation(
         .options(joinedload(InventoryItem.catalog_product), selectinload(InventoryItem.labels))
         .where(
             InventoryItem.id == operation.entity_id,
-            InventoryItem.user_id == current_user.data_owner_id,
+            InventoryItem.store_id == current_user.store_id,
         )
     )
 
@@ -757,7 +772,7 @@ async def _apply_product_operation(
             if private_catalog is not None:
                 db.delete(private_catalog)
                 db.flush()
-        _record_change(db, current_user.data_owner_id, operation.entity_id, "DELETE", None)
+        _record_change(db, current_user, operation.entity_id, "DELETE", None)
         return SyncOperationResult(
             operation_id=operation.operation_id,
             status="applied",
@@ -781,7 +796,7 @@ async def _apply_product_operation(
         limit = None if is_admin(current_user) else entitlement_for_user(db, current_user)["limits"]["inventory_items"]
         count = db.scalar(
             select(func.count(InventoryItem.id)).where(
-                InventoryItem.user_id == current_user.data_owner_id
+                InventoryItem.store_id == current_user.store_id
             )
         ) or 0
         if limit is not None and count >= limit:
@@ -797,8 +812,8 @@ async def _apply_product_operation(
         )
         db.add(item)
     before_quantity = item.quantity or 0
-    _apply_fields(db, current_user.data_owner_id, item, payload)
-    _record_quantity_change(db, current_user.data_owner_id, item, before_quantity)
+    _apply_fields(db, current_user.store_id, item, payload)
+    _record_quantity_change(db, current_user, item, before_quantity)
     if (
         operation.operation == "UPDATE"
         and "image_url" in payload
@@ -814,7 +829,7 @@ async def _apply_product_operation(
     db.flush()
     db.refresh(item)
     record = _serialize(item)
-    _record_change(db, current_user.data_owner_id, item.id, "UPSERT", record)
+    _record_change(db, current_user, item.id, "UPSERT", record)
     return SyncOperationResult(
         operation_id=operation.operation_id,
         status="applied",
@@ -845,12 +860,14 @@ async def push_batch(
         )
         _serialize_operation_submission(
             db,
-            current_user.data_owner_id,
+            current_user.store_id,
+            current_user.id,
             operation.operation_id,
         )
         previous = db.scalar(
             select(SyncOperation).where(
-                SyncOperation.user_id == current_user.data_owner_id,
+                SyncOperation.store_id == current_user.store_id,
+                SyncOperation.actor_user_id == current_user.id,
                 SyncOperation.operation_id == operation.operation_id,
             )
         )
@@ -906,7 +923,7 @@ async def push_batch(
                     if not tool_allowed(db, current_user, tool_id):
                         raise ValueError(f"DOMAIN_TOOL_DISABLED:{tool_id}")
                     result = (_apply_label if operation.entity == "label" else _apply_category)(
-                        db, current_user.data_owner_id, operation
+                        db, current_user, operation
                     )
                     entity_model = Label if operation.entity == "label" else Category
                     entity_record = db.get(entity_model, operation.entity_id)
@@ -951,7 +968,7 @@ async def push_batch(
         results.append(result)
 
     cursor = db.scalar(
-        select(func.max(SyncChange.id)).where(SyncChange.user_id == current_user.data_owner_id)
+        select(func.max(SyncChange.id)).where(SyncChange.store_id == current_user.store_id)
     ) or 0
     for result in results:
         if isinstance(result.record, InventoryOut):
@@ -994,7 +1011,7 @@ def pull_changes(
     permissions = effective_permissions(active_store_context(db, current_user))
     projection_schema = client_data_schema or 2
     latest = db.scalar(
-        select(func.max(SyncChange.id)).where(SyncChange.user_id == current_user.data_owner_id)
+        select(func.max(SyncChange.id)).where(SyncChange.store_id == current_user.store_id)
     ) or 0
 
     if cursor == 0:
@@ -1002,7 +1019,7 @@ def pull_changes(
             db.scalars(
                 select(InventoryItem)
                 .options(joinedload(InventoryItem.catalog_product), selectinload(InventoryItem.labels))
-                .where(InventoryItem.user_id == current_user.data_owner_id)
+                .where(InventoryItem.store_id == current_user.store_id)
             )
         )
         return SyncChangesResponse(
@@ -1022,7 +1039,7 @@ def pull_changes(
     changes = list(
         db.scalars(
             select(SyncChange)
-            .where(SyncChange.user_id == current_user.data_owner_id, SyncChange.id > cursor)
+            .where(SyncChange.store_id == current_user.store_id, SyncChange.id > cursor)
             .order_by(SyncChange.id)
             .limit(500)
         )

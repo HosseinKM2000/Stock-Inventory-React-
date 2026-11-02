@@ -4,13 +4,16 @@ from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session, joinedload
 
-from ..models import CatalogProduct, Industry, InventoryItem, SyncChange, User
+from ..models import CatalogProduct, Industry, InventoryItem, Store, SyncChange, User
 from ..schemas import InventoryOut
+from .store_service import owner_store_context
 
 
 def _record_inventory_change(db: Session, item: InventoryItem) -> None:
     db.add(
         SyncChange(
+            store_id=item.store_id,
+            actor_user_id=item.user_id,
             user_id=item.user_id,
             entity="product",
             entity_id=item.id,
@@ -27,6 +30,8 @@ def provision_industry_inventory(
     user: User,
     industry_id: int,
 ) -> User:
+    context = owner_store_context(db, user)
+    store = db.scalar(select(Store).where(Store.id == context.store.id).with_for_update())
     industry = db.get(Industry, industry_id)
     if industry is None or not industry.is_active:
         raise HTTPException(
@@ -34,7 +39,7 @@ def provision_industry_inventory(
             detail="INDUSTRY_NOT_FOUND",
         )
 
-    previous_industry_id = user.industry_id
+    previous_industry_id = store.industry_id
     catalog_products = list(
         db.scalars(
             select(CatalogProduct)
@@ -55,7 +60,7 @@ def provision_industry_inventory(
                     CatalogProduct.industry
                 )
             )
-            .where(InventoryItem.user_id == user.id)
+            .where(InventoryItem.store_id == store.id)
         )
     )
     existing_by_catalog = {
@@ -87,7 +92,8 @@ def provision_industry_inventory(
             continue
 
         item = InventoryItem(
-            user_id=user.id,
+            store_id=store.id,
+            user_id=store.owner_user_id,
             catalog_product_id=catalog_product.id,
             catalog_product=catalog_product,
             is_catalog_backed=True,
@@ -95,6 +101,10 @@ def provision_industry_inventory(
         db.add(item)
         changed.append(item)
 
+    store.industry_id = industry.id
+    # Keep the legacy owner profile field as a compatibility mirror while the
+    # store is the authoritative business-domain boundary.
+    store.owner.industry_id = industry.id
     user.industry_id = industry.id
     db.flush()
 

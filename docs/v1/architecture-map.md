@@ -1,6 +1,6 @@
 # Commercial V1 architecture map
 
-Evidence is from source commit `16064aba18c57ca92866251fcba3aca543df6409`. Installed packages are not treated as active features without imports or call paths. The earlier audit under `docs/audits/` was used as an index and rechecked against the unchanged implementation commit.
+The original map was established from source commit `16064aba18c57ca92866251fcba3aca543df6409`; synchronization integrity from TZ-V1-01A and store ownership from the reviewed TZ-V1-01B branch are incorporated below. Installed packages are not treated as active features without imports or call paths.
 
 ## Current module boundaries
 
@@ -12,10 +12,10 @@ Evidence is from source commit `16064aba18c57ca92866251fcba3aca543df6409`. Insta
 | Local data | Dexie `InventoryDatabase` versions 1–11 in `src/shared/lib/infrastructure/storage/db.ts`; actor/store keys in `keys.ts` and repository modules; products/categories/labels/barcodes/movements, sync queue, metadata/cursors, and backup settings are IndexedDB-backed. Version 11 records attempt state and a logical resource key for queued operations. |
 | Local media | OPFS access through `imageRepository`, processing through `imageService`, and object URL/authenticated fallback through `useResolvedImage` under `src/shared/lib/infrastructure/media/`. |
 | Sync | Durable queue and compaction in `queue.service.ts`; transactional claim in `queue-storage.ts`; orchestration in `sync-service.ts`; multipart metadata/media push in `src/features/app/inventory/api/sync.api.ts`; service startup in `sync-bootstrap.ts`. |
-| Backend | FastAPI application in `backend/app/main.py`; SQLAlchemy models in `models.py`; Alembic revisions through `20261101_0008`; PostgreSQL is the intended engine. |
-| Identity/store authorization | JWT/device sessions in `auth_service.py`, `session_service.py`, and `security.py`; membership context in `store_service.active_store_context`; effective permission checks in `store_authorization.py`; request dependencies in `deps.py`. |
+| Backend | FastAPI application in `backend/app/main.py`; SQLAlchemy models in `models.py`; Alembic revisions through `20261101_0009`; PostgreSQL is the intended engine. |
+| Identity/store authorization | JWT/device sessions in `auth_service.py`, `session_service.py`, and `security.py`; membership context in `store_service.active_store_context`; effective permission checks in `store_authorization.py`; request dependencies in `deps.py`. Exactly one active membership is resolved in current V1; multiple active memberships fail closed as `STORE_CONTEXT_AMBIGUOUS`. |
 | Plans | Central built-in catalog in `backend/app/plans.py`; policy/entitlement resolution in `plan_policy.py` and `subscription_service.py`; frontend cached access in `src/shared/access/`. |
-| Inventory and catalog | API routers for products/categories/labels/inventory/transactions; frontend inventory repository/services/forms under `src/features/app/inventory/`; catalog reconciliation in `catalog_product_service._reconcile_catalog_assignments`. |
+| Inventory and catalog | API routers for products/categories/labels/inventory/transactions scope operational access by authenticated `store_id`; frontend inventory repository/services/forms under `src/features/app/inventory/`; catalog reconciliation in `catalog_product_service._reconcile_catalog_assignments` locks and provisions eligible stores, not users. |
 | Barcode and quantity | Barcode/movement repositories and `movementService` under `src/features/barcode/`; additive server application in `backend/app/routers/sync.py`; ordinary forms, quick edits, bulk edit, and import send absolute product quantities with base versions. |
 | Media server | Multipart handling in `backend/app/routers/sync.py`; protected delivery in `routers/files.py`; bytes stored under the backend upload filesystem. No object-store/CDN adapter is active. |
 | Backup/restore | Local snapshot/format/external destination/restore modules under `src/features/backup/services/`; server snapshot endpoint and unimplemented server restore in `backend/app/routers/backup.py`. |
@@ -31,6 +31,8 @@ Evidence is from source commit `16064aba18c57ca92866251fcba3aca543df6409`. Insta
 3. `queue.service.enqueue` consolidates pending work and schedules sync.
 4. `sync-service.ts` claims due work, `sync.api.ts` sends a batch, and `backend/app/routers/sync.py` resolves membership, entitlement, permission, resource scope, version, and operation id.
 5. Accepted state/change cursor is returned and reconciled into the local projection; conflicts/fatal rejections remain local recovery entries.
+
+Operational reads, writes, bulk paths, file authorization, categories, labels, custom products, transactions, and sync pull use the authenticated store boundary. `user_id` remains on transitional tables as the original owner compatibility value; `actor_user_id` and membership IDs retain server-derived attribution. PostgreSQL relation constraints reject cross-store category, inventory, barcode, movement, and transaction references; a migration trigger protects the legacy inventory-label join shape.
 
 This path is active for both owners and personnel when cached access allows it. There is no explicit operating-mode field or team-only server-acceptance mutation path.
 
@@ -56,12 +58,22 @@ Forms process/store local image bytes in OPFS and put the local reference in pro
 
 `backupRestoreService.apply` verifies owner/store binding, writes a recovery copy, restores image bytes, replaces actor/store projections, deletes the current actor queue, and reintroduces backup operations as conflict entries with new ids. `resumeSynchronization` then deletes every `RESTORED_BACKUP_REVIEW_REQUIRED` entry before synchronizing. This prevents blind replay but can discard restored local-only work instead of reconciling it.
 
+### Store-ownership migration and compatibility
+
+Alembic `20261101_0009` expands `stores` with the authoritative business domain, backfills nullable operational `store_id` values first from the unique owner and then from an unambiguous membership, validates cross-store references, and only then makes ownership columns non-null and replaces owner-user uniqueness/indexes. It preserves primary keys, quantities, prices, category/transaction history, sync fingerprints, operation IDs, and cursors.
+
+The migration deliberately raises `STORE_OWNERSHIP_PREFLIGHT:<table>:<reason>` for unresolved rows, cross-store references, or duplicate store/catalog, category, label, or actor-operation keys. The diagnostic includes the total and up to 20 affected record/group identifiers. PostgreSQL transactional DDL rolls the failed revision back to `0008`; operators must export and resolve the identified rows and retry. The migration does not select a winner, sum quantities, delete records, or rewrite operation semantics. A request committed under `20261101_0008` retains its fingerprint and recorded result and replays after upgrade without reapplying its mutation.
+
+Schema `0009` is not rolling-compatible with pre-1B backend processes. The legacy process uses owner-user lookup/deduplication assumptions while `0009` enforces store/actor keys, so migration requires a controlled backend replacement: stop old workers, back up and preflight, apply `0009`, verify the Alembic head, then start only 1B-or-newer workers. The repository contains manual Alembic/start instructions but no automated production deployment or rollback workflow.
+
+The local database already partitions projections, cursors, and outbox entries by actor and store. No Dexie version or backup format changed in 1B; schema-v2 backup store binding and legacy compatibility remain as before. Restore review behavior is intentionally unchanged and remains a 1C risk.
+
 ## Implementation versus confirmed target
 
 | Topic | Observed implementation | Confirmed target |
 |---|---|---|
-| Ownership | Membership resolves a store, but important tables, uniqueness, sync identity, and catalog provisioning still use legacy owner `user_id`. | Store is the business-data boundary; server-derived actor/membership is attribution only. |
-| Active store | `active_store_context` selects the first membership, preferring owner; there is no session-bound selector. | Context comes from an authenticated active membership, never a client store claim. |
+| Ownership | Operational tables and query paths use non-null `store_id`; uniqueness and dependent relations are store-scoped. Authenticated membership selects the store, while legacy `user_id` is compatibility-only and actor fields are attribution. | Store is the business-data boundary; server-derived actor/membership is attribution only. |
+| Active store | `active_store_context` accepts exactly one active membership; zero is unauthorized and multiple memberships fail closed with `STORE_CONTEXT_AMBIGUOUS`. There is no session-bound multi-store selector. | Context comes from an authenticated active membership, never a client store claim. |
 | Mode | No explicit server-controlled solo/team mode; cached local-first mutations apply to team members and owners. | Solo is local-first; team shared mutations require current online authorization and acceptance. |
 | Plans | Free/Starter/Pro/VIP code defaults exist; some limits/capabilities are enforced, prices/payment/grants/admin coverage are incomplete. | Free/Pro/VIP launch restrictions, explicit early-user paid grants, validated centralized admin model. |
 | Operation identity | Never-attempted pending absolute mutations may compact. Attempted/uncertain payloads and additive movements are immutable; same-resource successors remain ordered. The server verifies exact replay fingerprints. | Transmitted identity/payload is immutable; new mutation gets a new identity. |
@@ -74,8 +86,8 @@ Forms process/store local image bytes in OPFS and put the local reference in pro
 | ID / severity | Classification | Evidence | Affected flow | Owning task |
 |---|---|---|---|---|
 | SYNC-001 / resolved in TZ-V1-01A | Verified implementation and regression coverage | Attempt state is persisted before dispatch; successors use new identities and are ordered per resource; stale acknowledgements preserve/rebase newer local intent; server fingerprints exact submissions and serializes concurrent duplicate ids. SQLite and PostgreSQL regressions cover mismatch, historical rows, and concurrent equivalent replay. | The known lost-response/newer-edit path is closed. Legacy payloads overwritten before the v11 upgrade cannot be reconstructed. | 1A |
-| OWN-001 / critical | Observed architectural defect | `store_data_owner_id`, legacy `user_id` constraints/models, and sync keys remain owner-user-based. | Ownership, migration, future multi-store, authorization proofs. | 1 |
-| CAT-001 / critical | Observed static defect | `_reconcile_catalog_assignments` selects `User` by industry and creates `InventoryItem(user_id=...)`. | Personnel can receive separate/inaccessible catalog rows instead of store rows. | 1 |
+| OWN-001 / resolved in TZ-V1-01B | Verified implementation and PostgreSQL migration coverage | Operational ownership, constraints, reads/writes, sync cursors, file checks, bulk paths, and relations are store-scoped. Multiple active memberships fail closed; legacy owner fields are compatibility-only. | Owner and personnel share one authorized store projection; unrelated stores and cross-store IDs are rejected. A future multi-store selector remains out of scope. | 1B |
+| CAT-001 / resolved in TZ-V1-01B | Verified implementation and PostgreSQL concurrency coverage | Reconciliation locks the catalog/store rows, selects eligible `Store.industry_id`, and relies on `(store_id, catalog_product_id)` uniqueness. | Personnel changes no longer create inventory; repeated/concurrent reconciliation preserves customer overrides and creates one assignment. | 1B |
 | REST-001 / critical | Observed static defect | Restore deletes the current queue; resume deletes restored conflict entries before pull/sync. | Local-only restored or pre-restore work can be discarded. | 1 |
 | MODE-001 / high | Confirmed policy gap | No operating-mode model; cached access plus local mutation path is shared by owner/personnel. | Team edits may appear saved locally and later be rejected. | 1 |
 | MED-001 / high | Observed defect/gap | Missing OPFS bytes do not block metadata; no media queue state; remote display does not hydrate OPFS. | False completion and incomplete fresh-device/offline recovery. | 4 |
