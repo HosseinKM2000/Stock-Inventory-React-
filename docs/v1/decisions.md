@@ -28,6 +28,13 @@ This document records target policy. It does not claim that the current implemen
 - Catalog media is administrator-managed and referenced by customer data. Plan changes and catalog hiding never delete shared catalog files. Backend storage exposes stable object references rather than temporary delivery URLs so a CDN can be added later.
 - Backup/restore cannot restore identity, authority, credentials, memberships, roles, or subscriptions; it cannot cross owner/store boundaries. Restored work is reviewed and reconciled, never silently discarded or replayed under an old actor.
 
+### Store-owned operational data
+
+- A store's business domain selection and catalog assignments belong to the store, not to each user profile. Owner and personnel memberships authorize actors into the same inventory; they never create parallel customer inventories.
+- Legacy owner-oriented columns may remain only as compatibility mirrors or historical attribution. They are not an authorization, query, uniqueness, synchronization, or provisioning boundary.
+- If an authenticated person has more than one active membership and no server-validated active-store selection exists, V1 fails closed with a controlled ambiguity error. This task does not introduce a multi-store selector.
+- Catalog definitions remain global administrator-managed records. Store assignment reconciliation may hide ineligible assignments but preserves customer quantities, prices, labels, visibility choices, identifiers, and history.
+
 ### Experience and dates
 
 - Preserve established navigation, responsive layouts, tokens, components, both themes, and compact/normal/large display preferences.
