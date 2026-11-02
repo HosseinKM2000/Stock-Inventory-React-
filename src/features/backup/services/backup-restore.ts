@@ -118,16 +118,26 @@ function stagePath(sessionId: string, index: number, original: string) {
 }
 
 async function stageMedia(session: RecoverySession) {
-  const media: RecoverySession["media"] = [];
-  for (const [index, image] of session.imported.data.images.entries()) {
+  const byPath = new Map(session.imported.data.images.map((image) => [image.path, image]));
+  for (const image of session.checkpoint.data.images) byPath.set(image.path, image);
+  const images = [...byPath.values()];
+  const blobs = images.map((image) => fromBase64(image.base64, image.mimeType));
+  const media: RecoverySession["media"] = images.map((image, index) => ({
+    originalPath: image.path,
+    stagedPath: stagePath(session.id, index, image.path),
+    mimeType: image.mimeType,
+    size: blobs[index].size,
+    copied: false,
+  }));
+  session.media = media;
+  session.updatedAt = Date.now();
+  await db.recoverySessions.put(session);
+  for (const [index, entry] of media.entries()) {
     renewMaintenance(session.ownerUserId, session.storeId);
-    const blob = fromBase64(image.base64, image.mimeType);
-    const stagedPath = stagePath(session.id, index, image.path);
-    await imageRepository.restore(stagedPath, blob);
-    if ((await imageRepository.read(stagedPath)).size !== blob.size) throw new Error("BACKUP_IMAGE_STAGE_FAILED");
-    media.push({ originalPath: image.path, stagedPath, mimeType: image.mimeType, size: blob.size, copied: false });
+    await imageRepository.restore(entry.stagedPath, blobs[index]);
+    if ((await imageRepository.read(entry.stagedPath)).size !== entry.size) throw new Error("BACKUP_IMAGE_STAGE_FAILED");
   }
-  Object.assign(session, { media, status: "media_staged" as const, updatedAt: Date.now() });
+  Object.assign(session, { status: "media_staged" as const, updatedAt: Date.now() });
   await db.recoverySessions.put(session);
 }
 
@@ -158,8 +168,15 @@ function remap<T extends { id: number }>(items: T[], user: User) {
   return items.map((item) => ({ ...item, local_user_id: user.id, local_store_id: storeId, local_key: `${user.id}:${storeId}:${item.id}` }));
 }
 
+function mergeCurrentOverImported<T extends { id: number }>(imported: T[], current: T[]) {
+  const merged = new Map(imported.map((item) => [item.id, item]));
+  for (const item of current) merged.set(item.id, item);
+  return [...merged.values()];
+}
+
 async function commitRestore(session: RecoverySession, items: RecoveryReviewItem[], user: User) {
   const data = session.imported.data;
+  const current = session.checkpoint.data;
   const { storeId } = scopeFor(user);
   renewMaintenance(user.id, storeId);
   await db.transaction("rw", [db.inventoryItems, db.categories, db.labels, db.barcodes, db.inventoryMovements, db.syncMetadata, db.recoverySessions, db.recoveryItems], async () => {
@@ -172,11 +189,11 @@ async function commitRestore(session: RecoverySession, items: RecoveryReviewItem
       db.inventoryMovements.where("[local_user_id+local_store_id]").equals([user.id, storeId]).primaryKeys(),
     ]);
     await Promise.all([db.inventoryItems.bulkDelete(products), db.categories.bulkDelete(categories), db.labels.bulkDelete(labels), db.barcodes.bulkDelete(barcodes), db.inventoryMovements.bulkDelete(movements)]);
-    await db.inventoryItems.bulkPut(remap(data.products, user));
-    await db.categories.bulkPut(remap(data.categories, user));
-    await db.labels.bulkPut(remap(data.labels, user));
-    await db.barcodes.bulkPut(remap(data.barcodes ?? [], user).map((item) => ({ ...item, store_id: storeId })));
-    await db.inventoryMovements.bulkPut(remap(data.inventoryMovements ?? [], user));
+    await db.inventoryItems.bulkPut(remap(mergeCurrentOverImported(data.products, current.products), user));
+    await db.categories.bulkPut(remap(mergeCurrentOverImported(data.categories, current.categories), user));
+    await db.labels.bulkPut(remap(mergeCurrentOverImported(data.labels, current.labels), user));
+    await db.barcodes.bulkPut(remap(mergeCurrentOverImported(data.barcodes ?? [], current.barcodes ?? []), user).map((item) => ({ ...item, store_id: storeId })));
+    await db.inventoryMovements.bulkPut(remap(mergeCurrentOverImported(data.inventoryMovements ?? [], current.inventoryMovements ?? []), user));
     await db.recoveryItems.bulkPut(items);
     await db.syncMetadata.delete(`${user.id}:${storeId}:product-sync-cursor`);
     await db.syncMetadata.delete(`${user.id}:${storeId}:product-sync-initialized`);

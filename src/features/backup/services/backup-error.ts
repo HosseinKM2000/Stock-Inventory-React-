@@ -13,6 +13,7 @@ const messages: Record<string, string> = {
   BACKUP_INTEGRITY_FAILED: "سلامت فایل پشتیبان تأیید نشد.",
   BACKUP_REVISION_INVALID: "نسخه ثبت‌شده فایل پشتیبان معتبر نیست.",
   BACKUP_RESTORE_BUSY: "یک عملیات پشتیبان یا بازیابی دیگر در حال اجرا است.",
+  BACKUP_RESTORE_LOCK_UNSUPPORTED: "این مرورگر قفل امن لازم برای بازیابی را پشتیبانی نمی‌کند؛ فایل فعلی بدون تغییر باقی ماند.",
   BACKUP_RECONCILIATION_REQUIRES_ONLINE: "برای تطبیق امن داده‌های بازیابی‌شده، ابتدا به اینترنت متصل شوید.",
   BACKUP_RECONCILIATION_FAILED: "تطبیق با سرور کامل نشد؛ همگام‌سازی همچنان متوقف است.",
   BACKUP_ACCOUNT_CHANGED: "حساب یا فروشگاه فعال هنگام بازیابی تغییر کرده است. برای ادامه دوباره وارد همان حساب شوید.",

@@ -36,9 +36,9 @@ export async function withBackupWriter<T>(userId: number, task: () => Promise<T>
 }
 
 export async function withBackupRestore<T>(userId: number, task: () => Promise<T>): Promise<T | undefined> {
+  const locks = (navigator as LockNavigator).locks;
+  if (!locks) throw new Error("BACKUP_RESTORE_LOCK_UNSUPPORTED");
   return withBackupWriter(userId, async () => {
-    const locks = (navigator as LockNavigator).locks;
-    if (!locks) return task();
     let result: T | undefined;
     await locks.request("tanzim-outbox-sync", async () => {
       await locks.request(`tanzim-local-mutations:${userId}`, async () => {

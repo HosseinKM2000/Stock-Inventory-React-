@@ -87,6 +87,13 @@ async function envelopeWith(options: { operations?: SyncQueueItem[]; images?: bo
 
 describe("safe backup restoration", () => {
   beforeEach(async () => {
+    Object.defineProperty(navigator, "locks", {
+      configurable: true,
+      value: { request: async (_name: string, optionsOrCallback: unknown, maybeCallback?: (lock: object) => unknown) => {
+        const callback = typeof optionsOrCallback === "function" ? optionsOrCallback as (lock: object) => unknown : maybeCallback!;
+        return callback({});
+      } },
+    });
     await db.open();
     await db.transaction("rw", db.tables, async () => Promise.all(db.tables.map((table) => table.clear())));
     localStorage.clear();
@@ -136,6 +143,67 @@ describe("safe backup restoration", () => {
     expect(queued[0]).toMatchObject({ attemptState: "uncertain", payload: transmittedPayload });
     expect(mocks.requireWrite).toHaveBeenCalledTimes(1);
     expect(mocks.requireStorePermission).toHaveBeenCalledWith("products.edit");
+  });
+
+  it("keeps a newer local edit and a backup-absent local product through reload and reconciliation", async () => {
+    const newer = product({ id: 70, local_user_id: 7, local_store_id: 7, quantity: 27, price: 4100, version: 8 });
+    const localOnly = product({ id: 91, local_user_id: 7, local_store_id: 7, quantity: 3, version: undefined });
+    const newerOperation = {
+      ...oldOperation, id: "7:product:70:newer", operationId: "current-newer-edit", payload: { quantity: 27, price: 4100, version: 8 },
+      attemptState: "never" as const, status: "pending" as const,
+    };
+    const createOperation = {
+      ...oldOperation, id: "7:product:91:create", entityId: 91, operationId: "current-local-create", action: "CREATE" as const,
+      payload: { ...localOnly }, attemptState: "never" as const, status: "pending" as const,
+    };
+    await db.inventoryItems.bulkPut([newer, localOnly]);
+    await db.syncQueue.bulkPut([newerOperation, createOperation]);
+
+    await backupRestoreService.apply({ envelope: await envelopeWith(), sourceName: "older.tanzimbackup" }, user);
+
+    expect(await db.inventoryItems.get(newer.local_key)).toMatchObject({ quantity: 27, price: 4100, version: 8 });
+    expect(await db.inventoryItems.get(localOnly.local_key)).toEqual(localOnly);
+    db.close();
+    await db.open();
+    const review = await backupRestoreService.getReview(user);
+    expect(review?.session.checkpoint.data.products).toEqual(expect.arrayContaining([newer, localOnly]));
+    expect(await db.syncQueue.get(newerOperation.id)).toEqual(newerOperation);
+    expect(await db.syncQueue.get(createOperation.id)).toEqual(createOperation);
+
+    await Promise.all(review!.items.map((item) => backupRestoreService.discardReviewItem(user, item.id)));
+    mocks.sync.mockImplementationOnce(async () => {
+      await db.syncQueue.bulkDelete([newerOperation.id, createOperation.id]);
+    });
+    await backupRestoreService.resumeSynchronization(user.id);
+
+    expect(await db.inventoryItems.get(newer.local_key)).toMatchObject({ quantity: 27, price: 4100, version: 8 });
+    expect(await db.inventoryItems.get(localOnly.local_key)).toEqual(localOnly);
+    expect(await backupRestoreService.getReview(user)).toBeNull();
+  });
+
+  it("keeps checkpoint media bytes when an imported snapshot reuses the same local path", async () => {
+    const currentBytes = new Blob(["current-image"], { type: "image/webp" });
+    mocks.images.set("local://tea.webp", currentBytes);
+    await db.inventoryItems.put(product({
+      id: 70, local_user_id: 7, local_store_id: 7, quantity: 27, version: 8, image_url: "local://tea.webp",
+    }));
+
+    await backupRestoreService.apply({ envelope: await envelopeWith({ images: true }), sourceName: "older-media.tanzimbackup" }, user);
+
+    expect(await mocks.images.get("local://tea.webp")!.text()).toBe("current-image");
+    expect((await backupRestoreService.getReview(user))?.session.checkpoint.data.images).toHaveLength(1);
+  });
+
+  it("fails closed before mutation when Web Locks are unavailable", async () => {
+    const current = product({ id: 779, local_user_id: 7, local_store_id: 7 });
+    await db.inventoryItems.put(current);
+    Reflect.deleteProperty(navigator, "locks");
+
+    await expect(backupRestoreService.apply({ envelope: await envelopeWith(), sourceName: "unsupported.tanzimbackup" }, user))
+      .rejects.toThrow("BACKUP_RESTORE_LOCK_UNSUPPORTED");
+
+    expect(await db.inventoryItems.get(current.local_key)).toEqual(current);
+    expect(await db.recoverySessions.count()).toBe(0);
   });
 
   it("never deletes restored or pre-restore work when review is incomplete", async () => {

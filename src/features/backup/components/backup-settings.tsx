@@ -293,7 +293,7 @@ export function BackupSettings() {
         <AlertDialog.Content maxWidth="520px" dir="rtl" className="max-h-[85vh] overflow-y-auto overscroll-contain">
           <AlertDialog.Title>تأیید بازیابی فایل پشتیبان</AlertDialog.Title>
           <AlertDialog.Description size="2" className="leading-7">
-            اطلاعات فعلی جایگزین می‌شوند. پیش از ادامه، از وضعیت فعلی یک نسخه احتیاطی بگیرید و خلاصه فایل را بررسی کنید.
+            اطلاعات فایل با وضعیت فعلی ادغام می‌شوند و کارهای محلی فعلی برای بررسی حفظ خواهند شد. پیش از ادامه، از وضعیت فعلی یک نسخهٔ احتیاطی بگیرید و خلاصهٔ فایل را بررسی کنید.
           </AlertDialog.Description>
           {preview ? (
             <Box mt="4" p="3" className="rounded-lg bg-[var(--gray-a3)]">
