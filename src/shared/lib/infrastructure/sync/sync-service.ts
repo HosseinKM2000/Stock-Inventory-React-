@@ -7,6 +7,11 @@ import { queueService } from "./queue.service";
 import { syncStatusStore } from "./sync-status";
 import { accessState } from "@/shared/access/access-state";
 import { entitlementService } from "@/shared/access/entitlement-service";
+import {
+  assertSyncAccountCurrent,
+  captureSyncAccountContext,
+  isSyncAccountCurrent,
+} from "./sync-account-context";
 
 export type SyncHandlerResult = {
   itemId: string;
@@ -59,20 +64,25 @@ function isFatalRequest(error: unknown) {
 async function processGroup(entity: string, items: SyncQueueItem[]) {
   const handler = handlers.get(entity);
   if (!handler) return { changed: false, error: null as string | null };
+  const account = captureSyncAccountContext();
 
   const active: SyncQueueItem[] = [];
   for (const item of items) {
+    assertSyncAccountCurrent(account);
     const claimed = await queueService.markInFlight(item);
+    assertSyncAccountCurrent(account);
     if (claimed) active.push(claimed);
   }
   if (active.length === 0) return { changed: false, error: null };
 
   try {
     const results = await handler(active);
+    assertSyncAccountCurrent(account);
     const byId = new Map(results.map((result) => [result.itemId, result]));
     let lastError: string | null = null;
 
     for (const item of active) {
+      assertSyncAccountCurrent(account);
       const result = byId.get(item.id);
 
       if (!result) {
@@ -94,6 +104,9 @@ async function processGroup(entity: string, items: SyncQueueItem[]) {
 
     return { changed: true, error: lastError };
   } catch (error) {
+    if (!isSyncAccountCurrent(account)) {
+      return { changed: false, error: "SYNC_ACCOUNT_CHANGED" };
+    }
     for (const item of active) {
       if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
         await queueService.releaseAfterAuthFailure(item, error);
@@ -201,6 +214,21 @@ async function runSync() {
   if (changed) onSettled?.();
 }
 
+function startSync(run: () => Promise<void>) {
+  if (running) return running;
+  running = run()
+    .catch((error) => {
+      syncStatusStore.set({
+        state: "failed",
+        error: error instanceof Error ? error.message : String(error),
+      });
+    })
+    .finally(() => {
+      running = null;
+    });
+  return running;
+}
+
 export const syncService = {
   pause(reason = "manual", accountId?: number) {
     const userId = accountId ?? accessState.user?.()?.id;
@@ -222,8 +250,6 @@ export const syncService = {
   },
 
   async sync() {
-    if (running) return running;
-
     const coordinatedRun = async () => {
       if (!navigator.locks) return runSync();
       await navigator.locks.request(
@@ -232,19 +258,12 @@ export const syncService = {
         async (lock) => { if (lock) await runSync(); },
       );
     };
+    return startSync(coordinatedRun);
+  },
 
-    running = coordinatedRun()
-      .catch((error) => {
-        syncStatusStore.set({
-          state: "failed",
-          error: error instanceof Error ? error.message : String(error),
-        });
-      })
-      .finally(() => {
-        running = null;
-      });
-
-    return running;
+  /** Runs only when the caller already owns the global outbox Web Lock. */
+  async syncWithinOutboxLock() {
+    return startSync(runSync);
   },
 
   schedule() {

@@ -37,7 +37,7 @@ os.environ["SYSTEM_ADMIN_PASSWORD"] = "Test-only-system-admin-password-123!"
 from fastapi.testclient import TestClient
 from app.database import SessionLocal, engine
 from app.main import app
-from app.models import CatalogProduct, Category, Industry, InventoryItem, Label, Store, SyncOperation, User
+from app.models import CatalogProduct, Category, Industry, InventoryItem, Label, Store, StoreModeTransition, SyncOperation, User
 from app.routers.sync import _duplicate_result
 from app.schemas import SyncOperationIn
 from app.services.catalog_product_service import _reconcile_catalog_assignments
@@ -95,7 +95,8 @@ def migrated_empty_database():
             INSERT INTO users (id,first_name,last_name,username,hashed_password,industry_id)
             VALUES (9101,'Legacy','Owner','legacy-owner','hash',9101),
                    (9102,'Legacy','Member','legacy-member','hash',9101),
-                   (9201,'Solo','Owner','legacy-solo-owner','hash',9101)
+                   (9201,'Solo','Owner','legacy-solo-owner','hash',9101),
+                   (9202,'Inactive','Member','legacy-inactive-member','hash',9101)
         """))
         connection.execute(text("""
             INSERT INTO stores (id,name,owner_user_id)
@@ -103,13 +104,15 @@ def migrated_empty_database():
         """))
         connection.execute(text("""
             INSERT INTO store_roles (id,store_id,name,permissions_json)
-            VALUES (9101,9101,'Legacy role','[]')
+            VALUES (9101,9101,'Legacy role','[]'),
+                   (9201,9201,'Inactive role','[]')
         """))
         connection.execute(text("""
             INSERT INTO store_memberships (id,store_id,user_id,role_id,status,is_owner)
             VALUES (9101,9101,9101,NULL,'active',true),
                    (9102,9101,9102,9101,'active',false),
-                   (9201,9201,9201,NULL,'active',true)
+                   (9201,9201,9201,NULL,'active',true),
+                   (9202,9201,9202,9201,'inactive',false)
         """))
         connection.execute(text("""
             INSERT INTO catalog_products (id,industry_id,name) VALUES (9101,9101,'Legacy catalog')
@@ -163,7 +166,11 @@ def migrated_empty_database():
     with reset_engine.begin() as connection:
         connection.execute(text(
             "INSERT INTO users (id,first_name,last_name,username,hashed_password) "
-            "VALUES (9301,'Ambiguous','Owner','ambiguous-owner','hash')"
+            "VALUES (9301,'Ambiguous','Owner','ambiguous-owner','hash'), "
+            "       (9401,'Missing','Owner','missing-owner','hash')"
+        ))
+        connection.execute(text(
+            "INSERT INTO stores (id,name,owner_user_id) VALUES (9401,'Missing owner membership',9401)"
         ))
         connection.execute(text(
             "INSERT INTO store_memberships (id,store_id,user_id,status,is_owner) "
@@ -183,6 +190,10 @@ def migrated_empty_database():
     with reset_engine.begin() as connection:
         connection.execute(text("DELETE FROM store_memberships WHERE id=9301"))
         connection.execute(text("DELETE FROM users WHERE id=9301"))
+        connection.execute(text(
+            "INSERT INTO store_memberships (id,store_id,user_id,status,is_owner) "
+            "VALUES (9401,9401,9401,'active',true)"
+        ))
     command.upgrade(config, "head")
     with reset_engine.connect() as connection:
         row = connection.execute(text("""
@@ -200,6 +211,9 @@ def migrated_empty_database():
         )).one()
         MIGRATION_EVIDENCE["legacy_solo_mode"] = connection.execute(text(
             "SELECT operating_mode, policy_version, policy_changed_by_user_id FROM stores WHERE id=9201"
+        )).one()
+        MIGRATION_EVIDENCE["remediated_missing_owner_mode"] = connection.execute(text(
+            "SELECT operating_mode, policy_version, policy_changed_by_user_id FROM stores WHERE id=9401"
         )).one()
     with SessionLocal() as db:
         stored = db.get(SyncOperation, 9101)
@@ -254,6 +268,7 @@ def test_migration_reaches_head_with_all_expected_tables(migrated_empty_database
     assert MIGRATION_EVIDENCE["replay"] == ("applied", 1, 23)
     assert "STORE_MODE_PREFLIGHT:ACTIVE_OWNER" in MIGRATION_EVIDENCE["mode_preflight"]
     assert "9201" in MIGRATION_EVIDENCE["mode_preflight"]
+    assert "9401" in MIGRATION_EVIDENCE["mode_preflight"]
     assert MIGRATION_EVIDENCE["mode_rollback"] == ("20261101_0009", True)
     assert EXPECTED_TABLES <= set(inspect(engine).get_table_names())
     with engine.connect() as connection:
@@ -267,6 +282,7 @@ def test_migration_reaches_head_with_all_expected_tables(migrated_empty_database
         assert next(column for column in inspect(engine).get_columns("inventory_items") if column["name"] == "store_id")["nullable"] is False
         assert tuple(MIGRATION_EVIDENCE["legacy_mode"]) == ("team", 1, 9101)
         assert tuple(MIGRATION_EVIDENCE["legacy_solo_mode"]) == ("solo", 1, 9201)
+        assert tuple(MIGRATION_EVIDENCE["remediated_missing_owner_mode"]) == ("solo", 1, 9401)
 
 
 @pytest.mark.postgres
@@ -574,6 +590,36 @@ def test_team_activation_serializes_with_inflight_solo_mutation(client):
         assert store.operating_mode == "team"
         expected_count = 1 if mutation_result["status"] == "applied" else 0
         assert db.query(Category).filter_by(id=operation["entity_id"]).count() == expected_count
+
+
+@pytest.mark.postgres
+def test_concurrent_team_activation_requests_converge_once(client):
+    created = signup(client)
+    user_id = created.json()["user"]["id"]
+    headers = {
+        "Authorization": f"Bearer {created.json()['access_token']}",
+        "X-Device-Fingerprint": "postgres-device",
+    }
+    with SessionLocal() as db:
+        db.get(User, user_id).plan = "vip"
+        db.commit()
+    mode = client.get("/api/store/operating-mode", headers=headers).json()
+
+    def activate(transition_id: str):
+        return client.post("/api/store/operating-mode/activate-team", headers=headers, json={
+            "expected_policy_version": mode["policy_version"],
+            "transition_id": transition_id,
+        })
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        responses = list(pool.map(activate, ["concurrent-activation-a", "concurrent-activation-b"]))
+
+    assert all(response.status_code == 200 for response in responses), [response.text for response in responses]
+    assert {response.json()["operating_mode"] for response in responses} == {"team"}
+    assert {response.json()["policy_version"] for response in responses} == {mode["policy_version"] + 1}
+    with SessionLocal() as db:
+        store_id = db.scalar(select(Store.id).where(Store.owner_user_id == user_id))
+        assert db.query(StoreModeTransition).filter_by(store_id=store_id).count() == 1
 
 
 @pytest.mark.postgres

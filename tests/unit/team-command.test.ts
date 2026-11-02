@@ -34,7 +34,7 @@ describe("team server-accepted commands", () => {
     mocks.getAll.mockResolvedValue([]);
     Object.defineProperty(navigator, "locks", {
       configurable: true,
-      value: { request: vi.fn() },
+      value: { request: vi.fn((_name: string, callback: () => unknown) => callback()) },
     });
   });
 
@@ -68,5 +68,20 @@ describe("team server-accepted commands", () => {
     mocks.offline.mockReturnValue(true);
     await expect(teamCommandService.submit("product", 9, "UPDATE", {}, COMMAND_2)).rejects.toThrow("TEAM_ONLINE_REQUIRED");
     expect(mocks.enqueue).not.toHaveBeenCalled();
+  });
+
+  it("does not dispatch when durable command storage fails", async () => {
+    mocks.enqueue.mockRejectedValue(new Error("indexeddb unavailable"));
+    await expect(teamCommandService.submit("product", 9, "UPDATE", {}, COMMAND_1))
+      .rejects.toThrow("indexeddb unavailable");
+    expect(mocks.sync).not.toHaveBeenCalled();
+  });
+
+  it("coordinates the resource through a cross-tab Web Lock", async () => {
+    await teamCommandService.submit("product", 9, "UPDATE", {}, COMMAND_1);
+    expect(navigator.locks.request).toHaveBeenCalledWith(
+      "tanzim-team-command:7:7:product:9",
+      expect.any(Function),
+    );
   });
 });

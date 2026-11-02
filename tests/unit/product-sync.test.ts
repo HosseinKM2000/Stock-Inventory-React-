@@ -21,6 +21,7 @@ const mocks = vi.hoisted(() => ({
   inventorySave: vi.fn(),
   inventoryRemove: vi.fn(),
   imageRemove: vi.fn(),
+  user: vi.fn(),
 }));
 
 vi.mock("@/shared/lib/infrastructure/sync/sync-service", () => ({
@@ -64,6 +65,9 @@ vi.mock("@/features/app/inventory/services/inventory.repository", () => ({
     remove: mocks.inventoryRemove,
   },
 }));
+vi.mock("@/shared/access/access-state", () => ({
+  accessState: { user: mocks.user },
+}));
 
 import {
   recoverMissingProductConflicts,
@@ -103,6 +107,7 @@ describe("product synchronization reconciliation", () => {
     mocks.removeIfUnchanged.mockResolvedValue(true);
     mocks.hasSuccessor.mockResolvedValue(false);
     mocks.prepareSuccessor.mockResolvedValue(false);
+    mocks.user.mockReturnValue({ id: 1, store_id: 11 });
     registerProductSync();
   });
 
@@ -241,6 +246,56 @@ describe("product synchronization reconciliation", () => {
     expect(mocks.inventorySave).toHaveBeenCalledWith(expect.objectContaining({
       id: 10, price: 250, quantity: 17, category_id: 3, label_ids: [4], version: 2,
     }));
+  });
+
+  it("does not reconcile an old account response into the newly active partition", async () => {
+    const item = queued();
+    let resolveResponse!: (value: unknown) => void;
+    mocks.pushBatch.mockReturnValue(new Promise((resolve) => { resolveResponse = resolve; }));
+
+    const reconciliation = mocks.outbound?.([item]);
+    mocks.user.mockReturnValue({ id: 2, store_id: 22 });
+    resolveResponse({
+      cursor: 4,
+      results: [{
+        operation_id: item.operationId,
+        entity_id: item.entityId,
+        status: "applied",
+        record: product({ id: 10, quantity: 17, version: 2 }),
+        error: null,
+      }],
+    });
+
+    await expect(reconciliation).rejects.toThrow("SYNC_ACCOUNT_CHANGED");
+    expect(mocks.inventorySave).not.toHaveBeenCalled();
+    expect(mocks.removeIfUnchanged).not.toHaveBeenCalled();
+  });
+
+  it("reconciles the original immutable replay after server commit and local persistence failure", async () => {
+    const item = queued();
+    const response = {
+      cursor: 4,
+      results: [{
+        operation_id: item.operationId,
+        entity_id: item.entityId,
+        status: "applied",
+        record: product({ id: 10, quantity: 17, version: 2 }),
+        error: null,
+      }],
+    };
+    mocks.pushBatch.mockResolvedValue(response);
+    mocks.inventorySave.mockRejectedValueOnce(new Error("indexeddb unavailable"));
+
+    await expect(mocks.outbound?.([item])).rejects.toThrow("indexeddb unavailable");
+    mocks.inventorySave.mockResolvedValue(undefined);
+    await expect(mocks.outbound?.([item])).resolves.toEqual([{
+      itemId: item.id, status: "applied", error: null,
+    }]);
+
+    expect(mocks.pushBatch).toHaveBeenCalledTimes(2);
+    expect(mocks.pushBatch).toHaveBeenNthCalledWith(1, [item]);
+    expect(mocks.pushBatch).toHaveBeenNthCalledWith(2, [item]);
+    expect(mocks.inventorySave).toHaveBeenCalledTimes(2);
   });
 
   it("applies a server tombstone but retains the displaced edit as a conflict", async () => {

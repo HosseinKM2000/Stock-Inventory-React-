@@ -53,6 +53,12 @@ def activate_team(client: TestClient, owner_headers: dict):
     assert activated.json()["operating_mode"] == "team"
     replay = client.post("/api/store/operating-mode/activate-team", headers=owner_headers, json=payload)
     assert replay.status_code == 200, replay.text
+    converged = client.post("/api/store/operating-mode/activate-team", headers=owner_headers, json={
+        "expected_policy_version": mode.json()["policy_version"],
+        "transition_id": str(uuid.uuid4()),
+    })
+    assert converged.status_code == 200, converged.text
+    assert converged.json()["policy_version"] == activated.json()["policy_version"]
     return activated.json()
 
 

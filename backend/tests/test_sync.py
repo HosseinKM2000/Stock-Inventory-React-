@@ -1705,6 +1705,20 @@ class SyncApiTest(unittest.TestCase):
             "operations_json": json.dumps({"operations": [accepted]}),
         })
         self.assertEqual(result.json()["results"][0]["status"], "applied", result.text)
+        # Treat the first response as lost and recreate the HTTP client. The
+        # exact immutable request must resolve from sync history without a
+        # second domain effect.
+        with TestClient(app) as restarted_client:
+            replay_after_restart = restarted_client.post("/api/sync/batch", headers=headers, data={
+                "operations_json": json.dumps({"operations": [accepted]}),
+            })
+        self.assertEqual(replay_after_restart.json()["results"], result.json()["results"])
+        with SessionLocal() as db:
+            self.assertEqual(db.get(InventoryItem, product_id).quantity, 2)
+            self.assertEqual(db.query(SyncOperation).filter_by(
+                actor_user_id=owner_id,
+                operation_id=accepted["operation_id"],
+            ).count(), 1)
         direct = self.client.patch(f"/api/products/{product_id}", headers=headers, data={"quantity": 3})
         self.assertEqual(direct.status_code, 409, direct.text)
 

@@ -17,7 +17,15 @@ TEAM_SERVER_ACCEPTANCE_REQUIRED = "TEAM_SERVER_ACCEPTANCE_REQUIRED"
 
 
 def _locked_store(db: Session, store_id: int) -> Store:
-    store = db.scalar(select(Store).where(Store.id == store_id).with_for_update())
+    # Store context may already have loaded this row into the identity map.
+    # After waiting for a concurrent transition, force the locked statement to
+    # refresh that instance instead of reusing stale pre-lock mode/version.
+    store = db.scalar(
+        select(Store)
+        .where(Store.id == store_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
     if store is None:
         raise HTTPException(status_code=404, detail="STORE_NOT_FOUND")
     return store
@@ -91,7 +99,10 @@ def activate_team_mode(
             raise HTTPException(status_code=409, detail="MODE_TRANSITION_ID_REUSED")
         return mode_payload(db, StoreContext(store, context.membership, context.permissions), actor)
     if store.operating_mode == "team":
-        raise HTTPException(status_code=409, detail="TEAM_MODE_ALREADY_ACTIVE")
+        # Activation is a one-way convergent transition. A second browser may
+        # have committed it while this request was in flight; returning the
+        # authoritative state is safe and prevents a false failure/retry loop.
+        return mode_payload(db, StoreContext(store, context.membership, context.permissions), actor)
     if store.policy_version != payload.expected_policy_version:
         raise HTTPException(status_code=409, detail=POLICY_STALE)
     if not team_eligible(db, store, actor):

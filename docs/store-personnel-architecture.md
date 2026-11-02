@@ -22,6 +22,8 @@ Plan eligibility permits explicit team activation but never switches mode. Perso
 
 In solo mode the owner retains the durable local-first operational path. In team mode owner and personnel use the same server-accepted sync command path. Every new command carries its captured mode and policy version; missing or stale context is rejected and preserved as non-retrying recovery evidence. Exact committed replay is resolved first under the same server-derived store and actor plus canonical fingerprint, so policy changes do not duplicate a previously accepted effect. No original request is reassigned to another actor.
 
+Client reconciliation captures the authenticated actor/store around network I/O and aborts before local projection or acknowledgement writes if that partition changes. Team resource dispatch is serialized with a cross-tab resource lock. Activation uses the same `outbox -> local mutation` lock order as restore, persists its transition ID until authoritative confirmation, and treats an already-completed one-way Team transition as a converged result rather than creating another transition.
+
 ## Permission catalog and dependencies
 
 | Group | Permission |
