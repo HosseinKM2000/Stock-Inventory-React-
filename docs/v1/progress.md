@@ -155,15 +155,27 @@ Final verification:
 | Command / scope | Result |
 |---|---|
 | Focused backend mode/personnel/replay regressions | Passed: explicit/idempotent activation, solo personnel block, owner and personnel team acceptance, revoked-member rejection, missing/stale policy rejection, historical replay, direct-route block, and subscription expiry without mode fallback. |
-| `npm.cmd run test:backend:postgres:local` | Passed: 10 tests, including `0010` preflight rollback/remediation, deterministic solo/team backfill, value/history/fingerprint preservation, and activation-versus-mutation serialization. |
+| `npm.cmd run test:backend:postgres:local` | Final review passed: 11 tests, including `0010` preflight diagnostics/rollback/remediation, deterministic solo/team backfill (including inactive personnel), value/history/fingerprint preservation, simultaneous activation convergence, and activation-versus-mutation serialization. |
 | Focused frontend unit/component tests | Passed: durable-before-dispatch team commands, unknown outcome retention, no offline command, immutable captured policy context, no optimistic inventory projection, and explicit activation UI. |
-| `npm.cmd test` | Passed: 72 files, 303 unit/component tests. |
+| `npm.cmd test` | Final review passed: 72 files, 309 unit/component tests. |
 | `npm.cmd run test:backend` | Passed: 48 tests. |
 | `npm.cmd run test:typecheck` and `npm.cmd run lint` | Passed. |
 | `npm.cmd run build` | Passed with the existing stale Browserslist data and large-chunk warnings; the largest reported `bwip-js` chunk remains about 930 kB. |
 | Focused production-preview E2E | Passed: 32 cases across `pwa.spec.ts`, `product-layout.spec.ts`, and `personnel.spec.ts` in both configured viewports. Personnel activation also covered light/compact and dark/large layouts. |
+| Post-merge smoke on local `draft` | Passed: 24 focused frontend synchronization/activation tests and 28 backend personnel/sync tests. |
 
-The task is complete on its feature branch and is intentionally not integrated by this delivery. It has not been merged into `draft`, pushed, deployed, or applied to `develop`.
+## TZ-V1-01D final review
+
+- The reported implementation commit `02df167e40b71bcdbe6e0a7cc254a18798838dca` and documentation commit `c2e08852144db861211f317b1b50701b7258a7ad` were confirmed directly on accepted local `draft` `99a30bc11be9cd7b01251d313fd49dcae422e341`. The complete task diff was reviewed; no unrelated customer data, dependency, commercial allocation, or deployment change was included.
+- Review closed an account-switch partition defect: every awaited synchronization handler now captures and revalidates person/store context before local persistence or acknowledgement. A late response for account A cannot write into or acknowledge account B's partition.
+- Activation now persists and reuses one transition identity across a lost response. A simultaneous second owner request converges on the authoritative Team state without creating another transition. PostgreSQL review exposed and fixed stale SQLAlchemy identity-map state after the store row lock by forcing the locked row to refresh.
+- Activation and restore now share the `outbox -> local mutation` lock order. The final queue/recovery inventory and transition occur under that boundary, avoiding the previous lock inversion while preventing a mutation from slipping between the final drain and activation. Team commands also serialize per actor/store/resource before predecessor inspection, durable enqueue, dispatch, and projection reconciliation.
+- Real backend evidence covers a committed Team mutation followed by a recreated client and exact replay with one `SyncOperation` and one domain effect. Frontend persistence-failure, account-switch, lock-order, durable-before-dispatch, and lost-response cases use controlled test doubles; production-preview Chromium uses mocked APIs and therefore is UI/storage evidence, not a live end-to-end server proof.
+- The operational mutation map in `architecture-map.md` now covers product CRUD and image associations, quantity/bulk updates, category/label writes, catalog overrides, Excel import, barcode and movement writes, recovery apply/replay, and the independent image-byte path. Active UI write paths use the mode-aware services; legacy direct backend product/inventory/category writes fail closed in Team mode.
+- The Solo activation UI and shared-mutation loading paths passed production-preview coverage in both configured viewports. Activation was additionally inspected at desktop/mobile light/compact and dark/large: actions remained reachable and focusable, Persian text wrapped, and no horizontal overflow was observed.
+- Focused corrections were committed as `afde67a922ec86f27d1337d7880f1c7f2974bba7`. Local `draft` integrated the complete branch with non-destructive merge `4e2969e6961fef0ddec25d8638e4e563b196d62a` (`merge: integrate explicit store operating modes`). Task history was preserved; nothing was pushed, deployed, or merged to `develop`.
+
+Migration and deployment limits remain explicit: `0010` preflight reports sampled store IDs for both missing and multiple active owners and fails transactionally at `0009`; remediation must be deliberate and rehearsed on a current database copy. Pre-1D workers must not coexist with schema `0010`. Production requires a controlled replacement with verified backup, stopped old workers, preflight/remediation, upgrade/head confirmation, and only then 1D-or-newer workers. No customer or production database was used.
 
 ## UI baseline artifacts
 
@@ -193,8 +205,8 @@ Observed UI issues are recorded separately:
 6. The 1C checkpoint/review journal is browser-local; browser-process kill, real post-commit termination, device-loss, and cross-browser File System Access recovery remain unverified.
 7. Activation warns about other devices and the server rejects their stale commands, but instant control of a disconnected device is not possible and no private team draft workflow exists.
 
-## Task 1D delivery boundary
+## Task 2 readiness
 
-TZ-V1-01D is complete on `feat/v1-store-operating-modes` and stops at its focused task commits. It is not merged into `draft` by this task. The next Commercial V1 task must preserve the explicit mode/version boundary, server-accepted team projection rule, immutable rejected evidence, and unresolved-recovery activation block.
+TZ-V1-01D is reviewed and integrated into local `draft`. Task 2 may begin from this state as the commercial entitlement/allocation slice, but it was not started automatically. It must preserve the explicit server-owned mode/version boundary, server-accepted Team projection rule, account/store partition guards, immutable rejected evidence, unresolved-recovery activation block, and the rule that plan or subscription changes never switch operating mode.
 
-Open capacities, gifts, retention, conflict UX, and detailed draft policy do not block beginning integrity/model work, but they must not be guessed or encoded as final commercial values.
+The infrastructure boundary is ready; final allocations are not. Capacities, gifts, retention, detailed draft policy, and the observed extra Starter tier remain unconfirmed commercial inputs. Task 2 must not treat illustrative or existing placeholder values as approved V1 policy, and must keep permission dependencies and subscription capacity in centralized configuration.
