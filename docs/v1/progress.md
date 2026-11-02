@@ -138,7 +138,7 @@ Compatibility limits are explicit: valid backup schemas 1–4 remain readable; o
 
 ## TZ-V1-01D explicit operating modes
 
-Branch `feat/v1-store-operating-modes`, based on accepted local `draft` `99a30bc11be9cd7b01251d313fd49dcae422e341`, implements the explicit server-controlled `solo`/`team` boundary:
+Branch `feat/v1-store-operating-modes`, based on accepted local `draft` `99a30bc11be9cd7b01251d313fd49dcae422e341`, implements the explicit server-controlled `solo`/`team` boundary in implementation commit `02df167e40b71bcdbe6e0a7cc254a18798838dca`:
 
 - `Store.operating_mode`, monotonic `policy_version`, server timestamp/actor, and an idempotent transition journal are authoritative. Plan eligibility only permits activation; plan changes, personnel count, and subscription expiry never switch mode. No routine team-to-solo path exists.
 - Activation is owner-only and one-way. The browser requires Web Locks, pauses local mutation transactions, rejects unfinished recovery review, attempts sync, and refuses activation while any scoped pending, attempted, retryable, conflict, terminal, restored, or unknown-outcome work remains. The server transition is a short row-locked transaction using expected policy version plus a stable transition ID.
