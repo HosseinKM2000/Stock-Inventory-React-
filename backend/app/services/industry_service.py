@@ -3,7 +3,7 @@ import json
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..models import CatalogProduct, Industry, User
+from ..models import CatalogProduct, Industry, Store
 from ..schemas import IndustryCreate, IndustryUpdate
 from .tool_policy import industry_tool_policy, normalize_tool_policy
 
@@ -92,10 +92,10 @@ def delete_industry(
     if dependent_products:
         raise HTTPException(status_code=409, detail="INDUSTRY_HAS_CATALOG_PRODUCTS")
 
-    dependent_users = db.scalar(
-        select(func.count(User.id)).where(User.industry_id == industry.id)
+    dependent_stores = db.scalar(
+        select(func.count(Store.id)).where(Store.industry_id == industry.id)
     )
-    if dependent_users:
+    if dependent_stores:
         raise HTTPException(status_code=409, detail="INDUSTRY_HAS_USERS")
 
     db.delete(industry)

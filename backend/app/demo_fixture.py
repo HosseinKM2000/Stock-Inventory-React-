@@ -24,6 +24,7 @@ from .models import (
 )
 from .schemas import InventoryOut
 from .services.tool_policy import DEFAULT_TOOL_POLICY
+from .services.store_service import active_store_context
 
 CONFIRMATION = "tanzim-development"
 SNAPSHOT_TABLES = (
@@ -49,18 +50,19 @@ def _assert_safe(user_id: int, confirmation: str) -> None:
 
 
 def _snapshot(db, user: User, output_dir: Path) -> Path:
-    inventory_ids = list(db.scalars(select(InventoryItem.id).where(InventoryItem.user_id == user.id)))
-    catalog_ids = list(db.scalars(select(InventoryItem.catalog_product_id).where(InventoryItem.user_id == user.id)))
+    store_id = active_store_context(db, user).store.id
+    inventory_ids = list(db.scalars(select(InventoryItem.id).where(InventoryItem.store_id == store_id)))
+    catalog_ids = list(db.scalars(select(InventoryItem.catalog_product_id).where(InventoryItem.store_id == store_id)))
     rows: dict[str, list[dict[str, Any]]] = {}
     filters = {
-        "inventory_transactions": InventoryTransaction.user_id == user.id,
+        "inventory_transactions": InventoryTransaction.store_id == store_id,
         "inventory_item_labels": InventoryItemLabel.inventory_item_id.in_(inventory_ids or [-1]),
-        "inventory_items": InventoryItem.user_id == user.id,
+        "inventory_items": InventoryItem.store_id == store_id,
         "catalog_products": CatalogProduct.id.in_(catalog_ids or [-1]),
-        "categories": Category.user_id == user.id,
-        "labels": Label.user_id == user.id,
-        "sync_operations": SyncOperation.user_id == user.id,
-        "sync_changes": SyncChange.user_id == user.id,
+        "categories": Category.store_id == store_id,
+        "labels": Label.store_id == store_id,
+        "sync_operations": SyncOperation.store_id == store_id,
+        "sync_changes": SyncChange.store_id == store_id,
     }
     for table in SNAPSHOT_TABLES:
         result = db.execute(select(table).where(filters[table.name])).mappings()
@@ -77,28 +79,32 @@ def _snapshot(db, user: User, output_dir: Path) -> Path:
 
 
 def _clear_business_state(db, user: User) -> None:
-    items = list(db.scalars(select(InventoryItem).where(InventoryItem.user_id == user.id)))
+    store_id = active_store_context(db, user).store.id
+    items = list(db.scalars(select(InventoryItem).where(InventoryItem.store_id == store_id)))
     private_catalogs = [item.catalog_product for item in items if not item.catalog_product.is_shared]
     for item in items:
         db.delete(item)
     db.flush()
     for catalog in private_catalogs:
         db.delete(catalog)
-    db.execute(delete(Category).where(Category.user_id == user.id))
-    db.execute(delete(Label).where(Label.user_id == user.id))
-    db.execute(delete(SyncOperation).where(SyncOperation.user_id == user.id))
-    db.execute(delete(SyncChange).where(SyncChange.user_id == user.id))
+    db.execute(delete(Category).where(Category.store_id == store_id))
+    db.execute(delete(Label).where(Label.store_id == store_id))
+    db.execute(delete(SyncOperation).where(SyncOperation.store_id == store_id))
+    db.execute(delete(SyncChange).where(SyncChange.store_id == store_id))
     db.flush()
 
 
 def _seed(db, user: User) -> dict[str, Any]:
+    context = active_store_context(db, user)
+    store_id = context.store.id
     industry = db.scalar(select(Industry).where(Industry.name == "فروشگاه نمایشی تنظیم"))
     if industry is None:
         industry = Industry(name="فروشگاه نمایشی تنظیم", description="داده تکرارپذیر TZ-010", is_active=True, tools_json=json.dumps(DEFAULT_TOOL_POLICY))
         db.add(industry); db.flush()
     user.industry_id = industry.id
-    categories = [Category(user_id=user.id, name=name, description="داده نمایشی") for name in ("مواد غذایی", "لوازم خانه", "کالاهای ارزشمند")]
-    labels = [Label(user_id=user.id, name=name, normalized_name=name, version=1) for name in ("پرفروش", "خرید فوری", "ویژه")]
+    context.store.industry_id = industry.id
+    categories = [Category(store_id=store_id, user_id=user.id, name=name, description="داده نمایشی") for name in ("مواد غذایی", "لوازم خانه", "کالاهای ارزشمند")]
+    labels = [Label(store_id=store_id, user_id=user.id, name=name, normalized_name=name, version=1) for name in ("پرفروش", "خرید فوری", "ویژه")]
     db.add_all(categories + labels); db.flush()
     now = datetime.now(timezone.utc)
     specs = [
@@ -139,10 +145,12 @@ def _seed(db, user: User) -> dict[str, Any]:
         catalog.is_active = active
         catalog.created_at = created_at
         db.flush()
-        item = InventoryItem(user_id=user.id, catalog_product_id=catalog.id, category_id=categories[category_index].id if category_index is not None else None, quantity=quantity, price=price, sale_price=price, image_url=catalog.image_url, is_catalog_backed=catalog.is_shared, version=1, custom_label=None if catalog.is_shared else name, note="TZ-010", low_stock_threshold=threshold, low_stock_alert=True, is_hidden=index == 14, created_at=catalog.created_at, updated_at=now)
+        item = InventoryItem(store_id=store_id, user_id=user.id, catalog_product_id=catalog.id, category_id=categories[category_index].id if category_index is not None else None, quantity=quantity, price=price, sale_price=price, image_url=catalog.image_url, is_catalog_backed=catalog.is_shared, version=1, custom_label=None if catalog.is_shared else name, note="TZ-010", low_stock_threshold=threshold, low_stock_alert=True, is_hidden=index == 14, created_at=catalog.created_at, updated_at=now)
         item.labels = [labels[i] for i in label_indexes]
         db.add(item); db.flush()
         db.add(SyncChange(
+            store_id=store_id,
+            actor_user_id=user.id,
             user_id=user.id,
             entity="product",
             entity_id=item.id,

@@ -5,13 +5,13 @@ from ..models import InventoryItem
 
 def get_dashboard(
     db,
-    user_id: int,
+    store_id: int,
 ):
 
     items = list(
         db.scalars(
             select(InventoryItem).where(
-                InventoryItem.user_id == user_id
+                InventoryItem.store_id == store_id
             )
         )
     )

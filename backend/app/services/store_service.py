@@ -6,7 +6,7 @@ from fastapi import HTTPException
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from ..models import Store, StoreMembership, StoreRole, User
+from ..models import Industry, Store, StoreMembership, StoreRole, User
 
 
 @dataclass(frozen=True)
@@ -38,6 +38,7 @@ def create_owner_store(db: Session, user: User) -> StoreContext:
         plan=user.plan,
         subscription_started_at=user.subscription_started_at,
         subscription_expires_at=user.subscription_expires_at,
+        industry_id=user.industry_id,
     )
     db.add(store)
     db.flush()
@@ -64,11 +65,15 @@ def create_owner_store(db: Session, user: User) -> StoreContext:
 
 def ensure_owner_store(db: Session, user: User) -> StoreContext | None:
     """Compatibility bridge for databases created before TZ-012."""
-    membership = db.scalar(
+    memberships = list(db.scalars(
         select(StoreMembership)
         .where(StoreMembership.user_id == user.id)
         .order_by(StoreMembership.is_owner.desc(), StoreMembership.id)
-    )
+    ))
+    active_memberships = [item for item in memberships if item.status == "active"]
+    if len(active_memberships) > 1:
+        raise HTTPException(status_code=409, detail="STORE_CONTEXT_AMBIGUOUS")
+    membership = active_memberships[0] if active_memberships else (memberships[0] if memberships else None)
     if membership is not None:
         store = db.get(Store, membership.store_id)
         if store is None:
@@ -127,11 +132,12 @@ def attach_store_context(db: Session, user: User) -> StoreContext | None:
     user.temporary_password_required = context.membership.temporary_password_required
     user.credentials_notice_viewed = context.membership.credentials_notice_viewed_at is not None
     user.membership_authorization_checked_at = context.membership.authorization_checked_at
+    # `data_owner_id` remains a legacy wire/write compatibility value only.
+    # Authorization and operational queries use the authenticated store id.
     user.data_owner_id = context.store.owner_user_id
-    if not context.is_owner:
-        owner = context.store.owner
-        user.industry_id = owner.industry_id
-        user.industry = owner.industry
+    user.industry_id = context.store.industry_id
+    if context.store.industry_id is not None:
+        user.industry = db.get(Industry, context.store.industry_id)
     # During the older-client compatibility window, owner subscription columns
     # remain the write-compatible mirror. Personnel always inherit the store.
     if context.is_owner:

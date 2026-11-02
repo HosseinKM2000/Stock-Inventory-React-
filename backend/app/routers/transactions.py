@@ -11,11 +11,11 @@ router = APIRouter(prefix="/transactions", tags=["transactions"])
 def _get_owned_product(
     db: DbSession,
     product_id: int,
-    user_id: int,
+    store_id: int,
 ) -> InventoryItem:
     product = db.get(InventoryItem, product_id)
 
-    if product is None or product.user_id != user_id:
+    if product is None or product.store_id != store_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="محصول یافت نشد",
@@ -36,7 +36,7 @@ def create_transaction(
     db: DbSession,
 ) -> InventoryTransaction:
 
-    product = _get_owned_product(db, product_id, current_user.data_owner_id)
+    product = _get_owned_product(db, product_id, current_user.store_id)
 
     # validation
     if payload.type == "stock_out" and payload.quantity > product.quantity:
@@ -85,13 +85,13 @@ def product_transactions(
     db: DbSession,
 ) -> list[InventoryTransaction]:
 
-    _get_owned_product(db, product_id, current_user.data_owner_id)
+    _get_owned_product(db, product_id, current_user.store_id)
 
     stmt = (
         select(InventoryTransaction)
         .where(
             InventoryTransaction.inventory_item_id == product_id,
-            InventoryTransaction.user_id == current_user.data_owner_id,
+            InventoryTransaction.store_id == current_user.store_id,
         )
         .order_by(
             InventoryTransaction.created_at.desc(),
@@ -110,7 +110,7 @@ def all_transactions(
 
     stmt = (
         select(InventoryTransaction)
-        .where(InventoryTransaction.user_id == current_user.data_owner_id)
+        .where(InventoryTransaction.store_id == current_user.store_id)
         .order_by(
             InventoryTransaction.created_at.desc(),
             InventoryTransaction.id.desc(),

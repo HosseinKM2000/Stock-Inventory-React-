@@ -17,5 +17,5 @@ def dashboard(
 ):
     return get_dashboard(
         db=db,
-        user_id=current_user.data_owner_id,
+        store_id=current_user.store_id,
     )

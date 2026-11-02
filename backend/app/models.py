@@ -5,6 +5,7 @@ from sqlalchemy import (
     CheckConstraint,
     DateTime,
     ForeignKey,
+    ForeignKeyConstraint,
     Index,
     Integer,
     String,
@@ -140,6 +141,9 @@ class Store(Base):
     subscription_started_at: Mapped[datetime | None] = mapped_column(UTC_DATETIME, nullable=True)
     subscription_expires_at: Mapped[datetime | None] = mapped_column(UTC_DATETIME, nullable=True)
     personnel_limit_override: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    industry_id: Mapped[int | None] = mapped_column(
+        ForeignKey("industries.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now)
     updated_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now, onupdate=_now)
 
@@ -198,7 +202,10 @@ class StoreMembership(Base):
 class StoreActivity(Base):
     __tablename__ = "store_activity"
     __table_args__ = (
-        UniqueConstraint("store_id", "operation_id", name="uq_store_activity_operation"),
+        UniqueConstraint(
+            "store_id", "actor_user_id", "operation_id",
+            name="uq_store_activity_actor_operation",
+        ),
         Index("ix_store_activity_store_accepted", "store_id", "accepted_at"),
     )
 
@@ -272,11 +279,12 @@ class UserSession(Base):
 class Category(Base):
     __tablename__ = "categories"
     __table_args__ = (
-        UniqueConstraint("user_id", "name", name="uq_categories_user_name"),
+        UniqueConstraint("store_id", "name", name="uq_categories_store_name"),
+        UniqueConstraint("id", "store_id", name="uq_categories_id_store"),
     )
 
     id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True)
-    store_id: Mapped[int | None] = mapped_column(ForeignKey("stores.id"), nullable=True, index=True)
+    store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), index=True)
 
     name: Mapped[str] = mapped_column(String(120))
     description: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -298,10 +306,11 @@ class Category(Base):
 class Label(Base):
     __tablename__ = "labels"
     __table_args__ = (
-        UniqueConstraint("user_id", "normalized_name", name="uq_labels_user_normalized_name"),
+        UniqueConstraint("store_id", "normalized_name", name="uq_labels_store_normalized_name"),
+        UniqueConstraint("id", "store_id", name="uq_labels_id_store"),
     )
     id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True)
-    store_id: Mapped[int | None] = mapped_column(ForeignKey("stores.id"), nullable=True, index=True)
+    store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     name: Mapped[str] = mapped_column(String(60))
     normalized_name: Mapped[str] = mapped_column(String(60))
@@ -399,9 +408,15 @@ class InventoryItem(Base):
     __tablename__ = "inventory_items"
     __table_args__ = (
         UniqueConstraint(
-            "user_id",
+            "store_id",
             "catalog_product_id",
-            name="uq_inventory_items_user_catalog",
+            name="uq_inventory_items_store_catalog",
+        ),
+        UniqueConstraint("id", "store_id", name="uq_inventory_items_id_store"),
+        ForeignKeyConstraint(
+            ["category_id", "store_id"],
+            ["categories.id", "categories.store_id"],
+            name="fk_inventory_items_category_store",
         ),
         CheckConstraint("quantity >= 0", name="ck_inventory_items_quantity"),
         CheckConstraint("price >= 0", name="ck_inventory_items_price"),
@@ -412,8 +427,8 @@ class InventoryItem(Base):
             name="ck_inventory_items_low_stock_threshold",
         ),
         Index(
-            "ix_inventory_items_user_visibility_created",
-            "user_id",
+            "ix_inventory_items_store_visibility_created",
+            "store_id",
             "deleted_at",
             "is_hidden",
             "created_at",
@@ -421,7 +436,7 @@ class InventoryItem(Base):
     )
 
     id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True)
-    store_id: Mapped[int | None] = mapped_column(ForeignKey("stores.id"), nullable=True, index=True)
+    store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), index=True)
 
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id"),
@@ -499,7 +514,8 @@ class InventoryItem(Base):
 
     transactions: Mapped[list["InventoryTransaction"]] = relationship(
         back_populates="inventory_item",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        foreign_keys="InventoryTransaction.inventory_item_id",
     )
 
     labels: Mapped[list["Label"]] = relationship(
@@ -509,6 +525,7 @@ class InventoryItem(Base):
     barcodes: Mapped[list["ProductBarcode"]] = relationship(
         back_populates="inventory_item",
         cascade="all, delete-orphan",
+        foreign_keys="ProductBarcode.product_id",
     )
 
     @property
@@ -533,6 +550,13 @@ class ProductBarcode(Base):
     __tablename__ = "product_barcodes"
     __table_args__ = (
         UniqueConstraint("store_id", "value", name="uq_product_barcodes_store_value"),
+        UniqueConstraint("id", "store_id", name="uq_product_barcodes_id_store"),
+        ForeignKeyConstraint(
+            ["inventory_item_id", "store_id"],
+            ["inventory_items.id", "inventory_items.store_id"],
+            name="fk_product_barcodes_inventory_store",
+            ondelete="CASCADE",
+        ),
         CheckConstraint("source IN ('manufacturer', 'tanzim')", name="ck_product_barcodes_source"),
         CheckConstraint("meaning IN ('unit', 'package')", name="ck_product_barcodes_meaning"),
         CheckConstraint("scan_quantity > 0", name="ck_product_barcodes_scan_quantity"),
@@ -553,14 +577,33 @@ class ProductBarcode(Base):
     created_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now)
     updated_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now, onupdate=_now)
 
-    inventory_item: Mapped["InventoryItem"] = relationship(back_populates="barcodes")
+    inventory_item: Mapped["InventoryItem"] = relationship(
+        back_populates="barcodes", foreign_keys=[product_id]
+    )
 
 
 class InventoryMovement(Base):
     __tablename__ = "inventory_movements"
     __table_args__ = (
-        UniqueConstraint("store_id", "operation_id", name="uq_inventory_movements_store_operation"),
-        UniqueConstraint("store_id", "reverses_operation_id", name="uq_inventory_movements_store_reversal"),
+        UniqueConstraint(
+            "store_id", "actor_user_id", "operation_id",
+            name="uq_inventory_movements_store_actor_operation",
+        ),
+        UniqueConstraint(
+            "store_id", "actor_user_id", "reverses_operation_id",
+            name="uq_inventory_movements_store_actor_reversal",
+        ),
+        ForeignKeyConstraint(
+            ["product_id", "store_id"],
+            ["inventory_items.id", "inventory_items.store_id"],
+            name="fk_inventory_movements_product_store",
+            ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["barcode_id", "store_id"],
+            ["product_barcodes.id", "product_barcodes.store_id"],
+            name="fk_inventory_movements_barcode_store",
+        ),
         CheckConstraint("kind IN ('receive', 'issue', 'correction', 'reversal')", name="ck_inventory_movements_kind"),
         CheckConstraint("delta <> 0", name="ck_inventory_movements_delta"),
         CheckConstraint("before_quantity >= 0 AND after_quantity >= 0", name="ck_inventory_movements_nonnegative"),
@@ -589,12 +632,15 @@ class InventoryMovement(Base):
 class SyncOperation(Base):
     __tablename__ = "sync_operations"
     __table_args__ = (
-        UniqueConstraint("user_id", "operation_id", name="uq_sync_user_operation"),
+        UniqueConstraint(
+            "store_id", "actor_user_id", "operation_id",
+            name="uq_sync_store_actor_operation",
+        ),
     )
 
     id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True)
-    store_id: Mapped[int | None] = mapped_column(ForeignKey("stores.id"), nullable=True, index=True)
-    actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True, index=True)
+    store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), index=True)
+    actor_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     operation_id: Mapped[str] = mapped_column(String(64), index=True)
     request_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True)
@@ -605,11 +651,11 @@ class SyncOperation(Base):
 class SyncChange(Base):
     __tablename__ = "sync_changes"
     __table_args__ = (
-        Index("ix_sync_changes_user_cursor", "user_id", "id"),
+        Index("ix_sync_changes_store_cursor", "store_id", "id"),
     )
 
     id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True)
-    store_id: Mapped[int | None] = mapped_column(ForeignKey("stores.id"), nullable=True, index=True)
+    store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), index=True)
     actor_user_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
     entity: Mapped[str] = mapped_column(String(40), index=True)
@@ -653,7 +699,7 @@ class CustomProduct(Base):
     __tablename__ = "custom_products"
 
     id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True)
-    store_id: Mapped[int | None] = mapped_column(ForeignKey("stores.id"), nullable=True, index=True)
+    store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), index=True)
 
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id"),
@@ -684,10 +730,17 @@ class CustomProduct(Base):
 # ---------- Inventory Transactions ----------
 class InventoryTransaction(Base):
     __tablename__ = "inventory_transactions"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["inventory_item_id", "store_id"],
+            ["inventory_items.id", "inventory_items.store_id"],
+            name="fk_inventory_transactions_inventory_store",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True)
-    store_id: Mapped[int | None] = mapped_column(ForeignKey("stores.id"), nullable=True, index=True)
-    actor_user_id: Mapped[int | None] = mapped_column(BigInteger, nullable=True, index=True)
+    store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), index=True)
+    actor_user_id: Mapped[int] = mapped_column(BigInteger, index=True)
 
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id"),
@@ -717,7 +770,7 @@ class InventoryTransaction(Base):
     )
 
     inventory_item: Mapped["InventoryItem"] = relationship(
-        back_populates="transactions"
+        back_populates="transactions", foreign_keys=[inventory_item_id]
     )
 
 

@@ -21,7 +21,7 @@ def get_backup(
     stmt = (
         select(InventoryItem)
         .where(
-            InventoryItem.user_id == current_user.data_owner_id,
+            InventoryItem.store_id == current_user.store_id,
             InventoryItem.deleted_at.is_(None),
         )
         .order_by(InventoryItem.created_at.desc(), InventoryItem.id.desc())

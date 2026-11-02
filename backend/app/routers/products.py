@@ -29,20 +29,20 @@ MAX_FILE_SIZE = 5 * 1024 * 1024
 SortOption = Literal["newest", "price_desc", "price_asc", "name"]
 
 
-def _get_owned_product(db: DbSession, product_id: int, user_id: int) -> InventoryItem:
+def _get_owned_product(db: DbSession, product_id: int, store_id: int) -> InventoryItem:
     product = db.get(InventoryItem, product_id)
-    if product is None or product.user_id != user_id:
+    if product is None or product.store_id != store_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="محصول یافت نشد"
         )
     return product
 
 
-def _validate_category(db: DbSession, category_id: int | None, user_id: int) -> None:
+def _validate_category(db: DbSession, category_id: int | None, store_id: int) -> None:
     if category_id is None:
         return
     category = db.get(Category, category_id)
-    if category is None or category.user_id != user_id:
+    if category is None or category.store_id != store_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="دسته بندی نامعتبر است"
         )
@@ -96,7 +96,7 @@ def list_products(
     page: int = 1,
     limit: int = 10,
 ) -> PaginatedInventory:
-    stmt = select(InventoryItem).options(joinedload(InventoryItem.catalog_product)).where(InventoryItem.user_id == current_user.data_owner_id)
+    stmt = select(InventoryItem).options(joinedload(InventoryItem.catalog_product)).where(InventoryItem.store_id == current_user.store_id)
 
     if search:
         stmt = stmt.join(CatalogProduct).where(
@@ -159,11 +159,11 @@ async def create_product(
     require_capability(db, current_user, "inventory.write")
     if purchase_price is not None:
         require_store_permission(db, current_user, StorePermission.PURCHASE_PRICE_CHANGE)
-    _validate_category(db, category_id, current_user.data_owner_id)
+    _validate_category(db, category_id, current_user.store_id)
     is_packaged, pack_size = _validated_packaging(is_packaged, pack_size)
 
     limit = None if is_admin(current_user) else entitlement_for_user(db, current_user)["limits"]["inventory_items"]
-    count = db.scalar(select(func.count(InventoryItem.id)).where(InventoryItem.user_id == current_user.data_owner_id)) or 0
+    count = db.scalar(select(func.count(InventoryItem.id)).where(InventoryItem.store_id == current_user.store_id)) or 0
     if limit is not None and count >= limit:
         raise HTTPException(status_code=403, detail="INVENTORY_LIMIT_REACHED")
 
@@ -233,7 +233,7 @@ async def update_product(
         require_store_permission(db, current_user, StorePermission.SALE_PRICE_CHANGE)
     if purchase_price is not None:
         require_store_permission(db, current_user, StorePermission.PURCHASE_PRICE_CHANGE)
-    product = _get_owned_product(db, product_id, current_user.data_owner_id)
+    product = _get_owned_product(db, product_id, current_user.store_id)
 
     if is_packaged is not None or pack_size is not None:
         if product.catalog_product.is_shared:
@@ -252,7 +252,7 @@ async def update_product(
         product.catalog_product.pack_size = effective_pack_size
 
     if category_id is not None:
-        _validate_category(db, category_id, current_user.data_owner_id)
+        _validate_category(db, category_id, current_user.store_id)
 
     updates = {
         "custom_label": name,
@@ -289,7 +289,7 @@ async def update_product(
 def delete_product(
     product_id: int, current_user: CurrentProductDeleter, db: DbSession
 ) -> None:
-    product = _get_owned_product(db, product_id, current_user.data_owner_id)
+    product = _get_owned_product(db, product_id, current_user.store_id)
     if product.is_catalog_backed:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -313,7 +313,7 @@ def product_stats(
 ) -> InventoryStats:
     products = list(
         db.scalars(
-            select(InventoryItem).where(InventoryItem.user_id == current_user.data_owner_id)
+            select(InventoryItem).where(InventoryItem.store_id == current_user.store_id)
         )
     )
 
@@ -344,7 +344,7 @@ def low_stock_alerts(
 ) -> list[InventoryItem]:
     products = list(
         db.scalars(
-            select(InventoryItem).where(InventoryItem.user_id == current_user.data_owner_id)
+            select(InventoryItem).where(InventoryItem.store_id == current_user.store_id)
         )
     )
 
@@ -366,7 +366,7 @@ def alerts_count(
 ):
     products = list(
         db.scalars(
-            select(InventoryItem).where(InventoryItem.user_id == current_user.data_owner_id)
+            select(InventoryItem).where(InventoryItem.store_id == current_user.store_id)
         )
     )
 
@@ -385,4 +385,4 @@ def alerts_count(
 def get_product(
     product_id: int, current_user: CurrentProductReader, db: DbSession
 ) -> dict:
-    return project_inventory_item(db, current_user, _get_owned_product(db, product_id, current_user.data_owner_id))
+    return project_inventory_item(db, current_user, _get_owned_product(db, product_id, current_user.store_id))

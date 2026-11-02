@@ -31,6 +31,7 @@ from app.models import (
 )
 from app.services import catalog_product_service
 from app.services.bootstrap_service import ensure_system_admin
+from app.services.store_service import create_owner_store
 from app.services.subscription_service import seed_default_plans
 
 
@@ -299,7 +300,10 @@ class SyncApiTest(unittest.TestCase):
     def test_historical_operation_without_fingerprint_is_not_assumed_equivalent(self) -> None:
         operation_id = "historical-unverified-operation"
         with SessionLocal() as db:
+            store_id = db.get(User, self.user_id).store_memberships[0].store_id
             db.add(SyncOperation(
+                store_id=store_id,
+                actor_user_id=self.user_id,
                 user_id=self.user_id,
                 operation_id=operation_id,
                 request_fingerprint=None,
@@ -340,6 +344,7 @@ class SyncApiTest(unittest.TestCase):
             user.device_limit_mode = "unlimited"
             user.device_limit_override = None
             user.industry_id = self.industry_id
+            user.store_memberships[0].store.industry_id = self.industry_id
             db.commit()
 
         second_login = self.client.post("/api/auth/login", json={
@@ -733,8 +738,8 @@ class SyncApiTest(unittest.TestCase):
             db.add(catalog)
             db.flush()
             source_user = db.get(User, self.user_id)
-            dependent_users = [source_user]
-            for index in range(99):
+            dependent_stores = []
+            for index in range(100):
                 dependent = User(
                     first_name="Lifecycle",
                     last_name=f"User {index}",
@@ -744,16 +749,20 @@ class SyncApiTest(unittest.TestCase):
                     is_active=True,
                 )
                 db.add(dependent)
-                dependent_users.append(dependent)
-            db.flush()
+                db.flush()
+                context = create_owner_store(db, dependent)
+                context.store.industry_id = isolated_industry.id
+                dependent.industry_id = isolated_industry.id
+                dependent_stores.append(context.store)
             db.add_all(
                 InventoryItem(
-                    user_id=user.id,
+                    store_id=store.id,
+                    user_id=store.owner_user_id,
                     catalog_product_id=catalog.id,
                     is_catalog_backed=True,
                     quantity=index,
                 )
-                for index, user in enumerate(dependent_users)
+                for index, store in enumerate(dependent_stores)
             )
             db.commit()
             catalog_id = catalog.id
@@ -1438,6 +1447,7 @@ class SyncApiTest(unittest.TestCase):
 
     def test_delete_catalog_product_6_permanently_removes_dependencies(self) -> None:
         with SessionLocal() as db:
+            store_id = db.get(User, self.user_id).store_memberships[0].store_id
             catalog = CatalogProduct(
                 id=6,
                 industry_id=self.industry_id,
@@ -1448,6 +1458,7 @@ class SyncApiTest(unittest.TestCase):
             db.add(catalog)
             db.flush()
             item = InventoryItem(
+                store_id=store_id,
                 user_id=self.user_id,
                 catalog_product_id=catalog.id,
                 is_catalog_backed=True,
@@ -1461,6 +1472,8 @@ class SyncApiTest(unittest.TestCase):
             db.add(item)
             db.flush()
             transaction = InventoryTransaction(
+                store_id=store_id,
+                actor_user_id=self.user_id,
                 user_id=self.user_id,
                 inventory_item_id=item.id,
                 type="stock_in",
@@ -1496,6 +1509,7 @@ class SyncApiTest(unittest.TestCase):
 
     def test_permanent_catalog_delete_rolls_back_every_dependency(self) -> None:
         with SessionLocal() as db:
+            store_id = db.get(User, self.user_id).store_memberships[0].store_id
             catalog = CatalogProduct(
                 industry_id=self.industry_id,
                 name="Atomic rollback catalog",
@@ -1505,6 +1519,7 @@ class SyncApiTest(unittest.TestCase):
             db.add(catalog)
             db.flush()
             item = InventoryItem(
+                store_id=store_id,
                 user_id=self.user_id,
                 catalog_product_id=catalog.id,
                 is_catalog_backed=True,
