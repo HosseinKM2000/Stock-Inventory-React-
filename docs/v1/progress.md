@@ -84,6 +84,24 @@ Verification for TZ-V1-01B:
 
 No frontend or styling source changed, so the existing screenshots remain a visual baseline only. TZ-V1-01B is complete on its task branch; it has not been merged, pushed, deployed, or applied to `develop`.
 
+## TZ-V1-01B final review
+
+- The reported implementation and documentation commits were confirmed as `898ff23aef13dd79b7ef5076874d594e23f29440` and `e68328f`; both descend directly from local `draft` at `090fcd1`.
+- Review found one migration-operability defect: preflight named only the table and reason, not the affected records. The focused correction reports the total plus up to 20 record/group identifiers. A PostgreSQL regression first reproduced the insufficient diagnostic, then proved the corrected diagnostic and full transactional rollback to `0008` with both conflicting rows intact.
+- Store-scoped filtering was rechecked across list/detail/mutation/bulk, transaction history, export/backup, protected files, sync batch/snapshots/pull, catalog relationships, and database foreign-key/trigger boundaries. Related objects are validated in the authenticated store. Revoked membership remains server-denied.
+- Multiple active memberships now have API-level coverage: `/api/auth/me`, products, and sync pull all return controlled `409 STORE_CONTEXT_AMBIGUOUS`; no alternate membership is selected and no sync handler runs. Platform-administrator coverage confirms the administrator's isolated workspace cannot list a customer's inventory.
+- Replay review confirmed that `0009` does not alter operation IDs, semantic payloads, stored fingerprints, results, or actor IDs. A committed `0008` result is found by the migrated store/actor key and returned without applying the domain mutation again. TZ-V1-01A acknowledgement and successor ordering code was unchanged.
+- Concurrent catalog reconciliation is serialized by the catalog row lock and protected by store/catalog uniqueness. Both concurrent sessions remain usable, one assignment per store is retained, and customer quantity, label, note, and visibility overrides survive. Personnel membership does not provision a separate inventory.
+
+Final-review verification:
+
+| Command / scope | Result |
+|---|---|
+| `npm.cmd run test:backend:postgres:local` | Passed: 9 tests. This includes `0008` preflight failure/diagnostics/rollback, explicit synthetic remediation, upgrade to `0009`, preserved IDs/values/relationships/fingerprint/actor, replay without a second effect, same-store/cross-store constraints, and concurrent catalog reconciliation with override preservation. |
+| `npm.cmd run test:backend` | Passed: 47 tests. This includes controlled ambiguous-context API failures, server-side revocation, shared owner/personnel inventory, unrelated-store and related-object isolation, administrator workspace isolation, sync regressions, and admin deletion safety. |
+
+Deployment compatibility is intentionally limited: pre-1B backend processes must not coexist with schema `0009`. The current repository documents manual Alembic/start commands and has no rolling-deployment automation. Production therefore requires a controlled replacement: stop old workers, verify a backup and preflight on a current copy, apply `0009`, confirm the Alembic head, and start only 1B-or-newer workers. A preflight failure leaves the database at `0008`; operators must remediate the reported source records explicitly and retry. No customer or production database was used in this review.
+
 ## UI baseline artifacts
 
 Current supplemental screenshots are local-only under ignored `test-results/v1-baseline/`:
@@ -110,15 +128,18 @@ Observed UI issues are recorded separately:
 4. Commercial plan/grant/payment/admin policy is incomplete and contains an extra observed Starter tier not present in confirmed target policy.
 5. Server restore, deploy/rollback, monitoring, alerting, and backup drills are not evidenced end to end.
 6. Persistent dashboard scroll regression and the mobile status overlap remain.
+7. Schema `0009` is not rolling-compatible with pre-1B backend workers and requires a controlled backend replacement after preflight and backup verification.
 
 ## Task 1C readiness
 
-TZ-V1-01A and TZ-V1-01B now provide immutable transmitted operations and store-native ownership/catalog provisioning. Task 1C is ready to start as the restore/reconciliation slice, but it was not started automatically. It must retain these acceptance boundaries:
+TZ-V1-01A and TZ-V1-01B now provide immutable transmitted operations and store-native ownership/catalog provisioning. Task 1C is ready to start as the restore/reconciliation slice, but it was not started automatically. Its prerequisites and acceptance boundaries are:
 
-- Operating mode is a server-controlled store property; purchasing a plan or adding personnel does not switch it.
-- Team activation inventories and resolves pending, in-flight, retryable, terminal, restored, and unknown-outcome operations before activation.
-- Transmitted operation identity/payload remains immutable; later edits use a new operation id.
-- Restore review has explicit apply/discard/export actions and never silently drops local-only work.
-- Team mutation tests cover owner and personnel, online authorization/acceptance, offline drafts, revocation, stale devices, and subscription expiry without a solo fallback.
+- Inventory existing local projections and every pending, attempted, retryable, terminal, restored, and unknown-outcome operation before replacing or reconciling restore state.
+- Restore review provides explicit apply/discard/export actions and never silently deletes local-only or pre-restore work.
+- Applying restored work creates a new operation identity and preserves the immutable transmitted identity/payload guarantees from 1A.
+- Restore remains bound to the authenticated owner and store and cannot import authority, credentials, memberships, roles, subscription state, or another store's data.
+- Recovery and review actions preserve actor/history attribution and have focused restart, duplicate, failure, and store-boundary coverage.
+
+Explicit server operating mode, team activation, online-only shared mutation acceptance, offline-draft policy, stale-device behavior, revocation transitions, and subscription-expiry-without-solo-fallback tests belong to task 1D. Task 1C must preserve these future constraints but must not implement or guess them.
 
 Open capacities, gifts, retention, conflict UX, and detailed draft policy do not block beginning integrity/model work, but they must not be guessed or encoded as final commercial values.

@@ -10,6 +10,8 @@ Existing subscription columns on the owner are mirrored to the store during the 
 
 The IndexedDB v8 migration keeps pending operations and cursors and partitions projections with `actor user + store + entity id`. It never lets a personnel session reuse an owner's unrestricted projection. A legacy projection is retained under a legacy key until an authenticated refresh replaces it.
 
+Alembic `20261101_0009` completes the server-side ownership transition for operational tables. It is not compatible with a rolling mixture of pre-1B and 1B backend processes: old processes still query/deduplicate by legacy owner-user keys while the new constraints use store plus actor. Stop all old backend workers, run the preflight/upgrade transaction against a backed-up database with the reviewed release artifact, and start only the 1B-or-newer backend after `alembic current` reports `20261101_0009`. A preflight failure rolls the PostgreSQL migration back to `0008`; its error contains the total and a sample of affected record/group identifiers for explicit remediation.
+
 ## Permission catalog and dependencies
 
 | Group | Permission |

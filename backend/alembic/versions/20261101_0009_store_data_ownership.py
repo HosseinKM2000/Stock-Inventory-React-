@@ -6,7 +6,8 @@ Create Date: 2026-11-01
 
 The upgrade intentionally stops on unresolved ownership or conflicting rows.
 Operators must export and resolve the reported table before retrying; the
-migration never chooses between duplicate customer records or combines values.
+migration reports the total and up to 20 affected record/group identifiers. It
+never chooses between duplicate customer records or combines values.
 """
 
 from alembic import op
@@ -56,9 +57,17 @@ def _backfill_store(table: str) -> None:
 def _raise_if_exists(query: str, code: str) -> None:
     op.execute(sa.text(f"""
         DO $$
+        DECLARE
+            affected_count bigint;
+            affected_sample text;
         BEGIN
-            IF EXISTS ({query}) THEN
-                RAISE EXCEPTION '{code}';
+            SELECT COUNT(*) INTO affected_count FROM ({query}) AS affected;
+            IF affected_count > 0 THEN
+                SELECT COALESCE(jsonb_agg(to_jsonb(sample_rows)), '[]'::jsonb)::text
+                INTO affected_sample
+                FROM ({query} LIMIT 20) AS sample_rows;
+                RAISE EXCEPTION USING MESSAGE =
+                    '{code}; count=' || affected_count || '; sample=' || affected_sample;
             END IF;
         END $$;
     """))
@@ -82,7 +91,7 @@ def upgrade() -> None:
     for table in OWNED_TABLES:
         _backfill_store(table)
         _raise_if_exists(
-            f"SELECT 1 FROM {table} WHERE store_id IS NULL",
+            f"SELECT id, user_id FROM {table} WHERE store_id IS NULL ORDER BY id",
             f"STORE_OWNERSHIP_PREFLIGHT:{table}:UNRESOLVED_STORE",
         )
 
@@ -90,29 +99,33 @@ def upgrade() -> None:
     op.execute(sa.text("UPDATE inventory_transactions SET actor_user_id = user_id WHERE actor_user_id IS NULL"))
 
     _raise_if_exists(
-        "SELECT 1 FROM inventory_items i JOIN categories c ON c.id=i.category_id "
-        "WHERE i.category_id IS NOT NULL AND i.store_id<>c.store_id",
+        "SELECT i.id AS inventory_item_id, i.store_id AS inventory_store_id, "
+        "c.id AS category_id, c.store_id AS category_store_id "
+        "FROM inventory_items i JOIN categories c ON c.id=i.category_id "
+        "WHERE i.category_id IS NOT NULL AND i.store_id<>c.store_id ORDER BY i.id",
         "STORE_OWNERSHIP_PREFLIGHT:inventory_items:CROSS_STORE_CATEGORY",
     )
     _raise_if_exists(
-        "SELECT 1 FROM inventory_item_labels il "
+        "SELECT i.id AS inventory_item_id, i.store_id AS inventory_store_id, "
+        "l.id AS label_id, l.store_id AS label_store_id FROM inventory_item_labels il "
         "JOIN inventory_items i ON i.id=il.inventory_item_id "
-        "JOIN labels l ON l.id=il.label_id WHERE i.store_id<>l.store_id",
+        "JOIN labels l ON l.id=il.label_id WHERE i.store_id<>l.store_id "
+        "ORDER BY i.id,l.id",
         "STORE_OWNERSHIP_PREFLIGHT:inventory_item_labels:CROSS_STORE_LABEL",
     )
     for query, code in (
-        ("SELECT 1 FROM inventory_transactions t JOIN inventory_items i ON i.id=t.inventory_item_id WHERE t.store_id<>i.store_id", "inventory_transactions:CROSS_STORE_ITEM"),
-        ("SELECT 1 FROM product_barcodes b JOIN inventory_items i ON i.id=b.inventory_item_id WHERE b.store_id<>i.store_id", "product_barcodes:CROSS_STORE_ITEM"),
-        ("SELECT 1 FROM inventory_movements m JOIN inventory_items i ON i.id=m.product_id WHERE m.store_id<>i.store_id", "inventory_movements:CROSS_STORE_ITEM"),
-        ("SELECT 1 FROM inventory_movements m JOIN product_barcodes b ON b.id=m.barcode_id WHERE m.barcode_id IS NOT NULL AND m.store_id<>b.store_id", "inventory_movements:CROSS_STORE_BARCODE"),
+        ("SELECT t.id, t.store_id, t.inventory_item_id, i.store_id AS item_store_id FROM inventory_transactions t JOIN inventory_items i ON i.id=t.inventory_item_id WHERE t.store_id<>i.store_id ORDER BY t.id", "inventory_transactions:CROSS_STORE_ITEM"),
+        ("SELECT b.id, b.store_id, b.inventory_item_id, i.store_id AS item_store_id FROM product_barcodes b JOIN inventory_items i ON i.id=b.inventory_item_id WHERE b.store_id<>i.store_id ORDER BY b.id", "product_barcodes:CROSS_STORE_ITEM"),
+        ("SELECT m.id, m.store_id, m.product_id, i.store_id AS item_store_id FROM inventory_movements m JOIN inventory_items i ON i.id=m.product_id WHERE m.store_id<>i.store_id ORDER BY m.id", "inventory_movements:CROSS_STORE_ITEM"),
+        ("SELECT m.id, m.store_id, m.barcode_id, b.store_id AS barcode_store_id FROM inventory_movements m JOIN product_barcodes b ON b.id=m.barcode_id WHERE m.barcode_id IS NOT NULL AND m.store_id<>b.store_id ORDER BY m.id", "inventory_movements:CROSS_STORE_BARCODE"),
     ):
         _raise_if_exists(query, f"STORE_OWNERSHIP_PREFLIGHT:{code}")
 
     for query, code in (
-        ("SELECT 1 FROM inventory_items GROUP BY store_id,catalog_product_id HAVING COUNT(*)>1", "inventory_items:DUPLICATE_CATALOG_ASSIGNMENT"),
-        ("SELECT 1 FROM categories GROUP BY store_id,name HAVING COUNT(*)>1", "categories:DUPLICATE_NAME"),
-        ("SELECT 1 FROM labels GROUP BY store_id,normalized_name HAVING COUNT(*)>1", "labels:DUPLICATE_NAME"),
-        ("SELECT 1 FROM sync_operations GROUP BY store_id,actor_user_id,operation_id HAVING COUNT(*)>1", "sync_operations:DUPLICATE_ACTOR_OPERATION"),
+        ("SELECT store_id,catalog_product_id,array_agg(id ORDER BY id) AS record_ids FROM inventory_items GROUP BY store_id,catalog_product_id HAVING COUNT(*)>1 ORDER BY store_id,catalog_product_id", "inventory_items:DUPLICATE_CATALOG_ASSIGNMENT"),
+        ("SELECT store_id,name,array_agg(id ORDER BY id) AS record_ids FROM categories GROUP BY store_id,name HAVING COUNT(*)>1 ORDER BY store_id,name", "categories:DUPLICATE_NAME"),
+        ("SELECT store_id,normalized_name,array_agg(id ORDER BY id) AS record_ids FROM labels GROUP BY store_id,normalized_name HAVING COUNT(*)>1 ORDER BY store_id,normalized_name", "labels:DUPLICATE_NAME"),
+        ("SELECT store_id,actor_user_id,operation_id,array_agg(id ORDER BY id) AS record_ids FROM sync_operations GROUP BY store_id,actor_user_id,operation_id HAVING COUNT(*)>1 ORDER BY store_id,actor_user_id,operation_id", "sync_operations:DUPLICATE_ACTOR_OPERATION"),
     ):
         _raise_if_exists(query, f"STORE_OWNERSHIP_PREFLIGHT:{code}")
 

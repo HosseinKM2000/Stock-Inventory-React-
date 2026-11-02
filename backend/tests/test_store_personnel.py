@@ -142,6 +142,36 @@ def test_platform_administrator_has_unrestricted_store_access(client: TestClient
     assert all(entitlement.json()["capabilities"].values())
     assert all(value is None for value in entitlement.json()["limits"].values())
 
+    customer_username = f"admin-isolation-{uuid.uuid4().hex[:8]}"
+    customer = signup(client, customer_username)
+    with SessionLocal() as db:
+        customer_store = db.scalar(select(Store).where(
+            Store.owner_user_id == customer["user"]["id"]
+        ))
+        industry = Industry(name=f"Admin isolation {customer_username}", is_active=True)
+        db.add(industry)
+        db.flush()
+        catalog = CatalogProduct(
+            industry_id=industry.id,
+            name=f"Customer-only {customer_username}",
+            is_shared=False,
+            is_active=True,
+        )
+        db.add(catalog)
+        db.flush()
+        customer_item = InventoryItem(
+            store_id=customer_store.id,
+            user_id=customer_store.owner_user_id,
+            catalog_product_id=catalog.id,
+        )
+        db.add(customer_item)
+        db.commit()
+        customer_item_id = customer_item.id
+
+    isolated = client.get("/api/products", headers=admin_headers)
+    assert isolated.status_code == 200
+    assert customer_item_id not in {item["id"] for item in isolated.json()["items"]}
+
 
 def test_store_inventory_is_shared_with_personnel_and_isolated_from_other_store(client: TestClient):
     suffix = uuid.uuid4().hex[:8]
@@ -277,6 +307,17 @@ def test_multiple_active_memberships_fail_closed_instead_of_choosing_arbitrarily
             active_store_context(db, first_user)
         assert error.value.status_code == 409
         assert error.value.detail == "STORE_CONTEXT_AMBIGUOUS"
+
+    ambiguous_headers = headers(first, f"device-ambiguous-first-{suffix}")
+    for method, path, kwargs in (
+        ("get", "/api/auth/me", {}),
+        ("get", "/api/products", {}),
+        ("get", "/api/sync/changes", {"headers": {"X-Client-Data-Schema": "2"}}),
+    ):
+        request_headers = {**ambiguous_headers, **kwargs.get("headers", {})}
+        response = client.request(method, path, headers=request_headers)
+        assert response.status_code == 409
+        assert response.json()["detail"] == "STORE_CONTEXT_AMBIGUOUS"
 
 
 def test_platform_user_deletion_cannot_delete_store_identity_or_business_boundary(client: TestClient):

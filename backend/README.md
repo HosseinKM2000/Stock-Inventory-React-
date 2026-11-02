@@ -112,6 +112,16 @@ server-side from `quantity` and `low_stock_threshold`.
 
 ## Database operations
 
+Revision `20261101_0009` requires a controlled backend replacement and must not
+be deployed while pre-1B API workers remain active. For a real environment,
+stop all old workers, take and verify a database backup, run the migration with
+the reviewed release artifact, confirm `alembic current` reports
+`20261101_0009`, and only then start 1B-or-newer workers. If migration preflight
+reports `STORE_OWNERSHIP_PREFLIGHT`, PostgreSQL rolls the revision back to
+`0008`; use the reported count and record/group sample to remediate explicitly
+before retrying. Do not merge, sum, or delete ambiguous customer rows merely to
+make the migration pass.
+
 Run these commands from the repository root unless noted:
 
 ```powershell

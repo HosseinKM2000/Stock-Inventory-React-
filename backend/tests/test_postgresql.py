@@ -14,7 +14,7 @@ from pathlib import Path
 import pytest
 from alembic import command
 from alembic.config import Config
-from sqlalchemy import create_engine, inspect, select, text
+from sqlalchemy import create_engine, func, inspect, select, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
@@ -137,9 +137,19 @@ def migrated_empty_database():
     try:
         command.upgrade(config, "head")
     except Exception as error:
-        MIGRATION_EVIDENCE["blocked"] = "DUPLICATE_CATALOG_ASSIGNMENT" in str(error)
+        diagnostic = str(error)
+        MIGRATION_EVIDENCE["blocked"] = "DUPLICATE_CATALOG_ASSIGNMENT" in diagnostic
+        MIGRATION_EVIDENCE["diagnostic"] = diagnostic
     else:
         raise AssertionError("Ambiguous legacy catalog assignments must block migration")
+    with reset_engine.connect() as connection:
+        MIGRATION_EVIDENCE["rollback"] = (
+            connection.scalar(text("SELECT version_num FROM alembic_version")),
+            "industry_id" not in {
+                column["name"] for column in inspect(connection).get_columns("stores")
+            },
+            connection.scalar(text("SELECT count(*) FROM inventory_items WHERE id IN (9101,9102)")),
+        )
     with reset_engine.begin() as connection:
         connection.execute(text("DELETE FROM inventory_items WHERE id=9102"))
     command.upgrade(config, "head")
@@ -195,6 +205,10 @@ def signup(client: TestClient):
 @pytest.mark.postgres
 def test_migration_reaches_head_with_all_expected_tables(migrated_empty_database):
     assert MIGRATION_EVIDENCE["blocked"] is True
+    assert "record_ids" in MIGRATION_EVIDENCE["diagnostic"]
+    assert "9101" in MIGRATION_EVIDENCE["diagnostic"]
+    assert "9102" in MIGRATION_EVIDENCE["diagnostic"]
+    assert MIGRATION_EVIDENCE["rollback"] == ("20261101_0008", True, 2)
     assert MIGRATION_EVIDENCE["preserved"] == (
         9101, 9101, 23, 4500, 3200, 9101,
         9101, 9101, 9101, 9101, MIGRATION_EVIDENCE["fingerprint"], 9101,
@@ -250,24 +264,67 @@ def test_concurrent_catalog_reconciliation_creates_one_store_assignment(client):
             is_active=True,
         )
         db.add(product)
-        db.commit()
+        db.flush()
         product_id = product.id
         store_id = db.scalar(select(Store.id).where(Store.owner_user_id == user_id))
+        existing = InventoryItem(
+            store_id=store_id,
+            user_id=user_id,
+            catalog_product_id=product_id,
+            quantity=31,
+            custom_label="concurrent override",
+            note="must survive concurrent reconciliation",
+            is_hidden=True,
+        )
+        second_owner = User(
+            first_name="Concurrent",
+            last_name="Second",
+            username="postgres-concurrent-second",
+            hashed_password="test-only-unused-hash",
+        )
+        db.add_all([existing, second_owner])
+        db.flush()
+        second_store = Store(
+            name="Concurrent second store",
+            owner_user_id=second_owner.id,
+            industry_id=industry_id,
+        )
+        db.add(second_store)
+        db.commit()
+        second_store_id = second_store.id
 
     def reconcile():
         with SessionLocal() as db:
             _reconcile_catalog_assignments(db, db.get(CatalogProduct, product_id))
             db.commit()
+            return db.scalar(select(func.count(InventoryItem.id)).where(
+                InventoryItem.catalog_product_id == product_id
+            ))
 
     with ThreadPoolExecutor(max_workers=2) as pool:
-        list(pool.map(lambda _: reconcile(), range(2)))
+        counts = list(pool.map(lambda _: reconcile(), range(2)))
 
     with SessionLocal() as db:
         assignments = list(db.scalars(select(InventoryItem).where(
-            InventoryItem.store_id == store_id,
             InventoryItem.catalog_product_id == product_id,
         )))
-        assert len(assignments) == 1
+        assert counts == [2, 2]
+        assert {(item.store_id, item.catalog_product_id) for item in assignments} == {
+            (store_id, product_id),
+            (second_store_id, product_id),
+        }
+        preserved = next(item for item in assignments if item.store_id == store_id)
+        assert (
+            preserved.quantity,
+            preserved.custom_label,
+            preserved.note,
+            preserved.is_hidden,
+        ) == (
+            31,
+            "concurrent override",
+            "must survive concurrent reconciliation",
+            True,
+        )
 
 
 @pytest.mark.postgres
