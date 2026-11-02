@@ -64,6 +64,8 @@ def get_current_writable_user(
 ) -> User:
     require_capability(db, user, "inventory.write")
     require_store_permission(db, user, StorePermission.PRODUCTS_EDIT)
+    from .services.store_mode_policy import require_direct_mutation_allowed
+    require_direct_mutation_allowed(db, user)
     return user
 
 
@@ -88,18 +90,24 @@ def get_current_dashboard_user(
 def get_current_product_creator(user: Annotated[User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]) -> User:
     require_capability(db, user, "inventory.write")
     require_store_permission(db, user, StorePermission.PRODUCTS_CREATE)
+    from .services.store_mode_policy import require_direct_mutation_allowed
+    require_direct_mutation_allowed(db, user)
     return user
 
 
 def get_current_quantity_writer(user: Annotated[User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]) -> User:
     require_capability(db, user, "inventory.write")
     require_store_permission(db, user, StorePermission.QUANTITY_CHANGE)
+    from .services.store_mode_policy import require_direct_mutation_allowed
+    require_direct_mutation_allowed(db, user)
     return user
 
 
 def get_current_product_deleter(user: Annotated[User, Depends(get_current_user)], db: Annotated[Session, Depends(get_db)]) -> User:
     require_capability(db, user, "inventory.write")
     require_store_permission(db, user, StorePermission.PRODUCTS_DELETE)
+    from .services.store_mode_policy import require_direct_mutation_allowed
+    require_direct_mutation_allowed(db, user)
     return user
 
 
@@ -110,6 +118,8 @@ def get_current_category_writer(
     require_capability(db, user, "categories.write")
     require_store_permission(db, user, StorePermission.CATEGORIES_MANAGE)
     require_tool(db, user, "categories")
+    from .services.store_mode_policy import require_direct_mutation_allowed
+    require_direct_mutation_allowed(db, user)
     return user
 
 

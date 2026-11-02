@@ -96,6 +96,9 @@ class UserOut(BaseModel):
     temporary_password_required: bool = False
     credentials_notice_viewed: bool = True
     membership_authorization_checked_at: datetime | None = None
+    store_operating_mode: Literal["solo", "team"] | None = None
+    store_policy_version: int | None = None
+    store_policy_changed_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -557,6 +560,21 @@ class SyncOperationIn(BaseModel):
     payload: dict[str, Any] | None = None
     base_version: int | None = Field(default=None, ge=1)
     client_occurred_at: datetime | None = None
+    execution_mode: Literal["solo", "team"] | None = None
+    policy_version: int | None = Field(default=None, ge=1)
+
+
+class StoreOperatingModeOut(BaseModel):
+    operating_mode: Literal["solo", "team"]
+    policy_version: int
+    changed_at: datetime
+    changed_by_user_id: int | None
+    team_eligible: bool
+
+
+class TeamActivationRequest(BaseModel):
+    transition_id: str = Field(min_length=1, max_length=64)
+    expected_policy_version: int = Field(ge=1)
 
 
 class SyncBatchRequest(BaseModel):

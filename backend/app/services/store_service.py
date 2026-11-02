@@ -132,6 +132,9 @@ def attach_store_context(db: Session, user: User) -> StoreContext | None:
     user.temporary_password_required = context.membership.temporary_password_required
     user.credentials_notice_viewed = context.membership.credentials_notice_viewed_at is not None
     user.membership_authorization_checked_at = context.membership.authorization_checked_at
+    user.store_operating_mode = context.store.operating_mode
+    user.store_policy_version = context.store.policy_version
+    user.store_policy_changed_at = context.store.policy_changed_at
     # `data_owner_id` remains a legacy wire/write compatibility value only.
     # Authorization and operational queries use the authenticated store id.
     user.data_owner_id = context.store.owner_user_id

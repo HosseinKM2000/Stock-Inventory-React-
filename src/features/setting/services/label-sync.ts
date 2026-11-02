@@ -6,9 +6,12 @@ import { registerInboundSyncHandler, registerSyncHandler, type SyncHandlerResult
 import { pushJsonBatch } from "@/features/app/inventory/api/sync.api";
 import type { Label } from "../types";
 import { LABEL_ENTITY } from "./label.service";
+import { assertSyncAccountCurrent, captureSyncAccountContext } from "@/shared/lib/infrastructure/sync/sync-account-context";
 
 async function push(items: SyncQueueItem[]): Promise<SyncHandlerResult[]> {
+  const account = captureSyncAccountContext();
   const response = await pushJsonBatch(items);
+  assertSyncAccountCurrent(account);
   const byOperation = new Map(items.map((item) => [item.operationId, item]));
   return response.results.flatMap((result) => {
     const item = byOperation.get(result.operation_id);
@@ -17,14 +20,18 @@ async function push(items: SyncQueueItem[]): Promise<SyncHandlerResult[]> {
 }
 
 async function pull() {
+  const account = captureSyncAccountContext();
   const server = await apiFetch<Label[]>("/labels");
+  assertSyncAccountCurrent(account);
   const serverIds = new Set(server.map((label) => label.id));
   for (const local of await labelStorage.getAll()) {
+    assertSyncAccountCurrent(account);
     if (!(await queueService.hasForEntity(LABEL_ENTITY, local.id)) && !serverIds.has(local.id)) {
       await labelStorage.remove(local.id);
     }
   }
   for (const label of server) {
+    assertSyncAccountCurrent(account);
     if (!(await queueService.hasForEntity(LABEL_ENTITY, label.id))) await labelStorage.save(label);
   }
 }

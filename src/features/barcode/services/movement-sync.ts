@@ -6,16 +6,21 @@ import { queueService } from "@/shared/lib/infrastructure/sync/queue.service";
 import type { InventoryMovement } from "../types";
 import { INVENTORY_MOVEMENT_ENTITY } from "./movement-service";
 import { movementRepository } from "./movement-repository";
+import { assertSyncAccountCurrent, captureSyncAccountContext } from "@/shared/lib/infrastructure/sync/sync-account-context";
 
 async function push(items: SyncQueueItem[]): Promise<SyncHandlerResult[]> {
+  const account = captureSyncAccountContext();
   const response = await pushJsonBatch(items);
+  assertSyncAccountCurrent(account);
   const output: SyncHandlerResult[] = [];
   for (const result of response.results) {
+    assertSyncAccountCurrent(account);
     const item = items.find((candidate) => candidate.operationId === result.operation_id);
     if (!item) continue;
     const movement = item.payload as InventoryMovement;
     const record = result.record as { movement?: InventoryMovement; product?: import("@/features/app/inventory/types").Product } | null;
     const hasSuccessor = await queueService.hasSuccessor(item);
+    assertSyncAccountCurrent(account);
     if (result.status === "applied") {
       await movementRepository.save({ ...movement, ...record?.movement, sync_status: "accepted", updated_at: record?.movement?.updated_at ?? new Date().toISOString() });
       if (record?.product && !hasSuccessor) await inventoryRepository.save(record.product);

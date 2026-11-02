@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   count: vi.fn(), getDue: vi.fn(), getAll: vi.fn(), markInFlight: vi.fn(),
   markFailed: vi.fn(), markConflict: vi.fn(), removeIfUnchanged: vi.fn(), resetFailures: vi.fn(),
   canAccess: vi.fn(), canWrite: vi.fn(), ensureVerified: vi.fn(), setStatus: vi.fn(), getStatus: vi.fn(),
+  user: vi.fn(),
 }));
 vi.mock("@/shared/api/token-store", () => ({ isAuthenticated: mocks.isAuthenticated }));
 vi.mock("@/shared/lib/infrastructure/network/network-service", () => ({
@@ -20,7 +21,7 @@ vi.mock("@/shared/lib/infrastructure/sync/queue.service", () => ({
   },
 }));
 vi.mock("@/shared/access/access-state", () => ({
-  accessState: { canAccess: mocks.canAccess, canWrite: mocks.canWrite },
+  accessState: { canAccess: mocks.canAccess, canWrite: mocks.canWrite, user: mocks.user },
 }));
 vi.mock("@/shared/access/entitlement-service", () => ({
   entitlementService: { ensureVerified: mocks.ensureVerified },
@@ -47,6 +48,7 @@ describe("synchronization orchestration", () => {
     mocks.isAuthenticated.mockReturnValue(true);
     mocks.canAccess.mockReturnValue(true);
     mocks.canWrite.mockReturnValue(true);
+    mocks.user.mockReturnValue({ id: 1, store_id: 1 });
     mocks.ensureVerified.mockResolvedValue(undefined);
     mocks.markInFlight.mockImplementation(async (queued) => queued);
     mocks.removeIfUnchanged.mockResolvedValue(true);
@@ -125,6 +127,25 @@ describe("synchronization orchestration", () => {
     await syncService.sync();
     expect(mocks.markFailed).toHaveBeenCalledWith(queued, expect.any(Error));
     expect(mocks.removeIfUnchanged).not.toHaveBeenCalled();
+  });
+
+  it("does not acknowledge an old partition after the authenticated account changes", async () => {
+    const entity = "account-change-test";
+    const queued = item(entity);
+    mocks.getDue.mockResolvedValue([queued]);
+    registerSyncHandler(entity, vi.fn().mockImplementation(async () => {
+      mocks.user.mockReturnValue({ id: 2, store_id: 2 });
+      return [{ itemId: queued.id, status: "applied" }];
+    }));
+
+    await syncService.sync();
+
+    expect(mocks.removeIfUnchanged).not.toHaveBeenCalled();
+    expect(mocks.markFailed).not.toHaveBeenCalled();
+    expect(mocks.setStatus).toHaveBeenLastCalledWith(expect.objectContaining({
+      state: "failed",
+      error: "SYNC_ACCOUNT_CHANGED",
+    }));
   });
 
   it("retains a rejected local change as an inspectable conflict", async () => {

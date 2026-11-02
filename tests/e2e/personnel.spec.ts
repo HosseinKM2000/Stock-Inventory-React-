@@ -18,6 +18,9 @@ const owner = {
   is_store_owner: true,
   store_id: 41,
   membership_id: 51,
+  store_operating_mode: "team",
+  store_policy_version: 2,
+  store_policy_changed_at: now,
   subscription_started_at: now,
   subscription_expires_at: "2099-01-01T00:00:00.000Z",
   created_at: now,
@@ -42,7 +45,7 @@ async function json(route: Route, body: unknown) {
   await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
 }
 
-async function openPersonnel(page: Page) {
+async function openPersonnel(page: Page, operatingMode: "solo" | "team" = "team") {
   await page.addInitScript(({ user, capturedAt }) => {
     localStorage.setItem("access_token", JSON.stringify("personnel-layout-token"));
     localStorage.setItem("inventory-last-user", JSON.stringify(user));
@@ -82,6 +85,7 @@ async function openPersonnel(page: Page) {
       limits: { inventory_items: null },
     });
     if (url.pathname === "/api/store/personnel/capacity") return json(route, { enabled: true, used: 1, limit: 4, available: 3 });
+    if (url.pathname === "/api/store/operating-mode") return json(route, { operating_mode: operatingMode, policy_version: operatingMode === "team" ? 2 : 1, changed_at: now, changed_by_user_id: owner.id, team_eligible: true });
     if (url.pathname === "/api/store/roles") return json(route, [{ id: 2, name: "مشاهده‌گر", permissions: [], assigned_count: 1 }]);
     if (url.pathname === "/api/store/personnel/72/temporary-credentials") return json(route, { ...personnel, temporary_password: "QS7!safe-temporary" });
     if (url.pathname === "/api/store/personnel") return json(route, [personnel]);
@@ -92,8 +96,10 @@ async function openPersonnel(page: Page) {
   await expect(page.getByRole("heading", { name: "پرسنل مجموعه", level: 1 })).toBeVisible();
   await expect(page.getByRole("navigation", { name: "مسیر صفحه" })).toContainText("تنظیمات");
   await expect(page.locator(".page-guide").getByRole("button", { name: "بازگشت" })).toBeVisible();
-  await expect(page.getByRole("heading", { name: "افزودن پرسنل" })).toBeVisible();
-  await expect(page.getByText("تست تستی")).toBeVisible();
+  if (operatingMode === "team") {
+    await expect(page.getByRole("heading", { name: "افزودن پرسنل" })).toBeVisible();
+    await expect(page.getByText("تست تستی")).toBeVisible();
+  }
 }
 
 test("personnel layout adapts without horizontal overflow", async ({ page }, testInfo) => {
@@ -127,5 +133,29 @@ test("personnel layout adapts without horizontal overflow", async ({ page }, tes
         mobile ? "mobile/settings/01-personnel.png" : "desktop/settings/01-personnel.png",
       ),
     });
+  }
+});
+
+test("solo activation remains reachable in both themes and display extremes", async ({ page }) => {
+  await openPersonnel(page, "solo");
+  const heading = page.getByRole("heading", { name: "فعال‌سازی صریح حالت تیمی" });
+  const action = page.getByRole("button", { name: "فعال‌سازی حالت تیمی" });
+  await expect(heading).toBeVisible();
+  await expect(action).toBeVisible();
+  await action.focus();
+  await expect(action).toBeFocused();
+
+  for (const [appearance, size] of [["light", "compact"], ["dark", "large"]] as const) {
+    await page.evaluate(({ appearance, size }) => {
+      localStorage.setItem("inventory-appearance", appearance);
+      localStorage.setItem("inventory-display-size", size);
+    }, { appearance, size });
+    await page.reload();
+    await expect(page.locator("html")).toHaveAttribute("data-appearance", appearance);
+    await expect(page.locator("html")).toHaveAttribute("data-display-size", size);
+    await expect(heading).toBeVisible();
+    await expect(action).toBeVisible();
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(1);
   }
 });

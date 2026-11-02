@@ -2,6 +2,7 @@ import { imageService } from "@/shared/lib/infrastructure/media/image.service";
 import { queueService } from "@/shared/lib/infrastructure/sync/queue.service";
 import { accessState } from "@/shared/access/access-state";
 import { localMutationStorage } from "@/shared/lib/infrastructure/storage/local-mutation-storage";
+import { isTeamMode, teamCommandService } from "@/shared/lib/infrastructure/sync/team-command.service";
 
 import { inventoryRepository } from "./inventory.repository";
 
@@ -193,6 +194,13 @@ class InventoryService {
     accessState.requireInventoryCapacity((await inventoryRepository.getAll()).length);
     const record = sanitize(product);
 
+    if (isTeamMode()) {
+      await teamCommandService.submit(PRODUCT_ENTITY, record.id, "CREATE", record);
+      const confirmed = await inventoryRepository.get(record.id);
+      if (!confirmed) throw new Error("TEAM_RESULT_MISSING");
+      return confirmed;
+    }
+
     return localMutationStorage.inventory(async () => {
       await inventoryRepository.save(record);
 
@@ -212,6 +220,16 @@ class InventoryService {
     const existing = (await inventoryRepository.getAll()).length;
     accessState.requireInventoryCapacity(existing + products.length);
     const records = products.map(sanitize);
+    if (isTeamMode()) {
+      const confirmed: Product[] = [];
+      for (const record of records) {
+        await teamCommandService.submit(PRODUCT_ENTITY, record.id, "CREATE", record);
+        const saved = await inventoryRepository.get(record.id);
+        if (!saved) throw new Error("TEAM_RESULT_MISSING");
+        confirmed.push(saved);
+      }
+      return confirmed;
+    }
     return localMutationStorage.inventory(async () => {
       for (const record of records) {
         await inventoryRepository.save(record);
@@ -241,6 +259,28 @@ class InventoryService {
       (intent.priceIncrease ?? 0) > 0 || intent.lowStockAlert !== undefined ||
       intent.lowStockThreshold !== undefined;
     if (!hasEffectiveChange) throw new Error("حداقل یک تغییر مؤثر انتخاب کنید");
+
+    if (isTeamMode()) {
+      const updated: Product[] = [];
+      for (const id of uniqueIds) {
+        const current = await inventoryRepository.get(id);
+        if (!current) continue;
+        const price = intent.priceIncrease ? current.price + intent.priceIncrease : current.price;
+        const payload = {
+          id,
+          version: current.version,
+          ...(intent.categoryId !== undefined ? { category_id: intent.categoryId } : {}),
+          ...(intent.lowStockAlert !== undefined ? { low_stock_alert: intent.lowStockAlert } : {}),
+          ...(intent.lowStockThreshold !== undefined ? { low_stock_threshold: intent.lowStockThreshold } : {}),
+          ...(intent.priceIncrease ? { sale_price: price, price, price_missing: false } : {}),
+        };
+        await teamCommandService.submit(PRODUCT_ENTITY, id, productSyncAction(current), payload);
+        const saved = await inventoryRepository.get(id);
+        if (saved) updated.push(saved);
+      }
+      if (!updated.length) throw new Error("TEAM_RESULT_MISSING");
+      return updated;
+    }
 
     return localMutationStorage.inventory(async () => {
       const updated: Product[] = [];
@@ -294,15 +334,22 @@ class InventoryService {
       updated_at: new Date().toISOString(),
     } as Product);
 
+    const payload = current.version == null
+      ? updated
+      : { id, version: current.version, ...input, ...(input.sale_price !== undefined ? { price: input.sale_price ?? 0, price_missing: input.sale_price == null } : {}) };
+    if (isTeamMode()) {
+      await teamCommandService.submit(PRODUCT_ENTITY, id, productSyncAction(current), payload);
+      const confirmed = await inventoryRepository.get(id);
+      if (!confirmed) throw new Error("TEAM_RESULT_MISSING");
+      return confirmed;
+    }
+
     const saved = await localMutationStorage.inventory(async () => {
       await inventoryRepository.save(updated);
 
       const persisted = await inventoryRepository.get(id);
       if (!persisted) throw new Error("update failed");
 
-      const payload = current.version == null
-        ? persisted
-        : { id, version: current.version, ...input, ...(input.sale_price !== undefined ? { price: input.sale_price ?? 0, price_missing: input.sale_price == null } : {}) };
       await queueService.enqueue(PRODUCT_ENTITY, id, productSyncAction(current), payload);
       return persisted;
     });
@@ -365,6 +412,11 @@ class InventoryService {
       );
     }
 
+    if (isTeamMode()) {
+      await teamCommandService.submit(PRODUCT_ENTITY, id, "DELETE", null);
+      return;
+    }
+
     await localMutationStorage.inventory(async () => {
       await inventoryRepository.remove(id);
       await queueService.enqueue(PRODUCT_ENTITY, id, "DELETE", null);
@@ -399,6 +451,14 @@ class InventoryService {
       throw new Error(
         "محصولات کاتالوگی قابل حذف نیستند. آن‌ها را از انتخاب خارج کنید یا مخفی کنید.",
       );
+    }
+
+
+    if (isTeamMode()) {
+      for (const product of products) {
+        await teamCommandService.submit(PRODUCT_ENTITY, product.id, "DELETE", null);
+      }
+      return uniqueIds;
     }
 
     await localMutationStorage.inventory(async () => {

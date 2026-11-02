@@ -80,6 +80,9 @@ export const queueService = {
       attemptState?: SyncQueueItem["attemptState"];
       attemptedAt?: number;
       recoverySourceId?: string;
+      preservePolicyContext?: boolean;
+      executionMode?: SyncQueueItem["executionMode"];
+      policyVersion?: number;
     } = {},
   ) {
     const all = await queueStorage.getAll();
@@ -114,6 +117,13 @@ export const queueService = {
     }
 
     const now = Date.now();
+    const user = accessState.user();
+    const executionMode = options.preservePolicyContext
+      ? options.executionMode
+      : options.executionMode ?? compactable?.executionMode ?? user?.store_operating_mode ?? undefined;
+    const policyVersion = options.preservePolicyContext
+      ? options.policyVersion
+      : options.policyVersion ?? compactable?.policyVersion ?? user?.store_policy_version ?? undefined;
 
     const updatedAt = Math.max(now, (compactable?.updatedAt ?? 0) + 1);
 
@@ -150,6 +160,10 @@ export const queueService = {
       nextAttemptAt: now,
 
       recoverySourceId: options.recoverySourceId,
+
+      executionMode,
+
+      policyVersion,
     });
     void requestBackgroundSync();
     return options.operationId ?? compactable?.operationId;
@@ -309,6 +323,16 @@ export const queueService = {
             nextAttemptAt: now,
           }),
         ),
+    );
+  },
+
+  /** Makes only retryable work immediately eligible for the activation drain. */
+  async prepareActivationDrain() {
+    const now = Date.now();
+    await Promise.all(
+      (await queueStorage.getAll())
+        .filter((item) => item.status === "retryable_error" && item.retryCount < MAX_RETRIES)
+        .map((item) => queueStorage.upsert({ ...item, nextAttemptAt: now })),
     );
   },
 

@@ -136,6 +136,35 @@ Verification for TZ-V1-01C:
 
 Compatibility limits are explicit: valid backup schemas 1–4 remain readable; older operations without reliable attempt provenance are uncertain. The SHA-256 digest checks file integrity but is not a keyed signature and never makes imported authority trustworthy. Recovery sessions are local to the browser/device. A real Chromium tab close was covered only before the database commit; operating-system/browser-process kill timing, real post-commit termination, cross-browser File System Access behavior, device loss, server restore, and clean-device media hydration are not established by this task. No PostgreSQL check was added because 1C changes no backend or server transaction path; the unchanged 1A server replay regressions remain the acceptance boundary for an exact original operation id/payload.
 
+## TZ-V1-01D explicit operating modes
+
+Branch `feat/v1-store-operating-modes`, based on accepted local `draft` `99a30bc11be9cd7b01251d313fd49dcae422e341`, implements the explicit server-controlled `solo`/`team` boundary in implementation commit `02df167e40b71bcdbe6e0a7cc254a18798838dca`:
+
+- `Store.operating_mode`, monotonic `policy_version`, server timestamp/actor, and an idempotent transition journal are authoritative. Plan eligibility only permits activation; plan changes, personnel count, and subscription expiry never switch mode. No routine team-to-solo path exists.
+- Activation is owner-only and one-way. The browser requires Web Locks, pauses local mutation transactions, rejects unfinished recovery review, attempts sync, and refuses activation while any scoped pending, attempted, retryable, conflict, terminal, restored, or unknown-outcome work remains. The server transition is a short row-locked transaction using expected policy version plus a stable transition ID.
+- Solo remains owner local-first. Creating or reactivating personnel requires team mode. In team mode both owner and personnel commands are durably recorded before dispatch, require online server acceptance, and update projections only from accepted server records. Ordinary offline shared-mutation drafts are not created.
+- Every new sync operation captures mode/version and is checked with current membership, entitlement, permissions, and resource scope at acceptance. Missing or stale context is rejected as terminal recovery evidence. Exact committed replay is resolved first only for the same server-derived store, actor, operation ID, and canonical fingerprint, preserving pre-transition replay without duplicate effects or actor reassignment.
+- Recovery replays retain their original policy context as part of their immutable semantic request. A newly approved recovery action receives current context. Existing 1A operation identity/payload and successor-ordering guarantees remain unchanged.
+
+Alembic `20261102_0010` deterministically maps legacy stores with active non-owner personnel to `team` and owner-only stores to `solo`. Missing or multiple active-owner membership blocks transactionally with sampled store IDs. The migration adds policy columns and transition history without rewriting domain identifiers, quantities, prices, relationships, actor attribution, operation IDs, stored results, or fingerprints.
+
+Deployment compatibility is intentionally limited: pre-1D backend workers must not coexist with schema `0010`, because they can bypass the new mode acceptance boundary. Production requires a controlled replacement: stop old workers, verify a backup and preflight on a current database copy, upgrade `0009 -> 0010`, confirm Alembic head, then start only 1D-or-newer workers. No customer or production database was used.
+
+Final verification:
+
+| Command / scope | Result |
+|---|---|
+| Focused backend mode/personnel/replay regressions | Passed: explicit/idempotent activation, solo personnel block, owner and personnel team acceptance, revoked-member rejection, missing/stale policy rejection, historical replay, direct-route block, and subscription expiry without mode fallback. |
+| `npm.cmd run test:backend:postgres:local` | Passed: 10 tests, including `0010` preflight rollback/remediation, deterministic solo/team backfill, value/history/fingerprint preservation, and activation-versus-mutation serialization. |
+| Focused frontend unit/component tests | Passed: durable-before-dispatch team commands, unknown outcome retention, no offline command, immutable captured policy context, no optimistic inventory projection, and explicit activation UI. |
+| `npm.cmd test` | Passed: 72 files, 303 unit/component tests. |
+| `npm.cmd run test:backend` | Passed: 48 tests. |
+| `npm.cmd run test:typecheck` and `npm.cmd run lint` | Passed. |
+| `npm.cmd run build` | Passed with the existing stale Browserslist data and large-chunk warnings; the largest reported `bwip-js` chunk remains about 930 kB. |
+| Focused production-preview E2E | Passed: 32 cases across `pwa.spec.ts`, `product-layout.spec.ts`, and `personnel.spec.ts` in both configured viewports. Personnel activation also covered light/compact and dark/large layouts. |
+
+The task is complete on its feature branch and is intentionally not integrated by this delivery. It has not been merged into `draft`, pushed, deployed, or applied to `develop`.
+
 ## UI baseline artifacts
 
 Current supplemental screenshots are local-only under ignored `test-results/v1-baseline/`:
@@ -156,20 +185,16 @@ Observed UI issues are recorded separately:
 
 ## Outstanding release risks
 
-1. No explicit server operating mode; team owners and personnel still follow local-first shared mutation behavior.
-2. Metadata and image-byte completion are conflated; clean-device OPFS recovery is absent.
-3. Commercial plan/grant/payment/admin policy is incomplete and contains an extra observed Starter tier not present in confirmed target policy.
-4. Server restore, deploy/rollback, monitoring, alerting, and backup drills are not evidenced end to end.
-5. Persistent dashboard scroll regression and the mobile status overlap remain.
-6. Schema `0009` is not rolling-compatible with pre-1B backend workers and requires a controlled backend replacement after preflight and backup verification.
-7. The 1C checkpoint/review journal is browser-local; browser-process kill, real post-commit termination, device-loss, and cross-browser File System Access recovery remain unverified.
+1. Metadata and image-byte completion are conflated; clean-device OPFS recovery is absent.
+2. Commercial plan/grant/payment/admin policy is incomplete and contains an extra observed Starter tier not present in confirmed target policy.
+3. Server restore, deploy/rollback, monitoring, alerting, and backup drills are not evidenced end to end.
+4. Persistent dashboard scroll regression and the mobile status overlap remain.
+5. Schema `0010` requires controlled replacement; pre-1D workers are not safe after upgrade.
+6. The 1C checkpoint/review journal is browser-local; browser-process kill, real post-commit termination, device-loss, and cross-browser File System Access recovery remain unverified.
+7. Activation warns about other devices and the server rejects their stale commands, but instant control of a disconnected device is not possible and no private team draft workflow exists.
 
-## Task 1C delivery and task 1D boundary
+## Task 1D delivery boundary
 
-TZ-V1-01C is complete and integrated into local `draft` at merge `c1b84985b06007095282f7c1e2ec70eb1373a3af`. Nothing was pushed, deployed, or applied to `develop`. Task 1D was not started automatically.
-
-Task 1D remains responsible for the server-controlled `solo`/`team` operating mode, explicit activation inventory/transition, online-only shared mutation acceptance for owner and personnel, offline-draft policy, stale-device behavior, revocation transitions, and subscription expiry without a solo fallback. It must preserve the 1A immutable-operation and 1C unresolved-recovery boundaries and must not treat an unfinished recovery review as activatable shared state.
-
-Before task 1D implementation, its acceptance tests must define the activation disposition for pending, in-flight, retryable, terminal, restored, and unknown-outcome work without inventing the still-open retention, conflict, or draft business policy.
+TZ-V1-01D is complete on `feat/v1-store-operating-modes` and stops at its focused task commits. It is not merged into `draft` by this task. The next Commercial V1 task must preserve the explicit mode/version boundary, server-accepted team projection rule, immutable rejected evidence, and unresolved-recovery activation block.
 
 Open capacities, gifts, retention, conflict UX, and detailed draft policy do not block beginning integrity/model work, but they must not be guessed or encoded as final commercial values.

@@ -26,6 +26,7 @@ from app.models import (
     ProductBarcode,
     SyncChange,
     SyncOperation,
+    Store,
     User,
     UserSession,
 )
@@ -166,7 +167,7 @@ class SyncApiTest(unittest.TestCase):
             },
         }
         first = self.push([receive])
-        self.assertEqual(first.json()["results"][0]["status"], "applied")
+        self.assertEqual(first.json()["results"][0]["status"], "applied", first.text)
         self.assertEqual(first.json()["results"][0]["record"]["product"]["quantity"], 7)
         replay = self.push([receive])
         self.assertEqual(replay.json()["results"], first.json()["results"])
@@ -1632,6 +1633,101 @@ class SyncApiTest(unittest.TestCase):
             user.plan = "free"
             user.subscription_expires_at = None
             db.commit()
+
+    def test_team_mode_requires_current_policy_and_preserves_historical_replay(self) -> None:
+        suffix = uuid.uuid4().hex[:8]
+        signup = self.client.post("/api/auth/signup", json={
+            "first_name": "Mode", "last_name": "Owner", "username": f"mode-{suffix}",
+            "password": "StrongPass123!", "device_fingerprint": f"mode-device-{suffix}",
+        })
+        self.assertEqual(signup.status_code, 201, signup.text)
+        owner_id = signup.json()["user"]["id"]
+        headers = {
+            "Authorization": f"Bearer {signup.json()['access_token']}",
+            "X-Device-Fingerprint": f"mode-device-{suffix}",
+            "X-Client-Data-Schema": "2",
+        }
+        with SessionLocal() as db:
+            owner = db.get(User, owner_id)
+            owner.plan = "vip"
+            db.commit()
+        selected = self.client.patch("/api/auth/industry", headers=headers, json={"industry_id": self.industry_id})
+        self.assertEqual(selected.status_code, 200, selected.text)
+
+        product_id = 1_800_000_000_000 + owner_id
+        historical = {
+            "operation_id": f"historical-{suffix}", "entity": "product",
+            "entity_id": product_id, "operation": "CREATE",
+            "payload": {
+                "quantity": 1, "price": 100, "custom_label": "Historical",
+                "low_stock_threshold": 0, "low_stock_alert": False,
+                "is_hidden": False,
+                "catalog_product": {"id": 0, "name": "Historical"},
+            },
+        }
+        first = self.client.post("/api/sync/batch", headers=headers, data={
+            "operations_json": json.dumps({"operations": [historical]}),
+        })
+        self.assertEqual(first.json()["results"][0]["status"], "applied", first.text)
+
+        mode = self.client.get("/api/store/operating-mode", headers=headers).json()
+        transition_id = str(uuid.uuid4())
+        activated = self.client.post("/api/store/operating-mode/activate-team", headers=headers, json={
+            "expected_policy_version": mode["policy_version"], "transition_id": transition_id,
+        })
+        self.assertEqual(activated.status_code, 200, activated.text)
+        policy_version = activated.json()["policy_version"]
+
+        replay = self.client.post("/api/sync/batch", headers=headers, data={
+            "operations_json": json.dumps({"operations": [historical]}),
+        })
+        self.assertEqual(replay.json()["results"], first.json()["results"])
+
+        missing_context = {**historical, "operation_id": f"missing-{suffix}", "operation": "UPDATE", "payload": {"version": 1, "quantity": 2}}
+        rejected = self.client.post("/api/sync/batch", headers=headers, data={
+            "operations_json": json.dumps({"operations": [missing_context]}),
+        })
+        self.assertEqual(rejected.json()["results"][0]["status"], "fatal_error")
+        self.assertEqual(rejected.json()["results"][0]["error"], "STORE_POLICY_CONTEXT_REQUIRED")
+        rejected_replay = self.client.post("/api/sync/batch", headers=headers, data={
+            "operations_json": json.dumps({"operations": [missing_context]}),
+        })
+        self.assertEqual(rejected_replay.json()["results"], rejected.json()["results"])
+
+        stale = {**missing_context, "operation_id": f"stale-{suffix}", "execution_mode": "team", "policy_version": policy_version - 1}
+        stale_result = self.client.post("/api/sync/batch", headers=headers, data={
+            "operations_json": json.dumps({"operations": [stale]}),
+        })
+        self.assertEqual(stale_result.json()["results"][0]["error"], "STORE_POLICY_STALE")
+
+        accepted = {**missing_context, "operation_id": f"accepted-{suffix}", "execution_mode": "team", "policy_version": policy_version}
+        result = self.client.post("/api/sync/batch", headers=headers, data={
+            "operations_json": json.dumps({"operations": [accepted]}),
+        })
+        self.assertEqual(result.json()["results"][0]["status"], "applied", result.text)
+        # Treat the first response as lost and recreate the HTTP client. The
+        # exact immutable request must resolve from sync history without a
+        # second domain effect.
+        with TestClient(app) as restarted_client:
+            replay_after_restart = restarted_client.post("/api/sync/batch", headers=headers, data={
+                "operations_json": json.dumps({"operations": [accepted]}),
+            })
+        self.assertEqual(replay_after_restart.json()["results"], result.json()["results"])
+        with SessionLocal() as db:
+            self.assertEqual(db.get(InventoryItem, product_id).quantity, 2)
+            self.assertEqual(db.query(SyncOperation).filter_by(
+                actor_user_id=owner_id,
+                operation_id=accepted["operation_id"],
+            ).count(), 1)
+        direct = self.client.patch(f"/api/products/{product_id}", headers=headers, data={"quantity": 3})
+        self.assertEqual(direct.status_code, 409, direct.text)
+
+        with SessionLocal() as db:
+            store = db.scalar(select(Store).where(Store.owner_user_id == owner_id))
+            owner = db.get(User, owner_id)
+            owner.subscription_expires_at = datetime.now(timezone.utc) - timedelta(days=1)
+            db.commit()
+            self.assertEqual(store.operating_mode, "team")
 
     def test_z_disabled_account_is_rejected_globally(self) -> None:
         with SessionLocal() as db:

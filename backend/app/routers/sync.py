@@ -30,6 +30,7 @@ from ..services.authorization_service import is_admin
 from ..services.activity_service import record_store_activity
 from ..services.store_authorization import StorePermission, effective_permissions
 from ..services.store_service import active_store_context
+from ..services.store_mode_policy import validate_sync_acceptance
 from ..schemas import (
     InventoryOut,
     InventoryMovementOut,
@@ -61,6 +62,12 @@ async def _operation_fingerprint(
     image: UploadFile | None,
 ) -> str:
     semantic = operation.model_dump(mode="json")
+    # Fields introduced with schema 0010 are omitted when absent so an exact
+    # pre-migration request keeps its historical fingerprint after upgrade.
+    if operation.execution_mode is None:
+        semantic.pop("execution_mode", None)
+    if operation.policy_version is None:
+        semantic.pop("policy_version", None)
     if image is not None:
         content = await image.read()
         await image.seek(0)
@@ -877,11 +884,12 @@ async def push_batch(
             continue
 
         try:
+            validate_sync_acceptance(db, current_user, operation)
             _authorize_operation(db, current_user, operation)
         except ValueError as error:
             result = SyncOperationResult(operation_id=operation.operation_id, status="fatal_error", entity_id=operation.entity_id, error=str(error))
             record_store_activity(db, current_user, action=f"sync.{operation.operation.lower()}", target_entity=operation.entity, target_id=operation.entity_id, operation_id=operation.operation_id, outcome="rejected", client_occurred_at=operation.client_occurred_at)
-            db.add(SyncOperation(store_id=current_user.store_id, actor_user_id=current_user.id, user_id=current_user.data_owner_id, operation_id=operation.operation_id, request_fingerprint=fingerprint, result_payload=result.model_dump_json()))
+            db.add(SyncOperation(store_id=current_user.store_id, actor_user_id=current_user.id, user_id=current_user.data_owner_id, operation_id=operation.operation_id, request_fingerprint=fingerprint, result_payload=result.model_dump_json(), execution_mode=operation.execution_mode, policy_version=operation.policy_version))
             db.commit(); results.append(result); continue
 
         if operation.entity in {"barcode", "inventory_movement"}:
@@ -908,7 +916,7 @@ async def push_batch(
                 outcome="applied" if result.status == "applied" else ("conflict" if result.status == "conflict" else "rejected"),
                 client_occurred_at=operation.client_occurred_at,
             )
-            db.add(SyncOperation(store_id=current_user.store_id, actor_user_id=current_user.id, user_id=current_user.data_owner_id, operation_id=operation.operation_id, request_fingerprint=fingerprint, result_payload=result.model_dump_json()))
+            db.add(SyncOperation(store_id=current_user.store_id, actor_user_id=current_user.id, user_id=current_user.data_owner_id, operation_id=operation.operation_id, request_fingerprint=fingerprint, result_payload=result.model_dump_json(), execution_mode=operation.execution_mode, policy_version=operation.policy_version))
             db.commit()
             results.append(result)
             continue
@@ -932,7 +940,7 @@ async def push_batch(
             except ValueError as error:
                 result = SyncOperationResult(operation_id=operation.operation_id, status="fatal_error", entity_id=operation.entity_id, error=str(error))
             record_store_activity(db, current_user, action=f"sync.{operation.operation.lower()}", target_entity=operation.entity, target_id=operation.entity_id, operation_id=operation.operation_id, outcome="applied" if result.status == "applied" else "rejected", client_occurred_at=operation.client_occurred_at)
-            db.add(SyncOperation(store_id=current_user.store_id, actor_user_id=current_user.id, user_id=current_user.data_owner_id, operation_id=operation.operation_id, request_fingerprint=fingerprint, result_payload=result.model_dump_json()))
+            db.add(SyncOperation(store_id=current_user.store_id, actor_user_id=current_user.id, user_id=current_user.data_owner_id, operation_id=operation.operation_id, request_fingerprint=fingerprint, result_payload=result.model_dump_json(), execution_mode=operation.execution_mode, policy_version=operation.policy_version))
             db.commit()
             results.append(result)
             continue
@@ -961,6 +969,8 @@ async def push_batch(
                 operation_id=operation.operation_id,
                 request_fingerprint=fingerprint,
                 result_payload=result.model_dump_json(),
+                execution_mode=operation.execution_mode,
+                policy_version=operation.policy_version,
             )
         )
         record_store_activity(db, current_user, action=f"sync.{operation.operation.lower()}", target_entity=operation.entity, target_id=operation.entity_id, operation_id=operation.operation_id, outcome="applied" if result.status == "applied" else ("conflict" if result.status == "conflict" else "rejected"), client_occurred_at=operation.client_occurred_at)

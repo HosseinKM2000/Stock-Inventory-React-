@@ -23,6 +23,9 @@ export type User = {
   temporary_password_required?: boolean;
   credentials_notice_viewed?: boolean;
   membership_authorization_checked_at?: string | null;
+  store_operating_mode?: "solo" | "team" | null;
+  store_policy_version?: number | null;
+  store_policy_changed_at?: string | null;
 };
 
 export type AdminUser = User & {

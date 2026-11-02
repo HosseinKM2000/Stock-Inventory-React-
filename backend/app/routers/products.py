@@ -223,6 +223,8 @@ async def update_product(
     image: Annotated[UploadFile | None, File()] = None,
     remove_image: Annotated[bool, Form()] = False,
 ) -> InventoryItem:
+    from ..services.store_mode_policy import require_direct_mutation_allowed
+    require_direct_mutation_allowed(db, current_user)
     require_capability(db, current_user, "inventory.write")
     detail_fields = (name, description, unit, category_id, low_stock_threshold, low_stock_alert, is_packaged, pack_size, image)
     if remove_image or any(value is not None for value in detail_fields):

@@ -43,9 +43,10 @@ async function run<T>(
   const userId = accessState.user()?.id;
   const execute = async () => {
     if (userId) {
-      const key = `tanzim:${userId}:restore-maintenance`;
-      const raw = localStorage.getItem(key);
-      if (raw) {
+      const keys = [`tanzim:${userId}:restore-maintenance`, `tanzim:${userId}:mode-activation-maintenance`];
+      for (const key of keys) {
+        const raw = localStorage.getItem(key);
+        if (!raw) continue;
         let active = false;
         try {
           const lease = JSON.parse(raw) as { expiresAt?: number };
@@ -53,7 +54,7 @@ async function run<T>(
         } catch {
           // Invalid or legacy markers are stale and must not lock local writes forever.
         }
-        if (active) throw new Error("BACKUP_RESTORE_MAINTENANCE");
+        if (active) throw new Error(key.includes("mode-activation") ? "MODE_ACTIVATION_MAINTENANCE" : "BACKUP_RESTORE_MAINTENANCE");
         localStorage.removeItem(key);
       }
     }

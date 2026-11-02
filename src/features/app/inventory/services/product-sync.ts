@@ -12,6 +12,7 @@ import { pullProductChanges, pushProductBatch } from "../api/sync.api";
 import type { Product } from "../types";
 import { inventoryRepository } from "./inventory.repository";
 import { PRODUCT_ENTITY } from "./inventory-service";
+import { assertSyncAccountCurrent, captureSyncAccountContext } from "@/shared/lib/infrastructure/sync/sync-account-context";
 
 const CURSOR_KEY = "product-sync-cursor";
 const INITIALIZED_KEY = "product-sync-initialized";
@@ -36,11 +37,14 @@ function localRepresentation(server: Product, local?: Product): Product {
 }
 
 async function push(items: SyncQueueItem[]): Promise<SyncHandlerResult[]> {
+  const account = captureSyncAccountContext();
   const response = await pushProductBatch(items);
+  assertSyncAccountCurrent(account);
 
   const output: SyncHandlerResult[] = [];
 
   for (const result of response.results) {
+    assertSyncAccountCurrent(account);
     const item = items.find(
       (candidate) => candidate.operationId === result.operation_id,
     );
@@ -71,6 +75,7 @@ async function push(items: SyncQueueItem[]): Promise<SyncHandlerResult[]> {
     if (result.record) {
       const serverRecord = result.record as Product;
       const hasSuccessor = await queueService.hasSuccessor(item);
+      assertSyncAccountCurrent(account);
       if (result.status === "applied" && hasSuccessor && typeof serverRecord.version === "number") {
         await queueService.prepareSuccessorAfterAcknowledgement(item, serverRecord.version);
       }
@@ -91,6 +96,7 @@ async function push(items: SyncQueueItem[]): Promise<SyncHandlerResult[]> {
 }
 
 async function pull() {
+  const account = captureSyncAccountContext();
   const cursor = await syncMetadataStorage.getNumber(CURSOR_KEY);
   const initialized = await syncMetadataStorage.getNumber(INITIALIZED_KEY);
   let requestCursor = initialized && cursor === 0 ? -1 : cursor;
@@ -101,6 +107,7 @@ async function pull() {
   // until another focus/connectivity event happens.
   while (true) {
     const response = await pullProductChanges(requestCursor);
+    assertSyncAccountCurrent(account);
 
     if (!initialized && firstPage) {
       const serverIds = new Set(
@@ -110,6 +117,7 @@ async function pull() {
       );
 
       for (const local of await inventoryRepository.getAll()) {
+        assertSyncAccountCurrent(account);
         const pending = (await queueService.getForEntity(PRODUCT_ENTITY, local.id))[0];
 
         if (!serverIds.has(local.id) && !pending) {
@@ -130,6 +138,7 @@ async function pull() {
     }
 
     for (const change of response.changes) {
+      assertSyncAccountCurrent(account);
       const pending = (await queueService.getForEntity(PRODUCT_ENTITY, change.entity_id))[0];
 
       if (change.operation === "DELETE") {
