@@ -26,7 +26,10 @@ This document records target policy. It does not claim that the current implemen
 - Once transmitted, an operation identity and payload are immutable. A later mutation gets a new identity. Terminal or unknown outcomes remain recoverable and do not retry forever.
 - Product metadata and image bytes have coordinated but independent transfer states. Entitled recovery restores actual bytes to local storage; OPFS alone is not an independent backup.
 - Catalog media is administrator-managed and referenced by customer data. Plan changes and catalog hiding never delete shared catalog files. Backend storage exposes stable object references rather than temporary delivery URLs so a CDN can be added later.
-- Backup/restore cannot restore identity, authority, credentials, memberships, roles, or subscriptions; it cannot cross owner/store boundaries. Restored work is reviewed and reconciled, never silently discarded or replayed under an old actor.
+- Backup/restore cannot restore identity, authority, credentials, memberships, roles, or subscriptions; it cannot cross owner/store boundaries. Restored work is reviewed and reconciled, never silently discarded or replayed under a different actor.
+- An attempted or uncertain restored operation keeps its original operation identity and semantic payload for idempotent status/replay. Only an explicitly approved new recovery change receives a new identity, current actor attribution, and the current conflict/version checks. A missing result for an additive operation remains unresolved rather than being guessed.
+- A browser-local pre-restore checkpoint protects the restore transaction and unfinished review; it is not an independent external backup and does not protect against device loss.
+- The current SHA-256 digest detects file changes only against the digest carried in that same file; it is an integrity check, not cryptographic authentication or proof of actor/owner authority.
 
 ### Store-owned operational data
 

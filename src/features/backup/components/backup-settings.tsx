@@ -19,7 +19,7 @@ import {
   Switch,
   Text,
 } from "@radix-ui/themes";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { useAuth } from "@/shared/auth/use-auth";
@@ -29,7 +29,7 @@ import { backupRestoreService, previewBackupFile } from "../services/backup-rest
 import { backupService } from "../services/backup-service";
 import { chooseBackupFile, isPickerCancellation } from "../services/external-backup-adapter";
 import { backupErrorMessage } from "../services/backup-error";
-import type { BackupPreview } from "../types";
+import type { BackupPreview, RecoveryReview, RecoveryReviewItem } from "../types";
 import { formatJalaliDateTime } from "@/shared/lib/date/jalali";
 import { PageGuide } from "@/features/app/layout/page-guide";
 
@@ -48,6 +48,10 @@ function permissionLabel(permission: string | undefined) {
   return "مقصد انتخاب نشده";
 }
 
+function recoveryEntityLabel(entity: string) {
+  return ({ product: "محصول", category: "دسته‌بندی", label: "برچسب", barcode: "بارکد", inventory_movement: "تغییر موجودی" } as Record<string, string>)[entity] ?? "رکورد بازیابی";
+}
+
 export function BackupSettings() {
   const { user } = useAuth();
   const status = useBackupStatus();
@@ -55,6 +59,25 @@ export function BackupSettings() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [working, setWorking] = useState(false);
   const [preview, setPreview] = useState<BackupPreview | null>(null);
+  const [review, setReview] = useState<RecoveryReview | null>(null);
+  const [discardTarget, setDiscardTarget] = useState<RecoveryReviewItem | null>(null);
+
+  const refreshReview = async () => {
+    if (!user) return setReview(null);
+    await backupRestoreService.resumeInterrupted(user);
+    setReview(await backupRestoreService.getReview(user));
+  };
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    void (async () => {
+      await backupRestoreService.resumeInterrupted(user);
+      const next = await backupRestoreService.getReview(user);
+      if (!cancelled) setReview(next);
+    })().catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [user, settings?.restoreRequiresReview]);
 
   const run = async (operation: () => Promise<void>) => {
     setWorking(true);
@@ -103,13 +126,36 @@ export function BackupSettings() {
     if (!preview || !user) return;
     await backupRestoreService.apply(preview, user);
     setPreview(null);
-    toast.success("بازیابی کامل شد؛ همگام‌سازی تا پایان بررسی شما متوقف می‌ماند");
+    await refreshReview();
+    toast.success("اطلاعات محلی بازیابی شد؛ پذیرش سرور هنوز نیازمند بررسی شماست.");
   });
 
   const resume = () => run(async () => {
     if (!user) return;
     await backupRestoreService.resumeSynchronization(user.id);
+    await refreshReview();
     toast.success("همگام‌سازی دوباره فعال شد");
+  });
+
+  const applyItem = (item: RecoveryReviewItem) => run(async () => {
+    if (!user) return;
+    await backupRestoreService.applyReviewItem(user, item.id);
+    await refreshReview();
+    toast.success("درخواست برای بررسی سرور آماده شد.");
+  });
+
+  const discardItem = () => run(async () => {
+    if (!user || !discardTarget) return;
+    await backupRestoreService.discardReviewItem(user, discardTarget.id);
+    setDiscardTarget(null);
+    await refreshReview();
+    toast.info("قصد بازیابی کنار گذاشته شد؛ این کار اثر احتمالی سرور را لغو نمی‌کند.");
+  });
+
+  const exportReview = () => run(async () => {
+    if (!user) return;
+    await backupRestoreService.exportRecovery(user);
+    toast.success("مدرک بازیابی صادر شد و موارد اصلی حفظ شدند.");
   });
 
   return (
@@ -198,21 +244,56 @@ export function BackupSettings() {
           </Flex>
         </Flex>
         {settings?.restoreRequiresReview ? (
-          <Callout.Root color="amber" mt="4">
-            <Callout.Icon><ExclamationTriangleIcon /></Callout.Icon>
-            <Callout.Text>
-              همگام‌سازی پس از بازیابی متوقف است. چند محصول و کارهای در انتظار را بررسی کنید.
-              <Button size="2" variant="soft" ml="2" loading={working} onClick={() => void resume()}>بررسی شد؛ ادامه همگام‌سازی</Button>
-            </Callout.Text>
-          </Callout.Root>
+          <Box mt="4">
+            <Callout.Root color="amber">
+              <Callout.Icon><ExclamationTriangleIcon /></Callout.Icon>
+              <Callout.Text>اطلاعات در این دستگاه بازیابی شده‌اند، اما هنوز به معنی پذیرش سرور نیستند. نقطهٔ بازگشت فقط در همین مرورگر نگه‌داری می‌شود.</Callout.Text>
+            </Callout.Root>
+            {review ? (
+              <Card mt="3" variant="surface">
+                <Flex justify="between" align="start" gap="3" wrap="wrap">
+                  <Box>
+                    <Heading as="h3" size="3">بررسی بازیابی ناتمام</Heading>
+                    <Text as="div" size="2" color="gray" mt="1">
+                      {review.session.imported.counts.products.toLocaleString("fa-IR")} رکورد محصول بازیابی شد؛ {review.session.currentWorkCount.toLocaleString("fa-IR")} کار فعلی پیش از بازیابی حفظ شد؛ {review.items.filter((item) => item.decision === "pending").length.toLocaleString("fa-IR")} تصمیم باقی مانده است.
+                    </Text>
+                    {review.session.imported.counts.unavailableImages > 0 ? <Text as="div" size="2" color="red" mt="1">{review.session.imported.counts.unavailableImages.toLocaleString("fa-IR")} تصویر در فایل موجود نبود و بازیابی‌شده محسوب نمی‌شود.</Text> : null}
+                  </Box>
+                  <Button variant="soft" loading={working} onClick={() => void exportReview()}>صدور مدرک بازیابی</Button>
+                </Flex>
+                <Box mt="3" className="max-h-80 overflow-y-auto overscroll-contain" tabIndex={0} aria-label="موارد نیازمند بررسی">
+                  <Flex direction="column" gap="2">
+                    {review.items.map((item) => (
+                      <Box key={item.id} p="3" className="rounded-lg border border-[var(--gray-a6)]">
+                        <Flex justify="between" align="center" gap="3" wrap="wrap">
+                          <Box>
+                            <Text as="div" size="2" weight="medium">{recoveryEntityLabel(item.entity)} شمارهٔ {item.entityId.toLocaleString("fa-IR")}</Text>
+                            <Text as="div" size="1" color="gray">{item.classification === "never_attempted" ? "هنوز ارسال نشده" : item.classification === "snapshot" ? "رکورد داخل نسخه" : item.classification === "terminal" ? "ردشده و نیازمند نگه‌داری" : "نتیجهٔ ارسال نامشخص"}</Text>
+                          </Box>
+                          <Flex gap="2" align="center" wrap="wrap">
+                            <Badge color={item.decision === "pending" ? "amber" : item.decision === "discarded" ? "gray" : "blue"}>{item.decision === "pending" ? "نیازمند تصمیم" : item.decision === "queued" ? "آمادهٔ ارسال" : item.decision === "resolved" ? "پذیرفته‌شده" : "کنار گذاشته‌شده"}</Badge>
+                            {item.decision === "pending" && item.classification !== "terminal" && !(item.entity === "inventory_movement" && item.source === "backup_snapshot") ? <Button size="1" loading={working} onClick={() => void applyItem(item)}>اعمال با بررسی سرور</Button> : null}
+                            {item.decision === "pending" ? <Button size="1" color="red" variant="soft" disabled={working} onClick={() => setDiscardTarget(item)}>کنار گذاشتن قصد</Button> : null}
+                          </Flex>
+                        </Flex>
+                      </Box>
+                    ))}
+                  </Flex>
+                </Box>
+                <Flex justify="end" mt="3">
+                  <Button className="w-full py-2 leading-6 sm:w-auto" style={{ whiteSpace: "normal", height: "auto" }} loading={working} disabled={review.items.some((item) => item.decision === "pending")} onClick={() => void resume()}>ارسال موارد تأییدشده و ادامهٔ همگام‌سازی</Button>
+                </Flex>
+              </Card>
+            ) : <Text as="div" size="2" mt="3">در حال بازکردن بررسی ذخیره‌شده…</Text>}
+          </Box>
         ) : null}
       </Card>
 
       <AlertDialog.Root open={preview !== null} onOpenChange={(open) => { if (!open) setPreview(null); }}>
-        <AlertDialog.Content maxWidth="520px" dir="rtl">
+        <AlertDialog.Content maxWidth="520px" dir="rtl" className="max-h-[85vh] overflow-y-auto overscroll-contain">
           <AlertDialog.Title>تأیید بازیابی فایل پشتیبان</AlertDialog.Title>
           <AlertDialog.Description size="2" className="leading-7">
-            اطلاعات فعلی جایگزین می‌شوند. پیش از ادامه، از وضعیت فعلی یک نسخه احتیاطی بگیرید و خلاصه فایل را بررسی کنید.
+            اطلاعات فایل با وضعیت فعلی ادغام می‌شوند و کارهای محلی فعلی برای بررسی حفظ خواهند شد. پیش از ادامه، از وضعیت فعلی یک نسخهٔ احتیاطی بگیرید و خلاصهٔ فایل را بررسی کنید.
           </AlertDialog.Description>
           {preview ? (
             <Box mt="4" p="3" className="rounded-lg bg-[var(--gray-a3)]">
@@ -224,6 +305,17 @@ export function BackupSettings() {
           <Flex gap="3" mt="5" justify="end">
             <AlertDialog.Cancel><Button variant="soft" color="gray">انصراف</Button></AlertDialog.Cancel>
             <Button color="red" loading={working} onClick={() => void restore()}>بازیابی اطلاعات</Button>
+          </Flex>
+        </AlertDialog.Content>
+      </AlertDialog.Root>
+
+      <AlertDialog.Root open={discardTarget !== null} onOpenChange={(open) => { if (!open) setDiscardTarget(null); }}>
+        <AlertDialog.Content maxWidth="480px" dir="rtl" className="max-h-[85vh] overflow-y-auto overscroll-contain">
+          <AlertDialog.Title>کنار گذاشتن قصد بازیابی؟</AlertDialog.Title>
+          <AlertDialog.Description size="2" className="leading-7">این تصمیم فقط قصد محلی بازیابی را کنار می‌گذارد. اگر در گذشته درخواستی به سرور رسیده باشد، اثر آن لغو نمی‌شود. مدرک بازیابی و نقطهٔ بازگشت حذف نخواهند شد.</AlertDialog.Description>
+          <Flex gap="3" mt="5" justify="end">
+            <AlertDialog.Cancel><Button variant="soft" color="gray">بازگشت</Button></AlertDialog.Cancel>
+            <Button color="red" loading={working} onClick={() => void discardItem()}>تأیید کنار گذاشتن</Button>
           </Flex>
         </AlertDialog.Content>
       </AlertDialog.Root>
