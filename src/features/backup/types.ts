@@ -87,3 +87,60 @@ export type BackupPreview = {
   envelope: BackupEnvelope;
   sourceName: string;
 };
+
+export type RecoveryClassification =
+  | "snapshot"
+  | "never_attempted"
+  | "confirmed"
+  | "uncertain"
+  | "terminal";
+
+export type RecoveryDecision = "pending" | "queued" | "resolved" | "discarded";
+
+export type RecoveryReviewItem = {
+  id: string;
+  sessionId: string;
+  ownerUserId: number;
+  storeId: number;
+  source: "backup_snapshot" | "backup_operation";
+  classification: RecoveryClassification;
+  decision: RecoveryDecision;
+  entity: string;
+  entityId: number;
+  action: "CREATE" | "UPDATE" | "DELETE";
+  payload: unknown;
+  originalOperation?: import("@/shared/lib/infrastructure/storage/types").SyncQueueItem;
+  appliedOperationId?: string;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type RecoveryMediaStage = {
+  originalPath: string;
+  stagedPath: string;
+  mimeType: string;
+  size: number;
+  copied: boolean;
+};
+
+export type RecoverySession = {
+  id: string;
+  ownerUserId: number;
+  storeId: number;
+  sourceName: string;
+  sourceCreatedAt: string;
+  status: "preparing" | "media_staged" | "database_committed" | "review" | "failed" | "complete";
+  checkpoint: BackupEnvelope;
+  imported: BackupEnvelope;
+  media: RecoveryMediaStage[];
+  currentWorkCount: number;
+  unresolvedCount: number;
+  createdAt: number;
+  updatedAt: number;
+  lastError?: string;
+};
+
+export type RecoveryReview = {
+  session: RecoverySession;
+  items: RecoveryReviewItem[];
+};

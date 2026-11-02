@@ -1,4 +1,5 @@
 import { db } from "./db";
+import { accessState } from "@/shared/access/access-state";
 
 export type LocalStorageFailureCode =
   | "quota_exceeded"
@@ -39,8 +40,30 @@ async function run<T>(
   tables: Parameters<typeof db.transaction>[1][],
   operation: () => Promise<T>,
 ): Promise<T> {
+  const userId = accessState.user()?.id;
+  const execute = async () => {
+    if (userId) {
+      const key = `tanzim:${userId}:restore-maintenance`;
+      const raw = localStorage.getItem(key);
+      if (raw) {
+        let active = false;
+        try {
+          const lease = JSON.parse(raw) as { expiresAt?: number };
+          active = typeof lease.expiresAt === "number" && lease.expiresAt > Date.now();
+        } catch {
+          // Invalid or legacy markers are stale and must not lock local writes forever.
+        }
+        if (active) throw new Error("BACKUP_RESTORE_MAINTENANCE");
+        localStorage.removeItem(key);
+      }
+    }
+    return db.transaction("rw", tables, operation);
+  };
   try {
-    return await db.transaction("rw", tables, operation);
+    if (userId && navigator.locks) {
+      return await navigator.locks.request(`tanzim-local-mutations:${userId}`, execute);
+    }
+    return await execute();
   } catch (error) {
     const code = storageFailureCode(error);
     if (code) throw new LocalStorageWriteError(code, error);
@@ -71,5 +94,9 @@ export const localMutationStorage = {
 
   movement<T>(operation: () => Promise<T>) {
     return run([db.inventoryItems, db.inventoryMovements, db.syncQueue], operation);
+  },
+
+  recovery<T>(operation: () => Promise<T>) {
+    return run([db.syncQueue, db.recoveryItems], operation);
   },
 };

@@ -103,6 +103,30 @@ Final-review verification:
 
 Deployment compatibility is intentionally limited: pre-1B backend processes must not coexist with schema `0009`. The current repository documents manual Alembic/start commands and has no rolling-deployment automation. Production therefore requires a controlled replacement: stop old workers, verify a backup and preflight on a current copy, apply `0009`, confirm the Alembic head, and start only 1B-or-newer workers. A preflight failure leaves the database at `0008`; operators must remediate the reported source records explicitly and retry. No customer or production database was used in this review.
 
+## TZ-V1-01C safe restore and reconciliation
+
+Branch `fix/v1-safe-restore-reconciliation`, based on accepted local `draft` at `e0c98d9a8c697d2d19b65843546160f67c77b1ca`, closes the destructive local-restore path without changing backend schema, commercial policy, operating mode, or server disaster recovery:
+
+- Backup data is validated as untrusted input for integrity, supported/legacy shape, owner/store binding, relationships, executable entity/action types, authority fields, numeric business invariants, and included media before live mutation. Imported authority, cursors, completion claims, and absence-as-delete are not trusted.
+- Dexie schema 12 persists a recovery session, its complete imported evidence, a browser-local pre-restore checkpoint, media journal, review items, and the atomic review-item-to-operation mapping. The checkpoint includes current scoped projections, all outbox states, reconciliation metadata, preferences, and available image bytes. It protects this restore on this browser; it is not an independent external backup.
+- Restore coordinates with the existing sync and local-mutation Web Locks. Media is staged and verified before the scoped IndexedDB transaction. A restart before the database commit aborts the staging safely; a restart after commit resumes verified per-file copies from the journal. Current outbox entries are never deleted.
+- Review persists across reload and exposes explicit apply, discard, and evidence export. Attempted/uncertain operations retain their exact original operation id and semantic payload for idempotent replay. Explicitly approved new snapshot/never-attempted recovery changes receive a new id, recovery provenance, current permission checks, and existing server version/conflict handling. Unknown additive snapshots and terminal results remain unresolved rather than being guessed.
+- Resume refuses incomplete decisions and never deletes unresolved evidence. Discard can retract only a recovery operation that is still pending and definitely never attempted; it does not claim to cancel a possible server effect. Local restore can complete offline but remains visibly pending server reconciliation.
+- The recovery review UI uses existing components and Persian RTL copy. Visual review found and corrected mobile/large-size wrapping for per-item and final actions; accessible modal/review scrolling is retained.
+
+Verification for TZ-V1-01C:
+
+| Command / scope | Result |
+|---|---|
+| Focused restore/format/queue regressions | Passed: 25 tests covering checkpoint/outbox preservation, exact uncertain replay identity/payload, duplicate apply, unresolved additive work, version preservation, owner/store/authority/relationship/media validation, quota/checkpoint failure, account change, local mutation exclusion, bounded maintenance leases, partial-stage abort, and post-commit journal resume. |
+| `npm.cmd test` | Passed: 69 files, 292 unit/component tests. |
+| `npm.cmd run test:typecheck` and `npm.cmd run lint` | Passed. |
+| `npm.cmd run build` | Passed with the existing stale Browserslist data and large-chunk warnings; the largest reported `bwip-js` chunk remains about 930 kB. |
+| Production-preview `local-backup.spec.ts` | Passed: 4 cases across desktop/mobile. Real Chromium restored a signed backup, reloaded/reopened persistent review, applied once, exported evidence, confirmed discard, and retained explicit resume gating. |
+| Visual recovery review | Desktop and mobile dark/large captures inspected; no horizontal clipping remained after focused responsive corrections. |
+
+Compatibility limits are explicit: valid backup schemas 1–4 remain readable; older operations without reliable attempt provenance are uncertain. Recovery sessions are local to the browser/device. Real process-kill timing, cross-browser File System Access behavior, device loss, server restore, and clean-device media hydration are not established by this task. No PostgreSQL check was added because 1C changes no backend or server transaction path; the unchanged 1A server replay regressions remain the acceptance boundary for an exact original operation id/payload.
+
 ## UI baseline artifacts
 
 Current supplemental screenshots are local-only under ignored `test-results/v1-baseline/`:
@@ -123,24 +147,20 @@ Observed UI issues are recorded separately:
 
 ## Outstanding release risks
 
-1. Restore/reconciliation deletes quarantined restored operations instead of providing a safe apply/discard/export workflow.
-2. No explicit server operating mode; team owners and personnel still follow local-first shared mutation behavior.
-3. Metadata and image-byte completion are conflated; clean-device OPFS recovery is absent.
-4. Commercial plan/grant/payment/admin policy is incomplete and contains an extra observed Starter tier not present in confirmed target policy.
-5. Server restore, deploy/rollback, monitoring, alerting, and backup drills are not evidenced end to end.
-6. Persistent dashboard scroll regression and the mobile status overlap remain.
-7. Schema `0009` is not rolling-compatible with pre-1B backend workers and requires a controlled backend replacement after preflight and backup verification.
+1. No explicit server operating mode; team owners and personnel still follow local-first shared mutation behavior.
+2. Metadata and image-byte completion are conflated; clean-device OPFS recovery is absent.
+3. Commercial plan/grant/payment/admin policy is incomplete and contains an extra observed Starter tier not present in confirmed target policy.
+4. Server restore, deploy/rollback, monitoring, alerting, and backup drills are not evidenced end to end.
+5. Persistent dashboard scroll regression and the mobile status overlap remain.
+6. Schema `0009` is not rolling-compatible with pre-1B backend workers and requires a controlled backend replacement after preflight and backup verification.
+7. The 1C checkpoint/review journal is browser-local; real process-kill, device-loss, and cross-browser File System Access recovery remain unverified.
 
-## Task 1C readiness
+## Task 1C delivery and task 1D boundary
 
-TZ-V1-01A and TZ-V1-01B now provide immutable transmitted operations and store-native ownership/catalog provisioning. Task 1C is ready to start as the restore/reconciliation slice, but it was not started automatically. Its prerequisites and acceptance boundaries are:
+TZ-V1-01C is complete on `fix/v1-safe-restore-reconciliation` and ready for focused review. It has not been merged into `draft`, pushed, deployed, or applied to `develop`. Task 1D was not started automatically.
 
-- Inventory existing local projections and every pending, attempted, retryable, terminal, restored, and unknown-outcome operation before replacing or reconciling restore state.
-- Restore review provides explicit apply/discard/export actions and never silently deletes local-only or pre-restore work.
-- Applying restored work creates a new operation identity and preserves the immutable transmitted identity/payload guarantees from 1A.
-- Restore remains bound to the authenticated owner and store and cannot import authority, credentials, memberships, roles, subscription state, or another store's data.
-- Recovery and review actions preserve actor/history attribution and have focused restart, duplicate, failure, and store-boundary coverage.
+Task 1D remains responsible for the server-controlled `solo`/`team` operating mode, explicit activation inventory/transition, online-only shared mutation acceptance for owner and personnel, offline-draft policy, stale-device behavior, revocation transitions, and subscription expiry without a solo fallback. It must preserve the 1A immutable-operation and 1C unresolved-recovery boundaries and must not treat an unfinished recovery review as activatable shared state.
 
-Explicit server operating mode, team activation, online-only shared mutation acceptance, offline-draft policy, stale-device behavior, revocation transitions, and subscription-expiry-without-solo-fallback tests belong to task 1D. Task 1C must preserve these future constraints but must not implement or guess them.
+Before task 1D implementation, its acceptance tests must define the activation disposition for pending, in-flight, retryable, terminal, restored, and unknown-outcome work without inventing the still-open retention, conflict, or draft business policy.
 
 Open capacities, gifts, retention, conflict UX, and detailed draft policy do not block beginning integrity/model work, but they must not be guessed or encoded as final commercial values.

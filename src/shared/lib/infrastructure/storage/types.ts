@@ -50,6 +50,9 @@ export interface SyncQueueItem {
 
   lastError?: string;
 
+  /** Links an explicitly approved recovery action to its immutable source evidence. */
+  recoverySourceId?: string;
+
 }
 
 export function syncResourceKey(

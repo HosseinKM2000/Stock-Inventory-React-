@@ -9,6 +9,19 @@ import {
 } from "@/features/backup/services/backup-format";
 import { product } from "../helpers/product";
 
+function canonical(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonical).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.entries(value as Record<string, unknown>).sort(([a], [b]) => a.localeCompare(b)).map(([key, entry]) => `${JSON.stringify(key)}:${canonical(entry)}`).join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+}
+
+async function digest(value: unknown) {
+  const bytes = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(canonical(value)));
+  return [...new Uint8Array(bytes)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 const data = (overrides: Partial<BackupData> = {}): BackupData => ({
   products: [],
   categories: [],
@@ -53,11 +66,75 @@ describe("portable backup format", () => {
     const tampered = { ...envelope, data: data({ preferences: { changed: "true" } }) };
     await expect(parseBackupEnvelope(JSON.stringify(tampered), 42)).rejects.toThrow("INTEGRITY");
     await expect(parseBackupEnvelope(JSON.stringify(envelope), 9)).rejects.toThrow("OWNER");
+    await expect(parseBackupEnvelope(JSON.stringify(envelope), 42, 9)).rejects.toThrow("STORE");
     await expect(parseBackupEnvelope(JSON.stringify({ ...envelope, schemaVersion: 99 }), 42)).rejects.toThrow("SCHEMA");
   });
 
   it("migrates legacy price to sale price without inventing purchase cost", () => {
     const [migrated] = normalizeBackupProducts([product({ price: 125, sale_price: undefined, purchase_price: undefined })]);
     expect(migrated).toMatchObject({ price: 125, sale_price: 125, purchase_price: null, price_missing: false });
+  });
+
+  it("rejects untrusted authority fields, broken relationships, and corrupt embedded media", async () => {
+    const authority = await buildBackupEnvelope({
+      owner: { userId: 42, username: "owner", storeId: 42 },
+      data: data({ products: [{ ...product({ id: 1 }), access_token: "must-not-import" } as never] }),
+    });
+    await expect(parseBackupEnvelope(JSON.stringify(authority), 42, 42)).rejects.toThrow("AUTHORITY");
+
+    const relationship = await buildBackupEnvelope({
+      owner: { userId: 42, username: "owner", storeId: 42 },
+      data: data({ products: [product({ id: 1, category_id: 999 })] }),
+    });
+    await expect(parseBackupEnvelope(JSON.stringify(relationship), 42, 42)).rejects.toThrow("RELATIONSHIP");
+
+    const corrupt = await buildBackupEnvelope({
+      owner: { userId: 42, username: "owner", storeId: 42 },
+      data: data({ images: [{ path: "local://broken.webp", mimeType: "image/webp", base64: "%%%" }] }),
+    });
+    await expect(parseBackupEnvelope(JSON.stringify(corrupt), 42, 42)).rejects.toThrow("IMAGE_CORRUPT");
+  });
+
+  it("rejects invalid business values and unknown executable operation types", async () => {
+    const invalidProduct = await buildBackupEnvelope({
+      owner: { userId: 42, username: "owner", storeId: 42 },
+      data: data({ products: [product({ id: 1, quantity: -1 })] }),
+    });
+    await expect(parseBackupEnvelope(JSON.stringify(invalidProduct), 42, 42)).rejects.toThrow("PRODUCT_INVALID");
+
+    const unknownOperation = await buildBackupEnvelope({
+      owner: { userId: 42, username: "owner", storeId: 42 },
+      data: data({ pendingOperations: [{
+        id: "42:authority:1", ownerUserId: 42, storeId: 42, operationId: "unknown-op",
+        entity: "membership", entityId: 1, action: "UPDATE", payload: {}, createdAt: 1,
+        updatedAt: 1, retryCount: 0, status: "pending", nextAttemptAt: 1, attemptState: "never",
+      }] }),
+    });
+    await expect(parseBackupEnvelope(JSON.stringify(unknownOperation), 42, 42)).rejects.toThrow("OPERATION_INVALID");
+  });
+
+  it("keeps explicitly unavailable media visible instead of claiming recovery", async () => {
+    const envelope = await buildBackupEnvelope({
+      owner: { userId: 42, username: "owner", storeId: 42 },
+      data: data({ unavailableImages: [{ path: "local://missing.webp", reason: "missing" }] }),
+    });
+    const parsed = await parseBackupEnvelope(JSON.stringify(envelope), 42, 42);
+    expect(parsed.counts.unavailableImages).toBe(1);
+    expect(parsed.data.unavailableImages).toEqual([{ path: "local://missing.webp", reason: "missing" }]);
+  });
+
+  it("continues to read a valid schema-v1 owner-bound backup", async () => {
+    const current = await buildBackupEnvelope({ owner: { userId: 42, username: "legacy" }, data: data() });
+    const unsignedCurrent = Object.fromEntries(Object.entries(current).filter(([key]) => key !== "integrity"));
+    const unsigned = {
+      ...unsignedCurrent,
+      schemaVersion: 1,
+      owner: { userId: 42, username: "legacy" },
+      counts: {
+        products: 0, categories: 0, labels: 0, pendingOperations: 0, images: 0, unavailableImages: 0,
+      },
+    };
+    const legacy = { ...unsigned, integrity: { algorithm: "SHA-256", digest: await digest(unsigned) } };
+    await expect(parseBackupEnvelope(JSON.stringify(legacy), 42, 999)).resolves.toMatchObject({ schemaVersion: 1 });
   });
 });

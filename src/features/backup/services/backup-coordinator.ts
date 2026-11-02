@@ -41,7 +41,9 @@ export async function withBackupRestore<T>(userId: number, task: () => Promise<T
     if (!locks) return task();
     let result: T | undefined;
     await locks.request("tanzim-outbox-sync", async () => {
-      result = await task();
+      await locks.request(`tanzim-local-mutations:${userId}`, async () => {
+        result = await task();
+      });
     });
     return result;
   });

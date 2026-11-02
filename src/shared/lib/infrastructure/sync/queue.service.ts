@@ -74,13 +74,19 @@ export const queueService = {
     entityId: number,
     action: QueueAction,
     payload: unknown,
-    options: { operationId?: string } = {},
+    options: {
+      operationId?: string;
+      forceNew?: boolean;
+      attemptState?: SyncQueueItem["attemptState"];
+      attemptedAt?: number;
+      recoverySourceId?: string;
+    } = {},
   ) {
     const all = await queueStorage.getAll();
     const existing = all.filter(
       (item) => item.entity === entity && item.entityId === entityId,
     );
-    const compactable = entity === "inventory_movement"
+    const compactable = entity === "inventory_movement" || options.forceNew
       ? undefined
       : [...existing].reverse().find(
         (item) => item.status === "pending" && item.attemptState === "never",
@@ -116,7 +122,9 @@ export const queueService = {
 
       ownerUserId: accessState.user()?.id,
 
-      attemptState: "never",
+      attemptState: options.attemptState ?? "never",
+
+      attemptedAt: options.attemptedAt,
 
       resourceKey,
 
@@ -140,6 +148,8 @@ export const queueService = {
       status: "pending",
 
       nextAttemptAt: now,
+
+      recoverySourceId: options.recoverySourceId,
     });
     void requestBackgroundSync();
     return options.operationId ?? compactable?.operationId;

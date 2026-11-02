@@ -4,7 +4,7 @@ import { product } from "../helpers/product";
 const mocks = vi.hoisted(() => ({
   getAll: vi.fn(), get: vi.fn(), save: vi.fn(), remove: vi.fn(), getAllStored: vi.fn(),
   enqueue: vi.fn(), requireWrite: vi.fn(), requireInventoryCapacity: vi.fn(), removeImage: vi.fn(),
-  getLabels: vi.fn(),
+  getLabels: vi.fn(), user: vi.fn(),
 }));
 
 vi.mock("@/features/app/inventory/services/inventory.repository", () => ({
@@ -19,6 +19,7 @@ vi.mock("@/features/app/inventory/services/inventory.repository", () => ({
 vi.mock("@/shared/lib/infrastructure/sync/queue.service", () => ({ queueService: { enqueue: mocks.enqueue } }));
 vi.mock("@/shared/access/access-state", () => ({
   accessState: {
+    user: mocks.user,
     requireWrite: mocks.requireWrite,
     requireInventoryCapacity: mocks.requireInventoryCapacity,
   },
@@ -36,6 +37,7 @@ describe("local-first inventory service", () => {
   beforeEach(() => {
     Object.values(mocks).forEach((mock) => mock.mockReset());
     mocks.getLabels.mockResolvedValue([]);
+    mocks.user.mockReturnValue({ id: 7, store_id: 7 });
   });
 
   it("sanitizes corrupted values and derives boundary stock status", async () => {
