@@ -82,7 +82,7 @@ Verification for TZ-V1-01B:
 | `npm.cmd run build` | Passed with the existing stale Browserslist data and large-chunk warnings; the largest reported `bwip-js` chunk remains about 930 kB. |
 | Focused production-preview E2E | Passed: 28 cases across `pwa.spec.ts`, `product-layout.spec.ts`, and `authentication.spec.ts`; 2 live-credential authentication cases were skipped because credentials were not supplied. Offline, profile-isolation, and inventory layout coverage passed in both configured viewports. |
 
-No frontend or styling source changed, so the existing screenshots remain a visual baseline only. TZ-V1-01B is complete on its task branch; it has not been merged, pushed, deployed, or applied to `develop`.
+No frontend or styling source changed, so the existing screenshots remain a visual baseline only. TZ-V1-01B was completed and reviewed on its task branch; its local `draft` integration is recorded below. Nothing was pushed, deployed, or applied to `develop`.
 
 ## TZ-V1-01B final review
 
@@ -92,6 +92,7 @@ No frontend or styling source changed, so the existing screenshots remain a visu
 - Multiple active memberships now have API-level coverage: `/api/auth/me`, products, and sync pull all return controlled `409 STORE_CONTEXT_AMBIGUOUS`; no alternate membership is selected and no sync handler runs. Platform-administrator coverage confirms the administrator's isolated workspace cannot list a customer's inventory.
 - Replay review confirmed that `0009` does not alter operation IDs, semantic payloads, stored fingerprints, results, or actor IDs. A committed `0008` result is found by the migrated store/actor key and returned without applying the domain mutation again. TZ-V1-01A acknowledgement and successor ordering code was unchanged.
 - Concurrent catalog reconciliation is serialized by the catalog row lock and protected by store/catalog uniqueness. Both concurrent sessions remain usable, one assignment per store is retained, and customer quantity, label, note, and visibility overrides survive. Personnel membership does not provision a separate inventory.
+- Focused review corrections were committed as `e47e89b`; local `draft` then integrated the complete task history with non-destructive merge commit `61960ccf9b2a823c5ebf33262e935465d2813db2` (`merge: integrate store data ownership`). The post-merge PostgreSQL smoke passed all 9 tests. Nothing was pushed, deployed, or merged to `develop`.
 
 Final-review verification:
 
