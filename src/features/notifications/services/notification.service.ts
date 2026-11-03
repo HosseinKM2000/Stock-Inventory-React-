@@ -3,6 +3,8 @@ import type { BackupStatus } from "@/features/backup/types";
 import type { BackupNotification, InventoryNotification, UpdateNotification } from "../types";
 import type { AppUpdateSnapshot } from "@/features/app-update/types";
 import { backupErrorMessage } from "@/features/backup/services/backup-error";
+import type { User } from "@/features/auth/types";
+import type { ProfileNotification } from "../types";
 
 function productName(product: Product): string {
   return product.custom_label?.trim() || product.catalog_product?.name?.trim() || "محصول بدون نام";
@@ -59,6 +61,21 @@ function deriveProductNotification(product: Product): InventoryNotification | nu
 }
 
 export const notificationService = {
+  deriveProfile(user: User | null | undefined): ProfileNotification[] {
+    if (!user || user.is_system_admin || user.is_store_owner !== true) return [];
+    const incomplete = [user.first_name, user.last_name, user.phone, user.email]
+      .some((value) => !value?.trim());
+    if (!incomplete) return [];
+    return [{
+      id: "profile-completion",
+      kind: "profile_completion",
+      severity: "info",
+      title: "پروفایل شما کامل نیست",
+      description: "نام، نام خانوادگی و راه‌های تماس را در پروفایل خود تکمیل کنید.",
+      context: "این یادآوری مانع استفاده از برنامه نمی‌شود.",
+      route: "/setting/profile",
+    }];
+  },
   deriveUpdate(update: AppUpdateSnapshot): UpdateNotification[] {
     if (update.status !== "available" && update.status !== "installing") return [];
     return [{

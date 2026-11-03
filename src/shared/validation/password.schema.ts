@@ -2,11 +2,11 @@ import { z } from "zod";
 
 export const passwordSchema = z
   .string()
-  .min(8, "Password must be at least 8 characters")
+  .min(8, "رمز عبور باید حداقل ۸ کاراکتر داشته باشد.")
   .refine(
     (value) => new TextEncoder().encode(value).length <= 72,
-    "Password must be at most 72 UTF-8 bytes",
+    "رمز عبور نباید بیشتر از ۷۲ بایت باشد.",
   )
-  .regex(/[A-Z]/, "Must include one uppercase letter")
-  .regex(/[a-z]/, "Must include one lowercase letter")
-  .regex(/[0-9]/, "Must include one number");
+  .regex(/[A-Z]/, "رمز عبور باید حداقل یک حرف بزرگ انگلیسی داشته باشد.")
+  .regex(/[a-z]/, "رمز عبور باید حداقل یک حرف کوچک انگلیسی داشته باشد.")
+  .regex(/[0-9]/, "رمز عبور باید حداقل یک عدد داشته باشد.");

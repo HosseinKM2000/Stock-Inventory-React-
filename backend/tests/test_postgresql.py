@@ -37,7 +37,7 @@ os.environ["SYSTEM_ADMIN_PASSWORD"] = "Test-only-system-admin-password-123!"
 from fastapi.testclient import TestClient
 from app.database import SessionLocal, engine
 from app.main import app
-from app.models import CatalogProduct, Category, Industry, InventoryItem, Label, Store, StoreMembership, StoreModeTransition, StorePlanGrant, SubscriptionPlan, SyncOperation, User
+from app.models import CatalogProduct, Category, Industry, InventoryItem, Label, Store, StoreMembership, StoreModeTransition, StorePlanGrant, SubscriptionPlan, SyncOperation, User, UserSession
 from app.routers.sync import _duplicate_result
 from app.schemas import SyncOperationIn
 from app.services.catalog_product_service import _reconcile_catalog_assignments
@@ -301,7 +301,10 @@ def test_migration_reaches_head_with_all_expected_tables(migrated_empty_database
     assert MIGRATION_EVIDENCE["mode_rollback"] == ("20261101_0009", True)
     assert EXPECTED_TABLES <= set(inspect(engine).get_table_names())
     with engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261102_0011"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261103_0012"
+        user_columns = {column["name"]: column for column in inspect(engine).get_columns("users")}
+        assert user_columns["first_name"]["nullable"] is True
+        assert user_columns["last_name"]["nullable"] is True
         columns = {column["name"] for column in inspect(engine).get_columns("industries")}
         assert "tools_json" in columns
         inventory_columns = {column["name"] for column in inspect(engine).get_columns("inventory_items")}
@@ -322,6 +325,33 @@ def test_migration_reaches_head_with_all_expected_tables(migrated_empty_database
         assert starter_assignment[4:] == ("team", 0)
         plan_columns = {column["name"] for column in inspect(engine).get_columns("subscription_plans")}
         assert {"policy_revision", "commercial_status"} <= plan_columns
+
+
+@pytest.mark.postgres
+def test_concurrent_minimal_signup_provisions_one_complete_workspace(client):
+    username = "postgres-minimal-concurrent"
+    payload = {
+        "username": username,
+        "password": "StrongPass123!",
+        "device_fingerprint": "postgres-minimal-device",
+    }
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        responses = list(pool.map(lambda _: client.post("/api/auth/signup", json=payload), range(2)))
+
+    assert sorted(response.status_code for response in responses) == [201, 409]
+    with SessionLocal() as db:
+        user = db.scalar(select(User).where(User.username == username))
+        assert user is not None
+        assert user.first_name is None and user.last_name is None
+        stores = list(db.scalars(select(Store).where(Store.owner_user_id == user.id)))
+        memberships = list(db.scalars(select(StoreMembership).where(StoreMembership.user_id == user.id)))
+        sessions = list(db.scalars(select(UserSession).where(UserSession.user_id == user.id)))
+        assert len(stores) == len(memberships) == len(sessions) == 1
+        assert stores[0].name == username
+        assert stores[0].operating_mode == "solo"
+        assert memberships[0].is_owner is True
+        assert db.scalar(select(func.count(StorePlanGrant.id)).where(StorePlanGrant.store_id == stores[0].id)) == 0
 
 
 @pytest.mark.postgres

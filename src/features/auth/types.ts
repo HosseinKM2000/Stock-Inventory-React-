@@ -1,7 +1,7 @@
 export type User = {
   id: number;
-  first_name: string;
-  last_name: string;
+  first_name: string | null;
+  last_name: string | null;
   username: string;
   email: string | null;
   phone: string | null;
@@ -51,12 +51,8 @@ export type LoginPayload = {
 };
 
 export type RegisterPayload = {
-  first_name: string;
-  last_name: string;
   username: string;
   password: string;
-  phone: string;
-  email?: string;
 };
 
 export type UpdateProfilePayload = {

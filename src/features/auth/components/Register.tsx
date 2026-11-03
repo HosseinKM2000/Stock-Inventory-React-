@@ -1,4 +1,3 @@
-
 import { useAppForm } from "@/shared/lib/form/use-app-form";
 import { preventEventHandler } from "@/shared/lib/prevent-event";
 import { Button } from "@/shared/ui/button/button";
@@ -8,156 +7,51 @@ import { PasswordInput } from "@/shared/ui/form/input/password-input";
 import { TextInput } from "@/shared/ui/form/input/text-input";
 import { Box, Callout, Flex, Link, Text } from "@radix-ui/themes";
 import { Link as RouterLink } from "@tanstack/react-router";
+import { useRef } from "react";
+import { authErrorMessage } from "../auth-error";
 import { useRegister } from "../mutations/use-register";
 import { registerSchema } from "../validators/register.schema";
-import { authErrorMessage } from "../auth-error";
 
 function RegisterComponent() {
   const registerMutation = useRegister();
+  const submittingRef = useRef(false);
   const form = useAppForm({
     schema: registerSchema,
-
-    initialValues: {
-      firstName: "",
-      lastName: "",
-      username: "",
-      email: "",
-      phone: "",
-      password: "",
-      repeatPassword: "",
-    },
-
+    initialValues: { username: "", password: "", repeatPassword: "" },
     onSubmit(values) {
-      registerMutation.mutate({
-        first_name: values.firstName,
-        last_name: values.lastName,
-        username: values.username,
-        password: values.password,
-        phone: values.phone,
-        email: values.email || undefined,
-      });
+      if (submittingRef.current) return;
+      submittingRef.current = true;
+      registerMutation.mutate(
+        { username: values.username, password: values.password },
+        { onSettled: () => { submittingRef.current = false; } },
+      );
     },
   });
-
-  const serverError =
-    registerMutation.isError
-      ? authErrorMessage(registerMutation.error, "ثبت‌نام ناموفق بود. دوباره تلاش کنید.")
-      : null;
+  const serverError = registerMutation.isError
+    ? authErrorMessage(registerMutation.error, "ثبت‌نام انجام نشد. اتصال اینترنت را بررسی و دوباره تلاش کنید.")
+    : null;
 
   return (
-    <Form
-      className="h-dvh w-full"
-      isSubmitting={registerMutation.isPending}
-      onSubmit={preventEventHandler(form.submit)}
-    >
-      <Flex
-        gapY={"4"}
-        height={"100%"}
-        align={"center"}
-        justify={"center"}
-        direction={"column"}
-      >
-        <Text size="6" weight="bold">
-          ثبت اطلاعات
-        </Text>
-
-        {serverError && (
-          <Callout.Root color="red" dir="rtl" className="w-[90%] sm:w-90">
-            <Callout.Text>{serverError}</Callout.Text>
-          </Callout.Root>
-        )}
-
-        <Box className="w-[90%] sm:w-90 h-fit">
-          <FormField id="firstName" error={form.errors.firstName}>
-            <TextInput
-              size={"3"}
-              name="firstName"
-              placeholder="نام"
-              value={form.values.firstName}
-              onChange={form.handleChange}
-            />
+    <Form className="min-h-dvh w-full" dir="rtl" isSubmitting={registerMutation.isPending} onSubmit={preventEventHandler(form.submit)}>
+      <Flex minHeight="100dvh" px="4" py="7" align="center" justify="center">
+        <Flex width="100%" maxWidth="360px" gap="4" direction="column">
+          <Box>
+            <Text as="div" size="6" weight="bold">ساخت حساب تنظیم</Text>
+            <Text as="p" size="2" color="gray" mt="2">فعلاً فقط اطلاعات ورود را وارد کنید؛ مشخصات پروفایل را بعداً تکمیل می‌کنید.</Text>
+          </Box>
+          {serverError ? <Callout.Root color="red"><Callout.Text>{serverError}</Callout.Text></Callout.Root> : null}
+          <FormField label="نام کاربری" id="username" error={form.errors.username}>
+            <TextInput size="3" name="username" autoComplete="username" value={form.values.username} onChange={form.handleChange} />
           </FormField>
-        </Box>
-        <Box className="w-[90%] sm:w-90 h-fit">
-          <FormField id="lastName" error={form.errors.lastName}>
-            <TextInput
-              size={"3"}
-              name="lastName"
-              value={form.values.lastName}
-              placeholder="نام خانوادگی"
-              onChange={form.handleChange}
-            />
+          <FormField label="رمز عبور" id="password" error={form.errors.password}>
+            <PasswordInput size="3" name="password" autoComplete="new-password" value={form.values.password} onChange={form.handleChange} />
           </FormField>
-        </Box>
-        <Box className="w-[90%] sm:w-90 h-fit">
-          <FormField id="username" error={form.errors.username}>
-            <TextInput
-              size={"3"}
-              name="username"
-              value={form.values.username}
-              placeholder="نام کاربری"
-              onChange={form.handleChange}
-            />
+          <FormField label="تکرار رمز عبور" id="repeatPassword" error={form.errors.repeatPassword}>
+            <PasswordInput size="3" name="repeatPassword" autoComplete="new-password" value={form.values.repeatPassword} onChange={form.handleChange} />
           </FormField>
-        </Box>
-        <Box className="w-[90%] sm:w-90 h-fit">
-          <FormField id="phone" error={form.errors.phone}>
-            <TextInput
-              size={"3"}
-              name="phone"
-              value={form.values.phone}
-              placeholder="موبایل"
-              onChange={form.handleChange}
-            />
-          </FormField>
-        </Box>
-        <Box className="w-[90%] sm:w-90 h-fit">
-          <FormField id="email" error={form.errors.email}>
-            <TextInput
-              size={"3"}
-              name="email"
-              value={form.values.email}
-              placeholder="ایمیل"
-              onChange={form.handleChange}
-            />
-          </FormField>
-        </Box>
-        <Box className="w-[90%] sm:w-90 h-fit">
-          <FormField id="password" error={form.errors.password}>
-            <PasswordInput
-              size={"3"}
-              type="password"
-              name="password"
-              value={form.values.password}
-              placeholder="رمز عبور"
-              onChange={form.handleChange}
-            />
-          </FormField>
-        </Box>
-        <Box className="w-[90%] sm:w-90 h-fit">
-          <FormField id="repeatPassword" error={form.errors.repeatPassword}>
-            <PasswordInput
-              size={"3"}
-              type="password"
-              name="repeatPassword"
-              value={form.values.repeatPassword}
-              placeholder="تکرار رمز عبور"
-              onChange={form.handleChange}
-            />
-          </FormField>
-        </Box>
-        <Box className="w-[90%] sm:w-90 h-fit">
-          <Button
-            type="submit"
-            style={{ width: "100%" }}
-            loading={registerMutation.isPending}
-          >
-            ثبت
-          </Button>
-        </Box>
-        <Link asChild size={"2"} color="violet">
-          <RouterLink to="/auth/login">قبلا وارد شده اید !</RouterLink>
-        </Link>
+          <Button type="submit" className="w-full" loading={registerMutation.isPending}>ساخت حساب</Button>
+          <Link asChild size="2" color="violet"><RouterLink to="/auth/login">از قبل حساب دارید؟ وارد شوید</RouterLink></Link>
+        </Flex>
       </Flex>
     </Form>
   );
