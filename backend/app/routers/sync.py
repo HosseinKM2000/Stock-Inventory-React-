@@ -3,6 +3,7 @@ import hashlib
 import hmac
 import uuid
 import re
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated
 
@@ -24,7 +25,7 @@ from ..models import (
     SyncOperation,
     User,
 )
-from ..services.subscription_service import entitlement_for_user
+from ..services.subscription_service import entitlement_for_user, locked_inventory_capacity
 from ..services.tool_policy import tool_allowed
 from ..services.authorization_service import is_admin
 from ..services.activity_service import record_store_activity
@@ -127,7 +128,13 @@ def _require_store_aware_client(value: int | None) -> None:
         raise HTTPException(status_code=426, detail="CLIENT_UPDATE_REQUIRED:STORE_WORKSPACE")
 
 
-def _authorize_operation(db: DbSession, user: User, operation: SyncOperationIn) -> None:
+def _authorize_operation(
+    db: DbSession,
+    user: User,
+    operation: SyncOperationIn,
+    *,
+    accepted_at: datetime,
+) -> None:
     permissions = effective_permissions(active_store_context(db, user))
     required: set[str]
     if operation.entity == "barcode":
@@ -160,11 +167,16 @@ def _authorize_operation(db: DbSession, user: User, operation: SyncOperationIn) 
     missing = required - permissions
     if missing:
         raise ValueError(f"PERMISSION_REQUIRED:{sorted(missing)[0]}")
-    capabilities = entitlement_for_user(db, user)["capabilities"]
+    entitlement = entitlement_for_user(db, user, as_of=accepted_at)
+    capabilities = entitlement["capabilities"]
     feature = "barcode.manage" if operation.entity == "barcode" else "barcode.lookup" if operation.entity == "inventory_movement" else "inventory.write"
     if not capabilities.get(feature, False):
+        if entitlement["status"] == "expired":
+            raise ValueError("ENTITLEMENT_EXPIRED")
         raise ValueError(f"CAPABILITY_REQUIRED:{feature}")
     if not capabilities.get("inventory.write", False):
+        if entitlement["status"] == "expired":
+            raise ValueError("ENTITLEMENT_EXPIRED")
         raise ValueError("CAPABILITY_REQUIRED:inventory.write")
 
 
@@ -757,6 +769,8 @@ async def _apply_product_operation(
     current_user: User,
     operation: SyncOperationIn,
     image_files: dict[str, UploadFile],
+    *,
+    accepted_at: datetime,
 ) -> SyncOperationResult:
     item = db.scalar(
         select(InventoryItem)
@@ -800,7 +814,9 @@ async def _apply_product_operation(
 
     created = item is None
     if item is None:
-        limit = None if is_admin(current_user) else entitlement_for_user(db, current_user)["limits"]["inventory_items"]
+        limit = None if is_admin(current_user) else locked_inventory_capacity(
+            db, current_user, as_of=accepted_at
+        )
         count = db.scalar(
             select(func.count(InventoryItem.id)).where(
                 InventoryItem.store_id == current_user.store_id
@@ -883,9 +899,10 @@ async def push_batch(
             db.commit()
             continue
 
+        accepted_at = datetime.now(timezone.utc)
         try:
             validate_sync_acceptance(db, current_user, operation)
-            _authorize_operation(db, current_user, operation)
+            _authorize_operation(db, current_user, operation, accepted_at=accepted_at)
         except ValueError as error:
             result = SyncOperationResult(operation_id=operation.operation_id, status="fatal_error", entity_id=operation.entity_id, error=str(error))
             record_store_activity(db, current_user, action=f"sync.{operation.operation.lower()}", target_entity=operation.entity, target_id=operation.entity_id, operation_id=operation.operation_id, outcome="rejected", client_occurred_at=operation.client_occurred_at)
@@ -926,8 +943,12 @@ async def push_batch(
                 with db.begin_nested():
                     tool_id = "labels" if operation.entity == "label" else "categories"
                     capability = "labels.write" if operation.entity == "label" else "categories.write"
-                    if not is_admin(current_user) and not entitlement_for_user(db, current_user)["capabilities"].get(capability, False):
-                        raise ValueError(f"CAPABILITY_REQUIRED:{capability}")
+                    if not is_admin(current_user):
+                        entitlement = entitlement_for_user(db, current_user, as_of=accepted_at)
+                        if not entitlement["capabilities"].get(capability, False):
+                            if entitlement["status"] == "expired":
+                                raise ValueError("ENTITLEMENT_EXPIRED")
+                            raise ValueError(f"CAPABILITY_REQUIRED:{capability}")
                     if not tool_allowed(db, current_user, tool_id):
                         raise ValueError(f"DOMAIN_TOOL_DISABLED:{tool_id}")
                     result = (_apply_label if operation.entity == "label" else _apply_category)(
@@ -952,6 +973,7 @@ async def push_batch(
                     current_user,
                     operation,
                     image_files,
+                    accepted_at=accepted_at,
                 )
         except ValueError as error:
             result = SyncOperationResult(
@@ -1004,8 +1026,10 @@ def barcode_snapshot(
     permissions = effective_permissions(active_store_context(db, current_user))
     if StorePermission.BARCODE_LOOKUP.value not in permissions:
         raise HTTPException(status_code=403, detail=f"PERMISSION_REQUIRED:{StorePermission.BARCODE_LOOKUP.value}")
-    if not entitlement_for_user(db, current_user)["capabilities"].get("barcode.lookup", False):
-        raise HTTPException(status_code=403, detail="CAPABILITY_REQUIRED:barcode.lookup")
+    entitlement = entitlement_for_user(db, current_user)
+    if not entitlement["capabilities"].get("barcode.lookup", False):
+        detail = "ENTITLEMENT_EXPIRED" if entitlement["status"] == "expired" else "CAPABILITY_REQUIRED:barcode.lookup"
+        raise HTTPException(status_code=403, detail=detail)
     items = list(db.scalars(select(ProductBarcode).where(ProductBarcode.store_id == current_user.store_id)))
     return BarcodeSnapshot(items=[BarcodeOut.model_validate(item) for item in items])
 

@@ -139,6 +139,7 @@ export default function SubscriptionSettings() {
             <Badge color={expired ? "red" : verifying ? "blue" : access.status === "expiring" ? "amber" : "green"} size="2">
               {expired ? "منقضی" : verifying ? "نیازمند تأیید آنلاین" : access.status === "expiring" ? "نزدیک انقضا" : "فعال"}
             </Badge>
+            {current?.entitlement_source === "grant" ? <Badge color="amber" size="2">هدیه زمان‌دار تا {date(current.grant_expires_at)}</Badge> : null}
           </Flex>
         </Flex>
 
@@ -187,6 +188,11 @@ export default function SubscriptionSettings() {
         </Grid>
 
         <Separator size="4" my="5" />
+        {current?.entitlement_source === "grant" ? (
+          <Callout.Root color="amber" mb="5" dir="rtl">
+            <Callout.Text>طرح مؤثر از یک گرنت زمان‌دار است. پس از پایان یا لغو، اشتراک پایه «{current.base_plan ?? current.plan}» بدون حذف داده دوباره مؤثر می‌شود.</Callout.Text>
+          </Callout.Root>
+        ) : null}
         <Grid columns={{ initial: "1", md: "2" }} gap="5">
           <Box>
             <Text as="div" weight="bold">

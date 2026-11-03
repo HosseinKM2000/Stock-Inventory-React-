@@ -18,17 +18,27 @@ async function verifyCurrentEntitlement(): Promise<boolean> {
 
   accessState.requireOnlineVerification();
   try {
+    const captured = accessState.user();
+    if (!captured) throw new Error("ENTITLEMENT_ACCOUNT_MISSING");
     const authoritativeUser = await apiFetch<User>("/auth/me");
+    const currentAfterUser = accessState.user();
+    if (currentAfterUser?.id !== captured.id || (currentAfterUser.store_id ?? null) !== (captured.store_id ?? null)) {
+      throw new Error("ENTITLEMENT_ACCOUNT_CHANGED");
+    }
+    if (authoritativeUser.id !== captured.id || (authoritativeUser.store_id ?? null) !== (captured.store_id ?? null)) {
+      throw new Error("ENTITLEMENT_RESPONSE_PARTITION_MISMATCH");
+    }
     accessState.saveUser(authoritativeUser);
     queryClient.setQueryData(authKeys.me, authoritativeUser);
     const entitlement = await apiFetch<Entitlement>("/plans/current");
     const user = accessState.user();
-    if (!user || entitlement.user_id !== user.id) {
+    if (!user || entitlement.user_id !== user.id || (entitlement.store_id ?? null) !== (user.store_id ?? null)) {
       throw new Error("Entitlement does not belong to the authenticated user");
     }
     accessState.enableAccount();
-    accessState.saveEntitlement(entitlement);
-    queryClient.setQueryData(planKeys.current, entitlement);
+    if (accessState.saveEntitlement(entitlement)) {
+      queryClient.setQueryData(planKeys.current, entitlement);
+    }
     return true;
   } catch (error) {
     // A connection that disappears mid-verification may continue using the

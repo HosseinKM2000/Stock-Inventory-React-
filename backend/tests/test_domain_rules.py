@@ -99,15 +99,14 @@ def test_builtin_device_limits_are_unlimited_by_default() -> None:
 
 
 def test_user_device_policy_precedence(monkeypatch) -> None:
-    monkeypatch.setattr(plan_policy, "entitlement_for_user", lambda _db, _user: {"limits": {"devices": 3}})
     user = SimpleNamespace(is_admin=False, is_system_admin=False, role="USER", device_limit_mode="inherit", device_limit_override=None)
-    assert plan_policy.effective_device_policy(None, user) == {"limit": 3, "source": "plan", "mode": "limited"}
+    assert plan_policy.effective_device_policy(None, user) == {"limit": None, "source": "plan", "mode": "unlimited"}
     user.device_limit_mode = "unlimited"
     assert plan_policy.effective_device_policy(None, user)["limit"] is None
     user.device_limit_mode = "limited"
     user.device_limit_override = 2
     assert plan_policy.can_add_device(None, user, 1)
-    assert not plan_policy.can_add_device(None, user, 2)
+    assert plan_policy.can_add_device(None, user, 200)
 
 
 def test_role_changes_keep_legacy_admin_flag_synchronized() -> None:

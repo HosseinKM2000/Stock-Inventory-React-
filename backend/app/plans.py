@@ -1,22 +1,7 @@
 from datetime import datetime, timezone
 from typing import Any
 
-
-SUBSCRIPTION_CAPABILITIES = frozenset({
-    "inventory.read",
-    "inventory.write",
-    "categories.write",
-    "export.local",
-    "export.server",
-    "backup",
-    "inventory.bulk_edit",
-    "import.xlsx",
-    "labels.write",
-    "personnel",
-    "barcode.lookup",
-    "barcode.manage",
-    "label.print",
-})
+from .entitlements import SUBSCRIPTION_CAPABILITIES, normalize_legacy_policy
 
 
 # Plan behavior lives here as data. Callers check capabilities/limits instead
@@ -72,11 +57,23 @@ PLAN_CATALOG: dict[str, dict[str, Any]] = {
     },
 }
 
+# Make the legacy observed allocations explicit for every canonical key.  This
+# is compatibility data, not approval of the final V1 catalog.
+for _definition in PLAN_CATALOG.values():
+    _definition["capabilities"], _definition["limits"] = normalize_legacy_policy(
+        _definition["capabilities"], _definition["limits"]
+    )
 
-def subscription_expired(plan: str, expires_at: datetime | None) -> bool:
+
+def subscription_expired(
+    plan: str,
+    expires_at: datetime | None,
+    *,
+    as_of: datetime | None = None,
+) -> bool:
     if plan == "free" or expires_at is None:
         return False
     value = expires_at
     if value.tzinfo is None:
         value = value.replace(tzinfo=timezone.utc)
-    return value <= datetime.now(timezone.utc)
+    return value <= (as_of or datetime.now(timezone.utc))

@@ -8,7 +8,7 @@ import os
 import hashlib
 import json
 from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -37,7 +37,7 @@ os.environ["SYSTEM_ADMIN_PASSWORD"] = "Test-only-system-admin-password-123!"
 from fastapi.testclient import TestClient
 from app.database import SessionLocal, engine
 from app.main import app
-from app.models import CatalogProduct, Category, Industry, InventoryItem, Label, Store, StoreModeTransition, SyncOperation, User
+from app.models import CatalogProduct, Category, Industry, InventoryItem, Label, Store, StoreMembership, StoreModeTransition, StorePlanGrant, SubscriptionPlan, SyncOperation, User
 from app.routers.sync import _duplicate_result
 from app.schemas import SyncOperationIn
 from app.services.catalog_product_service import _reconcile_catalog_assignments
@@ -53,6 +53,7 @@ EXPECTED_TABLES = {
     "stores", "store_roles", "store_memberships", "store_activity",
     "product_barcodes", "inventory_movements",
     "store_mode_transitions",
+    "store_plan_grants",
 }
 MIGRATION_EVIDENCE = {}
 
@@ -164,6 +165,25 @@ def migrated_empty_database():
         connection.execute(text("DELETE FROM inventory_items WHERE id=9102"))
     command.upgrade(config, "20261101_0009")
     with reset_engine.begin() as connection:
+        connection.execute(text("""
+            INSERT INTO subscription_plans
+                (id,name,currency,is_active,features_json,limits_json)
+            VALUES
+                ('starter','Legacy Starter','IRR',true,:features,:limits)
+        """), {
+            "features": json.dumps({"inventory.read": True, "inventory.write": True}),
+            "limits": json.dumps({"inventory_items": 500, "devices": None}),
+        })
+        connection.execute(text("""
+            UPDATE users
+            SET plan='starter', subscription_started_at='2026-01-02T03:04:05+00:00'
+            WHERE id=9101
+        """))
+        connection.execute(text("""
+            UPDATE stores
+            SET plan='starter', subscription_started_at='2026-01-02T03:04:05+00:00'
+            WHERE id=9101
+        """))
         connection.execute(text(
             "INSERT INTO users (id,first_name,last_name,username,hashed_password) "
             "VALUES (9301,'Ambiguous','Owner','ambiguous-owner','hash'), "
@@ -215,6 +235,15 @@ def migrated_empty_database():
         MIGRATION_EVIDENCE["remediated_missing_owner_mode"] = connection.execute(text(
             "SELECT operating_mode, policy_version, policy_changed_by_user_id FROM stores WHERE id=9401"
         )).one()
+        MIGRATION_EVIDENCE["legacy_plan"] = connection.execute(text(
+            "SELECT commercial_status, policy_revision, features_json, limits_json FROM subscription_plans WHERE id='starter'"
+        )).one()
+        MIGRATION_EVIDENCE["starter_assignment"] = connection.execute(text("""
+            SELECT u.plan, s.plan, u.subscription_started_at, s.subscription_started_at,
+                   s.operating_mode,
+                   (SELECT count(*) FROM store_plan_grants WHERE store_id=s.id)
+            FROM users u JOIN stores s ON s.owner_user_id=u.id WHERE u.id=9101
+        """)).one()
     with SessionLocal() as db:
         stored = db.get(SyncOperation, 9101)
         replay = _duplicate_result(stored, legacy_operation, legacy_fingerprint)
@@ -272,7 +301,7 @@ def test_migration_reaches_head_with_all_expected_tables(migrated_empty_database
     assert MIGRATION_EVIDENCE["mode_rollback"] == ("20261101_0009", True)
     assert EXPECTED_TABLES <= set(inspect(engine).get_table_names())
     with engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261102_0010"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261102_0011"
         columns = {column["name"] for column in inspect(engine).get_columns("industries")}
         assert "tools_json" in columns
         inventory_columns = {column["name"] for column in inspect(engine).get_columns("inventory_items")}
@@ -283,6 +312,16 @@ def test_migration_reaches_head_with_all_expected_tables(migrated_empty_database
         assert tuple(MIGRATION_EVIDENCE["legacy_mode"]) == ("team", 1, 9101)
         assert tuple(MIGRATION_EVIDENCE["legacy_solo_mode"]) == ("solo", 1, 9201)
         assert tuple(MIGRATION_EVIDENCE["remediated_missing_owner_mode"]) == ("solo", 1, 9401)
+        legacy_plan = MIGRATION_EVIDENCE["legacy_plan"]
+        assert legacy_plan[0:2] == ("legacy_only", 1)
+        assert json.loads(legacy_plan[2])["invoices.sale"] is False
+        assert json.loads(legacy_plan[3])["active_personnel"] == 0
+        starter_assignment = MIGRATION_EVIDENCE["starter_assignment"]
+        assert starter_assignment[0:2] == ("starter", "starter")
+        assert starter_assignment[2] == starter_assignment[3]
+        assert starter_assignment[4:] == ("team", 0)
+        plan_columns = {column["name"] for column in inspect(engine).get_columns("subscription_plans")}
+        assert {"policy_revision", "commercial_status"} <= plan_columns
 
 
 @pytest.mark.postgres
@@ -478,7 +517,7 @@ def test_auth_session_logout_and_current_user(client):
 
 
 @pytest.mark.postgres
-def test_concurrent_device_admission_respects_user_limit(client):
+def test_v1_device_admission_remains_unrestricted(client):
     created = signup(client)
     user_id = created.json()["user"]["id"]
     admin_login = client.post("/api/auth/login", json={
@@ -493,7 +532,8 @@ def test_concurrent_device_admission_respects_user_limit(client):
         f"/api/admin/users/{user_id}/device-policy", headers=admin_headers,
         json={"mode": "limited", "limit": 2},
     )
-    assert policy.status_code == 200, policy.text
+    assert policy.status_code == 409, policy.text
+    assert policy.json()["detail"] == "DEVICE_RESTRICTION_NOT_AVAILABLE_V1"
 
     def login(fingerprint: str):
         return client.post("/api/auth/login", json={
@@ -503,7 +543,164 @@ def test_concurrent_device_admission_respects_user_limit(client):
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         statuses = list(pool.map(login, ["concurrent-device-a", "concurrent-device-b"]))
-    assert sorted(statuses) == [200, 403]
+    assert statuses == [200, 200]
+
+
+@pytest.mark.postgres
+def test_concurrent_grants_reject_overlap_and_preserve_base_subscription(client):
+    created = signup(client)
+    user_id = created.json()["user"]["id"]
+    admin_login = client.post("/api/auth/login", json={
+        "username": "HosseinKM2000", "password": "Test-only-system-admin-password-123!",
+        "device_fingerprint": "grant-admin-device",
+    })
+    admin_headers = {
+        "Authorization": f"Bearer {admin_login.json()['access_token']}",
+        "X-Device-Fingerprint": "grant-admin-device",
+    }
+    with SessionLocal() as db:
+        store = db.scalar(select(Store).where(Store.owner_user_id == user_id))
+        store.plan = "free"
+        store_id = store.id
+        db.commit()
+    starts_at = (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat()
+    ends_at = (datetime.now(timezone.utc) + timedelta(days=3)).isoformat()
+
+    def create_grant(index: int):
+        return client.post("/api/admin/grants", headers=admin_headers, json={
+            "request_id": f"postgres-concurrent-grant-{index}", "store_id": store_id,
+            "plan_id": "pro" if index == 1 else "vip", "source": "support",
+            "reason": f"Concurrent grant {index}", "starts_at": starts_at, "ends_at": ends_at,
+        })
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        retries = list(pool.map(create_grant, [1, 1]))
+    assert [response.status_code for response in retries] == [201, 201]
+    assert len({response.json()["id"] for response in retries}) == 1
+    overlap = create_grant(2)
+    assert overlap.status_code == 409
+    assert overlap.json()["detail"] == "GRANT_OVERLAP_UNSUPPORTED"
+    with SessionLocal() as db:
+        assert db.query(StorePlanGrant).filter_by(store_id=store_id).count() == 1
+        assert db.get(Store, store_id).plan == "free"
+
+
+@pytest.mark.postgres
+def test_concurrent_inventory_admission_respects_finite_capacity_atomically(client):
+    created = signup(client)
+    user_id = created.json()["user"]["id"]
+    headers = {
+        "Authorization": f"Bearer {created.json()['access_token']}",
+        "X-Device-Fingerprint": "postgres-device", "X-Client-Data-Schema": "2",
+    }
+    with SessionLocal() as db:
+        industry = Industry(name="Capacity industry", is_active=True)
+        db.add(industry)
+        db.flush()
+        user = db.get(User, user_id)
+        store = db.scalar(select(Store).where(Store.owner_user_id == user_id))
+        user.industry_id = store.industry_id = industry.id
+        free = db.get(SubscriptionPlan, "free")
+        limits = json.loads(free.limits_json)
+        limits["inventory_items"] = 1
+        free.limits_json = json.dumps(limits)
+        db.commit()
+        store_id = store.id
+
+    def create_product(index: int):
+        operation = {
+            "operation_id": f"capacity-product-{index}", "entity": "product",
+            "entity_id": 1_700_002_000_000 + index, "operation": "CREATE",
+            "payload": {
+                "quantity": 1, "price": 100, "custom_label": f"Capacity {index}",
+                "low_stock_threshold": 0, "low_stock_alert": False, "is_hidden": False,
+                "catalog_product": {"id": 0, "name": f"Capacity {index}"},
+            },
+        }
+        return client.post("/api/sync/batch", headers=headers, data={
+            "operations_json": json.dumps({"operations": [operation]}),
+        })
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        responses = list(pool.map(create_product, [1, 2]))
+    assert all(response.status_code == 200 for response in responses)
+    results = [response.json()["results"][0] for response in responses]
+    assert sorted(result["status"] for result in results) == ["applied", "fatal_error"]
+    assert next(result for result in results if result["status"] == "fatal_error")["error"] == "INVENTORY_LIMIT_REACHED"
+    with SessionLocal() as db:
+        assert db.scalar(select(func.count(InventoryItem.id)).where(InventoryItem.store_id == store_id)) == 1
+
+
+@pytest.mark.postgres
+def test_concurrent_personnel_admission_respects_finite_capacity_atomically(client):
+    created = signup(client)
+    user_id = created.json()["user"]["id"]
+    headers = {
+        "Authorization": f"Bearer {created.json()['access_token']}",
+        "X-Device-Fingerprint": "postgres-device",
+    }
+    with SessionLocal() as db:
+        user = db.get(User, user_id)
+        store = db.scalar(select(Store).where(Store.owner_user_id == user_id))
+        user.plan = store.plan = "vip"
+        store.personnel_limit_override = 1
+        db.commit()
+    mode = client.get("/api/store/operating-mode", headers=headers).json()
+    activated = client.post("/api/store/operating-mode/activate-team", headers=headers, json={
+        "expected_policy_version": mode["policy_version"],
+        "transition_id": "postgres-personnel-capacity-activation",
+    })
+    assert activated.status_code == 200, activated.text
+    role_id = client.get("/api/store/roles", headers=headers).json()[0]["id"]
+
+    def create_personnel(index: int):
+        return client.post("/api/store/personnel", headers=headers, json={
+            "first_name": "Concurrent",
+            "last_name": f"Person {index}",
+            "role_id": role_id,
+        })
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        responses = list(pool.map(create_personnel, [1, 2]))
+    assert sorted(response.status_code for response in responses) == [201, 409]
+    assert next(response for response in responses if response.status_code == 409).json()["detail"] == "PERSONNEL_CAPACITY_REACHED"
+    with SessionLocal() as db:
+        store_id = db.scalar(select(Store.id).where(Store.owner_user_id == user_id))
+        count = db.scalar(select(func.count(StoreMembership.id)).where(
+            StoreMembership.store_id == store_id,
+            StoreMembership.is_owner.is_(False),
+            StoreMembership.status == "active",
+        ))
+        assert count == 1
+
+
+@pytest.mark.postgres
+def test_concurrent_admin_plan_edits_have_one_atomic_audited_winner(client):
+    admin_login = client.post("/api/auth/login", json={
+        "username": "HosseinKM2000", "password": "Test-only-system-admin-password-123!",
+        "device_fingerprint": "plan-admin-device",
+    })
+    headers = {
+        "Authorization": f"Bearer {admin_login.json()['access_token']}",
+        "X-Device-Fingerprint": "plan-admin-device",
+    }
+    free = next(item for item in client.get("/api/admin/plans", headers=headers).json() if item["id"] == "free")
+
+    def update_plan(index: int):
+        return client.patch("/api/admin/plans/free", headers=headers, json={
+            "expected_revision": free["policy_revision"],
+            "reason": f"Concurrent policy edit {index}",
+            "description": f"winner {index}",
+        })
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        responses = list(pool.map(update_plan, [1, 2]))
+    assert sorted(response.status_code for response in responses) == [200, 409]
+    with SessionLocal() as db:
+        plan = db.get(SubscriptionPlan, "free")
+        assert plan.policy_revision == free["policy_revision"] + 1
+        audit_count = db.scalar(text("SELECT count(*) FROM admin_audit_logs WHERE action='plan.changed'"))
+        assert audit_count == 1
 
 
 @pytest.mark.postgres
@@ -667,4 +864,6 @@ def test_expired_subscription_preserves_reads_and_blocks_writes(client):
     assert entitlement.json()["status"] == "expired"
     assert entitlement.json()["capabilities"]["inventory.write"] is False
     assert client.get("/api/categories", headers=headers).status_code == 200
-    assert client.post("/api/categories", headers=headers, json={"name": "Blocked"}).status_code == 403
+    blocked = client.post("/api/categories", headers=headers, json={"name": "Blocked"})
+    assert blocked.status_code == 403
+    assert blocked.json()["detail"] == "ENTITLEMENT_EXPIRED"
