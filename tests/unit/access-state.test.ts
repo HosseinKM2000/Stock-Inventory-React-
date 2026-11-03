@@ -100,6 +100,34 @@ describe("offline subscription access", () => {
     expect(accessState.canWrite()).toBe(false);
   });
 
+  it("does not let an older grant response replace newer access in the same partition", async () => {
+    const { accessState } = await import("@/shared/access/access-state");
+    accessState.saveUser({ ...user, store_id: 10 });
+    const revoked = {
+      ...entitlement(null, undefined, 10),
+      plan: "free",
+      base_plan: "free",
+      entitlement_source: "subscription" as const,
+      grant_id: null,
+      server_time: "2026-09-02T08:02:00Z",
+      synced_at: "2026-09-02T08:02:00Z",
+      capabilities: { "inventory.read": true, "inventory.write": false },
+    };
+    const delayedGrant = {
+      ...entitlement(null, undefined, 10),
+      entitlement_source: "grant" as const,
+      grant_id: 91,
+      server_time: "2026-09-02T08:01:00Z",
+      synced_at: "2026-09-02T08:01:00Z",
+    };
+
+    expect(accessState.saveEntitlement(revoked)).toBe(true);
+    expect(accessState.saveEntitlement(delayedGrant)).toBe(false);
+    expect(accessState.entitlement()?.plan).toBe("free");
+    expect(accessState.entitlement()?.grant_id).toBeNull();
+    expect(accessState.canWrite()).toBe(false);
+  });
+
   it("denies disabled users even when a valid entitlement is cached", async () => {
     const { accessState } = await import("@/shared/access/access-state");
     accessState.saveUser(user);

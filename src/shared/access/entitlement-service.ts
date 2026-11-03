@@ -36,8 +36,9 @@ async function verifyCurrentEntitlement(): Promise<boolean> {
       throw new Error("Entitlement does not belong to the authenticated user");
     }
     accessState.enableAccount();
-    accessState.saveEntitlement(entitlement);
-    queryClient.setQueryData(planKeys.current, entitlement);
+    if (accessState.saveEntitlement(entitlement)) {
+      queryClient.setQueryData(planKeys.current, entitlement);
+    }
     return true;
   } catch (error) {
     // A connection that disappears mid-verification may continue using the

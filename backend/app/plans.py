@@ -65,10 +65,15 @@ for _definition in PLAN_CATALOG.values():
     )
 
 
-def subscription_expired(plan: str, expires_at: datetime | None) -> bool:
+def subscription_expired(
+    plan: str,
+    expires_at: datetime | None,
+    *,
+    as_of: datetime | None = None,
+) -> bool:
     if plan == "free" or expires_at is None:
         return False
     value = expires_at
     if value.tzinfo is None:
         value = value.replace(tzinfo=timezone.utc)
-    return value <= datetime.now(timezone.utc)
+    return value <= (as_of or datetime.now(timezone.utc))

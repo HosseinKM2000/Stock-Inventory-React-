@@ -28,6 +28,7 @@ from app.models import (
     SyncOperation,
     Store,
     StorePlanGrant,
+    SubscriptionPlan,
     User,
     UserSession,
 )
@@ -35,6 +36,7 @@ from app.services import catalog_product_service
 from app.services.bootstrap_service import ensure_system_admin
 from app.services.store_service import create_owner_store
 from app.services.subscription_service import seed_default_plans
+from app.services.subscription_service import entitlement_for_store
 from app.entitlements import SUBSCRIPTION_CAPABILITIES
 
 
@@ -1799,6 +1801,11 @@ class SyncApiTest(unittest.TestCase):
         replay = self.client.post("/api/admin/grants", headers=self.admin_headers, json=request)
         self.assertEqual(replay.status_code, 201, replay.text)
         self.assertEqual(replay.json()["id"], created.json()["id"])
+        mismatch = self.client.post("/api/admin/grants", headers=self.admin_headers, json={
+            **request, "reason": "Changed retry payload",
+        })
+        self.assertEqual(mismatch.status_code, 409, mismatch.text)
+        self.assertEqual(mismatch.json()["detail"], "GRANT_REQUEST_REUSE_MISMATCH")
         overlap = self.client.post("/api/admin/grants", headers=self.admin_headers, json={
             **request, "request_id": "grant-overlap-test-002", "plan_id": "vip",
         })
@@ -1814,6 +1821,18 @@ class SyncApiTest(unittest.TestCase):
         self.assertEqual(effective.json()["plan"], "pro")
         self.assertEqual(effective.json()["base_plan"], "free")
         self.assertEqual(effective.json()["entitlement_source"], "grant")
+        starts_at = datetime.fromisoformat(request["starts_at"])
+        ends_at = datetime.fromisoformat(request["ends_at"])
+        with SessionLocal() as db:
+            store = db.get(Store, store_id)
+            self.assertEqual(entitlement_for_store(db, store, as_of=starts_at)["plan"], "pro")
+            self.assertEqual(
+                entitlement_for_store(db, store, as_of=ends_at - timedelta(microseconds=1))["plan"],
+                "pro",
+            )
+            boundary = entitlement_for_store(db, store, as_of=ends_at)
+            self.assertEqual(boundary["plan"], "free")
+            self.assertEqual(boundary["entitlement_source"], "subscription")
         mode = self.client.get("/api/store/operating-mode", headers=grant_headers)
         self.assertEqual(mode.status_code, 200, mode.text)
         self.assertEqual(mode.json()["operating_mode"], "solo")
@@ -1842,6 +1861,95 @@ class SyncApiTest(unittest.TestCase):
         self.assertEqual(after_expiry.json()["entitlement_source"], "subscription")
         with SessionLocal() as db:
             self.assertEqual(db.query(StorePlanGrant).filter_by(store_id=store_id).count(), 2)
+
+    def test_grant_expiry_during_sync_uses_one_acceptance_instant(self) -> None:
+        signup = self.client.post("/api/auth/signup", json={
+            "first_name": "Boundary", "last_name": "Owner", "username": "grant-boundary-owner",
+            "password": "StrongPass123!", "device_fingerprint": "grant-boundary-device",
+        })
+        self.assertEqual(signup.status_code, 201, signup.text)
+        headers = {
+            "Authorization": f"Bearer {signup.json()['access_token']}",
+            "X-Device-Fingerprint": "grant-boundary-device",
+            "X-Client-Data-Schema": "2",
+        }
+        store_id = signup.json()["user"]["store_id"]
+        accepted_at = datetime(2026, 6, 1, 12, 0, tzinfo=timezone.utc)
+        with SessionLocal() as db:
+            free = db.get(SubscriptionPlan, "free")
+            original_limits = free.limits_json
+            limits = json.loads(original_limits)
+            limits["inventory_items"] = 0
+            free.limits_json = json.dumps(limits)
+            owner = db.get(User, signup.json()["user"]["id"])
+            store = db.get(Store, store_id)
+            owner.industry_id = self.industry_id
+            store.industry_id = self.industry_id
+            db.add(StorePlanGrant(
+                request_id="grant-boundary-sync",
+                store_id=store_id,
+                plan_id="pro",
+                source="support",
+                reason="Controlled acceptance-time boundary",
+                starts_at=accepted_at,
+                ends_at=accepted_at + timedelta(microseconds=1),
+                granted_by_user_id=self.admin_user_id,
+            ))
+            db.commit()
+
+        class AcceptanceClock(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                return accepted_at if tz is not None else accepted_at.replace(tzinfo=None)
+
+        operation = {
+            "operation_id": "grant-boundary-product",
+            "entity": "product",
+            "entity_id": 1_700_003_000_001,
+            "operation": "CREATE",
+            "payload": {
+                "quantity": 1, "price": 100, "custom_label": "Boundary product",
+                "low_stock_threshold": 0, "low_stock_alert": False, "is_hidden": False,
+                "catalog_product": {"id": 0, "name": "Boundary product"},
+            },
+        }
+        try:
+            with patch("app.routers.sync.datetime", AcceptanceClock):
+                response = self.client.post("/api/sync/batch", headers=headers, data={
+                    "operations_json": json.dumps({"operations": [operation]}),
+                })
+            self.assertEqual(response.status_code, 200, response.text)
+            self.assertEqual(response.json()["results"][0]["status"], "applied", response.text)
+            update = self.client.post("/api/sync/batch", headers=headers, data={
+                "operations_json": json.dumps({"operations": [{
+                    **operation,
+                    "operation_id": "grant-boundary-existing-update",
+                    "operation": "UPDATE",
+                    "payload": {"quantity": 2},
+                }]}),
+            })
+            self.assertEqual(update.json()["results"][0]["status"], "applied", update.text)
+            blocked_new = self.client.post("/api/sync/batch", headers=headers, data={
+                "operations_json": json.dumps({"operations": [{
+                    **operation,
+                    "operation_id": "grant-boundary-new-after-expiry",
+                    "entity_id": operation["entity_id"] + 1,
+                }]}),
+            })
+            self.assertEqual(blocked_new.json()["results"][0]["status"], "fatal_error", blocked_new.text)
+            self.assertEqual(blocked_new.json()["results"][0]["error"], "INVENTORY_LIMIT_REACHED")
+            with SessionLocal() as db:
+                self.assertEqual(
+                    db.query(InventoryItem).filter_by(
+                        store_id=store_id, id=operation["entity_id"]
+                    ).count(),
+                    1,
+                )
+                self.assertEqual(db.get(InventoryItem, operation["entity_id"]).quantity, 2)
+        finally:
+            with SessionLocal() as db:
+                db.get(SubscriptionPlan, "free").limits_json = original_limits
+                db.commit()
 
 
 if __name__ == "__main__":

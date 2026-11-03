@@ -315,6 +315,18 @@ export const accessState = {
     const now = Date.now();
     const serverMs = new Date(value.server_time).getTime();
     const user = this.user();
+    if (!Number.isFinite(serverMs)) throw new Error("ENTITLEMENT_SERVER_TIME_INVALID");
+    const current = user ? readEntitlement(user) : null;
+    const currentServerMs = current ? new Date(current.server_time).getTime() : Number.NEGATIVE_INFINITY;
+    if (
+      current
+      && current.user_id === value.user_id
+      && (current.store_id ?? null) === (value.store_id ?? null)
+      && Number.isFinite(currentServerMs)
+      && serverMs < currentServerMs
+    ) {
+      return false;
+    }
     if (user?.id === value.user_id) {
       storage.set(USER_KEY, normalizeUser({
         ...user,
@@ -337,6 +349,7 @@ export const accessState = {
     runtimeAnchor = { userId: value.user_id, serverMs, monotonicMs: performance.now() };
     verificationRequired = false;
     emit();
+    return true;
   },
   checkpointTime() {
     const snapshot = this.entitlement();

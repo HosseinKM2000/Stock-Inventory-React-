@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException, status
@@ -54,7 +55,9 @@ def get_current_user(
 def require_capability(db: Session, user: User, capability: str) -> None:
     if is_admin(user):
         return
-    entitlement = entitlement_for_user(db, user)
+    accepted_at = getattr(user, "entitlement_as_of", None) or datetime.now(timezone.utc)
+    user.entitlement_as_of = accepted_at
+    entitlement = entitlement_for_user(db, user, as_of=accepted_at)
     if not entitlement["capabilities"].get(capability, False):
         if entitlement["status"] == "expired":
             raise HTTPException(status_code=403, detail="ENTITLEMENT_EXPIRED")

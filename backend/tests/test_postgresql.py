@@ -37,7 +37,7 @@ os.environ["SYSTEM_ADMIN_PASSWORD"] = "Test-only-system-admin-password-123!"
 from fastapi.testclient import TestClient
 from app.database import SessionLocal, engine
 from app.main import app
-from app.models import CatalogProduct, Category, Industry, InventoryItem, Label, Store, StoreModeTransition, StorePlanGrant, SubscriptionPlan, SyncOperation, User
+from app.models import CatalogProduct, Category, Industry, InventoryItem, Label, Store, StoreMembership, StoreModeTransition, StorePlanGrant, SubscriptionPlan, SyncOperation, User
 from app.routers.sync import _duplicate_result
 from app.schemas import SyncOperationIn
 from app.services.catalog_product_service import _reconcile_catalog_assignments
@@ -174,6 +174,16 @@ def migrated_empty_database():
             "features": json.dumps({"inventory.read": True, "inventory.write": True}),
             "limits": json.dumps({"inventory_items": 500, "devices": None}),
         })
+        connection.execute(text("""
+            UPDATE users
+            SET plan='starter', subscription_started_at='2026-01-02T03:04:05+00:00'
+            WHERE id=9101
+        """))
+        connection.execute(text("""
+            UPDATE stores
+            SET plan='starter', subscription_started_at='2026-01-02T03:04:05+00:00'
+            WHERE id=9101
+        """))
         connection.execute(text(
             "INSERT INTO users (id,first_name,last_name,username,hashed_password) "
             "VALUES (9301,'Ambiguous','Owner','ambiguous-owner','hash'), "
@@ -228,6 +238,12 @@ def migrated_empty_database():
         MIGRATION_EVIDENCE["legacy_plan"] = connection.execute(text(
             "SELECT commercial_status, policy_revision, features_json, limits_json FROM subscription_plans WHERE id='starter'"
         )).one()
+        MIGRATION_EVIDENCE["starter_assignment"] = connection.execute(text("""
+            SELECT u.plan, s.plan, u.subscription_started_at, s.subscription_started_at,
+                   s.operating_mode,
+                   (SELECT count(*) FROM store_plan_grants WHERE store_id=s.id)
+            FROM users u JOIN stores s ON s.owner_user_id=u.id WHERE u.id=9101
+        """)).one()
     with SessionLocal() as db:
         stored = db.get(SyncOperation, 9101)
         replay = _duplicate_result(stored, legacy_operation, legacy_fingerprint)
@@ -300,6 +316,10 @@ def test_migration_reaches_head_with_all_expected_tables(migrated_empty_database
         assert legacy_plan[0:2] == ("legacy_only", 1)
         assert json.loads(legacy_plan[2])["invoices.sale"] is False
         assert json.loads(legacy_plan[3])["active_personnel"] == 0
+        starter_assignment = MIGRATION_EVIDENCE["starter_assignment"]
+        assert starter_assignment[0:2] == ("starter", "starter")
+        assert starter_assignment[2] == starter_assignment[3]
+        assert starter_assignment[4:] == ("team", 0)
         plan_columns = {column["name"] for column in inspect(engine).get_columns("subscription_plans")}
         assert {"policy_revision", "commercial_status"} <= plan_columns
 
@@ -609,6 +629,49 @@ def test_concurrent_inventory_admission_respects_finite_capacity_atomically(clie
     assert next(result for result in results if result["status"] == "fatal_error")["error"] == "INVENTORY_LIMIT_REACHED"
     with SessionLocal() as db:
         assert db.scalar(select(func.count(InventoryItem.id)).where(InventoryItem.store_id == store_id)) == 1
+
+
+@pytest.mark.postgres
+def test_concurrent_personnel_admission_respects_finite_capacity_atomically(client):
+    created = signup(client)
+    user_id = created.json()["user"]["id"]
+    headers = {
+        "Authorization": f"Bearer {created.json()['access_token']}",
+        "X-Device-Fingerprint": "postgres-device",
+    }
+    with SessionLocal() as db:
+        user = db.get(User, user_id)
+        store = db.scalar(select(Store).where(Store.owner_user_id == user_id))
+        user.plan = store.plan = "vip"
+        store.personnel_limit_override = 1
+        db.commit()
+    mode = client.get("/api/store/operating-mode", headers=headers).json()
+    activated = client.post("/api/store/operating-mode/activate-team", headers=headers, json={
+        "expected_policy_version": mode["policy_version"],
+        "transition_id": "postgres-personnel-capacity-activation",
+    })
+    assert activated.status_code == 200, activated.text
+    role_id = client.get("/api/store/roles", headers=headers).json()[0]["id"]
+
+    def create_personnel(index: int):
+        return client.post("/api/store/personnel", headers=headers, json={
+            "first_name": "Concurrent",
+            "last_name": f"Person {index}",
+            "role_id": role_id,
+        })
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        responses = list(pool.map(create_personnel, [1, 2]))
+    assert sorted(response.status_code for response in responses) == [201, 409]
+    assert next(response for response in responses if response.status_code == 409).json()["detail"] == "PERSONNEL_CAPACITY_REACHED"
+    with SessionLocal() as db:
+        store_id = db.scalar(select(Store.id).where(Store.owner_user_id == user_id))
+        count = db.scalar(select(func.count(StoreMembership.id)).where(
+            StoreMembership.store_id == store_id,
+            StoreMembership.is_owner.is_(False),
+            StoreMembership.status == "active",
+        ))
+        assert count == 1
 
 
 @pytest.mark.postgres

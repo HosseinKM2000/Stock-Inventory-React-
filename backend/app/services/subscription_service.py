@@ -80,9 +80,14 @@ def list_plans(db: Session, active_only: bool = False) -> list[SubscriptionPlan]
     return list(db.scalars(statement))
 
 
-def entitlement_for_user(db: Session, user: User) -> dict[str, Any]:
+def entitlement_for_user(
+    db: Session,
+    user: User,
+    *,
+    as_of: datetime | None = None,
+) -> dict[str, Any]:
+    now = as_of or datetime.now(timezone.utc)
     if is_admin(user):
-        now = datetime.now(timezone.utc)
         return {
             "user_id": user.id,
             "store_id": getattr(user, "store_id", None),
@@ -107,8 +112,7 @@ def entitlement_for_user(db: Session, user: User) -> dict[str, Any]:
     if membership is not None:
         store = db.get(Store, membership.store_id)
         if store is not None:
-            value = entitlement_for_store(db, store)
-            now = datetime.now(timezone.utc)
+            value = entitlement_for_store(db, store, as_of=now)
             capabilities = dict(value["capabilities"])
             if not membership.is_owner and (membership.status != "active" or not capabilities.get("personnel", False)):
                 capabilities = {key: False for key in capabilities}
@@ -126,7 +130,7 @@ def entitlement_for_user(db: Session, user: User) -> dict[str, Any]:
     if plan is None:
         raise HTTPException(status_code=500, detail="PLAN_CONFIGURATION_MISSING")
 
-    expired = subscription_expired(user.plan, user.subscription_expires_at)
+    expired = subscription_expired(user.plan, user.subscription_expires_at, as_of=now)
     features = parse_json_object(plan.features_json)
     limits = parse_json_object(plan.limits_json)
     validate_policy(features, limits)
@@ -136,7 +140,6 @@ def entitlement_for_user(db: Session, user: User) -> dict[str, Any]:
             key: value if key == "inventory.read" else False
             for key, value in capabilities.items()
         }
-    now = datetime.now(timezone.utc)
     return {
         "user_id": user.id,
         "store_id": getattr(user, "store_id", None),
@@ -156,9 +159,14 @@ def entitlement_for_user(db: Session, user: User) -> dict[str, Any]:
     }
 
 
-def entitlement_for_store(db: Session, store: Store) -> dict[str, Any]:
+def entitlement_for_store(
+    db: Session,
+    store: Store,
+    *,
+    as_of: datetime | None = None,
+) -> dict[str, Any]:
     """Store subscription is authoritative; owner columns remain a compatibility mirror."""
-    now = datetime.now(timezone.utc)
+    now = as_of or datetime.now(timezone.utc)
     grant = db.scalar(
         select(StorePlanGrant)
         .where(
@@ -178,7 +186,7 @@ def entitlement_for_store(db: Session, store: Store) -> dict[str, Any]:
     limits = parse_json_object(plan.limits_json)
     validate_policy(features, limits)
     expires_at = grant.ends_at if grant is not None else store.subscription_expires_at
-    expired = False if grant is not None else subscription_expired(store.plan, expires_at)
+    expired = False if grant is not None else subscription_expired(store.plan, expires_at, as_of=now)
     capabilities = {key: features[key] is True for key in SUBSCRIPTION_CAPABILITIES}
     if expired:
         capabilities = {key: value if key == "inventory.read" else False for key, value in capabilities.items()}
@@ -237,7 +245,12 @@ def assign_subscription(
         store.subscription_expires_at = user.subscription_expires_at
 
 
-def locked_inventory_capacity(db: Session, user: User) -> int | None:
+def locked_inventory_capacity(
+    db: Session,
+    user: User,
+    *,
+    as_of: datetime | None = None,
+) -> int | None:
     """Serialize capacity admission on the authoritative store row."""
     store_id = getattr(user, "store_id", None)
     if store_id is None:
@@ -247,4 +260,5 @@ def locked_inventory_capacity(db: Session, user: User) -> int | None:
     )
     if store is None:
         raise HTTPException(status_code=404, detail="STORE_NOT_FOUND")
-    return entitlement_for_store(db, store)["limits"]["inventory_items"]
+    accepted_at = as_of or getattr(user, "entitlement_as_of", None)
+    return entitlement_for_store(db, store, as_of=accepted_at)["limits"]["inventory_items"]
