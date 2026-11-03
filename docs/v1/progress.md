@@ -276,7 +276,7 @@ Verification:
 |---|---|
 | Focused signup/profile tests | Passed: 12 frontend validation/notification tests and 4 backend provisioning/profile tests. |
 | `npm.cmd test` | Passed: 74 files, 317 unit/component tests. |
-| `npm.cmd run test:backend` | Passed: 64 tests. |
+| `npm.cmd run test:backend` | Passed: 65 tests. |
 | `npm.cmd run test:backend:postgres:local` | Passed: 16 tests, including migration head/nullability and concurrent minimal signup with exactly one complete workspace. |
 | `npm.cmd run test:typecheck` and `npm.cmd run lint` | Passed. |
 | `npm.cmd run build` | Passed with the existing stale Browserslist-data and large-chunk warnings; `bwip-js` remains about 930 kB. |
