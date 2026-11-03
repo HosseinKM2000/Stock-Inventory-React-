@@ -33,6 +33,7 @@ def seed_default_plans(db: Session) -> None:
                 is_active=True,
                 features_json=json.dumps(definition["capabilities"]),
                 limits_json=json.dumps(definition["limits"]),
+                commercial_status="legacy_only" if plan_id == "starter" else "legacy_unapproved",
             )
         )
     db.commit()

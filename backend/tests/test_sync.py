@@ -1951,6 +1951,37 @@ class SyncApiTest(unittest.TestCase):
                 db.get(SubscriptionPlan, "free").limits_json = original_limits
                 db.commit()
 
+    def test_starter_is_readable_for_existing_assignment_but_not_newly_assignable(self) -> None:
+        existing = self.client.post("/api/auth/signup", json={
+            "first_name": "Legacy", "last_name": "Starter", "username": "legacy-starter-owner",
+            "password": "StrongPass123!", "device_fingerprint": "legacy-starter-device",
+        })
+        new_user = self.client.post("/api/auth/signup", json={
+            "first_name": "New", "last_name": "Subscriber", "username": "new-starter-candidate",
+            "password": "StrongPass123!", "device_fingerprint": "new-starter-device",
+        })
+        with SessionLocal() as db:
+            owner = db.get(User, existing.json()["user"]["id"])
+            store = db.get(Store, existing.json()["user"]["store_id"])
+            owner.plan = store.plan = "starter"
+            db.commit()
+        existing_headers = {
+            "Authorization": f"Bearer {existing.json()['access_token']}",
+            "X-Device-Fingerprint": "legacy-starter-device",
+        }
+        current = self.client.get("/api/plans/current", headers=existing_headers)
+        self.assertEqual(current.status_code, 200, current.text)
+        self.assertEqual(current.json()["plan"], "starter")
+        offers = self.client.get("/api/plans", headers=existing_headers)
+        self.assertNotIn("starter", {plan["id"] for plan in offers.json()})
+        forbidden = self.client.patch(
+            f"/api/admin/users/{new_user.json()['user']['id']}/subscription",
+            headers=self.admin_headers,
+            json={"plan": "starter"},
+        )
+        self.assertEqual(forbidden.status_code, 409, forbidden.text)
+        self.assertEqual(forbidden.json()["detail"], "PLAN_LEGACY_ASSIGNMENT_FORBIDDEN")
+
 
 if __name__ == "__main__":
     unittest.main()

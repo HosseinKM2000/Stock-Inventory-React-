@@ -230,9 +230,9 @@ Verification recorded for delivery:
 
 | Command / scope | Result |
 |---|---|
-| `npm.cmd run test:backend` | Passed: 59 tests, including registry validation, member/cross-store/admin denial, grant retry/expiry/revocation, mode preservation, replay and device-policy compatibility. |
-| `npm.cmd run test:backend:postgres:local` | Passed: 14 tests, including migration, concurrent policy revision/audit, inventory capacity, grant retry/overlap, and lazy admin-workspace serialization. |
-| `npm.cmd test` | Passed: 73 files, 311 unit/component tests, including account/store cache partitioning and late-response rejection. |
+| `npm.cmd run test:backend` | Final review passed: 61 tests, including registry validation, member/cross-store/admin denial, grant retry/mismatch/start/end/expiry/revocation, one-instant sync acceptance, capacity reduction, Starter compatibility, mode preservation, replay and device-policy compatibility. |
+| `npm.cmd run test:backend:postgres:local` | Final review passed: 15 tests, including `0010 -> 0011` Starter/subscription/data/sync preservation, concurrent policy revision/audit, inventory and personnel capacity, grant retry/overlap, and lazy admin-workspace serialization. |
+| `npm.cmd test` | Final review passed: 73 files, 312 unit/component tests, including account/store cache partitioning and rejection of cross-partition or older same-partition responses. |
 | `npm.cmd run test:typecheck` and `npm.cmd run lint` | Passed. |
 | `npm.cmd run build` | Passed with the existing stale Browserslist-data and large-chunk warnings; the largest `bwip-js` chunk remains about 930 kB. |
 | Focused production-preview E2E | Passed: 16 mocked-API Chromium cases across desktop/mobile for policy/grant UI, customer grant provenance, personnel/mode layouts, PWA offline cold routes, persistence, and profile isolation. This is UI/storage evidence, not live backend evidence. |
@@ -248,4 +248,13 @@ Verification recorded for delivery:
 | Expiry/grace | Renewal expiry and any grace behavior while preserving defined read/recovery rights. |
 | Starter transition | Explicit treatment of existing Starter subscribers; silent remapping is forbidden. |
 
-Task 2A stops on its feature branch. It is not merged into `draft`, pushed, deployed, or applied to `develop`; Task 2B was not started.
+## TZ-V1-02A final review
+
+- The reported implementation commit `60b00b6980177fe24d7d2fd57a69ae27fb005e96` was confirmed directly on accepted local `draft` `f68b2faf78c99144825d45417c206b54b4e24e56`; the complete task diff was reviewed without finding unrelated data, dependency, operating-mode, or final-allocation changes.
+- Review found that a sync command could resolve grant time separately during authorization and store-locked capacity admission. Correction `c738733` captures one server acceptance instant and reuses it throughout the command. Controlled start/end tests establish an inclusive start and exclusive end; a red/green regression proves that expiry during processing cannot combine granted authorization with base-plan capacity.
+- Review found that a delayed response in the same person/store partition could overwrite a newer grant expiry or revocation because grant changes do not increment the plan definition revision. The client now rejects older `server_time` snapshots before changing local entitlement or query data. The existing account/store partition guard remains intact.
+- Exact grant request retries converge, changed payload reuse fails, overlap remains serialized, and expiry/revocation reveals the unchanged base plan without cleanup. A reduced inventory cap blocks only new admission; an existing record remains editable. PostgreSQL now proves that concurrent inventory and personnel admission each retain one winner at capacity.
+- Migration rehearsal now carries an assigned Starter user/store, operating mode, operational identifiers/values, actor attribution, sync fingerprint/result, and zero grants from `0010` through `0011`. Starter remains enforceable/readable for that existing assignment while API coverage confirms public/new assignment exclusion; empty-database seeding now marks it `legacy_only` explicitly too.
+- Schema `0011` remains incompatible with pre-2A workers. Production requires stopped old workers, verified backup and current-copy rehearsal, migration/head confirmation, then only 2A-or-newer workers. No production/customer database or real grant was touched.
+
+Task 2A is reviewed on its feature branch and ready for non-destructive integration into local `draft`. It has not been pushed, deployed, applied to `develop`, or used to start Task 2B.
