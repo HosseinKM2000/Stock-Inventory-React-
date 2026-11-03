@@ -285,3 +285,10 @@ Verification:
 Deployment is not safely mixed with pre-03 workers after minimal accounts can exist: older response/schema and display assumptions require non-null names. Use a controlled backend/frontend replacement, verify a backup and rehearse `0011 -> 0012` on a current copy, confirm Alembic head, then enable the new signup UI only with 03-or-newer workers. No production/customer database was migrated, no real account was created, and no grant was issued.
 
 Task 2B remains pending exactly the previously listed commercial decisions. TZ-V1-03 does not approve prices, allocations, gifts, grace, or Starter transition and does not start the next task automatically.
+
+## TZ-V1-03 integration
+
+- Final review confirmed the three task commits descend directly from accepted `draft` `60a94ac517ad318050ff8a3b801c607f46abf49d`; the complete diff is limited to signup/profile behavior, nullable-name migration, focused tests, and V1 documentation.
+- Local `draft` integrated the branch with non-destructive merge `520fccddc109aef8a02ed07b7ee57edfd1b4128e` (`merge: integrate simplified signup profile reminder`). Task history is preserved.
+- Post-merge smoke passed 12 focused frontend validation/reminder tests and 4 backend signup/provisioning/profile tests.
+- Nothing was pushed, deployed, merged to `develop`, applied to a customer database, or granted to a real user. Task 2B and the next implementation task were not started.
