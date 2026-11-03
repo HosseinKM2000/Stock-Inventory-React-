@@ -150,3 +150,13 @@ Alembic `20261102_0011` normalizes existing rows to the full explicit registry a
 | Grant policy | Eligible sources/stores and explicit default or operator-selected duration; overlap remains unsupported. |
 | Expiry/grace | Renewal expiry and any grace behavior while preserving defined read/recovery access. |
 | Starter disposition | Transition/communication policy for existing Starter subscribers; no silent remapping. |
+
+## TZ-V1-03 signup and profile-completion map
+
+Public signup accepts a minimal credential request. Password confirmation remains entirely in the browser, while the server transaction creates the `User`, owner `Store`, owner `StoreMembership`, starter roles, and first `UserSession` together. Username uniqueness is authoritative in the database; a concurrent loser rolls back and receives a controlled conflict rather than leaving a partial workspace. The initial plan/mode path remains Free/Solo and does not create a commercial grant.
+
+Alembic `20261103_0012` makes only user first/last names nullable. Existing values, store IDs, membership/role data, plan/mode, operational data, sync history, fingerprints, and grants are unchanged. Minimal accounts use the username as the initial store display fallback. Downgrade has an explicit incomplete-profile preflight instead of inventing names.
+
+The reminder is derived from the authenticated `User` snapshot, not persisted as authority or a cross-account dismissal. It is emitted only for the active store owner when any deferred profile field is blank, uses informational severity, and routes to `/setting/profile`. Reload/viewing produces the same single derived item; the successful profile mutation updates the person/store-bound query snapshot and removes it. Store personnel and the isolated system-administrator workspace are excluded.
+
+Production-preview coverage uses mocked APIs and therefore establishes responsive form/notification behavior, not live network or database behavior. Real PostgreSQL coverage establishes nullable migration state, transaction rollback, and one-winner concurrent signup. Browser/process loss at the exact response boundary remains represented by the invariant that credentials are stored only after a successful response; it was not tested by killing a real browser process.
