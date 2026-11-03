@@ -704,8 +704,32 @@ class SubscriptionPlan(Base):
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     features_json: Mapped[str] = mapped_column(Text, default="{}")
     limits_json: Mapped[str] = mapped_column(Text, default="{}")
+    policy_revision: Mapped[int] = mapped_column(Integer, default=1)
+    commercial_status: Mapped[str] = mapped_column(String(30), default="legacy_unapproved")
     created_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now)
     updated_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now, onupdate=_now)
+
+
+class StorePlanGrant(Base):
+    __tablename__ = "store_plan_grants"
+    __table_args__ = (
+        UniqueConstraint("request_id", name="uq_store_plan_grants_request"),
+        CheckConstraint("ends_at > starts_at", name="ck_store_plan_grants_window"),
+    )
+
+    id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True)
+    request_id: Mapped[str] = mapped_column(String(64))
+    store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), index=True)
+    plan_id: Mapped[str] = mapped_column(ForeignKey("subscription_plans.id", ondelete="RESTRICT"), index=True)
+    source: Mapped[str] = mapped_column(String(40))
+    reason: Mapped[str] = mapped_column(Text)
+    starts_at: Mapped[datetime] = mapped_column(UTC_DATETIME)
+    ends_at: Mapped[datetime] = mapped_column(UTC_DATETIME)
+    granted_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), index=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(UTC_DATETIME, nullable=True)
+    revoked_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=True)
+    revocation_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now)
 
 
 class AdminAuditLog(Base):

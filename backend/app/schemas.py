@@ -640,6 +640,12 @@ class EntitlementOut(BaseModel):
     capabilities: dict[str, bool]
     limits: dict[str, int | None]
     tools: dict[str, bool]
+    store_id: int | None = None
+    base_plan: str
+    entitlement_source: Literal["subscription", "grant", "administrator"]
+    grant_id: int | None = None
+    grant_expires_at: datetime | None = None
+    policy_revision: int
 
 
 class PlanDefinitionOut(BaseModel):
@@ -653,6 +659,9 @@ class PlanDefinitionOut(BaseModel):
     is_active: bool
     features: dict[str, bool]
     limits: dict[str, int | None]
+    policy_revision: int
+    commercial_status: Literal["legacy_unapproved", "legacy_only"]
+    configuration_errors: list[str] = Field(default_factory=list)
     created_at: datetime
 
     updated_at: datetime
@@ -669,16 +678,12 @@ class PlanCreate(BaseModel):
     is_active: bool = True
     features: dict[str, bool]
     limits: dict[str, int | None]
-
-    @field_validator("limits")
-    @classmethod
-    def validate_limits(cls, value):
-        if any(item is not None and (isinstance(item, bool) or item < 1) for item in value.values()):
-            raise ValueError("PLAN_LIMIT_INVALID")
-        return value
+    reason: str = Field(min_length=3, max_length=1000)
 
 
 class PlanPatch(BaseModel):
+    expected_revision: int = Field(ge=1)
+    reason: str = Field(min_length=3, max_length=1000)
     name: str | None = Field(default=None, min_length=1, max_length=120)
     description: str | None = None
     price_minor: int | None = Field(default=None, ge=0)
@@ -689,12 +694,36 @@ class PlanPatch(BaseModel):
     features: dict[str, bool] | None = None
     limits: dict[str, int | None] | None = None
 
-    @field_validator("limits")
-    @classmethod
-    def validate_optional_limits(cls, value):
-        if value is not None and any(item is not None and (isinstance(item, bool) or item < 1) for item in value.values()):
-            raise ValueError("PLAN_LIMIT_INVALID")
-        return value
+
+
+class StorePlanGrantCreate(BaseModel):
+    request_id: str = Field(pattern=r"^[A-Za-z0-9_-]+$", min_length=8, max_length=64)
+    store_id: int = Field(gt=0)
+    plan_id: Literal["pro", "vip"]
+    source: Literal["early_user_gift", "support", "promotion", "manual"]
+    reason: str = Field(min_length=3, max_length=2000)
+    starts_at: datetime
+    ends_at: datetime
+
+
+class StorePlanGrantRevoke(BaseModel):
+    reason: str = Field(min_length=3, max_length=2000)
+
+
+class StorePlanGrantOut(BaseModel):
+    id: int
+    request_id: str
+    store_id: int
+    plan_id: str
+    source: str
+    reason: str
+    starts_at: datetime
+    ends_at: datetime
+    granted_by_user_id: int
+    revoked_at: datetime | None = None
+    revoked_by_user_id: int | None = None
+    revocation_reason: str | None = None
+    created_at: datetime
 
 
 class AdminUserStateUpdate(BaseModel):

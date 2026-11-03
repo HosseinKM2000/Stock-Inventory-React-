@@ -16,6 +16,8 @@ Alembic `20261102_0010` adds the server-owned `solo`/`team` mode, monotonic poli
 
 Schema `0010` is not safe with pre-1D workers because their direct routes and sync code do not enforce the mode boundary. Deployment requires controlled replacement: stop old workers, verify backup and run the `0009 -> 0010` preflight on a current copy, apply the migration, verify Alembic head `20261102_0010`, and start only 1D-or-newer workers. A preflight failure leaves the database at `0009`.
 
+Alembic `20261102_0011` adds plan policy revisions/commercial status and the store grant journal. It makes every observed capability and capacity explicit without changing its effective allocation, marks Starter `legacy_only`, and marks Free/Pro/VIP allocations `legacy_unapproved`. It does not rewrite subscriptions, operating mode, operational data, operation payloads, fingerprints, or actor history. Pre-2A workers must not coexist with schema `0011`: they ignore grant precedence, revision validation, and the canonical registry. Use a controlled replacement: stop old workers, verify a backup and migration on a current copy, apply `0010 -> 0011`, confirm the head, then start only 2A-or-newer workers.
+
 ## Operating modes
 
 Plan eligibility permits explicit team activation but never switches mode. Personnel count, plan purchase/downgrade, and subscription expiry also never switch it. Activation is one-way in this release; there is no routine team-to-solo endpoint. Creating or reactivating personnel requires team mode.
@@ -40,7 +42,13 @@ Effective customer access is the intersection of: a valid session; active member
 
 ## Commercial policy
 
-Plan data contains the `personnel` capability and `active_personnel` limit. This capability is the stable gate for team/multi-device plans while commercial plan names are still evolving. Free, Starter, and Pro disable personnel with zero seats. VIP enables ten active personnel in addition to the owner. `Store.personnel_limit_override` is the supported store exception. Admission and reactivation lock the store row and count active non-owner memberships inside the transaction. Inactive people and role definitions consume no seats. Personnel and role mutations require the capability and a live server request; they are never queued in the operational outbox.
+The canonical registry in `backend/app/entitlements.py` defines stable boolean capabilities and typed capacities. A policy must explicitly contain every known key; missing, malformed, unknown, dependency-breaking, or planned-enabled values are invalid rather than interpreted as unlimited. `None` means unlimited only for capacities that declare support, zero means the capability exists but admits no new records, and a finite integer must remain inside the declared range.
+
+The effective entitlement resolves server-side from the authenticated store. An active explicit Pro/VIP grant replaces the base plan as a whole until its server-time expiry or revocation; plans are not unioned. Member permissions, business-domain tool policy, operating mode/version, and device-session policy remain separate intersections. Grants do not bypass any of them, do not switch mode, and do not alter the underlying subscription. Store and actor come from server context, not grant input authority.
+
+The preserved Free/Starter/Pro/VIP values are migration evidence, not approved launch allocations. Starter stays readable only for an already assigned account and is hidden from public/new assignment choices. Administrator edits require an expected revision and reason, validate against the registry, and write an audit record atomically. Planned capability controls are visible but disabled. Current device policy is always unrestricted; limited mode cannot be enabled in V1.
+
+Inventory and active-personnel admission lock the authoritative store row before counting and applying capacity. Hiding a product does not release inventory capacity. `Store.personnel_limit_override` remains the supported store exception. Inactive people and role definitions consume no seats. Personnel and role mutations require the capability and a live server request; they are never queued in the operational outbox.
 
 Expiration or downgrade preserves users, memberships, roles, data, and history. Personnel operational access is suspended when `personnel` is unavailable. If a still-enabled limit is reduced below usage, existing memberships are preserved while admission/reactivation is blocked.
 

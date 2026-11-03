@@ -25,7 +25,7 @@ import {
 } from "../../mutations/use-admin";
 import { adminErrorMessage } from "../admin-error";
 import { UserDetailsDialog } from "./user-details-dialog";
-import { DevicePolicyEditor } from "./device-policy-editor";
+import { GrantDialog } from "./grant-dialog";
 import { formatJalaliDate } from "@/shared/lib/date/jalali";
 
 const date = (value: string | null) =>
@@ -202,7 +202,6 @@ export default function UsersSettings({ hideHeading = false }: { hideHeading?: b
                   </Box>
                 </Box>
                 <Flex direction="column" gap="2" className="admin-user-controls w-full sm:w-60">
-                  <DevicePolicyEditor user={user} />
                   <Select.Root
                     value={user.plan}
                     disabled={loading}
@@ -225,7 +224,7 @@ export default function UsersSettings({ hideHeading = false }: { hideHeading?: b
                     <Select.Content>
                       {(plans.data ?? [])
                         .filter(
-                          (plan) => plan.is_active || plan.id === user.plan,
+                          (plan) => (plan.is_active && plan.commercial_status !== "legacy_only") || plan.id === user.plan,
                         )
                         .map((plan) => (
                           <Select.Item key={plan.id} value={plan.id}>
@@ -236,6 +235,7 @@ export default function UsersSettings({ hideHeading = false }: { hideHeading?: b
                   </Select.Root>
                   <Flex gap="2" wrap="wrap">
                     <UserDetailsDialog user={user} />
+                    {!immutable && user.is_store_owner ? <GrantDialog user={user} /> : null}
                     <Button
                       size="2"
                       variant="soft"

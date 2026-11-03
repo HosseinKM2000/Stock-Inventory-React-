@@ -12,6 +12,7 @@ from ..models import (
     CatalogProduct,
     Store,
     StoreMembership,
+    StorePlanGrant,
     SubscriptionPlan,
     SyncChange,
     SyncOperation,
@@ -26,9 +27,13 @@ from ..schemas import (
     PlanCreate,
     PlanDefinitionOut,
     PlanPatch,
+    StorePlanGrantCreate,
+    StorePlanGrantOut,
+    StorePlanGrantRevoke,
 )
 from ..services.audit_service import record_admin_action
-from ..plans import PLAN_CATALOG, SUBSCRIPTION_CAPABILITIES
+from ..plans import PLAN_CATALOG
+from ..entitlements import registry_payload, validate_policy
 from ..services.authorization_service import RoleId, set_role
 from ..services.subscription_service import (
     assign_subscription,
@@ -37,6 +42,7 @@ from ..services.subscription_service import (
     plan_payload,
 )
 from ..services.plan_policy import effective_device_policy
+from ..services.entitlement_grant_service import create_store_grant, grant_payload, revoke_store_grant
 
 router = APIRouter(prefix="/admin", tags=["administration"])
 
@@ -44,12 +50,6 @@ router = APIRouter(prefix="/admin", tags=["administration"])
 def _validate_duration(duration: int | None, unit: str | None) -> None:
     if (duration is None) != (unit is None):
         raise HTTPException(status_code=422, detail="PLAN_DURATION_INVALID")
-
-
-def _validate_features(features: dict[str, bool]) -> None:
-    unknown = set(features) - SUBSCRIPTION_CAPABILITIES
-    if unknown:
-        raise HTTPException(status_code=422, detail="PLAN_CAPABILITY_INVALID")
 
 
 def _as_utc(value: datetime | None) -> datetime | None:
@@ -73,6 +73,7 @@ def _admin_user_payload(db: DbSession, user: User) -> dict:
     )
     remaining_days = None
     device_policy = effective_device_policy(db, user)
+    owner_store_id = db.scalar(select(Store.id).where(Store.owner_user_id == user.id))
     if user.subscription_expires_at is not None:
         expiration = user.subscription_expires_at
         if expiration.tzinfo is None:
@@ -90,6 +91,7 @@ def _admin_user_payload(db: DbSession, user: User) -> dict:
                 "effective_device_limit": device_policy["limit"],
                 "device_limit_source": device_policy["source"],
                 "active_session_count": sum(1 for session in user.sessions if session.is_active),
+                "store_id": owner_store_id,
             }
         ).model_dump(),
     }
@@ -102,6 +104,8 @@ def update_user_device_policy(
     admin: CurrentUserManager,
     db: DbSession,
 ):
+    if payload.mode == "limited":
+        raise HTTPException(status_code=409, detail="DEVICE_RESTRICTION_NOT_AVAILABLE_V1")
     user = _user_or_404(db, user_id)
     user.device_limit_mode = payload.mode
     user.device_limit_override = payload.limit if payload.mode == "limited" else None
@@ -289,6 +293,11 @@ def admin_list_plans(_: CurrentPlanManager, db: DbSession):
     return [plan_payload(plan) for plan in list_plans(db)]
 
 
+@router.get("/entitlements/registry")
+def entitlement_registry(_: CurrentPlanManager):
+    return registry_payload()
+
+
 @router.get("/plans/{plan_id}/subscribers", response_model=list[AdminUserOut])
 def plan_subscribers(plan_id: str, _: CurrentPlanManager, db: DbSession):
     if db.get(SubscriptionPlan, plan_id) is None:
@@ -308,7 +317,7 @@ def create_plan(payload: PlanCreate, admin: CurrentPlanManager, db: DbSession):
     if db.get(SubscriptionPlan, payload.id) is not None:
         raise HTTPException(status_code=409, detail="PLAN_EXISTS")
     _validate_duration(payload.duration, payload.duration_unit)
-    _validate_features(payload.features)
+    validate_policy(payload.features, payload.limits)
     plan = SubscriptionPlan(
         id=payload.id,
         name=payload.name,
@@ -322,7 +331,7 @@ def create_plan(payload: PlanCreate, admin: CurrentPlanManager, db: DbSession):
         limits_json=json.dumps(payload.limits),
     )
     db.add(plan)
-    record_admin_action(db, admin, "plan.created", metadata={"plan": plan.id})
+    record_admin_action(db, admin, "plan.created", metadata={"plan": plan.id, "reason": payload.reason})
     db.commit()
     db.refresh(plan)
     return plan_payload(plan)
@@ -335,24 +344,70 @@ def update_plan(
     admin: CurrentPlanManager,
     db: DbSession,
 ):
-    plan = db.get(SubscriptionPlan, plan_id)
+    plan = db.scalar(
+        select(SubscriptionPlan)
+        .where(SubscriptionPlan.id == plan_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
     if plan is None:
         raise HTTPException(status_code=404, detail="PLAN_NOT_FOUND")
     values = payload.model_dump(exclude_unset=True)
+    expected_revision = values.pop("expected_revision")
+    reason = values.pop("reason")
+    if plan.policy_revision != expected_revision:
+        raise HTTPException(status_code=409, detail="PLAN_REVISION_CONFLICT")
     resulting_duration = values.get("duration", plan.duration)
     resulting_unit = values.get("duration_unit", plan.duration_unit)
     _validate_duration(resulting_duration, resulting_unit)
+    resulting_features = values.get("features", json.loads(plan.features_json or "{}"))
+    resulting_limits = values.get("limits", json.loads(plan.limits_json or "{}"))
+    validate_policy(resulting_features, resulting_limits)
+    before = {
+        "name": plan.name, "description": plan.description, "price_minor": plan.price_minor,
+        "currency": plan.currency, "duration": plan.duration, "duration_unit": plan.duration_unit,
+        "is_active": plan.is_active, "features": json.loads(plan.features_json or "{}"),
+        "limits": json.loads(plan.limits_json or "{}"),
+    }
     if "features" in values:
-        _validate_features(values["features"])
         plan.features_json = json.dumps(values.pop("features"))
     if "limits" in values:
         plan.limits_json = json.dumps(values.pop("limits"))
     for field, value in values.items():
         setattr(plan, field, value)
-    record_admin_action(db, admin, "plan.changed", metadata={"plan": plan.id})
+    plan.policy_revision += 1
+    record_admin_action(db, admin, "plan.changed", metadata={
+        "plan": plan.id, "reason": reason, "previous_revision": expected_revision,
+        "revision": plan.policy_revision, "previous": before,
+        "warning": "Affects existing subscriptions immediately",
+    })
     db.commit()
     db.refresh(plan)
     return plan_payload(plan)
+
+
+@router.get("/grants", response_model=list[StorePlanGrantOut])
+def list_grants(_: CurrentPlanManager, db: DbSession, store_id: int | None = None):
+    statement = select(StorePlanGrant).order_by(StorePlanGrant.created_at.desc(), StorePlanGrant.id.desc())
+    if store_id is not None:
+        statement = statement.where(StorePlanGrant.store_id == store_id)
+    return [grant_payload(item) for item in db.scalars(statement)]
+
+
+@router.post("/grants", response_model=StorePlanGrantOut, status_code=201)
+def create_grant(payload: StorePlanGrantCreate, admin: CurrentPlanManager, db: DbSession):
+    grant = create_store_grant(db, admin, **payload.model_dump())
+    db.commit()
+    db.refresh(grant)
+    return grant_payload(grant)
+
+
+@router.post("/grants/{grant_id}/revoke", response_model=StorePlanGrantOut)
+def revoke_grant(grant_id: int, payload: StorePlanGrantRevoke, admin: CurrentPlanManager, db: DbSession):
+    grant = revoke_store_grant(db, admin, grant_id, payload.reason)
+    db.commit()
+    db.refresh(grant)
+    return grant_payload(grant)
 
 
 @router.delete("/plans/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)

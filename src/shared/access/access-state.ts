@@ -7,6 +7,7 @@ import type { DomainToolId } from "./tools";
 
 export type Entitlement = {
   user_id: number;
+  store_id?: number | null;
   plan: string;
   label: string;
   status: "active" | "expired";
@@ -18,6 +19,11 @@ export type Entitlement = {
   capabilities: Record<string, boolean>;
   limits: Record<string, number | null>;
   tools?: Record<string, boolean>;
+  base_plan?: string;
+  entitlement_source?: "subscription" | "grant" | "administrator";
+  grant_id?: number | null;
+  grant_expires_at?: string | null;
+  policy_revision?: number;
 };
 
 export type LocalEntitlement = Entitlement & {
@@ -59,8 +65,8 @@ let verificationRequired =
   typeof navigator !== "undefined" && navigator.onLine;
 let runtimeAnchor: { userId: number; serverMs: number; monotonicMs: number } | null = null;
 
-function entitlementKey(userId: number) {
-  return `${ENTITLEMENT_PREFIX}${userId}`;
+function entitlementKey(userId: number, storeId?: number | null) {
+  return `${ENTITLEMENT_PREFIX}${userId}:${storeId ?? "none"}`;
 }
 
 function emit() {
@@ -73,24 +79,33 @@ function readUser(): User | null {
   return user ? normalizeUser(user) : null;
 }
 
-function readEntitlement(userId: number): LocalEntitlement | null {
-  const current = storage.get<LocalEntitlement>(entitlementKey(userId));
-  if (current?.user_id === userId) return current;
+function readEntitlement(user: User): LocalEntitlement | null {
+  const current = storage.get<LocalEntitlement>(entitlementKey(user.id, user.store_id));
+  if (current?.user_id === user.id && (current.store_id ?? null) === (user.store_id ?? null)) return current;
 
   const legacy = storage.get<Partial<Entitlement>>(LEGACY_ENTITLEMENT_KEY);
-  if (legacy?.user_id === userId && legacy.plan) {
+  const priorUserOnly = storage.get<LocalEntitlement>(`${ENTITLEMENT_PREFIX}${user.id}`);
+  const candidate = priorUserOnly ?? legacy;
+  if (candidate?.user_id === user.id && candidate.plan) {
     const now = Date.now();
-    const serverTime = legacy.server_time ?? legacy.synced_at ?? new Date(now).toISOString();
+    const serverTime = candidate.server_time ?? candidate.synced_at ?? new Date(now).toISOString();
     const migrated: LocalEntitlement = {
-      ...(legacy as Entitlement),
-      user_id: userId,
+      ...(candidate as Entitlement),
+      user_id: user.id,
+      store_id: user.store_id ?? null,
       account_status: "active",
+      base_plan: candidate.base_plan ?? candidate.plan,
+      entitlement_source: candidate.entitlement_source ?? "subscription",
+      grant_id: candidate.grant_id ?? null,
+      grant_expires_at: candidate.grant_expires_at ?? null,
+      policy_revision: candidate.policy_revision ?? 0,
       server_time: serverTime,
       verified_at: serverTime,
       captured_at_ms: now,
       last_observed_at_ms: now,
     };
-    storage.set(entitlementKey(userId), migrated);
+    storage.set(entitlementKey(user.id, user.store_id), migrated);
+    storage.remove(`${ENTITLEMENT_PREFIX}${user.id}`);
     storage.remove(LEGACY_ENTITLEMENT_KEY);
     return migrated;
   }
@@ -126,7 +141,7 @@ function evaluate(): EntitlementEvaluation {
     return { entitlement: null, status: "disabled", remainingMs: null, requiresOnlineVerification: false };
   }
 
-  const entitlement = user ? readEntitlement(user.id) : null;
+  const entitlement = user ? readEntitlement(user) : null;
   if (!entitlement) {
     return {
       entitlement: null,
@@ -172,7 +187,7 @@ export const accessState = {
   user: readUser,
   entitlement() {
     const user = readUser();
-    return user ? readEntitlement(user.id) : null;
+    return user ? readEntitlement(user) : null;
   },
   evaluate,
   subscribe(listener: () => void) {
@@ -235,6 +250,14 @@ export const accessState = {
     if (tool === "categories") return this.canUse("categories.write");
     if (tool === "export") return this.canUse("export.local") || this.canUse("export.server");
     if (tool === "scanner") return this.canUse("barcode.lookup");
+    if (tool === "catalog") {
+      const capabilities = this.entitlement()?.capabilities;
+      // Pre-02A cached snapshots had no dedicated catalog key; preserve their
+      // prior read-only behavior until the next authoritative refresh.
+      return capabilities && "catalog.use" in capabilities
+        ? this.canUse("catalog.use")
+        : this.canUse("inventory.read");
+    }
     return this.canUse("inventory.read");
   },
   requireTool(tool: DomainToolId) {
@@ -307,7 +330,10 @@ export const accessState = {
       captured_at_ms: now,
       last_observed_at_ms: Math.max(now, serverMs),
     };
-    storage.set(entitlementKey(value.user_id), snapshot);
+    if ((value.store_id ?? null) !== (user?.store_id ?? null)) {
+      throw new Error("ENTITLEMENT_STORE_MISMATCH");
+    }
+    storage.set(entitlementKey(value.user_id, value.store_id), snapshot);
     runtimeAnchor = { userId: value.user_id, serverMs, monotonicMs: performance.now() };
     verificationRequired = false;
     emit();
@@ -317,7 +343,7 @@ export const accessState = {
     if (!snapshot) return emit();
     const observed = trustedNow(snapshot);
     if (observed > snapshot.last_observed_at_ms) {
-      storage.set(entitlementKey(snapshot.user_id), { ...snapshot, last_observed_at_ms: observed });
+      storage.set(entitlementKey(snapshot.user_id, snapshot.store_id), { ...snapshot, last_observed_at_ms: observed });
     }
     emit();
   },
@@ -341,7 +367,7 @@ export const accessState = {
   clear() {
     const user = this.user();
     storage.remove(USER_KEY);
-    if (user) storage.remove(entitlementKey(user.id));
+    if (user) storage.remove(entitlementKey(user.id, user.store_id));
     storage.remove(LEGACY_ENTITLEMENT_KEY);
     runtimeAnchor = null;
     verificationRequired = typeof navigator !== "undefined" && navigator.onLine;

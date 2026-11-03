@@ -9,7 +9,9 @@ router = APIRouter(prefix="/plans", tags=["plans"])
 
 @router.get("", response_model=list[PlanDefinitionOut])
 def available_plans(_: CurrentUser, db: DbSession):
-    return [plan_payload(plan) for plan in list_plans(db, active_only=True)]
+    # Starter remains readable for historical subscribers but is not an
+    # approved V1 offering presented for new selection.
+    return [plan_payload(plan) for plan in list_plans(db, active_only=True) if plan.id in {"free", "pro", "vip"}]
 
 
 @router.get("/current", response_model=EntitlementOut)

@@ -204,7 +204,10 @@ def test_platform_administrator_has_unrestricted_store_access(client: TestClient
 
     entitlement = client.get("/api/plans/current", headers=admin_headers)
     assert entitlement.status_code == 200
-    assert all(entitlement.json()["capabilities"].values())
+    assert entitlement.json()["store_id"] == auth["user"]["store_id"]
+    assert entitlement.json()["capabilities"]["inventory.write"] is True
+    assert entitlement.json()["capabilities"]["media.recovery"] is False
+    assert entitlement.json()["capabilities"]["invoices.sale"] is False
     assert all(value is None for value in entitlement.json()["limits"].values())
 
     customer_username = f"admin-isolation-{uuid.uuid4().hex[:8]}"
@@ -300,8 +303,11 @@ def test_store_inventory_is_shared_with_personnel_and_isolated_from_other_store(
 
     activate_team(client, owner_headers)
 
-    roles = client.get("/api/store/roles", headers=owner_headers).json()
-    viewer = next(item for item in roles if item["name"] == "مشاهده‌گر")
+    viewer_response = client.post("/api/store/roles", headers=owner_headers, json={
+        "name": f"Read only {suffix}", "permissions": ["products.view"],
+    })
+    assert viewer_response.status_code == 201, viewer_response.text
+    viewer = viewer_response.json()
     created = client.post("/api/store/personnel", headers=owner_headers, json={
         "first_name": "Shared", "last_name": "Member", "role_id": viewer["id"],
     })
@@ -325,7 +331,22 @@ def test_store_inventory_is_shared_with_personnel_and_isolated_from_other_store(
     assert [item["id"] for item in owner_items.json()["items"]] == [
         item["id"] for item in person_items.json()["items"]
     ]
-    assert item_id in [item["id"] for item in person_items.json()["items"]]
+    person_item = next(item for item in person_items.json()["items"] if item["id"] == item_id)
+    # The store's VIP entitlement permits inventory writes, but the viewer's
+    # member role does not. Plan capability must never bypass member policy.
+    mode = client.get("/api/store/operating-mode", headers=owner_headers).json()
+    denied_write = client.post("/api/sync/batch", headers={
+        **person_headers, "X-Client-Data-Schema": "2",
+    }, data={"operations_json": json.dumps({"operations": [{
+        "operation_id": f"viewer-denied-{uuid.uuid4()}",
+        "entity": "product", "entity_id": item_id, "operation": "UPDATE",
+        "execution_mode": "team", "policy_version": mode["policy_version"],
+        "payload": {"version": person_item["version"], "quantity": 18},
+    }]})})
+    assert denied_write.status_code == 200, denied_write.text
+    denied_result = denied_write.json()["results"][0]
+    assert denied_result["status"] == "fatal_error"
+    assert denied_result["error"].startswith("PERMISSION_REQUIRED:")
 
     with SessionLocal() as db:
         product = db.get(CatalogProduct, catalog_id)

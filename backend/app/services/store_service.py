@@ -79,6 +79,24 @@ def ensure_owner_store(db: Session, user: User) -> StoreContext | None:
         if store is None:
             return None
         return StoreContext(store, membership, _role_permissions(membership.role))
+    # Serialize lazy workspace creation. Two first requests for the same
+    # administrator/customer must not both observe an empty membership set and
+    # race the unique owner-store constraint.
+    db.scalar(
+        select(User)
+        .where(User.id == user.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    membership = db.scalar(
+        select(StoreMembership)
+        .where(StoreMembership.user_id == user.id)
+        .order_by(StoreMembership.is_owner.desc(), StoreMembership.id)
+        .limit(1)
+    )
+    if membership is not None:
+        store = db.get(Store, membership.store_id)
+        return None if store is None else StoreContext(store, membership, _role_permissions(membership.role))
     # Platform administrators get an isolated owner workspace as a safe
     # operational sandbox. This lets them exercise every customer workflow
     # without implicitly reading or mutating another store's data.

@@ -27,6 +27,7 @@ from app.models import (
     SyncChange,
     SyncOperation,
     Store,
+    StorePlanGrant,
     User,
     UserSession,
 )
@@ -34,6 +35,7 @@ from app.services import catalog_product_service
 from app.services.bootstrap_service import ensure_system_admin
 from app.services.store_service import create_owner_store
 from app.services.subscription_service import seed_default_plans
+from app.entitlements import SUBSCRIPTION_CAPABILITIES
 
 
 class SyncApiTest(unittest.TestCase):
@@ -1387,11 +1389,13 @@ class SyncApiTest(unittest.TestCase):
                 "duration": None,
                 "duration_unit": None,
                 "is_active": True,
-                "features": {"inventory.read": True, "inventory.write": True},
-                "limits": {"inventory_items": 10, "devices": 2},
+                "features": {key: key in {"inventory.read", "inventory.write"} for key in SUBSCRIPTION_CAPABILITIES},
+                "limits": {"inventory_items": 10, "devices": None, "active_personnel": 0},
+                "reason": "Automated policy test",
             },
         )
         self.assertEqual(created_plan.status_code, 201, created_plan.text)
+        created_policy = created_plan.json()
 
         assigned = self.client.patch(
             f"/api/admin/users/{target['id']}/subscription",
@@ -1421,9 +1425,23 @@ class SyncApiTest(unittest.TestCase):
         changed_plan = self.client.patch(
             "/api/admin/plans/test_release_plan",
             headers=self.admin_headers,
-            json={"features": {"inventory.read": True, "inventory.write": False}},
+            json={
+                "expected_revision": created_policy["policy_revision"],
+                "reason": "Disable writes in automated policy test",
+                "features": {**created_policy["features"], "inventory.write": False},
+            },
         )
         self.assertEqual(changed_plan.status_code, 200, changed_plan.text)
+        stale_plan = self.client.patch(
+            "/api/admin/plans/test_release_plan", headers=self.admin_headers,
+            json={
+                "expected_revision": created_policy["policy_revision"],
+                "reason": "Stale concurrent administrator update",
+                "name": "Must not win",
+            },
+        )
+        self.assertEqual(stale_plan.status_code, 409, stale_plan.text)
+        self.assertEqual(stale_plan.json()["detail"], "PLAN_REVISION_CONFLICT")
         refreshed = self.client.get("/api/plans/current", headers=self.headers)
         self.assertEqual(refreshed.status_code, 200, refreshed.text)
         self.assertFalse(refreshed.json()["capabilities"]["inventory.write"])
@@ -1550,24 +1568,24 @@ class SyncApiTest(unittest.TestCase):
             self.assertIsNotNone(restored_item)
             self.assertEqual(restored_item.quantity, 8)
 
-    def test_admin_device_policy_enforces_new_session_admission_without_revoking_existing(self) -> None:
+    def test_v1_device_policy_extension_does_not_activate_a_restriction(self) -> None:
         limited = self.client.patch(
             f"/api/admin/users/{self.user_id}/device-policy",
             headers=self.admin_headers,
             json={"mode": "limited", "limit": 2},
         )
-        self.assertEqual(limited.status_code, 200, limited.text)
-        self.assertEqual(limited.json()["effective_device_limit"], 2)
+        self.assertEqual(limited.status_code, 409, limited.text)
+        self.assertEqual(limited.json()["detail"], "DEVICE_RESTRICTION_NOT_AVAILABLE_V1")
         second = self.client.post("/api/auth/login", json={
             "username": "offline-sync-test", "password": "StrongPass123!",
             "device_fingerprint": "sync-test-device-2",
         })
         self.assertEqual(second.status_code, 200, second.text)
-        blocked = self.client.post("/api/auth/login", json={
+        unrestricted = self.client.post("/api/auth/login", json={
             "username": "offline-sync-test", "password": "StrongPass123!",
             "device_fingerprint": "sync-test-device-3",
         })
-        self.assertEqual(blocked.status_code, 403, blocked.text)
+        self.assertEqual(unrestricted.status_code, 200, unrestricted.text)
         still_valid = self.client.get("/api/auth/me", headers=self.headers)
         self.assertEqual(still_valid.status_code, 200, still_valid.text)
 
@@ -1579,7 +1597,7 @@ class SyncApiTest(unittest.TestCase):
         self.assertEqual(unlimited.status_code, 200, unlimited.text)
         admitted = self.client.post("/api/auth/login", json={
             "username": "offline-sync-test", "password": "StrongPass123!",
-            "device_fingerprint": "sync-test-device-3",
+            "device_fingerprint": "sync-test-device-4",
         })
         self.assertEqual(admitted.status_code, 200, admitted.text)
 
@@ -1627,6 +1645,7 @@ class SyncApiTest(unittest.TestCase):
             json={"name": "Blocked write"},
         )
         self.assertEqual(blocked.status_code, 403, blocked.text)
+        self.assertEqual(blocked.json()["detail"], "ENTITLEMENT_EXPIRED")
 
         with SessionLocal() as db:
             user = db.query(User).filter(User.username == "offline-sync-test").one()
@@ -1743,6 +1762,86 @@ class SyncApiTest(unittest.TestCase):
             user = db.query(User).filter(User.username == "offline-sync-test").one()
             user.is_active = True
             db.commit()
+
+    def test_entitlement_registry_plan_revision_and_time_bounded_grant(self) -> None:
+        registry = self.client.get("/api/admin/entitlements/registry", headers=self.admin_headers)
+        self.assertEqual(registry.status_code, 200, registry.text)
+        capability_keys = {item["key"] for item in registry.json()["capabilities"]}
+        self.assertIn("invoices.sale", capability_keys)
+        self.assertEqual(
+            next(item for item in registry.json()["capabilities"] if item["key"] == "invoices.sale")["status"],
+            "planned",
+        )
+
+        signup = self.client.post("/api/auth/signup", json={
+            "first_name": "Grant", "last_name": "Owner", "username": "grant-owner-test",
+            "password": "StrongPass123!", "device_fingerprint": "grant-owner-device",
+        })
+        self.assertEqual(signup.status_code, 201, signup.text)
+        grant_headers = {
+            "Authorization": f"Bearer {signup.json()['access_token']}",
+            "X-Device-Fingerprint": "grant-owner-device",
+        }
+        store_id = signup.json()["user"]["store_id"]
+        before = self.client.get("/api/plans/current", headers=grant_headers)
+        self.assertEqual(before.status_code, 200, before.text)
+        self.assertEqual(before.json()["base_plan"], "free")
+        self.assertEqual(before.json()["entitlement_source"], "subscription")
+
+        request = {
+            "request_id": "grant-retry-test-001", "store_id": store_id, "plan_id": "pro",
+            "source": "early_user_gift", "reason": "Explicit automated early-user gift",
+            "starts_at": (datetime.now(timezone.utc) - timedelta(minutes=1)).isoformat(),
+            "ends_at": (datetime.now(timezone.utc) + timedelta(days=2)).isoformat(),
+        }
+        created = self.client.post("/api/admin/grants", headers=self.admin_headers, json=request)
+        self.assertEqual(created.status_code, 201, created.text)
+        replay = self.client.post("/api/admin/grants", headers=self.admin_headers, json=request)
+        self.assertEqual(replay.status_code, 201, replay.text)
+        self.assertEqual(replay.json()["id"], created.json()["id"])
+        overlap = self.client.post("/api/admin/grants", headers=self.admin_headers, json={
+            **request, "request_id": "grant-overlap-test-002", "plan_id": "vip",
+        })
+        self.assertEqual(overlap.status_code, 409, overlap.text)
+        self.assertEqual(overlap.json()["detail"], "GRANT_OVERLAP_UNSUPPORTED")
+        forbidden = self.client.post("/api/admin/grants", headers=grant_headers, json={
+            **request, "request_id": "grant-non-admin-003",
+        })
+        self.assertEqual(forbidden.status_code, 403, forbidden.text)
+
+        effective = self.client.get("/api/plans/current", headers=grant_headers)
+        self.assertEqual(effective.status_code, 200, effective.text)
+        self.assertEqual(effective.json()["plan"], "pro")
+        self.assertEqual(effective.json()["base_plan"], "free")
+        self.assertEqual(effective.json()["entitlement_source"], "grant")
+        mode = self.client.get("/api/store/operating-mode", headers=grant_headers)
+        self.assertEqual(mode.status_code, 200, mode.text)
+        self.assertEqual(mode.json()["operating_mode"], "solo")
+
+        revoked = self.client.post(
+            f"/api/admin/grants/{created.json()['id']}/revoke",
+            headers=self.admin_headers, json={"reason": "Automated revocation boundary"},
+        )
+        self.assertEqual(revoked.status_code, 200, revoked.text)
+        after = self.client.get("/api/plans/current", headers=grant_headers)
+        self.assertEqual(after.status_code, 200, after.text)
+        self.assertEqual(after.json()["plan"], "free")
+        self.assertEqual(after.json()["base_plan"], "free")
+        self.assertEqual(after.json()["entitlement_source"], "subscription")
+
+        expired = self.client.post("/api/admin/grants", headers=self.admin_headers, json={
+            **request,
+            "request_id": "grant-expired-test-004",
+            "starts_at": (datetime.now(timezone.utc) - timedelta(days=3)).isoformat(),
+            "ends_at": (datetime.now(timezone.utc) - timedelta(days=2)).isoformat(),
+        })
+        self.assertEqual(expired.status_code, 201, expired.text)
+        after_expiry = self.client.get("/api/plans/current", headers=grant_headers)
+        self.assertEqual(after_expiry.status_code, 200, after_expiry.text)
+        self.assertEqual(after_expiry.json()["plan"], "free")
+        self.assertEqual(after_expiry.json()["entitlement_source"], "subscription")
+        with SessionLocal() as db:
+            self.assertEqual(db.query(StorePlanGrant).filter_by(store_id=store_id).count(), 2)
 
 
 if __name__ == "__main__":

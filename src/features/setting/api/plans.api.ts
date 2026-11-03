@@ -1,6 +1,6 @@
 import { apiFetch } from "@/shared/api/client";
 import type { AdminUser } from "@/features/auth/types";
-import type { SubscriptionPlan, SubscriptionPlanInput } from "../types";
+import type { EntitlementRegistry, StorePlanGrant, SubscriptionPlan, SubscriptionPlanInput } from "../types";
 
 export const listAvailablePlans = () => apiFetch<SubscriptionPlan[]>("/plans");
 export const listAdminPlans = () => apiFetch<SubscriptionPlan[]>("/admin/plans");
@@ -12,3 +12,8 @@ export const deletePlan = (id: string) =>
   apiFetch<void>(`/admin/plans/${id}`, { method: "DELETE" });
 export const listPlanSubscribers = (id: string) =>
   apiFetch<AdminUser[]>(`/admin/plans/${id}/subscribers`);
+export const getEntitlementRegistry = () => apiFetch<EntitlementRegistry>("/admin/entitlements/registry");
+export const createStorePlanGrant = (value: {
+  request_id: string; store_id: number; plan_id: "pro" | "vip"; source: string;
+  reason: string; starts_at: string; ends_at: string;
+}) => apiFetch<StorePlanGrant>("/admin/grants", { method: "POST", json: value });

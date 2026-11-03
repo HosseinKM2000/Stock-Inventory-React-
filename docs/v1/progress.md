@@ -198,7 +198,7 @@ Observed UI issues are recorded separately:
 ## Outstanding release risks
 
 1. Metadata and image-byte completion are conflated; clean-device OPFS recovery is absent.
-2. Commercial plan/grant/payment/admin policy is incomplete and contains an extra observed Starter tier not present in confirmed target policy.
+2. Final Free/Pro/VIP allocations, prices, gift/grace rules, and the existing Starter transition remain unapproved; payment integration is absent. The 2A registry/admin/grant infrastructure is implemented, and Starter is historical-only.
 3. Server restore, deploy/rollback, monitoring, alerting, and backup drills are not evidenced end to end.
 4. Persistent dashboard scroll regression and the mobile status overlap remain.
 5. Schema `0010` requires controlled replacement; pre-1D workers are not safe after upgrade.
@@ -210,3 +210,42 @@ Observed UI issues are recorded separately:
 TZ-V1-01D is reviewed and integrated into local `draft`. Task 2 may begin from this state as the commercial entitlement/allocation slice, but it was not started automatically. It must preserve the explicit server-owned mode/version boundary, server-accepted Team projection rule, account/store partition guards, immutable rejected evidence, unresolved-recovery activation block, and the rule that plan or subscription changes never switch operating mode.
 
 The infrastructure boundary is ready; final allocations are not. Capacities, gifts, retention, detailed draft policy, and the observed extra Starter tier remain unconfirmed commercial inputs. Task 2 must not treat illustrative or existing placeholder values as approved V1 policy, and must keep permission dependencies and subscription capacity in centralized configuration.
+
+## TZ-V1-02A centralized entitlements and grants
+
+Branch `feat/v1-plan-entitlement-management`, based directly on accepted local `draft` `f68b2faf78c99144825d45417c206b54b4e24e56`, implements the policy infrastructure without publishing final allocations:
+
+- A single typed backend registry defines implemented/planned capabilities, dependencies, member permissions, enforcement locations, typed capacities, ranges, and explicit zero/finite/unlimited/unset semantics. Unknown, missing, malformed, dependency-breaking, or planned-enabled policy fails explicitly.
+- Effective access resolves the complete current plan on the server and keeps plan, grant validity/provenance, store permission, operating mode/version, domain policy, and device policy separate. Safe historical replay remains ahead of current-policy rejection; new expired writes, capability denial, permission denial, and capacity exhaustion have distinct codes.
+- Administrator plan changes take a row lock, require the current revision and an audit reason, validate the complete policy, increment revision, and atomically record before/change metadata. The UI consumes the server registry, disables planned features, explains dependencies, and labels preserved allocations as unapproved.
+- Explicit administrator-only Pro/VIP grants are store-bound, time-bounded, auditable, revocable, retry-idempotent, and non-overlapping. One active grant replaces the base plan as a whole until server-time expiry/revocation; the unchanged base subscription then resumes. A grant never changes operating mode or bypasses membership/permission/capacity checks.
+- Inventory create and personnel admission remain atomic under the store-row lock. Hidden products still consume capacity. The device-policy extension point remains unrestricted for every tier and rejects attempts to enable a V1 limit.
+- Frontend entitlement snapshots are partitioned by authenticated person and store, carry policy revision/provenance, and reject late responses for a different account/store. The customer page shows the effective grant, Jalali expiry, and preserved base plan.
+
+Alembic `20261102_0011` adds plan revision/commercial status and `store_plan_grants`, then makes every legacy policy value explicit. It preserves current effective allocations but marks Free/Pro/VIP `legacy_unapproved` and Starter `legacy_only`; existing Starter remains readable while public listing and new assignment exclude it. No subscription is remapped, no gift is seeded, and no customer operational data, mode, operation identity/payload, fingerprint, result, or actor history is rewritten.
+
+Deployment is not rolling-compatible with pre-2A workers: old processes do not understand grant precedence, revision conflicts, or the full registry. Production requires a controlled replacement with stopped old workers, verified backup/current-copy rehearsal, `0010 -> 0011`, Alembic-head confirmation, and only then 2A-or-newer workers. No customer or production database was used.
+
+Verification recorded for delivery:
+
+| Command / scope | Result |
+|---|---|
+| `npm.cmd run test:backend` | Passed: 59 tests, including registry validation, member/cross-store/admin denial, grant retry/expiry/revocation, mode preservation, replay and device-policy compatibility. |
+| `npm.cmd run test:backend:postgres:local` | Passed: 14 tests, including migration, concurrent policy revision/audit, inventory capacity, grant retry/overlap, and lazy admin-workspace serialization. |
+| `npm.cmd test` | Passed: 73 files, 311 unit/component tests, including account/store cache partitioning and late-response rejection. |
+| `npm.cmd run test:typecheck` and `npm.cmd run lint` | Passed. |
+| `npm.cmd run build` | Passed with the existing stale Browserslist-data and large-chunk warnings; the largest `bwip-js` chunk remains about 930 kB. |
+| Focused production-preview E2E | Passed: 16 mocked-API Chromium cases across desktop/mobile for policy/grant UI, customer grant provenance, personnel/mode layouts, PWA offline cold routes, persistence, and profile isolation. This is UI/storage evidence, not live backend evidence. |
+
+### Task 2B decision table
+
+| Decision still required | Approval needed |
+|---|---|
+| Price and billing term | Free/Pro/VIP price, currency, and duration. |
+| Capability allocation | Exact implemented capabilities enabled per tier. |
+| Capacity allocation | Exact inventory/personnel values or supported unlimited choice; devices remain unrestricted in V1. |
+| Gift policy | Eligible source/audience and explicit duration rule; this task assumes none. |
+| Expiry/grace | Renewal expiry and any grace behavior while preserving defined read/recovery rights. |
+| Starter transition | Explicit treatment of existing Starter subscribers; silent remapping is forbidden. |
+
+Task 2A stops on its feature branch. It is not merged into `draft`, pushed, deployed, or applied to `develop`; Task 2B was not started.

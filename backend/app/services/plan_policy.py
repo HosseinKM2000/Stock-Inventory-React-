@@ -1,6 +1,5 @@
 from ..models import User
 from sqlalchemy.orm import Session
-from .subscription_service import entitlement_for_user
 
 
 def can_add_device(
@@ -8,15 +7,12 @@ def can_add_device(
     user: User,
     active_sessions_count: int,
 ) -> bool:
-
-    limit = effective_device_policy(db, user)["limit"]
-    return limit is None or active_sessions_count < limit
+    # Commercial V1 keeps device admission unrestricted.  The typed policy
+    # remains observable as an extension point but is not enforced here.
+    return True
 
 
 def effective_device_policy(db: Session, user: User) -> dict[str, int | str | None]:
-    if user.device_limit_mode == "unlimited":
-        return {"limit": None, "source": "user", "mode": "unlimited"}
-    if user.device_limit_mode == "limited":
-        return {"limit": user.device_limit_override, "source": "user", "mode": "limited"}
-    limit = entitlement_for_user(db, user)["limits"].get("devices")
-    return {"limit": limit, "source": "plan", "mode": "unlimited" if limit is None else "limited"}
+    # The fields and registry key are retained for a later device-policy task,
+    # but V1 deliberately has no admission restriction.
+    return {"limit": None, "source": "plan", "mode": "unlimited"}

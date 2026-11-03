@@ -19,6 +19,11 @@ This document records target policy. It does not claim that the current implemen
 - Real launch restrictions are enforced. Initial users receive an explicit, auditable, time-bounded grant to a real paid tier; entitlement checks are never bypassed.
 - Plan entitlements, store-member permissions, operating mode, and device policy are distinct inputs. The backend is authoritative for server access.
 - Plan changes preserve existing data. Platform administrators manage centralized capability and capacity definitions with validation and an audit trail, only in their isolated administrator workspace unless an explicit customer-store access workflow is later introduced.
+- Capability and capacity identifiers, types, dependencies, supported unlimited semantics, implementation status, and enforcement locations come from one server registry. Unknown or unset keys deny; planned capabilities cannot be enabled merely by configuration.
+- The effective commercial plan is one whole plan, never a union. One active, non-revoked, time-bounded administrator grant takes precedence over the underlying subscription until its server-time end; expiry or revocation reveals the unchanged base subscription. Overlapping grants are rejected in V1.
+- Plan-wide edits require the current policy revision and an audit reason. A stale revision fails instead of overwriting another administrator. Existing allocations remain explicitly legacy/unapproved until Task 2B confirms the launch catalog.
+- `Starter` remains readable for existing historical assignments but is not offered publicly or assignable to a new subscriber. It is not silently remapped to Free, Pro, or VIP.
+- Device capacity remains an extension point only: all V1 tiers are unrestricted and attempts to activate a device limit are rejected.
 
 ### Durability, synchronization, media, and backup
 

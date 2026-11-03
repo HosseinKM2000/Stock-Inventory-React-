@@ -54,7 +54,10 @@ def get_current_user(
 def require_capability(db: Session, user: User, capability: str) -> None:
     if is_admin(user):
         return
-    if not entitlement_for_user(db, user)["capabilities"].get(capability, False):
+    entitlement = entitlement_for_user(db, user)
+    if not entitlement["capabilities"].get(capability, False):
+        if entitlement["status"] == "expired":
+            raise HTTPException(status_code=403, detail="ENTITLEMENT_EXPIRED")
         raise HTTPException(status_code=403, detail=f"CAPABILITY_REQUIRED:{capability}")
 
 
@@ -83,7 +86,7 @@ def get_current_dashboard_user(
     db: Annotated[Session, Depends(get_db)],
 ) -> User:
     require_store_permission(db, user, StorePermission.DASHBOARD_VIEW)
-    require_capability(db, user, "inventory.read")
+    require_capability(db, user, "dashboard.analytics")
     return user
 
 
@@ -149,6 +152,7 @@ def get_current_catalog_user(
     # Platform administrators manage/read the global catalog, not a customer
     # workspace. Store permission applies only to store members.
     if not is_admin(user):
+        require_capability(db, user, "catalog.use")
         require_store_permission(db, user, StorePermission.CATALOG_USE)
     return user
 

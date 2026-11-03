@@ -20,9 +20,10 @@ const user: User = {
   created_at: "2026-01-01T00:00:00Z",
 };
 
-function entitlement(expiresAt: string | null, tools?: Record<string, boolean>): Entitlement {
+function entitlement(expiresAt: string | null, tools?: Record<string, boolean>, storeId: number | null = null): Entitlement {
   return {
     user_id: user.id,
+    store_id: storeId,
     plan: "pro",
     label: "Pro",
     status: "active",
@@ -70,7 +71,7 @@ describe("offline subscription access", () => {
   it("pauses personnel access after the 24-hour authorization lease", async () => {
     const { accessState, PERSONNEL_AUTHORIZATION_VALIDITY_MS } = await import("@/shared/access/access-state");
     accessState.saveUser({ ...user, store_id: 9, is_store_owner: false, store_permissions: ["products.view"], membership_authorization_checked_at: "2026-09-02T08:00:00Z" });
-    accessState.saveEntitlement(entitlement(null));
+    accessState.saveEntitlement(entitlement(null, undefined, 9));
     accessState.useOfflineSnapshot();
     expect(accessState.canUse("inventory.read")).toBe(true);
 
@@ -84,6 +85,16 @@ describe("offline subscription access", () => {
     accessState.saveUser(user);
     accessState.saveEntitlement(entitlement(null));
     accessState.saveUser({ ...user, id: 99, username: "other-user" });
+    accessState.useOfflineSnapshot();
+    expect(accessState.entitlement()).toBeNull();
+    expect(accessState.canWrite()).toBe(false);
+  });
+
+  it("partitions cached capabilities by both authenticated person and store", async () => {
+    const { accessState } = await import("@/shared/access/access-state");
+    accessState.saveUser({ ...user, store_id: 10 });
+    accessState.saveEntitlement(entitlement(null, undefined, 10));
+    accessState.saveUser({ ...user, store_id: 11 });
     accessState.useOfflineSnapshot();
     expect(accessState.entitlement()).toBeNull();
     expect(accessState.canWrite()).toBe(false);
