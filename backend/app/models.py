@@ -39,8 +39,8 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True)
 
-    first_name: Mapped[str] = mapped_column(String(120))
-    last_name: Mapped[str] = mapped_column(String(120))
+    first_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    last_name: Mapped[str | None] = mapped_column(String(120), nullable=True)
 
     username: Mapped[str] = mapped_column(
         String(120),

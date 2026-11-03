@@ -38,4 +38,14 @@ export type UpdateNotification = {
   route: "/setting/update";
 };
 
-export type AppNotification = InventoryNotification | BackupNotification | UpdateNotification;
+export type ProfileNotification = {
+  id: "profile-completion";
+  kind: "profile_completion";
+  severity: "info";
+  title: string;
+  description: string;
+  context: string;
+  route: "/setting/profile";
+};
+
+export type AppNotification = InventoryNotification | BackupNotification | UpdateNotification | ProfileNotification;

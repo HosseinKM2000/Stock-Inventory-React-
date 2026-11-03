@@ -1,5 +1,6 @@
 from fastapi import HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..models import User
@@ -59,7 +60,11 @@ def signup(
     )
 
     db.add(user)
-    db.flush()
+    try:
+        db.flush()
+    except IntegrityError as error:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Username already exists") from error
     create_owner_store(db, user)
 
     token = create_access_token(user.id)

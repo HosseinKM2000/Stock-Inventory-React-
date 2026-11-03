@@ -36,7 +36,7 @@ def record_store_activity(
         store_id=context.store.id,
         actor_user_id=actor.id,
         actor_membership_id=context.membership.id,
-        actor_display_name=f"{actor.first_name} {actor.last_name}".strip(),
+        actor_display_name=" ".join(part for part in (actor.first_name, actor.last_name) if part).strip() or actor.username,
         actor_role_name="مالک" if context.is_owner else (context.membership.role.name if context.membership.role else ""),
         operation_id=operation_id or str(uuid.uuid4()),
         target_entity=target_entity,

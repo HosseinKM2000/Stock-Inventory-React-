@@ -47,8 +47,8 @@ const PersonalInformationFields = () => {
     if (!me) return;
 
     loadForm({
-      first_name: me.first_name,
-      last_name: me.last_name,
+      first_name: me.first_name ?? "",
+      last_name: me.last_name ?? "",
       username: me.username,
       email: me.email ?? "",
       phone: me.phone ?? "",

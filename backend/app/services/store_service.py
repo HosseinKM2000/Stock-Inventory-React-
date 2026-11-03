@@ -33,7 +33,7 @@ def _role_permissions(role: StoreRole | None) -> frozenset[str]:
 def create_owner_store(db: Session, user: User) -> StoreContext:
     """Create the one V1 workspace for an independently registered customer."""
     store = Store(
-        name=f"{user.first_name} {user.last_name}".strip() or user.username,
+        name=" ".join(part for part in (user.first_name, user.last_name) if part).strip() or user.username,
         owner_user_id=user.id,
         plan=user.plan,
         subscription_started_at=user.subscription_started_at,

@@ -8,8 +8,8 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, StrictInt, field_va
 # AUTH / USER
 # =========================================================
 class UserBase(BaseModel):
-    first_name: str = Field(min_length=1, max_length=120)
-    last_name: str = Field(min_length=1, max_length=120)
+    first_name: str | None = Field(default=None, min_length=1, max_length=120)
+    last_name: str | None = Field(default=None, min_length=1, max_length=120)
     username: str = Field(min_length=3, max_length=120)
 
 
@@ -72,8 +72,8 @@ class IndustrySimpleOut(BaseModel):
 
 class UserOut(BaseModel):
     id: int
-    first_name: str
-    last_name: str
+    first_name: str | None
+    last_name: str | None
     username: str
     email: str | None = None
     phone: str | None = None

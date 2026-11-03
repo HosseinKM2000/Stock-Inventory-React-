@@ -18,6 +18,8 @@ Schema `0010` is not safe with pre-1D workers because their direct routes and sy
 
 Alembic `20261102_0011` adds plan policy revisions/commercial status and the store grant journal. It makes every observed capability and capacity explicit without changing its effective allocation, marks Starter `legacy_only`, and marks Free/Pro/VIP allocations `legacy_unapproved`. It does not rewrite subscriptions, operating mode, operational data, operation payloads, fingerprints, or actor history. Pre-2A workers must not coexist with schema `0011`: they ignore grant precedence, revision validation, and the canonical registry. Use a controlled replacement: stop old workers, verify a backup and migration on a current copy, apply `0010 -> 0011`, confirm the head, then start only 2A-or-newer workers.
 
+Alembic `20261103_0012` makes customer `first_name` and `last_name` nullable so public signup can defer profile data without placeholders. It preserves all existing names and does not rewrite store, membership, plan, mode, grant, operational, or sync rows. Downgrade fails with sampled user IDs while an incomplete profile exists. Pre-03 workers must not coexist once minimal accounts are enabled because they assume names are non-null; use a controlled application replacement around `0011 -> 0012`.
+
 ## Operating modes
 
 Plan eligibility permits explicit team activation but never switches mode. Personnel count, plan purchase/downgrade, and subscription expiry also never switch it. Activation is one-way in this release; there is no routine team-to-solo endpoint. Creating or reactivating personnel requires team mode.
@@ -54,7 +56,7 @@ Expiration or downgrade preserves users, memberships, roles, data, and history. 
 
 ## Credentials
 
-Public signup creates a user, owner store, owner membership, and editable starter roles. Owner-created personnel use the same global, case-sensitive username namespace. A missing username gets a cryptographically random suffix. Temporary passwords use `secrets`, are bcrypt-hashed immediately, returned once, never logged, and invalidate prior sessions when reset.
+Public signup accepts username and password, then atomically creates a user, owner store, owner membership, editable starter roles, and first session. Password confirmation is client-only. Missing names/contact values remain null; the initial store display name falls back to the username. Database uniqueness serializes concurrent retries, so only one workspace survives. Owner-created personnel use the same global, case-sensitive username namespace. A missing personnel username gets a cryptographically random suffix. Temporary passwords use `secrets`, are bcrypt-hashed immediately, returned once, never logged, and invalidate prior sessions when reset.
 
 The first personnel login is online. `temporary_password_required` blocks operational dependencies until password change succeeds. Visiting Security separately records `credentials_notice_viewed_at`; it does not clear the password gate. Username changes preserve user and membership IDs, so attribution remains stable.
 

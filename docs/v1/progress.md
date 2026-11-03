@@ -201,7 +201,7 @@ Observed UI issues are recorded separately:
 2. Final Free/Pro/VIP allocations, prices, gift/grace rules, and the existing Starter transition remain unapproved; payment integration is absent. The 2A registry/admin/grant infrastructure is implemented, and Starter is historical-only.
 3. Server restore, deploy/rollback, monitoring, alerting, and backup drills are not evidenced end to end.
 4. Persistent dashboard scroll regression and the mobile status overlap remain.
-5. Schema `0010` requires controlled replacement; pre-1D workers are not safe after upgrade.
+5. Schema `0012` and minimal accounts require controlled replacement; pre-03 workers are not safe once nullable profile names are in use.
 6. The 1C checkpoint/review journal is browser-local; browser-process kill, real post-commit termination, device-loss, and cross-browser File System Access recovery remain unverified.
 7. Activation warns about other devices and the server rejects their stale commands, but instant control of a disconnected device is not possible and no private team draft workflow exists.
 
@@ -259,3 +259,29 @@ Verification recorded for delivery:
 - Local `draft` integrated implementation and review history with non-destructive merge `92506ad2bd46f0085bd995ebab84c4910ca722f4` (`merge: integrate entitlement management`). Nothing was pushed, deployed, applied to `develop`, or granted to a real user.
 
 Task 2A is reviewed and integrated into local `draft`. Task 2B is ready only for the explicit commercial decisions in the table above; it was not started automatically.
+
+## TZ-V1-03 simplified signup and profile reminder
+
+Branch `feat/v1-simple-signup-profile-reminder`, based directly on accepted local `draft` `60a94ac517ad318050ff8a3b801c607f46abf49d`, simplifies public signup without changing commercial policy, store ownership, operating mode, or Task 2B decisions. Implementation commit `9468d7d124e33076f95e311caa8d48d99ec79f92` contains the reviewed runtime and regression changes:
+
+- Signup now asks only for username, password, and client-only password confirmation. It preserves the existing password rules, password-manager autocomplete, paste behavior, Persian validation, recoverable in-memory input after a failed request, and a one-request guard against repeated submission. The server receives neither confirmation nor fabricated profile/contact values.
+- `first_name` and `last_name` are nullable until profile completion; email and phone remain nullable. Account, owner store, owner membership, starter roles, and session still commit in one transaction. A PostgreSQL uniqueness race returns a controlled duplicate-username response, and an injected provisioning failure proves that no partial identity remains.
+- A successfully created minimal owner receives the existing Free base plan, Solo mode, unrestricted V1 device behavior, and no grant. Existing clients that still send names/contact values remain accepted. A lost/failed response does not set a browser token; retry cannot create a second workspace.
+- An incomplete owner sees one informational, non-blocking notification linked directly to `/setting/profile`. Opening it does not dismiss it; a successful profile update removes it from the current account/store query state. Personnel and the isolated platform-administrator workspace are not asked to edit owner profile data.
+- Alembic `20261103_0012` changes only the nullability of `users.first_name` and `users.last_name`. Upgrade preserves existing values. Downgrade refuses with `PROFILE_NAME_PREFLIGHT:user_ids=...` while any minimal account still has an incomplete name, so operators must complete/remediate those profiles before reverting.
+
+Verification:
+
+| Command / scope | Result |
+|---|---|
+| Focused signup/profile tests | Passed: 12 frontend validation/notification tests and 4 backend provisioning/profile tests. |
+| `npm.cmd test` | Passed: 74 files, 317 unit/component tests. |
+| `npm.cmd run test:backend` | Passed: 65 tests. |
+| `npm.cmd run test:backend:postgres:local` | Passed: 16 tests, including migration head/nullability and concurrent minimal signup with exactly one complete workspace. |
+| `npm.cmd run test:typecheck` and `npm.cmd run lint` | Passed. |
+| `npm.cmd run build` | Passed with the existing stale Browserslist-data and large-chunk warnings; `bwip-js` remains about 930 kB. |
+| Production-preview `signup-profile-reminder.spec.ts` | Passed: 4 Chromium cases across desktop/mobile. The minimal form, double-submit guard, retained failed input, informational reminder, direct profile action, persistence after viewing, successful resolution, and horizontal overflow were covered with mocked APIs. This is browser UI/storage evidence, not a live backend journey. |
+
+Deployment is not safely mixed with pre-03 workers after minimal accounts can exist: older response/schema and display assumptions require non-null names. Use a controlled backend/frontend replacement, verify a backup and rehearse `0011 -> 0012` on a current copy, confirm Alembic head, then enable the new signup UI only with 03-or-newer workers. No production/customer database was migrated, no real account was created, and no grant was issued.
+
+Task 2B remains pending exactly the previously listed commercial decisions. TZ-V1-03 does not approve prices, allocations, gifts, grace, or Starter transition and does not start the next task automatically.
