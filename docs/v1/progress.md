@@ -414,3 +414,24 @@ Verification before integration:
 Review corrected three acceptance-boundary issues before commit: PostgreSQL cancellation now locks only the invoice row while eager-loading lines, Team posting no longer publishes a pending invoice projection, and cancellation rejection restores the accepted invoice state while retaining queue evidence. It also added fresh-device server-history hydration with account/store partitioning and explicit redacted-price presentation. The full diff contains no customer data, login change, entitlement allocation, grant, payment, PDF/print/sharing, or Task 06B work.
 
 Remaining limits: the focused browser journey uses mocked APIs; PostgreSQL/API behavior and browser UI/storage behavior are separate evidence rather than one live end-to-end browser journey. Invoice retention/numbering beyond stable internal IDs, partial returns, PDF/print/share, payments/tax, and realized-profit reporting remain out of scope. Task 2B, Task 05B, and Task 06B remain pending and were not started.
+
+## TZ-V1-06B invoice barcode selection and Persian output
+
+Branch `feat/v1-invoice-scan-and-export`, based directly on accepted local `draft` `94f3ef27c03e96c5dcefaf873fa1764322f720b6`, adds presentation and draft-selection paths without changing invoice acceptance, stock, movements, outbox semantics, backend schema, entitlements, or commercial allocations:
+
+- Invoice drafts can use the existing hardware/camera barcode capture. Lookup is capability/permission checked and person/store scoped. A unique match uses the same product-selection function as manual entry and preserves explicit zero versus missing suggested price. Repeated callbacks and already-selected products do not duplicate, increment, or overwrite a row; unknown and ambiguous results fail visibly. Camera work closes on completion, dialog close, unmount, or account/store context change.
+- PDF, print, and native file share use only stored immutable invoice snapshots. Output rechecks invoice capability, view/price permission, local scope, eligible state, and the account after asynchronous generation. Accepted/cancelled records are final; a Solo pending record is labelled `ذخیره‌شده روی این دستگاه`; rejected, conflicted, cancel-pending, and Team-unknown work cannot be exported as final.
+- The lazy-loaded PDF generator creates a real A4 PDF from browser-rendered Persian/RTL pages using the local Vazirmatn asset already included in the offline application shell. Long descriptions wrap, tables repeat their header after page breaks, totals stay inside the page, and cancelled invoices receive `باطل‌شده` on every page. Print uses the same snapshot model. Share uses native file sharing only when supported and otherwise directs the user to download; no public link is created.
+- Scan and output actions do not call invoice posting/cancellation, stock, movement, or operational queue services. No new dependency, migration, backup format, service-worker policy, plan allocation, grant, payment, tax, or Task 07 behavior was added.
+
+Verification recorded before integration:
+
+| Command / scope | Result |
+|---|---|
+| Focused barcode/output unit and component tests | Passed: authorized unique/unknown/ambiguous lookup, no domain effects, account-switch rejection, immutable snapshot output eligibility, Solo-local labelling, hardware completion, and camera shutdown on context change. |
+| Production-preview `invoices.spec.ts` | Passed: 6 Chromium cases across desktop/mobile. Manual and hardware selection, unchanged stock/movement/outbox before posting, real offline sale PDF, cancelled multipage purchase PDF from historical snapshots, responsive Persian controls, and no horizontal overflow were covered. Camera input was simulated; no physical camera/scanner/printer or OS share sheet was used. |
+| `npm.cmd test` | Passed: 82 files, 350 unit/component tests. |
+| `npm.cmd run test:backend` | Passed: 76 tests. No backend runtime/schema change was made. |
+| Typecheck/lint/build | Passed. The PDF generator is a separate lazy chunk and the existing stale Browserslist/large `bwip-js` warnings remain. |
+
+Remaining limits: PDF text is visually shaped by Chromium into page images and is not selectable/searchable or tagged for assistive PDF readers. Chromium is the verified engine; physical scanner/camera, native printer dialogs, mobile OS file-share sheets, other browser engines, and process-kill timing during generation remain unverified. Invoice numbering/retention, payments/tax, partial returns, and realized-profit reporting remain outside 06B. Task 2B and Task 05B remain pending; Task 07 was not started.

@@ -72,7 +72,7 @@ This document records target policy. It does not claim that the current implemen
 - Conflict policy for concurrent absolute quantity changes and operator handling of unknown outcomes.
 - Media retention/garbage-collection policy, any future quota, and the original-versus-optimized-derivative archival promise. V1 adds no commercial media quota and keeps durable unreferenced bytes rather than risking destructive collection.
 - Backup encryption/key ownership, frequency, retention, RPO/RTO, and restore-drill ownership.
-- Atomic purchase and sale invoices are implemented from the store perspective: purchases increase stock, sales decrease it, and full cancellation creates compensating movements. PDF/print/sharing, payments, tax reporting, partial returns, and realized-profit presentation remain unresolved/out of scope; tier allocation still requires Task 2B approval.
+- Atomic purchase and sale invoices are implemented from the store perspective: purchases increase stock, sales decrease it, and full cancellation creates compensating movements. Persian PDF/print/native file share are snapshot-only presentation paths; they do not create public links or domain mutations. Payments, tax reporting, partial returns, realized-profit presentation, and long-term invoice numbering/retention remain unresolved/out of scope; tier allocation still requires Task 2B approval.
 - Production SLOs, monitoring/incident ownership, deployment approval, and rollback procedure.
 
 Illustrative values already present in code are observed defaults, not confirmation of these open decisions.
