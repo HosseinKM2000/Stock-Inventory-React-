@@ -1,4 +1,5 @@
 import os
+import tempfile
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -40,6 +41,12 @@ class Settings:
     ]
     SYSTEM_ADMIN_PASSWORD: str | None = os.getenv("SYSTEM_ADMIN_PASSWORD")
     UPLOAD_DIR: Path = BASE_DIR / "uploads"
+    # Product media must survive application/database replacement. Production
+    # deployments provide an absolute durable mount; tests/development use an
+    # operating-system runtime directory rather than the source tree.
+    MEDIA_STORAGE_DIR: Path = Path(
+        os.getenv("MEDIA_STORAGE_DIR", str(Path(tempfile.gettempdir()) / "tanzim-media"))
+    ).expanduser().resolve()
 
 
 settings = Settings()
@@ -52,3 +59,6 @@ if settings.DATABASE_URL.startswith("sqlite") and settings.ENVIRONMENT != "test"
 if settings.ENVIRONMENT in {"production", "prod"} and settings.SECRET_KEY == "dev-secret-change-me":
     raise RuntimeError("SECRET_KEY must be configured before production startup")
 settings.UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+if settings.ENVIRONMENT in {"production", "prod"} and not os.getenv("MEDIA_STORAGE_DIR"):
+    raise RuntimeError("MEDIA_STORAGE_DIR is required in production")
+settings.MEDIA_STORAGE_DIR.mkdir(parents=True, exist_ok=True)

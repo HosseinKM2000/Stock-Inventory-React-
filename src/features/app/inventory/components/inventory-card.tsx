@@ -73,7 +73,9 @@ export function ProductCard({
   const packageBreakdown = packaging.isPackaged
     ? getPackagingBreakdown(product.quantity, packaging.packSize)
     : null;
-  const imagePath = product.image_url ?? product.catalog_product?.image_url ?? null;
+  const imagePath = product.image_url?.startsWith("local://")
+    ? product.image_url
+    : product.media_preview_url ?? product.image_url ?? product.catalog_product?.image_url ?? null;
   const resolvedImage = useResolvedImage(imagePath);
   const [unavailableImagePath, setUnavailableImagePath] = useState<string | null>(null);
   const imagePreview = resolvedImage.src ?? productPlaceholder;

@@ -31,6 +31,8 @@ This document records target policy. It does not claim that the current implemen
 - UI success follows the required durable write. Local durability, server acceptance, media transfer, and independent backup are separate states.
 - Once transmitted, an operation identity and payload are immutable. A later mutation gets a new identity. Terminal or unknown outcomes remain recoverable and do not retry forever.
 - Product metadata and image bytes have coordinated but independent transfer states. Entitled recovery restores actual bytes to local storage; OPFS alone is not an independent backup.
+- A durable product-media transfer has its own store/actor-bound identity and content fingerprint. Upload success stages bytes only; in Team mode the association becomes shared solely through the normal versioned, server-accepted product command. A stale upload cannot publish an old association or resurrect a deleted product.
+- Clean-device recovery verifies the authenticated asset identity, version, media type, size, and SHA-256 before writing OPFS. Backup byte coverage distinguishes locally available bytes from server-only metadata; neither state is presented as an independent external backup.
 - Catalog media is administrator-managed and referenced by customer data. Plan changes and catalog hiding never delete shared catalog files. Backend storage exposes stable object references rather than temporary delivery URLs so a CDN can be added later.
 - Backup/restore cannot restore identity, authority, credentials, memberships, roles, or subscriptions; it cannot cross owner/store boundaries. Restored work is reviewed and reconciled, never silently discarded or replayed under a different actor.
 - An attempted or uncertain restored operation keeps its original operation identity and semantic payload for idempotent status/replay. Only an explicitly approved new recovery change receives a new identity, current actor attribution, and the current conflict/version checks. A missing result for an additive operation remains unresolved rather than being guessed.
@@ -68,7 +70,7 @@ This document records target policy. It does not claim that the current implemen
 - Exact tier capacities, capability allocations, paid prices, gift duration, renewal/grace rules, and retention periods.
 - Future private, non-executable team drafts, their retention, and who may submit them. They are not implemented by TZ-V1-01D.
 - Conflict policy for concurrent absolute quantity changes and operator handling of unknown outcomes.
-- Media completion criteria, download-to-OPFS policy, quotas, retention, and original-versus-derivative recovery promise.
+- Media retention/garbage-collection policy, any future quota, and the original-versus-optimized-derivative archival promise. V1 adds no commercial media quota and keeps durable unreferenced bytes rather than risking destructive collection.
 - Backup encryption/key ownership, frequency, retention, RPO/RTO, and restore-drill ownership.
 - Purchase and sale invoices are planned Commercial V1 scope. The accounting definition, source events, and presentation of realized profit remain unresolved.
 - Production SLOs, monitoring/incident ownership, deployment approval, and rollback procedure.

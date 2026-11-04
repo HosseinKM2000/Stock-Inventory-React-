@@ -57,7 +57,7 @@ export async function pushProductBatch(items: SyncQueueItem[]) {
 
   for (const item of items) {
     const product = item.payload as Product | null;
-    if (!isLocalImage(product?.image_url)) continue;
+    if (!isLocalImage(product?.image_url) || (product as (Product & { media_transfer_id?: string }) | null)?.media_transfer_id) continue;
 
     try {
       formData.append(

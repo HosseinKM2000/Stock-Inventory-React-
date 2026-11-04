@@ -12,7 +12,8 @@ type Props = {
 
 export function ProductImageDialog({ product, onOpenChange }: Props) {
   const image = useImage(
-    product?.image_url ?? product?.catalog_product?.image_url,
+    (product?.image_url?.startsWith("local://") ? product.image_url : product?.media_detail_url)
+      ?? product?.image_url ?? product?.catalog_product?.image_url,
   ) ?? productPlaceholder;
   const name = product?.custom_label ?? product?.catalog_product?.name ?? "محصول";
 

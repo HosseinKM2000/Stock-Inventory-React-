@@ -66,6 +66,12 @@ export type Product = {
   image_url: string | null;
 
   server_image_url?: string | null;
+  media_asset_id?: string | null;
+  media_version?: number | null;
+  media_content_sha256?: string | null;
+  media_byte_size?: number | null;
+  media_preview_url?: string | null;
+  media_detail_url?: string | null;
 
   deleted_at: string | null;
 

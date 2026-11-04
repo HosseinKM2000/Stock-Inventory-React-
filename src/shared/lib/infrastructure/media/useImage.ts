@@ -16,14 +16,17 @@ export function useResolvedImage(path?: string | null) {
   useEffect(() => {
     currentPathRef.current = normalizedPath;
     const localImage = normalizedPath?.startsWith("local://") === true;
-    if (!normalizedPath || (!localImage && !normalizedPath.startsWith("/uploads/"))) return;
+    const protectedRemote = normalizedPath?.startsWith("/uploads/") || normalizedPath?.startsWith("/api/media/");
+    if (!normalizedPath || (!localImage && !protectedRemote)) return;
 
     let cancelled = false;
     let objectUrl: string | undefined;
 
     const filePromise = localImage
       ? imageService.read(normalizedPath)
-      : apiFetch<Blob>(`/files/${encodeURIComponent(normalizedPath.split("/").at(-1) ?? "")}`, { responseType: "blob" });
+      : normalizedPath.startsWith("/api/media/")
+        ? apiFetch<Blob>(normalizedPath.slice(4), { responseType: "blob" })
+        : apiFetch<Blob>(`/files/${encodeURIComponent(normalizedPath.split("/").at(-1) ?? "")}`, { responseType: "blob" });
     filePromise
       .then((file) => {
         if (cancelled || currentPathRef.current !== normalizedPath) return;
@@ -49,7 +52,7 @@ export function useResolvedImage(path?: string | null) {
 
   if (!normalizedPath) return { src: undefined, loading: false, error: undefined };
   const localImage = normalizedPath.startsWith("local://");
-  if (!localImage && !normalizedPath.startsWith("/uploads/")) {
+  if (!localImage && !normalizedPath.startsWith("/uploads/") && !normalizedPath.startsWith("/api/media/")) {
     return { src: resolveAssetUrl(normalizedPath), loading: false, error: undefined };
   }
 

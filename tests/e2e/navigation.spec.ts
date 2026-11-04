@@ -19,6 +19,11 @@ async function seedAuthenticatedUser(page: Page, role: Role) {
       is_admin: seededRole === "ADMIN",
       role: seededRole,
       is_system_admin: false,
+      is_store_owner: seededRole === "USER",
+      store_id: seededRole === "USER" ? 8101 : 8102,
+      membership_id: seededRole === "USER" ? 9101 : 9102,
+      store_operating_mode: "solo",
+      store_policy_version: 1,
       subscription_started_at: now,
       subscription_expires_at: "2099-01-01T00:00:00.000Z",
       created_at: now,
@@ -46,6 +51,7 @@ async function seedAuthenticatedUser(page: Page, role: Role) {
         "import.xlsx": true,
         "export.local": true,
         "export.server": true,
+        "backup": true,
       },
       limits: { inventory_items: null },
     }));
@@ -424,6 +430,10 @@ test("sync status links expose responsive details", async ({ page }) => {
   await expect(page.getByRole("button", { name: "همگام‌سازی اکنون" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "کارهای در انتظار" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "گزارش وضعیت اخیر" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "تصاویر آفلاین" })).toBeVisible();
+  const mediaAction = page.getByRole("button", { name: "دریافت تصاویر برای استفاده آفلاین" });
+  await expect(mediaAction).toBeVisible();
+  await expect(page.locator(".sync-detail-page")).toHaveAttribute("dir", "rtl");
 
   const header = page.locator(".app-header");
   await expect(header.getByRole("link", { name: /مشاهده جزئیات همگام‌سازی/ })).toHaveAttribute("href", "/setting/sync");
@@ -434,6 +444,8 @@ test("sync status links expose responsive details", async ({ page }) => {
 
   for (const viewport of [{ width: 320, height: 568 }, { width: 1440, height: 900 }]) {
     await page.setViewportSize(viewport);
+    await expect(mediaAction).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), `${viewport.width}px media overflow`).toBeLessThanOrEqual(1);
     const badgeBox = await header.locator(".sync-status-badge").boundingBox();
     const iconBox = await header.locator(".sync-status-icon").boundingBox();
     const badgeCenter = { x: badgeBox!.x + badgeBox!.width / 2, y: badgeBox!.y + badgeBox!.height / 2 };

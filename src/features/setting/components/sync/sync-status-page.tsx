@@ -13,6 +13,10 @@ import { Badge, Box, Callout, Flex, Grid, Text } from "@radix-ui/themes";
 import { useEffect, useState } from "react";
 import { formatJalaliDateTime } from "@/shared/lib/date/jalali";
 import { PageGuide } from "@/features/app/layout/page-guide";
+import { mediaRecoveryService, type MediaRecoverySummary } from "@/shared/lib/infrastructure/media/media-recovery.service";
+import { mediaTransferService } from "@/shared/lib/infrastructure/media/media-transfer.service";
+import { accessState } from "@/shared/access/access-state";
+import { toast } from "sonner";
 
 const dateFormatter = { format: formatJalaliDateTime };
 
@@ -48,6 +52,10 @@ export function SyncStatusPage() {
   const [queue, setQueue] = useState<SyncQueueItem[]>([]);
   const [queueLoading, setQueueLoading] = useState(true);
   const [queueError, setQueueError] = useState<string | null>(null);
+  const [mediaSummary, setMediaSummary] = useState<MediaRecoverySummary | null>(null);
+  const [mediaPending, setMediaPending] = useState(0);
+  const [mediaWorking, setMediaWorking] = useState(false);
+  const [mediaProgress, setMediaProgress] = useState<string | null>(null);
   const indicator = getSyncIndicator(status, online);
   const paused = syncService.isPaused();
 
@@ -69,10 +77,45 @@ export function SyncStatusPage() {
     return () => { current = false; };
   }, [status.error, status.lastSyncedAt, status.pending, status.state]);
 
+  useEffect(() => {
+    let current = true;
+    void Promise.all([mediaRecoveryService.summary(), mediaTransferService.summary()]).then(([summary, transfers]) => {
+      if (!current) return;
+      setMediaSummary(summary);
+      setMediaPending(transfers.filter((item) => item.status !== "uploaded").length);
+    }).catch(() => undefined);
+    return () => { current = false; };
+  }, [status.lastSyncedAt, status.pending, status.state]);
+
   const runSync = () => {
     if (!online || status.state === "syncing" || paused) return;
     void syncService.retry();
   };
+
+  const recoverMedia = async () => {
+    if (mediaWorking || !online) return;
+    setMediaWorking(true);
+    setMediaProgress(null);
+    try {
+      await mediaTransferService.retryFailures();
+      const result = await mediaRecoveryService.downloadForOffline((done, total) => {
+        setMediaProgress(`${done.toLocaleString("fa-IR")} از ${total.toLocaleString("fa-IR")}`);
+      });
+      setMediaSummary(await mediaRecoveryService.summary());
+      setMediaPending((await mediaTransferService.summary()).filter((item) => item.status !== "uploaded").length);
+      toast.success(result.total ? "تصاویر قابل بازیابی روی این دستگاه ذخیره شدند" : "همهٔ تصاویر در دسترس آفلاین هستند");
+    } catch (error) {
+      toast.error(error instanceof Error && error.name === "QuotaExceededError"
+        ? "فضای ذخیره‌سازی دستگاه برای دریافت تصاویر کافی نیست"
+        : "دریافت تصاویر کامل نشد؛ وضعیت اتصال و فضای دستگاه را بررسی کنید");
+    } finally {
+      setMediaWorking(false);
+    }
+  };
+
+  const canRecoverMedia = accessState.canUse("backup") && accessState.hasStorePermission("tools.backup");
+  const mediaCoverageColor = (mediaSummary?.missing ?? 0) > 0 ? "amber" : "green";
+  const mediaCoverageLabel = `${(mediaSummary?.localAvailable ?? 0).toLocaleString("fa-IR")} محلی از ${(mediaSummary?.serverAvailable ?? 0).toLocaleString("fa-IR")}`;
 
   return (
     <Box dir="rtl" className="sync-detail-page mx-auto w-full max-w-5xl">
@@ -112,6 +155,29 @@ export function SyncStatusPage() {
           <Callout.Text>{syncErrorMessage(status.error)}</Callout.Text>
         </Callout.Root>
       )}
+
+      <section className="sync-detail-section mt-5" aria-labelledby="offline-media-title">
+        <Flex align="center" justify="between" gap="4" wrap="wrap">
+          <Box className="min-w-0 flex-1">
+            <h2 id="offline-media-title" className="text-lg font-bold">تصاویر آفلاین</h2>
+            <Text as="p" size="2" color="gray" mt="1">
+              متادیتای محصول مستقل از فایل تصویر همگام می‌شود. برای استفاده بدون اینترنت، بایت‌های موجود سرور را روی همین دستگاه دریافت کنید.
+            </Text>
+            <Flex gap="2" wrap="wrap" mt="3">
+              <Badge color={mediaCoverageColor}>{mediaCoverageLabel}</Badge>
+              {mediaPending > 0 ? <Badge color="amber">{mediaPending.toLocaleString("fa-IR")} انتقال نیازمند پیگیری</Badge> : null}
+              {mediaProgress ? <Badge color="blue">{mediaProgress}</Badge> : null}
+            </Flex>
+          </Box>
+          {canRecoverMedia ? (
+            <Button type="button" onClick={() => void recoverMedia()} disabled={!online} loading={mediaWorking} className="w-full sm:w-auto">
+              دریافت تصاویر برای استفاده آفلاین
+            </Button>
+          ) : (
+            <Text size="1" color="gray">این اقدام به دسترسی پشتیبان‌گیری مجموعه نیاز دارد.</Text>
+          )}
+        </Flex>
+      </section>
 
       <Grid columns={{ initial: "1", lg: "2" }} gap="5" mt="5">
         <section className="sync-detail-section" aria-labelledby="sync-queue-title">

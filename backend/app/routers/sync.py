@@ -20,6 +20,7 @@ from ..models import (
     InventoryMovement,
     InventoryTransaction,
     Label,
+    MediaAsset,
     ProductBarcode,
     SyncChange,
     SyncOperation,
@@ -182,6 +183,15 @@ def _authorize_operation(
 
 def _serialize(item: InventoryItem) -> dict:
     record = InventoryOut.model_validate(item).model_dump(mode="json")
+    asset = item.media_asset
+    if asset is not None:
+        record.update({
+            "media_version": asset.version,
+            "media_content_sha256": asset.content_sha256,
+            "media_byte_size": asset.byte_size,
+            "media_preview_url": f"/api/media/{asset.id}/preview",
+            "media_detail_url": f"/api/media/{asset.id}/detail",
+        })
     sale_price = item.sale_price if item.sale_price is not None else None
     record.update({"sale_price": sale_price, "purchase_price": item.purchase_price, "price": sale_price or 0, "price_missing": sale_price is None})
     return record
@@ -808,7 +818,7 @@ async def _apply_product_operation(
             operation_id=operation.operation_id,
             status="conflict",
             entity_id=operation.entity_id,
-            record=InventoryOut.model_validate(item),
+            record=InventoryOut.model_validate(_serialize(item)),
             error="Server record has a newer version",
         )
 
@@ -845,9 +855,27 @@ async def _apply_product_operation(
         if item.image_url and item.image_url.startswith("/uploads/"):
             (settings.UPLOAD_DIR / Path(item.image_url).name).unlink(missing_ok=True)
         item.image_url = None
+        item.media_asset_id = None
+    if "media_asset_id" in payload:
+        media_asset_id = payload.get("media_asset_id")
+        if media_asset_id is None:
+            item.image_url = None
+            item.media_asset_id = None
+        elif not isinstance(media_asset_id, str):
+            raise ValueError("MEDIA_ASSET_INVALID")
+        else:
+            asset = db.scalar(select(MediaAsset).where(
+                MediaAsset.id == media_asset_id,
+                MediaAsset.store_id == current_user.store_id,
+            ))
+            if asset is None:
+                raise ValueError("MEDIA_ASSET_NOT_AVAILABLE")
+            item.media_asset_id = asset.id
+            item.image_url = f"/api/media/{asset.id}/detail"
     image = image_files.get(operation.operation_id)
     if image is not None:
         item.image_url = await _save_image(image, item.image_url)
+        item.media_asset_id = None
     item.version = 1 if created else (item.version or 1) + 1
     db.flush()
     db.refresh(item)
@@ -857,7 +885,7 @@ async def _apply_product_operation(
         operation_id=operation.operation_id,
         status="applied",
         entity_id=item.id,
-        record=InventoryOut.model_validate(item),
+        record=InventoryOut.model_validate(record),
     )
 
 

@@ -78,7 +78,7 @@ async function run<T>(
  */
 export const localMutationStorage = {
   inventory<T>(operation: () => Promise<T>) {
-    return run([db.inventoryItems, db.syncQueue], operation);
+    return run([db.inventoryItems, db.syncQueue, db.mediaTransfers], operation);
   },
 
   category<T>(operation: () => Promise<T>) {

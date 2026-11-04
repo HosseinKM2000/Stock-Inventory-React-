@@ -362,6 +362,12 @@ class InventoryOut(BaseModel):
     price_missing: bool = False
 
     image_url: str | None = None
+    media_asset_id: str | None = None
+    media_version: int | None = None
+    media_content_sha256: str | None = None
+    media_byte_size: int | None = None
+    media_preview_url: str | None = None
+    media_detail_url: str | None = None
     version: int = 1
 
     custom_label: str | None = None

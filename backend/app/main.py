@@ -7,7 +7,7 @@ from .config import settings
 from sqlalchemy import text
 from .database import engine
 from .exceptions import global_exception_handler
-from .routers import admin, auth, categories, dashboard, plans, backup, industries, products, inventory, export, transactions, custom_products, catalog_products, sync, labels, personnel, files
+from .routers import admin, auth, categories, dashboard, plans, backup, industries, products, inventory, export, transactions, custom_products, catalog_products, sync, labels, personnel, files, media
 
 
 @asynccontextmanager
@@ -62,6 +62,7 @@ app.include_router(sync.router, prefix=api)
 app.include_router(labels.router, prefix=api)
 app.include_router(personnel.router, prefix=api)
 app.include_router(files.router, prefix=api)
+app.include_router(media.router, prefix=api)
 
 
 @app.get("/api/health")
