@@ -1,8 +1,10 @@
-const CACHE_NAME = "tanzim-app-v13";
-const OWNED_CACHE_PREFIXES = ["tanzim-", "inventory-shell-"];
+const BUILD_ID = "__TANZIM_BUILD_ID__";
+const CACHE_NAME = `tanzim-app-${BUILD_ID}`;
+const OWNED_CACHE_PREFIX = "tanzim-app-";
+const clientBuilds = new Map();
 const scopeUrl = new URL(self.registration.scope);
 const scoped = (path) => new URL(path, scopeUrl).toString();
-const READY_MARKER = scoped(".__offline-ready-v13");
+const READY_MARKER = scoped(`.__offline-ready-${BUILD_ID}`);
 const APP_SHELL = [
   "./",
   "index.html",
@@ -54,6 +56,23 @@ async function isOfflineReady() {
   return Boolean(await cache.match(READY_MARKER));
 }
 
+async function notifyClients(message) {
+  const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+  for (const client of clients) client.postMessage(message);
+}
+
+async function cleanupObsoleteCachesIfSafe() {
+  const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+  if (clients.some((client) => clientBuilds.get(client.id) !== BUILD_ID)) return false;
+  const keys = await caches.keys();
+  await Promise.all(
+    keys
+      .filter((key) => key.startsWith(OWNED_CACHE_PREFIX) && key !== CACHE_NAME)
+      .map((key) => caches.delete(key)),
+  );
+  return true;
+}
+
 self.addEventListener("install", (event) => {
   // An update remains waiting until an open client explicitly accepts it.
   event.waitUntil(precacheApplication());
@@ -61,29 +80,11 @@ self.addEventListener("install", (event) => {
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches
-      .keys()
-      .then((keys) =>
-        Promise.all(
-          keys
-            .filter(
-              (key) =>
-                OWNED_CACHE_PREFIXES.some((prefix) => key.startsWith(prefix)) &&
-                key !== CACHE_NAME,
-            )
-            .map((key) => caches.delete(key)),
-        ),
-      )
-      .then(() => self.clients.claim())
+    self.clients.claim()
       .then(async () => {
         if (!(await isOfflineReady())) return;
-        const clients = await self.clients.matchAll({
-          type: "window",
-          includeUncontrolled: true,
-        });
-        for (const client of clients) {
-          client.postMessage({ type: "tanzim-offline-ready" });
-        }
+        await notifyClients({ type: "tanzim-update-activated", buildId: BUILD_ID });
+        await notifyClients({ type: "tanzim-offline-ready", buildId: BUILD_ID });
       }),
   );
 });
@@ -100,6 +101,21 @@ self.addEventListener("message", (event) => {
         if (ready) event.source?.postMessage({ type: "tanzim-offline-ready" });
       }),
     );
+    return;
+  }
+
+  if (event.data?.type === "tanzim-client-build" && event.source?.id) {
+    clientBuilds.set(event.source.id, event.data.buildId);
+    event.waitUntil(cleanupObsoleteCachesIfSafe());
+    return;
+  }
+
+  if (event.data?.type === "tanzim-query-build") {
+    event.source?.postMessage({
+      type: "tanzim-build-status",
+      buildId: BUILD_ID,
+      ready: true,
+    });
   }
 });
 
@@ -125,7 +141,8 @@ self.addEventListener("fetch", (event) => {
   if (request.mode === "navigate") {
     event.respondWith(
       fetch(request).catch(async () => {
-        return (await caches.match(scoped("index.html"))) || Response.error();
+        const activeCache = await caches.open(CACHE_NAME);
+        return (await activeCache.match(scoped("index.html"))) || Response.error();
       }),
     );
     return;
@@ -133,7 +150,10 @@ self.addEventListener("fetch", (event) => {
 
   if (relativePath === "app-release.json") {
     event.respondWith(
-      fetch(request, { cache: "no-store" }).catch(() => caches.match(request)),
+      fetch(request, { cache: "no-store" }).catch(async () => {
+        const activeCache = await caches.open(CACHE_NAME);
+        return activeCache.match(request);
+      }),
     );
     return;
   }

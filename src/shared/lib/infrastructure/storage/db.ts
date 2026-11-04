@@ -28,7 +28,7 @@ export function migrateLegacyQueuedPricing(item: SyncQueueItem) {
 }
 
 
-class AppDatabase extends Dexie {
+export class AppDatabase extends Dexie {
 
   inventoryItems!: EntityTable<
     LocalInventoryItem,
@@ -53,9 +53,9 @@ class AppDatabase extends Dexie {
   mediaTransfers!: EntityTable<MediaTransferItem, "id">;
 
 
-  constructor() {
+  constructor(name = "inventory-db") {
 
-    super("inventory-db");
+    super(name);
 
 
     this.version(1).stores({

@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { PageGuide } from "@/features/app/layout/page-guide";
 import { OnlineGuard } from "@/shared/access/online-guard";
 import { Button } from "@/shared/ui/button/button";
+import { Form } from "@/shared/ui/form/form";
 import { permissionOptions, personnelApi, personnelKeys, type StoreRole } from "./api";
 
 type PermissionId = (typeof permissionOptions)[number][0];
@@ -216,7 +217,14 @@ function RoleEditor({ formRef, roleName, permissions, editing, isPending, onName
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
 }) {
   return (
-    <form ref={formRef} className="role-editor" aria-labelledby="role-editor-title" onSubmit={onSubmit}>
+    <Form
+      ref={formRef}
+      className="role-editor"
+      aria-labelledby="role-editor-title"
+      isDirty={Boolean(roleName || permissions.length || editing)}
+      isSubmitting={isPending}
+      onSubmit={onSubmit}
+    >
       <header className="role-editor-heading">
         <span className="role-heading-icon" aria-hidden="true"><PersonIcon width="23" height="23" /></span>
         <div>
@@ -251,7 +259,7 @@ function RoleEditor({ formRef, roleName, permissions, editing, isPending, onName
         </Button>
         {editing ? <Button type="button" className="role-cancel-button" variant="soft" onClick={onCancel}>انصراف</Button> : null}
       </div>
-    </form>
+    </Form>
   );
 }
 

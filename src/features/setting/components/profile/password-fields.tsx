@@ -70,6 +70,7 @@ const PasswordFields = () => {
 
   return (
     <Form
+      isDirty={form.isDirty}
       onSubmit={preventEventHandler(form.submit)}
       isSubmitting={updatePassword.isPending}
     >

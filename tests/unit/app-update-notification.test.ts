@@ -13,13 +13,13 @@ const state = (status: AppUpdateSnapshot["status"]): AppUpdateSnapshot => ({
     features: [],
   },
   lastCheckedAt: "2026-10-21T00:00:00+03:30",
-  canInstall: status === "available",
+  canInstall: status === "ready" || status === "deferred",
   error: null,
 });
 
 describe("app update notifications", () => {
   it("keeps a ready release in the notification center until installation", () => {
-    expect(notificationService.deriveUpdate(state("available"))).toEqual([
+    expect(notificationService.deriveUpdate(state("ready"))).toEqual([
       expect.objectContaining({
         id: "app-update-ready",
         severity: "info",
@@ -27,7 +27,8 @@ describe("app update notifications", () => {
         context: "نسخه 0.12.0",
       }),
     ]);
-    expect(notificationService.deriveUpdate(state("installing"))).toHaveLength(1);
+    expect(notificationService.deriveUpdate(state("applying"))).toHaveLength(1);
+    expect(notificationService.deriveUpdate(state("deferred"))).toHaveLength(1);
   });
 
   it("does not notify when the installed release is current", () => {

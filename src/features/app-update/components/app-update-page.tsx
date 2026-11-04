@@ -1,5 +1,4 @@
 import { PageGuide } from "@/features/app/layout/page-guide";
-import { queryClient } from "@/shared/api/query-client";
 import { accessState } from "@/shared/access/access-state";
 import { useEntitlementAccess } from "@/shared/access/use-entitlement";
 import { formatJalaliDateTime } from "@/shared/lib/date/jalali";
@@ -13,7 +12,6 @@ import {
 } from "@radix-ui/react-icons";
 import { Badge, Box, Callout, Card, Flex, Grid, Separator, Text } from "@radix-ui/themes";
 import { Link } from "@tanstack/react-router";
-import { toast } from "sonner";
 import { useAppUpdate } from "../hooks/use-app-update";
 import { appUpdateService } from "../services/app-update.service";
 
@@ -23,15 +21,21 @@ export function AppUpdatePage() {
   const update = useAppUpdate();
   const access = useEntitlementAccess();
   const isChecking = update.status === "checking";
-  const isInstalling = update.status === "installing";
-  const available = update.status === "available" || isInstalling;
+  const isApplying = update.status === "applying";
+  const ready = ["ready", "deferred", "applying"].includes(update.status);
+  const failed = update.status === "failed";
+
+  const statusTitle =
+    update.status === "checking" ? "در حال بررسی و آماده‌سازی نسخه جدید"
+      : update.status === "ready" ? "نسخه جدید آماده نصب است"
+        : update.status === "deferred" ? "نصب تا رفع مانع به تعویق افتاده است"
+          : update.status === "applying" ? "در حال فعال‌سازی نسخه جدید"
+            : failed ? "بروزرسانی کامل نشد"
+              : update.status === "current" ? "برنامه بروز است"
+                : "بررسی بروزرسانی";
 
   const install = () => {
-    if (queryClient.isMutating() > 0) {
-      toast.warning("ابتدا منتظر بمانید ذخیره تغییرات فعلی تمام شود.");
-      return;
-    }
-    if (!appUpdateService.activateUpdate()) void appUpdateService.checkForUpdate();
+    void appUpdateService.activateUpdate();
   };
 
   return (
@@ -52,12 +56,12 @@ export function AppUpdatePage() {
             <Box className="min-w-0">
               <Text as="div" size="1" color="gray">وضعیت برنامه روی این دستگاه</Text>
               <Text as="div" size="5" weight="bold" mt="1">
-                {available ? "نسخه جدید آماده است" : update.status === "current" ? "برنامه بروز است" : "بررسی بروزرسانی"}
+                {statusTitle}
               </Text>
             </Box>
           </Flex>
-          <Badge size="2" radius="full" color={available ? "violet" : update.status === "error" ? "red" : "green"} variant="soft">
-            {available ? "آماده نصب" : update.status === "error" ? "بررسی ناموفق" : "نسخه فعال"}
+          <Badge size="2" radius="full" color={failed ? "red" : update.status === "deferred" ? "amber" : ready ? "violet" : "green"} variant="soft">
+            {isApplying ? "در حال اعمال" : update.status === "deferred" ? "به تعویق افتاده" : update.status === "ready" ? "آماده نصب" : failed ? "ناموفق" : "نسخه فعال"}
           </Badge>
         </Flex>
 
@@ -75,16 +79,16 @@ export function AppUpdatePage() {
         </Grid>
 
         {update.error ? (
-          <Callout.Root color="red" mt="4"><Callout.Icon><ExclamationTriangleIcon /></Callout.Icon><Callout.Text>{update.error}</Callout.Text></Callout.Root>
+          <Callout.Root color={update.status === "deferred" ? "amber" : "red"} mt="4"><Callout.Icon><ExclamationTriangleIcon /></Callout.Icon><Callout.Text>{update.error}</Callout.Text></Callout.Root>
         ) : null}
 
         <Flex gap="3" mt="5" wrap="wrap">
-          {available ? (
-            <Button size="3" onClick={install} loading={isInstalling} disabled={!update.canInstall && !isInstalling} leftIcon={<DownloadIcon />}>
-              {isInstalling ? "در حال نصب…" : update.canInstall ? "نصب نسخه جدید" : "در حال آماده‌سازی نسخه"}
+          {ready ? (
+            <Button size="3" onClick={install} loading={isApplying} disabled={!update.canInstall || isApplying} leftIcon={<DownloadIcon />}>
+              {isApplying ? "در حال فعال‌سازی…" : update.status === "deferred" ? "تلاش دوباره برای نصب" : "نصب نسخه جدید"}
             </Button>
           ) : null}
-          <Button size="3" variant={available ? "soft" : "solid"} onClick={() => void appUpdateService.checkForUpdate()} loading={isChecking} leftIcon={<ReloadIcon />}>
+          <Button size="3" variant={ready ? "soft" : "solid"} onClick={() => void appUpdateService.checkForUpdate()} loading={isChecking} leftIcon={<ReloadIcon />}>
             بررسی دوباره
           </Button>
         </Flex>

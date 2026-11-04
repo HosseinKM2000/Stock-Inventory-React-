@@ -13,6 +13,7 @@ export function useAppForm<TValues extends Record<string, unknown>>({
   onSubmit,
 }: Options<TValues>) {
   const initialized = useRef(false);
+  const [baseline, setBaseline] = useState<TValues>(initialValues);
 
   const [values, setValues] = useState<TValues>(initialValues);
 
@@ -26,10 +27,12 @@ export function useAppForm<TValues extends Record<string, unknown>>({
     initialized.current = true;
 
     setValues(initialValues);
+    setBaseline(initialValues);
   }, [initialValues]);
 
   const load = useCallback((values: TValues) => {
     setValues(values);
+    setBaseline(values);
     setErrors({});
   }, []);
 
@@ -42,6 +45,7 @@ export function useAppForm<TValues extends Record<string, unknown>>({
 
   const reset = useCallback(() => {
     setValues(initialValues);
+    setBaseline(initialValues);
     setErrors({});
   }, [initialValues]);
 
@@ -104,6 +108,7 @@ export function useAppForm<TValues extends Record<string, unknown>>({
   return {
     values,
     errors,
+    isDirty: JSON.stringify(values) !== JSON.stringify(baseline),
 
     submit,
     reset,
