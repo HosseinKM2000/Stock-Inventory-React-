@@ -43,7 +43,7 @@ function RegisterComponent() {
     : null;
 
   return (
-    <Form className="min-h-dvh w-full" dir="rtl" isSubmitting={registerMutation.isPending} onSubmit={preventEventHandler(form.submit)}>
+    <Form className="min-h-dvh w-full" dir="rtl" isDirty={form.isDirty} isSubmitting={registerMutation.isPending} onSubmit={preventEventHandler(form.submit)}>
       <Flex minHeight="100dvh" px="4" py="7" align="center" justify="center">
         <Flex width="100%" maxWidth="360px" gap="4" direction="column">
           <Box>

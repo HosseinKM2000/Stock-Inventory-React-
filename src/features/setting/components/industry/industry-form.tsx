@@ -39,6 +39,7 @@ function IndustryForm({ mode = "onboarding" }: IndustryFormProps) {
   return (
     <Flex className="industry-selector-shell" data-embedded={embedded || undefined} data-mode={mode}>
       <Form
+        isDirty={industry !== ""}
         className={embedded ? "industry-selector-form w-full" : "industry-selector-form min-h-dvh w-full"}
         isSubmitting={setIndustryMutation.isPending}
         onSubmit={preventEventHandler(loginHandler)}

@@ -226,7 +226,7 @@ export function ProductForm({
   const ModeIcon = mode === "create" ? PlusIcon : mode === "edit" ? Pencil2Icon : EyeOpenIcon;
 
   return (
-    <Form isSubmitting={submitting} onSubmit={preventEventHandler(form.submit)}>
+    <Form isDirty={form.isDirty} isSubmitting={submitting} onSubmit={preventEventHandler(form.submit)}>
       <Box
         mt="6"
         mb="9"

@@ -357,3 +357,31 @@ Verification recorded before integration:
 | Production-preview `signup-profile-reminder.spec.ts` | Passed: 4 mocked-API Chromium cases across desktop/mobile. Required mobile input, canonical payload, double-submit guard, retained failed values, exact duplicate field error, profile reminder/resolution, and horizontal overflow were covered. This is UI/layout evidence, not live-backend evidence. |
 
 Task 2B remains pending the existing price/term, capability, capacity, gift, expiry/grace, and Starter-transition decisions. TZ-V1-03F does not begin Task 05.
+
+## TZ-V1-05A safe PWA updates and migration rehearsal
+
+Branch `fix/v1-safe-pwa-updates`, based directly on accepted local `draft` `bae83a3d0ea821a7ee6ea68ffc27589be7bd2052`, extends the existing updater without changing backend schema, sync semantics, authentication, entitlements, commercial policy, or customer data:
+
+- Production builds now stamp a unique build ID. The service worker prepares the complete shell and manifest asset set in a build-specific cache before offering activation; an incomplete install remains redundant and the current controller stays usable. The existing Persian update page distinguishes checking, ready, deferred, applying, and failed states with retry guidance.
+- Activation rejects unsaved forms and active writes, then takes non-waiting update/outbox/local-mutation locks in the existing deadlock-safe order. Critical restore/media-journal stages defer. Durable outbox, transfer, recovery-review, and unknown-outcome evidence do not block and are never reset. A review-discovered invalid compound-index lookup in the recovery guard was corrected to use the actual owner index plus store filter; a failed state read now fails closed with support/retry guidance.
+- IndexedDB, OPFS, sessions, queues, and recovery evidence are never cleared by update handling. An old tab reports its build, keeps the corresponding app cache and can load a previously unvisited lazy route after the new worker activates. The new controller selects its own shell for offline navigation. Obsolete app caches are removed only when every currently open window reports the active build.
+- All application forms using the shared wrapper, including product, auth, profile, industry, role, and personnel entry, publish tab-scoped dirty state. Another tab therefore receives a deferred result instead of an involuntary reload. Duplicate controller-change reloads are suppressed per tab.
+
+Local migration rehearsals used real Dexie databases. Direct `v10 -> v13` preserved a product/image reference and an attempted operation's stable ID, payload, mode/version and uncertain provenance while adding v12/v13 stores. Direct `v12 -> v13` preserved checkpoint/imported recovery evidence. A synthetic upgrade failure rolled back without losing the previous record, and a raw old-tab connection produced the blocked-upgrade path before a deliberate close allowed retry. These tests do not claim an older app can reopen a database after a newer schema has committed.
+
+Release order remains controlled: verify database plus durable-media backups/restores, rehearse Alembic through `20261104_0014` on a current copy, stop incompatible workers, migrate/verify head and media mount, start only compatible workers, upload every immutable frontend asset, and publish the new service worker last. Retain the prior supported immutable asset generation for old tabs. Before migration, rollback may restore the complete previous artifact set; after PostgreSQL/Dexie advancement, use only an explicit reviewed downgrade/preflight or forward fix. Do not clear browser storage as rollback.
+
+Verification before integration:
+
+| Command / scope | Result |
+|---|---|
+| Focused update/migration/form tests | Passed: the final affected rerun covered 5 files and 10 tests; lock ordering, critical/dirty deferral, durable-journal allowance, cross-tab dirty-state discovery, `v10/v12 -> v13`, failure rollback, blocked tab, and update UI. The earlier focused form run also covered role and personnel forms. |
+| `npm.cmd test` | Passed: 79 files, 339 unit/component tests. |
+| `npm.cmd run test:backend` | Passed: 74 tests. No backend runtime change was made. |
+| `npm.cmd run test:backend:postgres:local` | Passed: 17 tests, including the supported migration path through head `20261104_0014`, phone preflight/rollback and media assumptions on disposable infrastructure. |
+| `npm.cmd run test:typecheck` and `npm.cmd run lint` | Passed. |
+| Two final production builds | Passed with distinct stamped IDs. Existing stale Browserslist-data and large-chunk warnings remain; `bwip-js` is about 930 kB. |
+| Real sequential-build Chromium update | Passed in desktop and mobile on one origin/profile: incomplete install retained build A and retried; active local-write lock deferred build B; attempted durable operation retained ID/payload/attempt state; an old tab loaded a lazy route; offline reopen started build B and retained IndexedDB plus exact OPFS bytes. No horizontal overflow was observed. API calls in this journey were mocked/aborted; the service worker, Cache Storage, Web Locks, IndexedDB, OPFS, two builds, two tabs, activation and offline reopen were real browser paths. |
+| Existing production-preview `pwa.spec.ts` | Passed: 8 desktop/mobile cases for manifest/worker, unvisited offline routes, local CRUD, persistent-profile restart and profile isolation. This uses mocked/aborted APIs and is compatibility UI/storage evidence, not a live backend journey. |
+
+Remaining limits: Chromium is the only verified service-worker engine; no OS/browser-process kill was injected during controller change; cache retention is conservative and has no reviewed time/size GC policy; repository deployment, monitoring, server backup/restore and rollback remain manual/unverified end to end. Task 2B and Task 05B remain pending and were not started.

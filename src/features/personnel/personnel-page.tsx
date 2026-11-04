@@ -18,6 +18,7 @@ import { PageGuide } from "@/features/app/layout/page-guide";
 import { OnlineGuard } from "@/shared/access/online-guard";
 import { formatJalaliDateTime } from "@/shared/lib/date/jalali";
 import { Button } from "@/shared/ui/button/button";
+import { Form } from "@/shared/ui/form/form";
 import {
   personnelApi,
   personnelKeys,
@@ -270,7 +271,12 @@ function AddPersonnelCard({ form, roles, hasCapacity, hasRoles, isLoadingRoles, 
   return (
     <section className="personnel-card personnel-create-card" aria-labelledby="create-personnel-title">
       <SectionHeading id="create-personnel-title" icon={<PlusIcon />} title="افزودن پرسنل" description="برای ایجاد حساب جدید، اطلاعات زیر را وارد کنید." />
-      <form className="personnel-create-form" onSubmit={onSubmit}>
+      <Form
+        className="personnel-create-form"
+        isDirty={Object.values(form).some(Boolean)}
+        isSubmitting={isPending}
+        onSubmit={onSubmit}
+      >
         <TextField.Root size="3" className="personnel-field" aria-label="نام" placeholder="نام" autoComplete="given-name" value={form.first_name} onChange={(event) => onChange({ ...form, first_name: event.target.value })}>
           <TextField.Slot side="left"><PersonIcon /></TextField.Slot>
         </TextField.Root>
@@ -288,7 +294,7 @@ function AddPersonnelCard({ form, roles, hasCapacity, hasRoles, isLoadingRoles, 
         <Button type="submit" className="personnel-create-submit" loading={isPending} disabled={!form.first_name || !form.last_name || !form.role_id || !hasCapacity || !hasRoles} leftIcon={<PlusIcon />}>
           ساخت حساب و رمز موقت
         </Button>
-      </form>
+      </Form>
     </section>
   );
 }

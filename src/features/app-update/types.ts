@@ -16,10 +16,11 @@ export type AppUpdateStatus =
   | "idle"
   | "checking"
   | "current"
-  | "available"
-  | "installing"
+  | "ready"
+  | "deferred"
+  | "applying"
   | "unsupported"
-  | "error";
+  | "failed";
 
 export type AppUpdateSnapshot = {
   status: AppUpdateStatus;

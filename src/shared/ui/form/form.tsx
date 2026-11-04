@@ -1,11 +1,19 @@
 import { Box } from "@radix-ui/themes";
-import type { ComponentPropsWithoutRef } from "react";
+import { useEffect, useId } from "react";
+import type { ComponentPropsWithRef } from "react";
+import { unsavedWork } from "@/features/app-update/services/unsaved-work";
 
-type FormProps = ComponentPropsWithoutRef<"form"> & {
+type FormProps = ComponentPropsWithRef<"form"> & {
   isSubmitting?: boolean;
+  isDirty?: boolean;
 };
 
-export function Form({ children, isSubmitting, ...props }: FormProps) {
+export function Form({ children, isSubmitting, isDirty = false, ...props }: FormProps) {
+  const formId = useId();
+  useEffect(() => {
+    unsavedWork.set(formId, isDirty);
+    return () => unsavedWork.set(formId, false);
+  }, [formId, isDirty]);
   return (
     <Box
       asChild

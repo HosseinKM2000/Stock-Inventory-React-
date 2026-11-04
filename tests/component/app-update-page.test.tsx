@@ -18,7 +18,6 @@ vi.mock("@/shared/access/use-entitlement", () => ({
   useEntitlementAccess: () => ({ requiresOnlineVerification: false }),
 }));
 vi.mock("@/shared/access/access-state", () => ({ accessState: { canUse: mocks.canUse } }));
-vi.mock("@/shared/api/query-client", () => ({ queryClient: { isMutating: () => 0 } }));
 vi.mock("@/features/app/layout/page-guide", () => ({
   PageGuide: ({ title }: { title: string }) => <h1>{title}</h1>,
 }));
@@ -33,7 +32,7 @@ describe("app update settings", () => {
     mocks.canUse.mockReset();
     mocks.canUse.mockImplementation((capability: string) => capability === "inventory.write");
     mocks.update = {
-      status: "available",
+      status: "ready",
       currentVersion: "0.11.0",
       release: {
         version: "0.12.0",

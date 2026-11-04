@@ -77,7 +77,7 @@ export const notificationService = {
     }];
   },
   deriveUpdate(update: AppUpdateSnapshot): UpdateNotification[] {
-    if (update.status !== "available" && update.status !== "installing") return [];
+    if (!["ready", "deferred", "applying"].includes(update.status)) return [];
     return [{
       id: "app-update-ready",
       kind: "app_update_ready",

@@ -1,6 +1,6 @@
 # Commercial V1 architecture map
 
-The original map was established from source commit `16064aba18c57ca92866251fcba3aca543df6409`; synchronization integrity from TZ-V1-01A, store ownership from TZ-V1-01B, safe restore reconciliation from TZ-V1-01C, operating modes from TZ-V1-01D, entitlements from TZ-V1-02A, simplified signup from TZ-V1-03, and durable product media from TZ-V1-04 are incorporated below. Installed packages are not treated as active features without imports or call paths.
+The original map was established from source commit `16064aba18c57ca92866251fcba3aca543df6409`; synchronization integrity from TZ-V1-01A, store ownership from TZ-V1-01B, safe restore reconciliation from TZ-V1-01C, operating modes from TZ-V1-01D, entitlements from TZ-V1-02A, signup/profile corrections through TZ-V1-03F, durable product media from TZ-V1-04, and safe PWA updates from TZ-V1-05A are incorporated below. Installed packages are not treated as active features without imports or call paths.
 
 ## Current module boundaries
 
@@ -23,6 +23,18 @@ The original map was established from source commit `16064aba18c57ca92866251fcba
 | Delivery/operations | npm/Vitest/Testing Library, pytest, Playwright, Docker Compose, Alembic, and `/health`; no repository `.github` CI, deployment pipeline, monitoring/alerting, rollback automation, or server backup runbook was found. |
 
 ## End-to-end paths
+
+### PWA update and local migration path
+
+Each production build stamps a unique build ID into both the application and service worker. Installation creates a build-specific app-asset cache and fetches the shell plus every Vite manifest asset as one required set. A partial download makes the installing worker redundant; it never replaces the current controller. A completely installed worker remains waiting until a client explicitly accepts it. The update UI distinguishes checking, ready, deferred, applying, and failed states and retains the current working build on check/install failure.
+
+Activation first rejects unsaved forms or active React Query writes, then acquires `tanzim-app-update-activation -> tanzim-outbox-sync -> tanzim-local-mutations:<actor>` with non-waiting Web Lock requests. This matches the existing outbox-before-local-mutation boundary and does not hold a lock across user confirmation or network download. Recovery sessions in `preparing`, `media_staged`, or `database_committed` defer activation; durable outbox/media-transfer entries, recovery review evidence, and unknown outcomes do not. Those records retain their operation/transfer IDs, payloads, attempt state, actor/store and policy context for the new build to resume or expose. A failed recovery-state read also defers rather than reloading blindly.
+
+The service worker never clears IndexedDB, OPFS, session state, recovery evidence, or an outbox. Old build caches remain while any open window reports an older build ID, allowing that document to request its old hashed lazy chunks after the new worker activates. The active worker uses its own cache for offline navigation, while hash-specific static lookup can still find retained prior assets. Obsolete `tanzim-app-*` caches are removed only after every currently open client reports the active build; an abandoned prior cache may therefore remain conservatively until a later client message. Deployment must retain at least the prior supported immutable asset generation until open old tabs have aged out; the worker alone cannot compensate if the server deletes an uncached old chunk.
+
+Actual Dexie rehearsals cover direct `v10 -> v13`, `v12 -> v13`, a transactionally failed upgrade, and an upgrade blocked by an old connection. Products, image references, attempted operation identity/payload/context, recovery checkpoint/imported evidence, and the new transfer table survive. A failed upgrade leaves the previous committed schema/data recoverable; a blocked tab receives a close-other-tabs/retry message. Once an upgrade commits, an older application is not assumed able to reopen the advanced database.
+
+Release order is: verify database and durable-media backups/restores; rehearse PostgreSQL through `20261104_0014` and verify the media mount; stop incompatible backend workers; apply/verify the server schema; start only compatible backend workers; publish all new immutable assets and shell metadata; publish the new service worker last. Before any schema/client migration, rollback may restore the previous complete artifacts while retaining their immutable assets. After PostgreSQL or local schema advancement, rollback is not an arbitrary old-client launch: use a reviewed downgrade/preflight where supported or forward-fix with preserved data. The repository still has no automated deployment/rollback, cache-age policy, cross-browser service-worker matrix, or production backup drill.
 
 ### Solo mutation path
 

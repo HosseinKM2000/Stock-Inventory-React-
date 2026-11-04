@@ -17,6 +17,7 @@ import { accessState } from "@/shared/access/access-state";
 import { accountScrollRestorationKey } from "@/shared/lib/navigation/scroll-restoration";
 import { startBackupAutomation } from "@/features/backup/services/backup-bootstrap";
 import { appUpdateService } from "@/features/app-update/services/app-update.service";
+import { db } from "@/shared/lib/infrastructure/storage/db";
 
 const router = createRouter({
   routeTree,
@@ -44,16 +45,21 @@ registerServiceWorker({
       action: {
         label: "به‌روزرسانی",
         onClick() {
-          if (queryClient.isMutating() > 0) {
-            toast.warning("پس از پایان ذخیره‌سازی دوباره تلاش کنید");
-            return;
-          }
-          activate();
+          void appUpdateService.activateUpdate();
         },
       },
     });
   },
+  onUpdateActivated(buildId, activatedHere) {
+    appUpdateService.notifyUpdateActivated(buildId, activatedHere);
+  },
+  onUpdateFailed() {
+    appUpdateService.notifyUpdateFailed();
+  },
 });
+
+db.on("blocked", () => appUpdateService.notifyClientMigrationFailed(true));
+void db.open().catch(() => appUpdateService.notifyClientMigrationFailed(false));
 
 profileMediaRepository.cleanupLegacyPreference();
 startBackupAutomation();

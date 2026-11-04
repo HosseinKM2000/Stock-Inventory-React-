@@ -38,6 +38,7 @@ function LoginComponent() {
 
   return (
     <Form
+      isDirty={form.isDirty}
       className="h-dvh w-full"
       isSubmitting={loginMutation.isPending}
       onSubmit={preventEventHandler(form.submit)}
