@@ -64,18 +64,19 @@ async function readImage(path: string): Promise<BackupImage | BackupUnavailableI
 async function captureRecords(userId: number, storeId: number) {
   return db.transaction(
     "r",
-    [db.inventoryItems, db.categories, db.labels, db.barcodes, db.inventoryMovements, db.syncQueue, db.syncMetadata],
+    [db.inventoryItems, db.categories, db.labels, db.barcodes, db.inventoryMovements, db.invoices, db.syncQueue, db.syncMetadata],
     async () => {
-      const [products, categories, labels, barcodes, inventoryMovements, pendingOperations, reconciliation] = await Promise.all([
+      const [products, categories, labels, barcodes, inventoryMovements, invoices, pendingOperations, reconciliation] = await Promise.all([
         db.inventoryItems.where("[local_user_id+local_store_id]").equals([userId, storeId]).toArray(),
         db.categories.where("[local_user_id+local_store_id]").equals([userId, storeId]).toArray(),
         db.labels.where("[local_user_id+local_store_id]").equals([userId, storeId]).toArray(),
         db.barcodes.where("[local_user_id+local_store_id]").equals([userId, storeId]).toArray(),
         db.inventoryMovements.where("[local_user_id+local_store_id]").equals([userId, storeId]).toArray(),
+        db.invoices.where("[local_user_id+local_store_id]").equals([userId, storeId]).toArray(),
         db.syncQueue.where("ownerUserId").equals(userId).filter((item) => item.storeId == null || item.storeId === storeId).toArray(),
         db.syncMetadata.filter((item) => item.key.startsWith(`${userId}:${storeId}:`)).toArray(),
       ]);
-      return { products, categories, labels, barcodes, inventoryMovements, pendingOperations, reconciliation };
+      return { products, categories, labels, barcodes, inventoryMovements, invoices, pendingOperations, reconciliation };
     },
   );
 }
@@ -114,7 +115,7 @@ export async function captureBackupData(userId: number, includeImageBytes: boole
 export async function currentBackupRevision(userId: number) {
   const data = await captureBackupData(userId, false);
   const hasRecoverableData =
-    data.products.length > 0 || data.categories.length > 0 || data.labels.length > 0 || (data.barcodes?.length ?? 0) > 0 || (data.inventoryMovements?.length ?? 0) > 0 ||
+    data.products.length > 0 || data.categories.length > 0 || data.labels.length > 0 || (data.barcodes?.length ?? 0) > 0 || (data.inventoryMovements?.length ?? 0) > 0 || (data.invoices?.length ?? 0) > 0 ||
     data.pendingOperations.length > 0 || data.images.length > 0 || Object.keys(data.preferences).length > 0;
   return { revision: await revisionForBackupData(data), hasRecoverableData };
 }

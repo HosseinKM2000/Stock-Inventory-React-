@@ -31,7 +31,7 @@ afterEach(async () => {
 });
 
 describe("local database upgrade rehearsal", () => {
-  it("upgrades directly from v10 to v13 without changing operation identity or image references", async () => {
+  it("upgrades directly from v10 to v14 without changing operation identity or image references", async () => {
     const dbName = name("skip");
     const old = new Dexie(dbName);
     old.version(10).stores(schema10);
@@ -60,10 +60,11 @@ describe("local database upgrade rehearsal", () => {
       resourceKey: "product:41", executionMode: "solo", policyVersion: 4,
     });
     expect(current.tables.map((table) => table.name)).toContain("mediaTransfers");
+    expect(current.tables.map((table) => table.name)).toContain("invoices");
     current.close();
   });
 
-  it("preserves v12 recovery evidence while adding the durable transfer journal", async () => {
+  it("preserves v12 recovery evidence while adding durable media and invoice journals", async () => {
     const dbName = name("recovery");
     const old = new Dexie(dbName);
     old.version(12).stores(schema12);

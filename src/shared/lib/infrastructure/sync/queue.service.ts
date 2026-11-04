@@ -89,7 +89,7 @@ export const queueService = {
     const existing = all.filter(
       (item) => item.entity === entity && item.entityId === entityId,
     );
-    const compactable = entity === "inventory_movement" || options.forceNew
+    const compactable = entity === "inventory_movement" || entity === "invoice" || options.forceNew
       ? undefined
       : [...existing].reverse().find(
         (item) => item.status === "pending" && item.attemptState === "never",
@@ -210,7 +210,7 @@ export const queueService = {
   },
 
   async prepareSuccessorAfterAcknowledgement(item: SyncQueueItem, acceptedVersion: number) {
-    if (item.entity === "inventory_movement") return false;
+    if (item.entity === "inventory_movement" || item.entity === "invoice") return false;
     const successor = (await queueStorage.getAll()).find(
       (candidate) =>
         candidate.entity === item.entity &&

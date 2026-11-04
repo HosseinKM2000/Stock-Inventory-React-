@@ -29,6 +29,8 @@ from app.models import (
     InventoryItem,
     InventoryMovement,
     InventoryTransaction,
+    Invoice,
+    InvoiceLine,
     ProductBarcode,
     SyncChange,
     SyncOperation,
@@ -107,6 +109,12 @@ class SyncApiTest(unittest.TestCase):
             json={"industry_id": cls.industry_id},
         )
         assert selected.status_code == 200, selected.text
+        with SessionLocal() as db:
+            plan = db.get(SubscriptionPlan, "free")
+            features = json.loads(plan.features_json)
+            features.update({"invoices.purchase": True, "invoices.sale": True})
+            plan.features_json = json.dumps(features)
+            db.commit()
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -121,6 +129,103 @@ class SyncApiTest(unittest.TestCase):
             data={"operations_json": json.dumps({"operations": operations})},
             files=files,
         )
+
+    def test_atomic_invoice_post_replay_cancel_and_price_snapshots(self) -> None:
+        product_id = 1_700_000_095_001
+        invoice_id = 1_700_000_095_002
+        created = self.push([{
+            "operation_id": "invoice-product-create", "entity": "product",
+            "entity_id": product_id, "operation": "CREATE",
+            "payload": {"quantity": 5, "sale_price": 900, "purchase_price": 600,
+                        "custom_label": "Invoice product", "catalog_product": {"id": 0, "name": "Invoice product"}},
+        }])
+        self.assertEqual(created.json()["results"][0]["status"], "applied", created.text)
+        post = {
+            "operation_id": "invoice-purchase-post", "entity": "invoice",
+            "entity_id": invoice_id, "operation": "CREATE",
+            "payload": {"invoice_type": "purchase", "title": "Purchase one", "counterparty": "Synthetic",
+                        "lines": [{"product_id": product_id, "quantity": 2, "unit": "unit", "pack_size": None, "unit_price": 500}]},
+        }
+        first = self.push([post])
+        self.assertEqual(first.json()["results"][0]["status"], "applied", first.text)
+        self.assertEqual(first.json()["results"][0]["record"]["products"][0]["quantity"], 7)
+        self.assertEqual(self.push([post]).json()["results"], first.json()["results"])
+        with SessionLocal() as db:
+            product = db.get(InventoryItem, product_id)
+            invoice = db.get(Invoice, invoice_id)
+            self.assertEqual((product.quantity, product.sale_price, product.purchase_price), (7, 900, 600))
+            self.assertEqual((invoice.total_amount, len(invoice.lines), invoice.lines[0].product_name), (1000, 1, "Invoice product"))
+            product.custom_label = "Renamed later"
+            product.is_hidden = True
+            db.commit()
+        history = self.client.get(f"/api/invoices/{invoice_id}", headers=self.headers)
+        self.assertEqual(history.status_code, 200, history.text)
+        self.assertEqual(history.json()["lines"][0]["product_name"], "Invoice product")
+        isolated = self.client.post("/api/auth/signup", json={
+            "username": "invoice-isolated-owner", "phone": _mobile("invoice-isolated-owner"),
+            "password": "StrongPass123!", "device_fingerprint": "invoice-isolated-device",
+        })
+        self.assertEqual(isolated.status_code, 201, isolated.text)
+        isolated_headers = {
+            "Authorization": f"Bearer {isolated.json()['access_token']}",
+            "X-Device-Fingerprint": "invoice-isolated-device",
+        }
+        self.assertEqual(self.client.get(f"/api/invoices/{invoice_id}", headers=isolated_headers).status_code, 404)
+        cancel = {"operation_id": "invoice-purchase-cancel", "entity": "invoice", "entity_id": invoice_id,
+                  "operation": "UPDATE", "payload": {"action": "cancel"}}
+        cancelled = self.push([cancel])
+        self.assertEqual(cancelled.json()["results"][0]["status"], "applied", cancelled.text)
+        self.assertEqual(cancelled.json()["results"][0]["record"]["products"][0]["quantity"], 5)
+        self.assertEqual(self.push([cancel]).json()["results"], cancelled.json()["results"])
+        second_cancel = self.push([{**cancel, "operation_id": "invoice-second-cancel"}]).json()["results"][0]
+        self.assertEqual((second_cancel["status"], second_cancel["error"]), ("conflict", "INVOICE_ALREADY_CANCELLED"))
+        with SessionLocal() as db:
+            self.assertEqual(db.query(Invoice).filter_by(id=invoice_id).count(), 1)
+            self.assertEqual(db.query(InvoiceLine).filter_by(invoice_id=invoice_id).count(), 1)
+            self.assertEqual(db.get(InventoryItem, product_id).quantity, 5)
+
+    def test_invoice_failure_is_atomic_and_duplicate_rows_consolidate(self) -> None:
+        product_id = 1_700_000_096_001
+        empty_product_id = 1_700_000_096_010
+        self.push([{"operation_id": "invoice-sale-product", "entity": "product", "entity_id": product_id,
+                   "operation": "CREATE", "payload": {"quantity": 2, "sale_price": 100,
+                   "custom_label": "Sale item", "catalog_product": {"id": 0, "name": "Sale item"}}}])
+        self.push([{"operation_id": "invoice-empty-product", "entity": "product", "entity_id": empty_product_id,
+                   "operation": "CREATE", "payload": {"quantity": 0, "sale_price": 100,
+                   "custom_label": "Empty item", "catalog_product": {"id": 0, "name": "Empty item"}}}])
+        failed_id = 1_700_000_096_002
+        failed = self.push([{"operation_id": "invoice-insufficient", "entity": "invoice", "entity_id": failed_id,
+            "operation": "CREATE", "payload": {"invoice_type": "sale", "title": "Too much",
+            "lines": [{"product_id": product_id, "quantity": 1, "unit": "unit", "unit_price": 0},
+                      {"product_id": empty_product_id, "quantity": 1, "unit": "unit", "unit_price": 0}]}}]).json()["results"][0]
+        self.assertEqual((failed["status"], failed["error"]), ("conflict", "INSUFFICIENT_STOCK"))
+        with SessionLocal() as db:
+            self.assertIsNone(db.get(Invoice, failed_id))
+            self.assertEqual(db.get(InventoryItem, product_id).quantity, 2)
+        consolidated_id = failed_id + 1
+        applied = self.push([{"operation_id": "invoice-consolidated", "entity": "invoice", "entity_id": consolidated_id,
+            "operation": "CREATE", "payload": {"invoice_type": "sale", "title": "Combined",
+            "lines": [{"product_id": product_id, "quantity": 1, "unit": "unit", "unit_price": 0},
+                      {"product_id": product_id, "quantity": 1, "unit": "unit", "unit_price": 0}]}}]).json()["results"][0]
+        self.assertEqual(applied["status"], "applied")
+        self.assertEqual(len(applied["record"]["invoice"]["lines"]), 1)
+        self.assertEqual(applied["record"]["invoice"]["lines"][0]["quantity"], 2)
+
+        purchase_id = failed_id + 2
+        purchase = self.push([{"operation_id": "invoice-reversal-purchase", "entity": "invoice", "entity_id": purchase_id,
+            "operation": "CREATE", "payload": {"invoice_type": "purchase", "title": "Reversal source",
+            "lines": [{"product_id": product_id, "quantity": 2, "unit": "unit", "unit_price": 100}]}}]).json()["results"][0]
+        self.assertEqual(purchase["status"], "applied")
+        consumed = self.push([{"operation_id": "invoice-reversal-sale", "entity": "invoice", "entity_id": purchase_id + 1,
+            "operation": "CREATE", "payload": {"invoice_type": "sale", "title": "Consumed purchase",
+            "lines": [{"product_id": product_id, "quantity": 1, "unit": "unit", "unit_price": 100}]}}]).json()["results"][0]
+        self.assertEqual(consumed["status"], "applied")
+        refused = self.push([{"operation_id": "invoice-reversal-refused", "entity": "invoice", "entity_id": purchase_id,
+            "operation": "UPDATE", "payload": {"action": "cancel"}}]).json()["results"][0]
+        self.assertEqual((refused["status"], refused["error"]), ("conflict", "INSUFFICIENT_REVERSAL_STOCK"))
+        with SessionLocal() as db:
+            self.assertEqual(db.get(InventoryItem, product_id).quantity, 1)
+            self.assertEqual(db.get(Invoice, purchase_id).status, "posted")
 
     def test_barcode_and_inventory_movements_are_store_scoped_and_idempotent(self) -> None:
         product_id = 1_700_000_090_001
@@ -1785,7 +1890,7 @@ class SyncApiTest(unittest.TestCase):
         self.assertIn("invoices.sale", capability_keys)
         self.assertEqual(
             next(item for item in registry.json()["capabilities"] if item["key"] == "invoices.sale")["status"],
-            "planned",
+            "implemented",
         )
 
         signup = self.client.post("/api/auth/signup", json={

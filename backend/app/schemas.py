@@ -594,12 +594,14 @@ class InventoryMovementOut(BaseModel):
     before_quantity: int
     after_quantity: int
     reverses_operation_id: str | None
+    invoice_id: int | None = None
+    invoice_line_id: int | None = None
     created_at: datetime
 
 
 class SyncOperationIn(BaseModel):
     operation_id: str = Field(min_length=1, max_length=64)
-    entity: Literal["product", "category", "label", "barcode", "inventory_movement"]
+    entity: Literal["product", "category", "label", "barcode", "inventory_movement", "invoice"]
     entity_id: int
     operation: Literal["CREATE", "UPDATE", "DELETE"]
     payload: dict[str, Any] | None = None

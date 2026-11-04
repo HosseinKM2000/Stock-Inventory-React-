@@ -97,6 +97,10 @@ export const localMutationStorage = {
     return run([db.inventoryItems, db.inventoryMovements, db.syncQueue], operation);
   },
 
+  invoice<T>(operation: () => Promise<T>) {
+    return run([db.invoices, db.inventoryItems, db.syncQueue], operation);
+  },
+
   recovery<T>(operation: () => Promise<T>) {
     return run([db.syncQueue, db.recoveryItems], operation);
   },

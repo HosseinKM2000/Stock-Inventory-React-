@@ -57,7 +57,7 @@ export async function buildBackupEnvelope(input: {
   data: BackupData;
   createdAt?: string;
 }): Promise<BackupEnvelope> {
-  const data: BackupData = { ...input.data, barcodes: input.data.barcodes ?? [], inventoryMovements: input.data.inventoryMovements ?? [] };
+  const data: BackupData = { ...input.data, barcodes: input.data.barcodes ?? [], inventoryMovements: input.data.inventoryMovements ?? [], invoices: input.data.invoices ?? [] };
   const snapshotRevision = await revisionForBackupData(data);
   const unsigned: Omit<BackupEnvelope, "integrity"> = {
     format: BACKUP_FORMAT,
@@ -72,6 +72,7 @@ export async function buildBackupEnvelope(input: {
       labels: data.labels.length,
       barcodes: data.barcodes?.length ?? 0,
       inventoryMovements: data.inventoryMovements?.length ?? 0,
+      invoices: data.invoices?.length ?? 0,
       pendingOperations: data.pendingOperations.length,
       images: data.images.length,
       unavailableImages: data.unavailableImages.length,
@@ -95,6 +96,7 @@ function hasValidDataShape(value: unknown) {
     Array.isArray(value.labels) &&
     (value.barcodes === undefined || Array.isArray(value.barcodes)) &&
     (value.inventoryMovements === undefined || Array.isArray(value.inventoryMovements)) &&
+    (value.invoices === undefined || Array.isArray(value.invoices)) &&
     Array.isArray(value.pendingOperations) &&
     Array.isArray(value.reconciliation) &&
     isRecord(value.preferences) &&
@@ -124,7 +126,7 @@ function uniqueIds(items: Array<{ id: number }>, code: string) {
   return ids;
 }
 
-const OPERATION_ENTITIES = new Set(["product", "category", "label", "barcode", "inventory_movement"]);
+const OPERATION_ENTITIES = new Set(["product", "category", "label", "barcode", "inventory_movement", "invoice"]);
 const OPERATION_ACTIONS = new Set(["CREATE", "UPDATE", "DELETE"]);
 
 function isNonNegativeInteger(value: unknown) {
@@ -140,6 +142,7 @@ export function validateBackupForRestore(envelope: BackupEnvelope, expectedUserI
   const labelIds = uniqueIds(data.labels, "BACKUP_LABEL_IDS_INVALID");
   const barcodeIds = uniqueIds(data.barcodes ?? [], "BACKUP_BARCODE_IDS_INVALID");
   uniqueIds(data.inventoryMovements ?? [], "BACKUP_MOVEMENT_IDS_INVALID");
+  uniqueIds(data.invoices ?? [], "BACKUP_INVOICE_IDS_INVALID");
 
   for (const product of data.products) {
     if (!isRecord(product) || !isNonNegativeInteger(product.quantity) || !isNonNegativeInteger(product.price) ||
@@ -165,6 +168,12 @@ export function validateBackupForRestore(envelope: BackupEnvelope, expectedUserI
     }
     if (!productIds.has(movement.product_id as number) || (movement.barcode_id != null && !barcodeIds.has(movement.barcode_id as number))) {
       throw new Error("BACKUP_RELATIONSHIP_INVALID");
+    }
+  }
+  for (const invoice of data.invoices ?? []) {
+    if (!isRecord(invoice) || !["purchase", "sale"].includes(String(invoice.invoice_type)) || typeof invoice.title !== "string" || !Array.isArray(invoice.lines) || !(invoice.total_amount == null || isNonNegativeInteger(invoice.total_amount))) throw new Error("BACKUP_INVOICE_INVALID");
+    for (const line of invoice.lines) {
+      if (!isRecord(line) || !productIds.has(line.product_id as number) || !isNonNegativeInteger(line.quantity) || Number(line.quantity) === 0 || !(line.unit_price == null || isNonNegativeInteger(line.unit_price)) || !(line.line_total == null || isNonNegativeInteger(line.line_total))) throw new Error("BACKUP_INVOICE_INVALID");
     }
   }
   for (const item of data.pendingOperations) {
@@ -214,7 +223,7 @@ export async function parseBackupEnvelope(raw: string, expectedUserId: number, e
     throw new Error("BACKUP_INVALID_JSON");
   }
   if (!isRecord(parsed) || parsed.format !== BACKUP_FORMAT) throw new Error("BACKUP_FORMAT_INVALID");
-  if (parsed.formatVersion !== BACKUP_FORMAT_VERSION || ![1, 2, 3, BACKUP_SCHEMA_VERSION].includes(Number(parsed.schemaVersion))) {
+  if (parsed.formatVersion !== BACKUP_FORMAT_VERSION || ![1, 2, 3, 4, BACKUP_SCHEMA_VERSION].includes(Number(parsed.schemaVersion))) {
     throw new Error("BACKUP_SCHEMA_UNSUPPORTED");
   }
   const envelope = parsed as unknown as BackupEnvelope;
@@ -228,6 +237,7 @@ export async function parseBackupEnvelope(raw: string, expectedUserId: number, e
     categories: envelope.data.categories.length,
     labels: envelope.data.labels.length,
     ...(envelope.schemaVersion >= 3 ? { barcodes: envelope.data.barcodes?.length ?? 0, inventoryMovements: envelope.data.inventoryMovements?.length ?? 0 } : {}),
+    ...(envelope.schemaVersion >= 5 ? { invoices: envelope.data.invoices?.length ?? 0 } : {}),
     pendingOperations: envelope.data.pendingOperations.length,
     images: envelope.data.images.length,
     unavailableImages: envelope.data.unavailableImages.length,
@@ -240,7 +250,7 @@ export async function parseBackupEnvelope(raw: string, expectedUserId: number, e
     throw new Error("BACKUP_REVISION_INVALID");
   }
   const products = normalizeBackupProducts(envelope.data.products);
-  const normalized = { ...envelope, data: { ...envelope.data, products, barcodes: envelope.data.barcodes ?? [], inventoryMovements: envelope.data.inventoryMovements ?? [] } };
+  const normalized = { ...envelope, data: { ...envelope.data, products, barcodes: envelope.data.barcodes ?? [], inventoryMovements: envelope.data.inventoryMovements ?? [], invoices: envelope.data.invoices ?? [] } };
   validateBackupForRestore(normalized, expectedUserId, expectedStoreId);
   return normalized;
 }
