@@ -55,8 +55,8 @@ CAPABILITY_REGISTRY: dict[str, CapabilityDefinition] = {
         CapabilityDefinition("backup", "پشتیبان‌گیری و بازیابی", "implemented", ("inventory.read",), ("tools.backup", "tools.restore"), ("backup", "recovery")),
         CapabilityDefinition("sync", "همگام‌سازی", "implemented", ("inventory.read",), (), ("sync.acceptance", "sync.pull")),
         CapabilityDefinition("media.recovery", "بازیابی رسانه روی دستگاه تازه", "planned", ("backup",), (), ()),
-        CapabilityDefinition("invoices.purchase", "فاکتور خرید", "planned", ("inventory.read",), (), ()),
-        CapabilityDefinition("invoices.sale", "فاکتور فروش", "planned", ("inventory.read",), (), ()),
+        CapabilityDefinition("invoices.purchase", "فاکتور خرید", "implemented", ("inventory.write",), ("invoices.view", "invoices.post", "invoices.cancel"), ("invoices", "sync.acceptance")),
+        CapabilityDefinition("invoices.sale", "فاکتور فروش", "implemented", ("inventory.write",), ("invoices.view", "invoices.post", "invoices.cancel"), ("invoices", "sync.acceptance")),
     )
 }
 

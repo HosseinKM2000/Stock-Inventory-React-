@@ -38,7 +38,7 @@ os.environ["SYSTEM_ADMIN_PASSWORD"] = "Test-only-system-admin-password-123!"
 from fastapi.testclient import TestClient
 from app.database import SessionLocal, engine
 from app.main import app
-from app.models import CatalogProduct, Category, Industry, InventoryItem, Label, MediaAsset, Store, StoreMembership, StoreModeTransition, StorePlanGrant, SubscriptionPlan, SyncOperation, User, UserSession
+from app.models import CatalogProduct, Category, Industry, InventoryItem, InventoryMovement, Invoice, Label, MediaAsset, Store, StoreMembership, StoreModeTransition, StorePlanGrant, SubscriptionPlan, SyncOperation, User, UserSession
 from app.routers.sync import _duplicate_result
 from app.schemas import SyncOperationIn
 from app.services.catalog_product_service import _reconcile_catalog_assignments
@@ -56,6 +56,7 @@ EXPECTED_TABLES = {
     "store_mode_transitions",
     "store_plan_grants",
     "media_assets",
+    "invoices", "invoice_lines",
 }
 MIGRATION_EVIDENCE = {}
 
@@ -332,7 +333,7 @@ def test_migration_reaches_head_with_all_expected_tables(migrated_empty_database
     assert MIGRATION_EVIDENCE["mode_rollback"] == ("20261101_0009", True)
     assert EXPECTED_TABLES <= set(inspect(engine).get_table_names())
     with engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261104_0014"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261104_0015"
         assert "MOBILE_PHONE_PREFLIGHT" in MIGRATION_EVIDENCE["mobile_preflight"]
         assert "malformed_count=1:user_ids=9401" in MIGRATION_EVIDENCE["mobile_preflight"]
         assert "duplicate_groups=1:user_ids=9101,9201" in MIGRATION_EVIDENCE["mobile_preflight"]
@@ -816,6 +817,64 @@ def test_concurrent_admin_plan_edits_have_one_atomic_audited_winner(client):
         assert plan.policy_revision == free["policy_revision"] + 1
         audit_count = db.scalar(text("SELECT count(*) FROM admin_audit_logs WHERE action='plan.changed'"))
         assert audit_count == 1
+
+
+@pytest.mark.postgres
+def test_concurrent_sale_invoices_serialize_last_stock_atomically(client):
+    created = signup(client)
+    user_id = created.json()["user"]["id"]
+    headers = {
+        "Authorization": f"Bearer {created.json()['access_token']}",
+        "X-Device-Fingerprint": "postgres-device", "X-Client-Data-Schema": "2",
+    }
+    with SessionLocal() as db:
+        user = db.get(User, user_id)
+        store = db.scalar(select(Store).where(Store.owner_user_id == user_id))
+        industry = Industry(name="Invoice race", is_active=True)
+        db.add(industry); db.flush()
+        user.industry_id = store.industry_id = industry.id
+        catalog = CatalogProduct(industry_id=industry.id, name="Last unit", is_shared=False)
+        db.add(catalog); db.flush()
+        product = InventoryItem(store_id=store.id, user_id=user_id, catalog_product_id=catalog.id, quantity=1, sale_price=100, price=100)
+        db.add(product)
+        free = db.get(SubscriptionPlan, "free")
+        features = json.loads(free.features_json)
+        features.update({"invoices.purchase": True, "invoices.sale": True})
+        free.features_json = json.dumps(features)
+        db.commit(); product_id = product.id; store_id = store.id
+
+    def submit(index: int):
+        operation = {
+            "operation_id": f"invoice-last-stock-{index}", "entity": "invoice",
+            "entity_id": 1_700_006_000_000 + index, "operation": "CREATE",
+            "payload": {"invoice_type": "sale", "title": f"Concurrent sale {index}",
+                        "lines": [{"product_id": product_id, "quantity": 1, "unit": "unit", "unit_price": 100}]},
+        }
+        # A TestClient owns one AnyIO portal and is not safe to share between
+        # threads while one request is deliberately waiting on a row lock.
+        with TestClient(app) as isolated_client:
+            return isolated_client.post("/api/sync/batch", headers=headers, data={"operations_json": json.dumps({"operations": [operation]})})
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        responses = list(pool.map(submit, [1, 2]))
+    assert all(response.status_code == 200 for response in responses)
+    results = [response.json()["results"][0] for response in responses]
+    assert sorted(result["status"] for result in results) == ["applied", "conflict"]
+    assert next(result for result in results if result["status"] == "conflict")["error"] == "INSUFFICIENT_STOCK"
+    accepted_invoice_id = next(result for result in results if result["status"] == "applied")["entity_id"]
+    cancellation = client.post(
+        "/api/sync/batch", headers=headers,
+        data={"operations_json": json.dumps({"operations": [{
+            "operation_id": "invoice-last-stock-cancel", "entity": "invoice",
+            "entity_id": accepted_invoice_id, "operation": "UPDATE", "payload": {"action": "cancel"},
+        }]})},
+    )
+    assert cancellation.status_code == 200
+    assert cancellation.json()["results"][0]["status"] == "applied", cancellation.text
+    with SessionLocal() as db:
+        assert db.get(InventoryItem, product_id).quantity == 1
+        assert db.scalar(select(func.count(Invoice.id)).where(Invoice.store_id == store_id)) == 1
+        assert db.scalar(select(func.count(InventoryMovement.id)).where(InventoryMovement.store_id == store_id)) == 2
 
 
 @pytest.mark.postgres

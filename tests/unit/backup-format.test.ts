@@ -123,6 +123,34 @@ describe("portable backup format", () => {
     expect(parsed.data.unavailableImages).toEqual([{ path: "local://missing.webp", reason: "missing" }]);
   });
 
+  it("preserves immutable invoice evidence and its pending command identity", async () => {
+    const pending = {
+      id: "42:42:invoice-command", ownerUserId: 42, storeId: 42,
+      operationId: "invoice-command", entity: "invoice" as const, entityId: 7001,
+      action: "CREATE" as const,
+      payload: { invoice_type: "sale", title: "فروش", lines: [{ product_id: 1, quantity: 1, unit: "unit", pack_size: null, unit_price: 0 }] },
+      createdAt: 1, updatedAt: 1, retryCount: 0, status: "pending" as const,
+      nextAttemptAt: 1, attemptState: "attempted" as const,
+    };
+    const invoice = {
+      id: 7001, invoice_type: "sale" as const, title: "فروش", counterparty: null,
+      status: "pending" as const, total_amount: 0, actor_user_id: 42, actor_membership_id: 52,
+      post_operation_id: pending.operationId, posted_at: "2026-11-04T08:00:00Z",
+      lines: [{ product_id: 1, product_name: "کالای بایگانی", quantity: 1, unit: "عدد" as const,
+        pack_size: null, base_quantity: 1, unit_price: 0, line_total: 0, before_quantity: 2, after_quantity: 1 }],
+    };
+    const envelope = await buildBackupEnvelope({
+      owner: { userId: 42, username: "owner", storeId: 42 },
+      data: data({ products: [product({ id: 1, quantity: 1 })], invoices: [invoice], pendingOperations: [pending] }),
+    });
+
+    const restored = await parseBackupEnvelope(JSON.stringify(envelope), 42, 42);
+    expect(restored.data.invoices).toEqual([invoice]);
+    expect(restored.data.pendingOperations[0]).toMatchObject({
+      operationId: pending.operationId, payload: pending.payload, attemptState: "attempted",
+    });
+  });
+
   it("continues to read a valid schema-v1 owner-bound backup", async () => {
     const current = await buildBackupEnvelope({ owner: { userId: 42, username: "legacy" }, data: data() });
     const unsignedCurrent = Object.fromEntries(Object.entries(current).filter(([key]) => key !== "integrity"));

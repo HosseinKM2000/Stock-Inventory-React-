@@ -210,7 +210,7 @@ def test_platform_administrator_has_unrestricted_store_access(client: TestClient
     assert entitlement.json()["store_id"] == auth["user"]["store_id"]
     assert entitlement.json()["capabilities"]["inventory.write"] is True
     assert entitlement.json()["capabilities"]["media.recovery"] is False
-    assert entitlement.json()["capabilities"]["invoices.sale"] is False
+    assert entitlement.json()["capabilities"]["invoices.sale"] is True
     assert all(value is None for value in entitlement.json()["limits"].values())
 
     customer_username = f"admin-isolation-{uuid.uuid4().hex[:8]}"

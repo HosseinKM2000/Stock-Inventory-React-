@@ -179,21 +179,23 @@ async function commitRestore(session: RecoverySession, items: RecoveryReviewItem
   const current = session.checkpoint.data;
   const { storeId } = scopeFor(user);
   renewMaintenance(user.id, storeId);
-  await db.transaction("rw", [db.inventoryItems, db.categories, db.labels, db.barcodes, db.inventoryMovements, db.syncMetadata, db.recoverySessions, db.recoveryItems], async () => {
+  await db.transaction("rw", [db.inventoryItems, db.categories, db.labels, db.barcodes, db.inventoryMovements, db.invoices, db.syncMetadata, db.recoverySessions, db.recoveryItems], async () => {
     assertActiveScope(user);
-    const [products, categories, labels, barcodes, movements] = await Promise.all([
+    const [products, categories, labels, barcodes, movements, invoices] = await Promise.all([
       db.inventoryItems.where("[local_user_id+local_store_id]").equals([user.id, storeId]).primaryKeys(),
       db.categories.where("[local_user_id+local_store_id]").equals([user.id, storeId]).primaryKeys(),
       db.labels.where("[local_user_id+local_store_id]").equals([user.id, storeId]).primaryKeys(),
       db.barcodes.where("[local_user_id+local_store_id]").equals([user.id, storeId]).primaryKeys(),
       db.inventoryMovements.where("[local_user_id+local_store_id]").equals([user.id, storeId]).primaryKeys(),
+      db.invoices.where("[local_user_id+local_store_id]").equals([user.id, storeId]).primaryKeys(),
     ]);
-    await Promise.all([db.inventoryItems.bulkDelete(products), db.categories.bulkDelete(categories), db.labels.bulkDelete(labels), db.barcodes.bulkDelete(barcodes), db.inventoryMovements.bulkDelete(movements)]);
+    await Promise.all([db.inventoryItems.bulkDelete(products), db.categories.bulkDelete(categories), db.labels.bulkDelete(labels), db.barcodes.bulkDelete(barcodes), db.inventoryMovements.bulkDelete(movements), db.invoices.bulkDelete(invoices)]);
     await db.inventoryItems.bulkPut(remap(mergeCurrentOverImported(data.products, current.products), user));
     await db.categories.bulkPut(remap(mergeCurrentOverImported(data.categories, current.categories), user));
     await db.labels.bulkPut(remap(mergeCurrentOverImported(data.labels, current.labels), user));
     await db.barcodes.bulkPut(remap(mergeCurrentOverImported(data.barcodes ?? [], current.barcodes ?? []), user).map((item) => ({ ...item, store_id: storeId })));
     await db.inventoryMovements.bulkPut(remap(mergeCurrentOverImported(data.inventoryMovements ?? [], current.inventoryMovements ?? []), user));
+    await db.invoices.bulkPut(remap(mergeCurrentOverImported(data.invoices ?? [], current.invoices ?? []), user));
     await db.recoveryItems.bulkPut(items);
     await db.syncMetadata.delete(`${user.id}:${storeId}:product-sync-cursor`);
     await db.syncMetadata.delete(`${user.id}:${storeId}:product-sync-initialized`);
@@ -228,6 +230,12 @@ function authorizeRecoverySubmission(item: RecoveryReviewItem) {
     accessState.requireCapability("barcode.lookup");
     accessState.requireStorePermission("barcodes.lookup");
     accessState.requireStorePermission("products.quantity.change");
+    return;
+  }
+  if (item.entity === "invoice") {
+    accessState.requireStorePermission(item.action === "CREATE" ? "invoices.post" : "invoices.cancel");
+    const type = (item.payload as { invoice_type?: unknown } | null)?.invoice_type;
+    if (item.action === "CREATE" && (type === "purchase" || type === "sale")) accessState.requireCapability(`invoices.${type}`);
     return;
   }
   throw new Error("BACKUP_OPERATION_INVALID");

@@ -11,6 +11,7 @@ import type { Category } from "@/features/setting/types";
 import type { Label } from "@/features/setting/types";
 import type { BackupSettings, RecoveryReviewItem, RecoverySession } from "@/features/backup/types";
 import type { InventoryMovement, ProductBarcode } from "@/features/barcode/types";
+import type { Invoice } from "@/features/invoices/types";
 
 export function migrateLegacyProductPricing(item: LocalInventoryItem) {
   if (item.sale_price === undefined) item.sale_price = item.price_missing ? null : item.price;
@@ -51,6 +52,7 @@ export class AppDatabase extends Dexie {
   recoverySessions!: EntityTable<RecoverySession, "id">;
   recoveryItems!: EntityTable<RecoveryReviewItem, "id">;
   mediaTransfers!: EntityTable<MediaTransferItem, "id">;
+  invoices!: EntityTable<Invoice, "local_key">;
 
 
   constructor(name = "inventory-db") {
@@ -287,6 +289,21 @@ export class AppDatabase extends Dexie {
       mediaTransfers: "id, transferId, [ownerUserId+storeId], productId, localPath, status, nextAttemptAt, updatedAt",
     });
 
+    this.version(14).stores({
+      inventoryItems: "local_key, id, [local_user_id+local_store_id], catalog_product_id, category_id, updated_at",
+      syncQueue: "id, ownerUserId, storeId, operationId, resourceKey, attemptState, entity, entityId, status, nextAttemptAt, createdAt, updatedAt",
+      syncMetadata: "key, updatedAt",
+      categories: "local_key, id, [local_user_id+local_store_id], name, updated_at",
+      labels: "local_key, id, [local_user_id+local_store_id], normalized_name, updated_at",
+      backupSettings: "userId, mode, nextAttemptAt",
+      barcodes: "local_key, id, [local_user_id+local_store_id], [local_user_id+local_store_id+value], product_id, value, updated_at",
+      inventoryMovements: "local_key, id, [local_user_id+local_store_id], operation_id, product_id, reverses_operation_id, created_at",
+      recoverySessions: "id, ownerUserId, storeId, status, updatedAt",
+      recoveryItems: "id, sessionId, [ownerUserId+storeId], classification, decision, entity, entityId, updatedAt",
+      mediaTransfers: "id, transferId, [ownerUserId+storeId], productId, localPath, status, nextAttemptAt, updatedAt",
+      invoices: "local_key, id, [local_user_id+local_store_id], status, posted_at",
+    });
+
     const ensureLocalKey = (_primaryKey: unknown, item: { id: number; local_user_id?: number; local_store_id?: number; local_key?: string }) => {
       const actor = item.local_user_id;
       const store = item.local_store_id ?? actor;
@@ -298,6 +315,7 @@ export class AppDatabase extends Dexie {
     this.labels.hook("creating", ensureLocalKey);
     this.barcodes.hook("creating", ensureLocalKey);
     this.inventoryMovements.hook("creating", ensureLocalKey);
+    this.invoices.hook("creating", ensureLocalKey);
   }
 }
 

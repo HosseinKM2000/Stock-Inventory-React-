@@ -21,6 +21,7 @@ import { Route as ManagementIndexRouteImport } from './routes/management/index'
 import { Route as ToolsScannerRouteImport } from './routes/tools/scanner'
 import { Route as ToolsRecoveryRouteImport } from './routes/tools/recovery'
 import { Route as ToolsLabelsRouteImport } from './routes/tools/labels'
+import { Route as ToolsInvoicesRouteImport } from './routes/tools/invoices'
 import { Route as ToolsImportRouteImport } from './routes/tools/import'
 import { Route as ToolsHelpRouteImport } from './routes/tools/help'
 import { Route as ToolsExportRouteImport } from './routes/tools/export'
@@ -128,6 +129,11 @@ const ToolsRecoveryRoute = ToolsRecoveryRouteImport.update({
 const ToolsLabelsRoute = ToolsLabelsRouteImport.update({
   id: '/labels',
   path: '/labels',
+  getParentRoute: () => ToolsRouteRoute,
+} as any)
+const ToolsInvoicesRoute = ToolsInvoicesRouteImport.update({
+  id: '/invoices',
+  path: '/invoices',
   getParentRoute: () => ToolsRouteRoute,
 } as any)
 const ToolsImportRoute = ToolsImportRouteImport.update({
@@ -426,6 +432,7 @@ export interface FileRoutesByFullPath {
   '/tools/export': typeof ToolsExportRoute
   '/tools/help': typeof ToolsHelpRoute
   '/tools/import': typeof ToolsImportRoute
+  '/tools/invoices': typeof ToolsInvoicesRoute
   '/tools/labels': typeof ToolsLabelsRoute
   '/tools/recovery': typeof ToolsRecoveryRoute
   '/tools/scanner': typeof ToolsScannerRoute
@@ -483,6 +490,7 @@ export interface FileRoutesByTo {
   '/tools/export': typeof ToolsExportRoute
   '/tools/help': typeof ToolsHelpRoute
   '/tools/import': typeof ToolsImportRoute
+  '/tools/invoices': typeof ToolsInvoicesRoute
   '/tools/labels': typeof ToolsLabelsRoute
   '/tools/recovery': typeof ToolsRecoveryRoute
   '/tools/scanner': typeof ToolsScannerRoute
@@ -547,6 +555,7 @@ export interface FileRoutesById {
   '/tools/export': typeof ToolsExportRoute
   '/tools/help': typeof ToolsHelpRoute
   '/tools/import': typeof ToolsImportRoute
+  '/tools/invoices': typeof ToolsInvoicesRoute
   '/tools/labels': typeof ToolsLabelsRoute
   '/tools/recovery': typeof ToolsRecoveryRoute
   '/tools/scanner': typeof ToolsScannerRoute
@@ -611,6 +620,7 @@ export interface FileRouteTypes {
     | '/tools/export'
     | '/tools/help'
     | '/tools/import'
+    | '/tools/invoices'
     | '/tools/labels'
     | '/tools/recovery'
     | '/tools/scanner'
@@ -668,6 +678,7 @@ export interface FileRouteTypes {
     | '/tools/export'
     | '/tools/help'
     | '/tools/import'
+    | '/tools/invoices'
     | '/tools/labels'
     | '/tools/recovery'
     | '/tools/scanner'
@@ -731,6 +742,7 @@ export interface FileRouteTypes {
     | '/tools/export'
     | '/tools/help'
     | '/tools/import'
+    | '/tools/invoices'
     | '/tools/labels'
     | '/tools/recovery'
     | '/tools/scanner'
@@ -851,6 +863,13 @@ declare module '@tanstack/react-router' {
       path: '/labels'
       fullPath: '/tools/labels'
       preLoaderRoute: typeof ToolsLabelsRouteImport
+      parentRoute: typeof ToolsRouteRoute
+    }
+    '/tools/invoices': {
+      id: '/tools/invoices'
+      path: '/invoices'
+      fullPath: '/tools/invoices'
+      preLoaderRoute: typeof ToolsInvoicesRouteImport
       parentRoute: typeof ToolsRouteRoute
     }
     '/tools/import': {
@@ -1375,6 +1394,7 @@ interface ToolsRouteRouteChildren {
   ToolsExportRoute: typeof ToolsExportRoute
   ToolsHelpRoute: typeof ToolsHelpRoute
   ToolsImportRoute: typeof ToolsImportRoute
+  ToolsInvoicesRoute: typeof ToolsInvoicesRoute
   ToolsLabelsRoute: typeof ToolsLabelsRoute
   ToolsRecoveryRoute: typeof ToolsRecoveryRoute
   ToolsScannerRoute: typeof ToolsScannerRoute
@@ -1388,6 +1408,7 @@ const ToolsRouteRouteChildren: ToolsRouteRouteChildren = {
   ToolsExportRoute: ToolsExportRoute,
   ToolsHelpRoute: ToolsHelpRoute,
   ToolsImportRoute: ToolsImportRoute,
+  ToolsInvoicesRoute: ToolsInvoicesRoute,
   ToolsLabelsRoute: ToolsLabelsRoute,
   ToolsRecoveryRoute: ToolsRecoveryRoute,
   ToolsScannerRoute: ToolsScannerRoute,

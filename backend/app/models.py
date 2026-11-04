@@ -681,6 +681,14 @@ class InventoryMovement(Base):
             ["product_barcodes.id", "product_barcodes.store_id"],
             name="fk_inventory_movements_barcode_store",
         ),
+        ForeignKeyConstraint(
+            ["invoice_id", "store_id"], ["invoices.id", "invoices.store_id"],
+            name="fk_inventory_movements_invoice_store", ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["invoice_line_id", "store_id"], ["invoice_lines.id", "invoice_lines.store_id"],
+            name="fk_inventory_movements_invoice_line_store", ondelete="RESTRICT",
+        ),
         CheckConstraint("kind IN ('receive', 'issue', 'correction', 'reversal')", name="ck_inventory_movements_kind"),
         CheckConstraint("delta <> 0", name="ck_inventory_movements_delta"),
         CheckConstraint("before_quantity >= 0 AND after_quantity >= 0", name="ck_inventory_movements_nonnegative"),
@@ -702,8 +710,82 @@ class InventoryMovement(Base):
     before_quantity: Mapped[int] = mapped_column(BigInteger)
     after_quantity: Mapped[int] = mapped_column(BigInteger)
     reverses_operation_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    invoice_id: Mapped[int | None] = mapped_column(ENTITY_ID, nullable=True, index=True)
+    invoice_line_id: Mapped[int | None] = mapped_column(ENTITY_ID, nullable=True, index=True)
     client_occurred_at: Mapped[datetime | None] = mapped_column(UTC_DATETIME, nullable=True)
     created_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now)
+
+
+class Invoice(Base):
+    __tablename__ = "invoices"
+    __table_args__ = (
+        UniqueConstraint("store_id", "post_operation_id", name="uq_invoices_store_post_operation"),
+        UniqueConstraint("store_id", "cancel_operation_id", name="uq_invoices_store_cancel_operation"),
+        UniqueConstraint("id", "store_id", name="uq_invoices_id_store"),
+        CheckConstraint("invoice_type IN ('purchase', 'sale')", name="ck_invoices_type"),
+        CheckConstraint("status IN ('posted', 'cancelled')", name="ck_invoices_status"),
+        CheckConstraint("total_amount >= 0", name="ck_invoices_total_nonnegative"),
+        Index("ix_invoices_store_posted", "store_id", "posted_at"),
+    )
+
+    id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True)
+    store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), index=True)
+    actor_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), index=True)
+    actor_membership_id: Mapped[int] = mapped_column(ForeignKey("store_memberships.id", ondelete="RESTRICT"))
+    invoice_type: Mapped[str] = mapped_column(String(12), index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    counterparty: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    status: Mapped[str] = mapped_column(String(12), default="posted", index=True)
+    total_amount: Mapped[int] = mapped_column(BigInteger)
+    post_operation_id: Mapped[str] = mapped_column(String(64))
+    cancel_operation_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    posted_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now)
+    cancelled_at: Mapped[datetime | None] = mapped_column(UTC_DATETIME, nullable=True)
+    cancelled_by_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=True
+    )
+    cancelled_by_membership_id: Mapped[int | None] = mapped_column(
+        ForeignKey("store_memberships.id", ondelete="RESTRICT"), nullable=True
+    )
+    lines: Mapped[list["InvoiceLine"]] = relationship(
+        back_populates="invoice", cascade="all, delete-orphan", order_by="InvoiceLine.position"
+    )
+
+
+class InvoiceLine(Base):
+    __tablename__ = "invoice_lines"
+    __table_args__ = (
+        UniqueConstraint("invoice_id", "product_id", name="uq_invoice_lines_invoice_product"),
+        UniqueConstraint("id", "store_id", name="uq_invoice_lines_id_store"),
+        ForeignKeyConstraint(
+            ["invoice_id", "store_id"], ["invoices.id", "invoices.store_id"],
+            name="fk_invoice_lines_invoice_store", ondelete="CASCADE",
+        ),
+        ForeignKeyConstraint(
+            ["product_id", "store_id"], ["inventory_items.id", "inventory_items.store_id"],
+            name="fk_invoice_lines_product_store", ondelete="RESTRICT",
+        ),
+        CheckConstraint("quantity > 0", name="ck_invoice_lines_quantity_positive"),
+        CheckConstraint("base_quantity > 0", name="ck_invoice_lines_base_quantity_positive"),
+        CheckConstraint("unit_price >= 0", name="ck_invoice_lines_price_nonnegative"),
+        CheckConstraint("line_total >= 0", name="ck_invoice_lines_total_nonnegative"),
+    )
+
+    id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True, autoincrement=True)
+    invoice_id: Mapped[int] = mapped_column(ENTITY_ID, index=True)
+    store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), index=True)
+    product_id: Mapped[int] = mapped_column(ENTITY_ID, index=True)
+    position: Mapped[int] = mapped_column(Integer)
+    product_name: Mapped[str] = mapped_column(String(200))
+    quantity: Mapped[int] = mapped_column(BigInteger)
+    unit: Mapped[str] = mapped_column(String(40))
+    pack_size: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    base_quantity: Mapped[int] = mapped_column(BigInteger)
+    unit_price: Mapped[int] = mapped_column(BigInteger)
+    line_total: Mapped[int] = mapped_column(BigInteger)
+    before_quantity: Mapped[int] = mapped_column(BigInteger)
+    after_quantity: Mapped[int] = mapped_column(BigInteger)
+    invoice: Mapped["Invoice"] = relationship(back_populates="lines")
 
 
 class SyncOperation(Base):

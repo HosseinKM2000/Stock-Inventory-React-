@@ -385,3 +385,32 @@ Verification before integration:
 | Existing production-preview `pwa.spec.ts` | Passed: 8 desktop/mobile cases for manifest/worker, unvisited offline routes, local CRUD, persistent-profile restart and profile isolation. This uses mocked/aborted APIs and is compatibility UI/storage evidence, not a live backend journey. |
 
 Remaining limits: Chromium is the only verified service-worker engine; no OS/browser-process kill was injected during controller change; cache retention is conservative and has no reviewed time/size GC policy; repository deployment, monitoring, server backup/restore and rollback remain manual/unverified end to end. Task 2B and Task 05B remain pending and were not started.
+
+## TZ-V1-06A atomic purchase and sale invoices
+
+Branch `feat/v1-atomic-invoices`, based directly on accepted local `draft` `afa1e98ac70d5d03752d8e7d3244799d387709ff`, implements the focused invoice contract in implementation commit `17b165c470bbffa5fe5e9d6a0d91774eca6b339c` without adding PDF/print/sharing, payments, tax reporting, partial returns, realized-profit calculations, or final tier allocations:
+
+- Purchase increases and sale decreases store stock. One immutable invoice command contains the title, optional counterparty, stable ID, server-derived store/actor attribution, and immutable product-name/unit/quantity/transaction-price snapshots. Duplicate product rows consolidate only when their unit, package size, and price agree. Missing price fails while explicit zero remains valid; invoice prices never rewrite product sale or purchase prices.
+- Server acceptance locks referenced inventory rows in stable ID order and commits the invoice, lines, movements, stock versions, activity, and replay result atomically. A multi-line failure leaves no partial effect. Exact replay returns the recorded result. Full cancellation preserves the original invoice and creates compensating movements once; reversing a purchase after its stock was consumed is rejected.
+- Solo stores invoice evidence, stock effects, and one non-compactable command in one Dexie transaction. A later rejection reverses only a still-matching optimistic quantity, so a newer edit is not overwritten. Team stores the command identity/payload before dispatch, blocks offline posting, and publishes neither invoice nor stock until acceptance. Lost-response retry reuses the original operation ID.
+- `/tools/invoices` provides Persian RTL purchase/sale entry, manual/barcode product selection, explicit toman prices, package conversion, totals and before/after stock review, Jalali history/detail, and full cancellation. Online history hydrates from the store-scoped API; purchase totals and line prices are redacted without `products.purchase_price.view`. Failed submission retains the form input.
+- The central registry now marks `invoices.purchase` and `invoices.sale` implemented, but legacy-plan normalization still sets both false. Tests enable them only in synthetic fixtures; no real plan/grant or Task 2B allocation changed. Invoice view/post/cancel permissions retain their product/quantity dependencies and all acceptance uses current authenticated membership/mode/version.
+- Dexie v14 adds scoped invoices and backup schema 5 preserves immutable invoice snapshots plus pending/attempted command evidence. Restore still requires current capability/permission/mode and cannot blindly replay authority. Alembic `20261104_0015` adds `invoices`, `invoice_lines`, and store-consistent movement references without rewriting existing operational rows.
+
+Deployment is not rolling-compatible with pre-06A workers/clients: they do not understand invoice commands, schema `0015`, Dexie v14, or backup schema 5. Use the existing controlled replacement: verify database/browser and durable-media backups, rehearse `0014 -> 0015` and rollback on a current copy, stop incompatible workers, migrate and confirm Alembic head/media mount, deploy compatible backend/frontend assets, and publish the service worker last. No customer/production database or real account was used.
+
+Verification before integration:
+
+| Command / scope | Result |
+|---|---|
+| Focused invoice/backup/Dexie tests | Passed: atomic Solo commit, explicit zero/missing price, duplicate consolidation, package conversion, cancellation, Team offline/no-optimistic projection, immutable backup command evidence, and v10/v12 to v14 preservation. |
+| `npm.cmd test` | Passed: 80 files, 346 unit/component tests. |
+| `npm.cmd run test:backend` | Passed: 76 tests. Invoice coverage includes multi-line rollback, exact replay, immutable history after rename/archive, store isolation, full cancellation/idempotency, insufficient purchase reversal, and unchanged product prices. |
+| `npm.cmd run test:backend:postgres:local` | Passed: 18 tests. Disposable PostgreSQL covered migration head `0015`, concurrent last-unit sales with exactly one winner, and a real locked cancellation/reversal path. |
+| `npm.cmd run test:typecheck` and `npm.cmd run lint` | Passed. |
+| `npm.cmd run build` | Passed with the existing stale Browserslist-data and large-chunk warnings; `bwip-js` remains about 930 kB. |
+| Production-preview `invoices.spec.ts` | Passed: 2 mocked-API Chromium cases across desktop/mobile. The real browser exercised Dexie v14, one-command Solo posting, stock/price preservation, Persian controls, reachability, and no horizontal overflow. API acceptance was mocked; this is UI/local-storage evidence, not live-backend evidence. |
+
+Review corrected three acceptance-boundary issues before commit: PostgreSQL cancellation now locks only the invoice row while eager-loading lines, Team posting no longer publishes a pending invoice projection, and cancellation rejection restores the accepted invoice state while retaining queue evidence. It also added fresh-device server-history hydration with account/store partitioning and explicit redacted-price presentation. The full diff contains no customer data, login change, entitlement allocation, grant, payment, PDF/print/sharing, or Task 06B work.
+
+Remaining limits: the focused browser journey uses mocked APIs; PostgreSQL/API behavior and browser UI/storage behavior are separate evidence rather than one live end-to-end browser journey. Invoice retention/numbering beyond stable internal IDs, partial returns, PDF/print/share, payments/tax, and realized-profit reporting remain out of scope. Task 2B, Task 05B, and Task 06B remain pending and were not started.

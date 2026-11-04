@@ -19,6 +19,7 @@ from ..models import (
     InventoryItem,
     InventoryMovement,
     InventoryTransaction,
+    Invoice,
     Label,
     MediaAsset,
     ProductBarcode,
@@ -33,6 +34,7 @@ from ..services.activity_service import record_store_activity
 from ..services.store_authorization import StorePermission, effective_permissions
 from ..services.store_service import active_store_context
 from ..services.store_mode_policy import validate_sync_acceptance
+from ..services.invoice_service import cancel_invoice, post_invoice
 from ..schemas import (
     InventoryOut,
     InventoryMovementOut,
@@ -142,6 +144,23 @@ def _authorize_operation(
         required = {StorePermission.BARCODE_MANAGE.value}
     elif operation.entity == "inventory_movement":
         required = {StorePermission.BARCODE_LOOKUP.value, StorePermission.QUANTITY_CHANGE.value}
+    elif operation.entity == "invoice":
+        required = {StorePermission.INVOICES_VIEW.value}
+        if operation.operation == "CREATE":
+            required.add(StorePermission.INVOICES_POST.value)
+            invoice_type = (operation.payload or {}).get("invoice_type")
+        elif operation.operation == "UPDATE" and (operation.payload or {}).get("action") == "cancel":
+            required.add(StorePermission.INVOICES_CANCEL.value)
+            invoice_type = db.scalar(select(Invoice.invoice_type).where(
+                Invoice.id == operation.entity_id,
+                Invoice.store_id == user.store_id,
+            ))
+        else:
+            raise ValueError("INVOICE_OPERATION_INVALID")
+        if invoice_type == "purchase":
+            required.add(StorePermission.PURCHASE_PRICE_VIEW.value)
+        if invoice_type not in {"purchase", "sale"}:
+            raise ValueError("INVOICE_TYPE_INVALID")
     elif operation.entity == "label":
         required = {StorePermission.LABELS_MANAGE.value}
     elif operation.entity == "category":
@@ -170,7 +189,12 @@ def _authorize_operation(
         raise ValueError(f"PERMISSION_REQUIRED:{sorted(missing)[0]}")
     entitlement = entitlement_for_user(db, user, as_of=accepted_at)
     capabilities = entitlement["capabilities"]
-    feature = "barcode.manage" if operation.entity == "barcode" else "barcode.lookup" if operation.entity == "inventory_movement" else "inventory.write"
+    feature = (
+        "barcode.manage" if operation.entity == "barcode"
+        else "barcode.lookup" if operation.entity == "inventory_movement"
+        else f"invoices.{invoice_type}" if operation.entity == "invoice"
+        else "inventory.write"
+    )
     if not capabilities.get(feature, False):
         if entitlement["status"] == "expired":
             raise ValueError("ENTITLEMENT_EXPIRED")
@@ -936,6 +960,61 @@ async def push_batch(
             record_store_activity(db, current_user, action=f"sync.{operation.operation.lower()}", target_entity=operation.entity, target_id=operation.entity_id, operation_id=operation.operation_id, outcome="rejected", client_occurred_at=operation.client_occurred_at)
             db.add(SyncOperation(store_id=current_user.store_id, actor_user_id=current_user.id, user_id=current_user.data_owner_id, operation_id=operation.operation_id, request_fingerprint=fingerprint, result_payload=result.model_dump_json(), execution_mode=operation.execution_mode, policy_version=operation.policy_version))
             db.commit(); results.append(result); continue
+
+        if operation.entity == "invoice":
+            try:
+                with db.begin_nested():
+                    if operation.operation == "CREATE":
+                        record = post_invoice(
+                            db, current_user,
+                            invoice_id=operation.entity_id,
+                            operation_id=operation.operation_id,
+                            payload=operation.payload or {},
+                            client_occurred_at=operation.client_occurred_at,
+                        )
+                        action = "invoice.posted"
+                    else:
+                        record = cancel_invoice(
+                            db, current_user,
+                            invoice_id=operation.entity_id,
+                            operation_id=operation.operation_id,
+                            client_occurred_at=operation.client_occurred_at,
+                        )
+                        action = "invoice.cancelled"
+                    result = SyncOperationResult(
+                        operation_id=operation.operation_id,
+                        status="applied",
+                        entity_id=operation.entity_id,
+                        record=record,
+                    )
+            except ValueError as error:
+                code = str(error)
+                status = "conflict" if code in {
+                    "INSUFFICIENT_STOCK", "INSUFFICIENT_REVERSAL_STOCK",
+                    "INVOICE_ID_EXISTS", "INVOICE_ALREADY_CANCELLED",
+                } else "fatal_error"
+                result = SyncOperationResult(
+                    operation_id=operation.operation_id,
+                    status=status,
+                    entity_id=operation.entity_id,
+                    error=code,
+                )
+                action = "invoice.posted" if operation.operation == "CREATE" else "invoice.cancelled"
+            record_store_activity(
+                db, current_user, action=action, target_entity="invoice",
+                target_id=operation.entity_id, operation_id=operation.operation_id,
+                outcome="applied" if result.status == "applied" else ("conflict" if result.status == "conflict" else "rejected"),
+                client_occurred_at=operation.client_occurred_at,
+            )
+            db.add(SyncOperation(
+                store_id=current_user.store_id, actor_user_id=current_user.id,
+                user_id=current_user.data_owner_id, operation_id=operation.operation_id,
+                request_fingerprint=fingerprint, result_payload=result.model_dump_json(),
+                execution_mode=operation.execution_mode, policy_version=operation.policy_version,
+            ))
+            db.commit()
+            results.append(result)
+            continue
 
         if operation.entity in {"barcode", "inventory_movement"}:
             try:

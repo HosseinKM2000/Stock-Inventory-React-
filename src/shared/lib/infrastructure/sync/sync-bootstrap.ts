@@ -12,6 +12,7 @@ import { labelKeys } from "@/features/setting/mutations/use-labels";
 import { categoryKeys } from "@/features/setting/query/query-keys";
 import { exportKeys } from "@/features/setting/query/query-keys";
 import { queryClient } from "@/shared/api/query-client";
+import { registerInvoiceSync } from "@/features/invoices/invoice-sync";
 
 import { startSyncListeners } from "./sync-listener";
 import { onSyncSettled } from "./sync-service";
@@ -36,6 +37,7 @@ export function startSync() {
   registerLabelSync();
   registerBarcodeSync();
   registerMovementSync();
+  registerInvoiceSync();
 
   recovery = recoverMissingProductConflicts()
     .then((restored) => {

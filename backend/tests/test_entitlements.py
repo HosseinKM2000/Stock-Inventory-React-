@@ -20,7 +20,9 @@ def valid_policy():
 def test_registry_marks_planned_capabilities_and_declares_capacity_semantics() -> None:
     payload = registry_payload()
     planned = {item["key"] for item in payload["capabilities"] if item["status"] == "planned"}
-    assert {"media.recovery", "invoices.purchase", "invoices.sale"} <= planned
+    assert planned == {"media.recovery"}
+    implemented = {item["key"] for item in payload["capabilities"] if item["status"] == "implemented"}
+    assert {"invoices.purchase", "invoices.sale"} <= implemented
     assert set(item["key"] for item in payload["capacities"]) == SUBSCRIPTION_CAPACITIES
     assert payload["semantics"]["capacity_unlimited"] is None
 
@@ -31,7 +33,7 @@ def test_registry_marks_planned_capabilities_and_declares_capacity_semantics() -
         (lambda features, limits: features.update({"unknown": True}), "PLAN_CAPABILITY_UNKNOWN"),
         (lambda features, limits: features.pop("inventory.read"), "PLAN_CAPABILITY_UNSET"),
         (lambda features, limits: limits.pop("inventory_items"), "PLAN_CAPACITY_UNSET"),
-        (lambda features, limits: features.update({"invoices.sale": True}), "PLAN_CAPABILITY_PLANNED"),
+        (lambda features, limits: features.update({"media.recovery": True}), "PLAN_CAPABILITY_PLANNED"),
         (lambda features, limits: features.update({"inventory.write": True, "inventory.read": False}), "PLAN_CAPABILITY_DEPENDENCY"),
         (lambda features, limits: limits.update({"active_personnel": None}), "PLAN_CAPACITY_UNLIMITED_UNSUPPORTED"),
         (lambda features, limits: limits.update({"inventory_items": -1}), "PLAN_CAPACITY_INVALID"),
