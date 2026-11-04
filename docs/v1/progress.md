@@ -460,3 +460,10 @@ Verification recorded before final integration:
 | Build | Passed. The report remains route-split; existing stale Browserslist data and large `bwip-js` warnings remain. |
 
 Remaining limits: report browser evidence uses mocked API responses plus real IndexedDB/route rendering, not a live PostgreSQL browser journey. History completeness means a successful full fetch at the displayed timestamp, not continuous server freshness. Chromium is the verified engine; other browser engines remain unverified. Current invoices do not establish cash collection, tax, partial returns, or realized profit. Task 2B and Task 05B remain pending; Task 08 was not started.
+
+## TZ-V1-07 integration
+
+- Implementation, tests, and documentation were committed as `c4c6c35` directly on accepted local `draft` `7b36f3c2daddc2f215245daf0b498c7458ca5b0b`.
+- Local `draft` integrated the complete task branch with non-destructive merge `cdc6fb1` (`merge: integrate operational dashboard reports`). Task history is preserved.
+- Post-merge smoke passed the 7 focused selector/service/component files with all 22 tests.
+- Nothing was pushed, deployed, merged to `develop`, applied to a customer database, or used to change a real plan/grant. Task 2B and Task 05B remain pending; Task 08 was not started.
