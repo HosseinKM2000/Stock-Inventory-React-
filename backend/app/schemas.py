@@ -2,6 +2,9 @@ from datetime import datetime
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, StrictInt, field_validator, model_validator
+from pydantic_core import PydanticCustomError
+
+from .mobile import INVALID_MOBILE_MESSAGE, normalize_iranian_mobile
 
 
 # =========================================================
@@ -15,9 +18,26 @@ class UserBase(BaseModel):
 
 class SignupRequest(UserBase):
     email: EmailStr | None = None
-    phone: str | None = Field(default=None, max_length=40)
+    phone: str = Field(max_length=40)
     device_fingerprint: str
     password: str = Field(min_length=8, max_length=128)
+
+    @model_validator(mode="before")
+    @classmethod
+    def require_phone(cls, value: Any) -> Any:
+        if not isinstance(value, dict) or "phone" not in value or value.get("phone") is None:
+            raise PydanticCustomError("iranian_mobile", INVALID_MOBILE_MESSAGE)
+        return value
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def validate_phone(cls, value: object) -> str:
+        if not isinstance(value, str):
+            raise PydanticCustomError("iranian_mobile", INVALID_MOBILE_MESSAGE)
+        try:
+            return normalize_iranian_mobile(value)
+        except ValueError as error:
+            raise PydanticCustomError("iranian_mobile", INVALID_MOBILE_MESSAGE) from error
 
     @field_validator("password")
     @classmethod
@@ -39,6 +59,25 @@ class UserUpdate(BaseModel):
     username: str | None = Field(default=None, min_length=3, max_length=120)
     email: EmailStr | None = None
     phone: str | None = Field(default=None, max_length=40)
+
+    @model_validator(mode="before")
+    @classmethod
+    def reject_explicit_empty_phone(cls, value: Any) -> Any:
+        if isinstance(value, dict) and "phone" in value and value.get("phone") is None:
+            raise PydanticCustomError("iranian_mobile", INVALID_MOBILE_MESSAGE)
+        return value
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def validate_phone(cls, value: object) -> str | None:
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise PydanticCustomError("iranian_mobile", INVALID_MOBILE_MESSAGE)
+        try:
+            return normalize_iranian_mobile(value)
+        except ValueError as error:
+            raise PydanticCustomError("iranian_mobile", INVALID_MOBILE_MESSAGE) from error
 
 
 class PasswordUpdate(BaseModel):

@@ -201,7 +201,7 @@ Observed UI issues are recorded separately:
 2. Final Free/Pro/VIP allocations, prices, gift/grace rules, and the existing Starter transition remain unapproved; payment integration is absent. The 2A registry/admin/grant infrastructure is implemented, and Starter is historical-only.
 3. Server restore, deploy/rollback, monitoring, alerting, and backup drills are not evidenced end to end.
 4. Persistent dashboard scroll regression and the mobile status overlap remain.
-5. Schema `0013`, durable media storage, and minimal accounts require controlled replacement; pre-04 workers are not safe with the staged-asset protocol or nullable profile names.
+5. Schema `0014`, durable media storage, canonical unique signup phones, and nullable profile names require controlled replacement; pre-03F clients omit a required field and pre-03F workers do not enforce the new account-phone boundary.
 6. The 1C checkpoint/review journal is browser-local; browser-process kill, real post-commit termination, device-loss, and cross-browser File System Access recovery remain unverified.
 7. Activation warns about other devices and the server rejects their stale commands, but instant control of a disconnected device is not possible and no private team draft workflow exists.
 
@@ -329,3 +329,31 @@ Task 2B remains pending the existing explicit price/term, capability, capacity, 
 - Production-preview layout coverage uses mocked APIs and is reported separately from backend evidence. The exact Persian recovery action remains reachable in RTL at desktop/mobile widths without horizontal overflow.
 - Temporary SQLite databases and media directories contained only synthetic records and were removed after the run. No production/customer database, real account, external provider, deployment, push, `develop` update, grant, or Task 2B policy change occurred.
 - Local `draft` integrated both task commits with non-destructive merge `5dba26a1905220e183debe0d8509c24c4fb17f32` (`merge: integrate durable media recovery`). Post-merge smoke passed 22 focused frontend media/inventory tests and 26 backend media/sync tests. Task history is preserved; nothing was pushed or deployed.
+
+## TZ-V1-03F required unique signup mobile
+
+Branch `fix/v1-signup-unique-mobile`, based directly on accepted local `draft` `6dba418c38538bc61e2d372b7f675d09ed6be9ad`, adds one focused identity-contact correction without changing username login, profile-name deferral, store ownership, operating mode, entitlements, grants, or Task 2B policy:
+
+- Public signup now requires `شماره موبایل` alongside username/password and browser-only password confirmation. Iranian `09…`, `+989…`, and `00989…` forms accept Persian, Arabic-Indic, or Latin digits and converge to canonical `09xxxxxxxxx`. Malformed, landline, and unsupported-country values receive `شماره موبایل معتبر نیست.`; a canonical collision receives `این شماره موبایل قبلاً ثبت شده است.` without identifying the account.
+- The server remains authoritative. Signup and profile edits share normalization; saving one's unchanged number succeeds, while taking another account's number fails. The named database constraint `uq_users_phone_canonical` resolves concurrent collisions, and the complete losing signup transaction rolls back without a user, store, membership, or session.
+- The submit guard, password-manager semantics, and in-memory field retention remain. Username is still the only login identifier. No SMS/OTP, phone login/recovery, lookup endpoint, verification claim, gift, quota, or plan/mode change was added. New owners still receive Free/Solo with no grant.
+- Legacy accounts and personnel with a null phone remain usable and can sign in. Profile completion requires a valid phone when that form is saved; no placeholder or bulk-generated value is introduced.
+
+Alembic `20261104_0014` rehearses from `0013`. It scans non-null values before mutation, and blocks transactionally with `MOBILE_PHONE_PREFLIGHT` plus counts and sampled user IDs when a value is malformed or canonical duplicates exist. Diagnostics omit phone values. After explicit remediation, valid values are canonicalized and the unique constraint is installed. Downgrade removes enforcement but intentionally does not reconstruct presentation variants.
+
+Deployment is not safely mixed: older clients omit the newly required signup field, and older workers do not canonicalize or enforce phone uniqueness. Stop old workers, verify backups, rehearse `0013 -> 0014` and rollback on a current copy, remediate any sampled IDs explicitly, confirm Alembic head, and release only 03F-or-newer backend/frontend artifacts together. No production/customer database or real account was used.
+
+Verification recorded before integration:
+
+| Command / scope | Result |
+|---|---|
+| Focused frontend validation | Passed: canonical prefixes/digit scripts, invalid feedback, and password confirmation. |
+| Focused backend signup/profile | Passed: 11 cases covering required/invalid/duplicate phone, normalization, atomic provisioning rollback, profile collision/self-save, legacy null-phone login, and Free/Solo/no-grant defaults. |
+| `npm.cmd run test:backend:postgres:local` | Passed: 17 tests, including `0013 -> 0014` privacy-conscious preflight/rollback/remediation and concurrent equivalent-phone signup with exactly one complete workspace. |
+| `npm.cmd test` | Passed: 76 files, 332 unit/component tests. |
+| `npm.cmd run test:backend` | Passed: 69 tests. |
+| `npm.cmd run test:typecheck` and `npm.cmd run lint` | Passed. |
+| `npm.cmd run build` | Passed with the existing stale Browserslist-data and large-chunk warnings; `bwip-js` remains about 930 kB. |
+| Production-preview `signup-profile-reminder.spec.ts` | Passed: 4 mocked-API Chromium cases across desktop/mobile. Required mobile input, canonical payload, double-submit guard, retained failed values, exact duplicate field error, profile reminder/resolution, and horizontal overflow were covered. This is UI/layout evidence, not live-backend evidence. |
+
+Task 2B remains pending the existing price/term, capability, capacity, gift, expiry/grace, and Starter-transition decisions. TZ-V1-03F does not begin Task 05.

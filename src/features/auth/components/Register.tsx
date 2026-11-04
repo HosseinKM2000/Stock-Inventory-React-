@@ -11,23 +11,34 @@ import { useRef } from "react";
 import { authErrorMessage } from "../auth-error";
 import { useRegister } from "../mutations/use-register";
 import { registerSchema } from "../validators/register.schema";
+import { ApiError } from "@/shared/api/api-error";
+import { DUPLICATE_MOBILE_MESSAGE } from "../mobile";
 
 function RegisterComponent() {
   const registerMutation = useRegister();
   const submittingRef = useRef(false);
   const form = useAppForm({
     schema: registerSchema,
-    initialValues: { username: "", password: "", repeatPassword: "" },
+    initialValues: { username: "", phone: "", password: "", repeatPassword: "" },
     onSubmit(values) {
       if (submittingRef.current) return;
       submittingRef.current = true;
       registerMutation.mutate(
-        { username: values.username, password: values.password },
-        { onSettled: () => { submittingRef.current = false; } },
+        { username: values.username, phone: values.phone, password: values.password },
+        {
+          onError(error) {
+            if (error instanceof ApiError && error.message === DUPLICATE_MOBILE_MESSAGE) {
+              form.setFieldError("phone", DUPLICATE_MOBILE_MESSAGE);
+            }
+          },
+          onSettled: () => { submittingRef.current = false; },
+        },
       );
     },
   });
-  const serverError = registerMutation.isError
+  const duplicatePhoneError = registerMutation.error instanceof ApiError
+    && registerMutation.error.message === DUPLICATE_MOBILE_MESSAGE;
+  const serverError = registerMutation.isError && !duplicatePhoneError
     ? authErrorMessage(registerMutation.error, "ثبت‌نام انجام نشد. اتصال اینترنت را بررسی و دوباره تلاش کنید.")
     : null;
 
@@ -42,6 +53,9 @@ function RegisterComponent() {
           {serverError ? <Callout.Root color="red"><Callout.Text>{serverError}</Callout.Text></Callout.Root> : null}
           <FormField label="نام کاربری" id="username" error={form.errors.username}>
             <TextInput size="3" name="username" autoComplete="username" value={form.values.username} onChange={form.handleChange} />
+          </FormField>
+          <FormField label="شماره موبایل" id="phone" error={form.errors.phone}>
+            <TextInput size="3" name="phone" inputMode="tel" autoComplete="tel" dir="ltr" value={form.values.phone} onChange={form.handleChange} />
           </FormField>
           <FormField label="رمز عبور" id="password" error={form.errors.password}>
             <PasswordInput size="3" name="password" autoComplete="new-password" value={form.values.password} onChange={form.handleChange} />

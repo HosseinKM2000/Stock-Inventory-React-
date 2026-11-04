@@ -49,7 +49,7 @@ This document records target policy. It does not claim that the current implemen
 ### Experience and dates
 
 - Preserve established navigation, responsive layouts, tokens, components, both themes, and compact/normal/large display preferences.
-- Public owner signup collects only username, password, and client-only password confirmation. Names and contact fields are completed later in profile; the server stores missing values as null and never fabricates shared placeholders.
+- Public owner signup collects username, a required unique Iranian mobile number, password, and client-only password confirmation. Names and email are completed later in profile. Equivalent supported phone prefixes/digit scripts are stored as `09xxxxxxxxx`; signup does not verify the number or make it a login/recovery identifier.
 - An incomplete owner profile produces one informational, non-blocking reminder with a direct profile action. Viewing is not completion; only a successful profile update resolves it. Personnel and platform-administrator workspaces are not asked to complete the customer owner's profile.
 - Persian RTL copy is warm, concise, respectful, and understandable to beginners. Activity describes business actions rather than transport events.
 - Human-facing input, display, print, and export use one Jalali convention such as `۱۴۰۳/۱۲/۰۱`, accepting Persian and Latin input digits. Backend-compatible internal timestamps remain allowed.

@@ -30,6 +30,7 @@ def _now() -> datetime:
 class User(Base):
     __tablename__ = "users"
     __table_args__ = (
+        UniqueConstraint("phone", name="uq_users_phone_canonical"),
         CheckConstraint(
             "(device_limit_mode IN ('inherit', 'unlimited') AND device_limit_override IS NULL) OR "
             "(device_limit_mode = 'limited' AND device_limit_override > 0)",

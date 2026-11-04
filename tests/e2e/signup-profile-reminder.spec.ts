@@ -13,16 +13,18 @@ test("minimal signup is reachable, responsive, and submits only one credential r
     requestCount += 1;
     submitted = route.request().postDataJSON();
     await gate;
-    await json(route, { detail: "Username already exists" }, 409);
+    await json(route, { detail: "این شماره موبایل قبلاً ثبت شده است." }, 409);
   });
 
   await page.goto("/auth/register");
   await expect(page.locator('input[name="username"]')).toBeVisible();
+  await expect(page.locator('input[name="phone"]')).toHaveAttribute("autocomplete", "tel");
   await expect(page.locator('input[name="password"]')).toHaveAttribute("autocomplete", "new-password");
   await expect(page.locator('input[name="repeatPassword"]')).toHaveAttribute("autocomplete", "new-password");
-  await expect(page.locator('input[name="firstName"], input[name="lastName"], input[type="email"], input[type="tel"]')).toHaveCount(0);
+  await expect(page.locator('input[name="firstName"], input[name="lastName"], input[type="email"]')).toHaveCount(0);
 
   await page.locator('input[name="username"]').fill("new-owner");
+  await page.locator('input[name="phone"]').fill("+۹۸۹۱۲۳۴۵۶۷۸۹");
   await page.locator('input[name="password"]').fill("StrongPass123!");
   await page.locator('input[name="repeatPassword"]').fill("DifferentPass123!");
   await page.getByRole("button", { name: "ساخت حساب" }).click();
@@ -34,14 +36,15 @@ test("minimal signup is reachable, responsive, and submits only one credential r
     (form as HTMLFormElement).requestSubmit();
   });
   await expect.poll(() => requestCount).toBe(1);
-  expect(submitted).toMatchObject({ username: "new-owner", password: "StrongPass123!" });
+  expect(submitted).toMatchObject({ username: "new-owner", phone: "09123456789", password: "StrongPass123!" });
   expect(submitted).not.toHaveProperty("repeatPassword");
   expect(submitted).not.toHaveProperty("first_name");
   expect(submitted).not.toHaveProperty("email");
   release();
 
-  await expect(page.getByText(/قبلاً ثبت شده/)).toBeVisible();
+  await expect(page.getByText("این شماره موبایل قبلاً ثبت شده است.")).toBeVisible();
   await expect(page.locator('input[name="username"]')).toHaveValue("new-owner");
+  await expect(page.locator('input[name="phone"]')).toHaveValue("+۹۸۹۱۲۳۴۵۶۷۸۹");
   await expect(page.locator('input[name="password"]')).toHaveValue("StrongPass123!");
   await expect.poll(() => page.evaluate(() => localStorage.getItem("access_token"))).toBeNull();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
