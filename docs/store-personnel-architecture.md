@@ -20,6 +20,8 @@ Alembic `20261102_0011` adds plan policy revisions/commercial status and the sto
 
 Alembic `20261103_0012` makes customer `first_name` and `last_name` nullable so public signup can defer profile data without placeholders. It preserves all existing names and does not rewrite store, membership, plan, mode, grant, operational, or sync rows. Downgrade fails with sampled user IDs while an incomplete profile exists. Pre-03 workers must not coexist once minimal accounts are enabled because they assume names are non-null; use a controlled application replacement around `0011 -> 0012`.
 
+Alembic `20261103_0013` adds store/actor-bound durable product-media assets and the nullable inventory association. It does not rewrite product identifiers, versions, quantities, prices, operation identities, fingerprints, results, actors, modes, grants, or legacy upload URLs. The application stores bytes through a local durable-media adapter outside the database and deployment tree; production must configure and back up that mount together with the database. Pre-04 workers do not understand the staged-asset/versioned-association protocol and must not coexist with schema `0013`. Stop old workers, verify database and media backups, rehearse `0012 -> 0013` plus restore on a current copy, confirm Alembic head and the media mount, then start only 04-or-newer backend/frontend artifacts. No rolling compatibility or automated storage rollback is claimed.
+
 ## Operating modes
 
 Plan eligibility permits explicit team activation but never switches mode. Personnel count, plan purchase/downgrade, and subscription expiry also never switch it. Activation is one-way in this release; there is no routine team-to-solo endpoint. Creating or reactivating personnel requires team mode.

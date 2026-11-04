@@ -12,6 +12,7 @@ import {
   captureSyncAccountContext,
   isSyncAccountCurrent,
 } from "./sync-account-context";
+import { mediaOperationBlocked, mediaTransferService } from "../media/media-transfer.service";
 
 export type SyncHandlerResult = {
   itemId: string;
@@ -160,6 +161,9 @@ async function runSync() {
 
   const attemptedThisRun = new Set<string>();
   while (writeAllowed && networkService.isOnline()) {
+    // Binary transfer has its own retry lifecycle. Its failure never prevents
+    // unrelated operational records from draining.
+    await mediaTransferService.processDue().catch(() => undefined);
     const items = (await queueService.getDue()).filter(
       (item) => !attemptedThisRun.has(item.operationId),
     );
@@ -168,6 +172,7 @@ async function runSync() {
 
     const groups = new Map<string, SyncQueueItem[]>();
     for (const item of items) {
+      if (mediaOperationBlocked(item)) continue;
       groups.set(item.entity, [...(groups.get(item.entity) ?? []), item]);
     }
 

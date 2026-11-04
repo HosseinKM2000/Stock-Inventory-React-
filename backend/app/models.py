@@ -427,6 +427,34 @@ class CatalogProduct(Base):
         back_populates="catalog_product"
     )
 
+# ---------- Durable product media ----------
+class MediaAsset(Base):
+    __tablename__ = "media_assets"
+    __table_args__ = (
+        UniqueConstraint(
+            "store_id", "actor_user_id", "transfer_id",
+            name="uq_media_assets_store_actor_transfer",
+        ),
+        Index("ix_media_assets_store_created", "store_id", "created_at"),
+    )
+
+    id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    store_id: Mapped[int] = mapped_column(
+        ForeignKey("stores.id", ondelete="CASCADE"), index=True
+    )
+    actor_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    transfer_id: Mapped[str] = mapped_column(String(36))
+    content_sha256: Mapped[str] = mapped_column(String(64))
+    storage_key: Mapped[str] = mapped_column(String(500))
+    mime_type: Mapped[str] = mapped_column(String(80))
+    byte_size: Mapped[int] = mapped_column(BigInteger)
+    width: Mapped[int] = mapped_column(Integer)
+    height: Mapped[int] = mapped_column(Integer)
+    version: Mapped[int] = mapped_column(Integer, default=1)
+    available_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now)
+    created_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now)
+
+
 # ---------- User Inventory ----------
 class InventoryItem(Base):
     __tablename__ = "inventory_items"
@@ -484,6 +512,30 @@ class InventoryItem(Base):
     purchase_price: Mapped[int | None] = mapped_column(BigInteger, nullable=True)
 
     image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    media_asset_id: Mapped[str | None] = mapped_column(
+        ForeignKey("media_assets.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    media_asset: Mapped["MediaAsset | None"] = relationship()
+
+    @property
+    def media_version(self) -> int | None:
+        return self.media_asset.version if self.media_asset else None
+
+    @property
+    def media_content_sha256(self) -> str | None:
+        return self.media_asset.content_sha256 if self.media_asset else None
+
+    @property
+    def media_byte_size(self) -> int | None:
+        return self.media_asset.byte_size if self.media_asset else None
+
+    @property
+    def media_preview_url(self) -> str | None:
+        return f"/api/media/{self.media_asset_id}/preview" if self.media_asset_id else None
+
+    @property
+    def media_detail_url(self) -> str | None:
+        return f"/api/media/{self.media_asset_id}/detail" if self.media_asset_id else None
 
     is_catalog_backed: Mapped[bool] = mapped_column(
         Boolean,

@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
   enqueue: vi.fn(), requireWrite: vi.fn(), requireInventoryCapacity: vi.fn(), removeImage: vi.fn(),
   getLabels: vi.fn(), user: vi.fn(),
   isTeamMode: vi.fn(), submitTeam: vi.fn(),
+  stageMedia: vi.fn(), persistMedia: vi.fn(),
 }));
 
 vi.mock("@/features/app/inventory/services/inventory.repository", () => ({
@@ -31,6 +32,13 @@ vi.mock("@/shared/access/access-state", () => ({
 }));
 vi.mock("@/shared/lib/infrastructure/media/image.service", () => ({
   imageService: { remove: mocks.removeImage, removeOrphans: vi.fn() },
+  isLocalImage: (path: unknown) => typeof path === "string" && path.startsWith("local://"),
+}));
+vi.mock("@/shared/lib/infrastructure/media/media-transfer.service", () => ({
+  mediaTransferService: {
+    stage: mocks.stageMedia,
+    persist: mocks.persistMedia,
+  },
 }));
 vi.mock("@/shared/lib/infrastructure/storage/label-storage", () => ({
   labelStorage: { getAll: mocks.getLabels },
@@ -68,6 +76,58 @@ describe("local-first inventory service", () => {
       "product", 9, "UPDATE", { id: 9, version: 3, quantity: 7 },
     );
     expect(mocks.save).not.toHaveBeenCalled();
+    expect(mocks.enqueue).not.toHaveBeenCalled();
+  });
+
+  it("persists team image transfer before submitting the association and projects only the accepted result", async () => {
+    const current = product({ id: 9, version: 3, image_url: null });
+    const confirmed = product({
+      id: 9,
+      version: 4,
+      image_url: "/api/media/asset-9/detail",
+      media_asset_id: "asset-9",
+    });
+    const mediaJob = {
+      id: "7:7:transfer-9",
+      actorId: 7,
+      storeId: 7,
+      productId: 9,
+      transferId: "transfer-9",
+      localPath: "local://new.webp",
+      sha256: "a".repeat(64),
+      mimeType: "image/webp",
+      sizeBytes: 42,
+      status: "pending",
+      attemptState: "never",
+      attempts: 0,
+      nextAttemptAt: 0,
+      createdAt: 1,
+      updatedAt: 1,
+    };
+    mocks.isTeamMode.mockReturnValue(true);
+    mocks.get.mockResolvedValueOnce(current).mockResolvedValueOnce(confirmed);
+    mocks.stageMedia.mockResolvedValue(mediaJob);
+    mocks.persistMedia.mockResolvedValue(undefined);
+    mocks.submitTeam.mockResolvedValue("team-operation");
+
+    await expect(inventoryService.update(9, { image_url: "local://new.webp" } as never))
+      .resolves.toMatchObject({
+        id: 9,
+        version: 4,
+        image_url: "local://new.webp",
+        server_image_url: "/api/media/asset-9/detail",
+      });
+
+    expect(mocks.stageMedia).toHaveBeenCalledWith("local://new.webp", 9);
+    expect(mocks.persistMedia).toHaveBeenCalledWith(mediaJob);
+    expect(mocks.persistMedia.mock.invocationCallOrder[0])
+      .toBeLessThan(mocks.submitTeam.mock.invocationCallOrder[0]);
+    expect(mocks.submitTeam).toHaveBeenCalledWith("product", 9, "UPDATE", {
+      id: 9,
+      version: 3,
+      media_transfer_id: "transfer-9",
+    });
+    expect(mocks.save).toHaveBeenCalledOnce();
     expect(mocks.enqueue).not.toHaveBeenCalled();
   });
 

@@ -76,3 +76,32 @@ export interface SyncMetadataItem {
   value: number | string | null;
   updatedAt: number;
 }
+
+export type MediaTransferStatus =
+  | "pending"
+  | "in_flight"
+  | "retryable_error"
+  | "uploaded"
+  | "fatal_error";
+
+export interface MediaTransferItem {
+  id: string;
+  ownerUserId: number;
+  storeId: number;
+  transferId: string;
+  productId: number;
+  localPath: string;
+  contentSha256: string;
+  mimeType: "image/webp";
+  byteSize: number;
+  attemptState: QueueAttemptState;
+  attemptedAt?: number;
+  status: MediaTransferStatus;
+  retryCount: number;
+  nextAttemptAt: number;
+  lastError?: string;
+  mediaAssetId?: string;
+  mediaVersion?: number;
+  createdAt: number;
+  updatedAt: number;
+}

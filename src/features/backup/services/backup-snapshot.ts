@@ -93,14 +93,19 @@ export async function captureBackupData(userId: number, includeImageBytes: boole
 
   const images: BackupImage[] = [];
   const unavailableImages: BackupUnavailableImage[] = [];
+  const remoteOnlyPaths = records.products
+    .filter((product) => product.media_asset_id && product.media_version && !isLocalImage(product.image_url))
+    .map((product) => `local://media-${product.media_asset_id}-v${product.media_version}.webp`);
   if (includeImageBytes) {
     const results = await Promise.all([...paths].sort().map(readImage));
     for (const result of results) {
       if ("base64" in result) images.push(result);
       else unavailableImages.push(result);
     }
+    for (const path of remoteOnlyPaths) unavailableImages.push({ path, reason: "missing" });
   } else {
     for (const path of [...paths].sort()) images.push({ path, mimeType: "", base64: "" });
+    for (const path of remoteOnlyPaths) unavailableImages.push({ path, reason: "missing" });
   }
 
   return { ...records, preferences, images, unavailableImages };

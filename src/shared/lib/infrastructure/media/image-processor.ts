@@ -1,4 +1,4 @@
-import { IMAGE_LIMITS, PASSTHROUGH_IMAGE_TYPES } from "./image.constants";
+import { IMAGE_LIMITS } from "./image.constants";
 import type { ImageProcessOptions, ProcessedImage } from "./types";
 import {
   ImageValidationError,
@@ -45,13 +45,6 @@ function toBlob(canvas: HTMLCanvasElement, type: string, quality: number) {
   });
 }
 
-function extensionFor(type: string) {
-  if (type === "image/avif") return "avif";
-  if (type === "image/png") return "png";
-  if (type === "image/jpeg") return "jpg";
-  return "webp";
-}
-
 export const imageProcessor = {
   async process(file: File, options: ImageProcessOptions): Promise<ProcessedImage> {
     const profile = IMAGE_LIMITS[options.purpose];
@@ -60,20 +53,6 @@ export const imageProcessor = {
     const source = await decode(file);
     try {
       const size = fitInside(source.width, source.height, profile.maxWidth, profile.maxHeight);
-      const alreadySized = size.width === source.width && size.height === source.height;
-      const optimizedType = PASSTHROUGH_IMAGE_TYPES.includes(
-        file.type as (typeof PASSTHROUGH_IMAGE_TYPES)[number],
-      );
-
-      if (alreadySized && optimizedType && file.size <= profile.maxOutputSize) {
-        return {
-          blob: file,
-          extension: extensionFor(file.type),
-          width: source.width,
-          height: source.height,
-        };
-      }
-
       const canvas = document.createElement("canvas");
       canvas.width = size.width;
       canvas.height = size.height;

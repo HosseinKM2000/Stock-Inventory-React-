@@ -5,6 +5,7 @@ non-PostgreSQL URLs and databases whose name does not contain ``test``.
 """
 
 import os
+import base64
 import hashlib
 import json
 from concurrent.futures import ThreadPoolExecutor
@@ -37,7 +38,7 @@ os.environ["SYSTEM_ADMIN_PASSWORD"] = "Test-only-system-admin-password-123!"
 from fastapi.testclient import TestClient
 from app.database import SessionLocal, engine
 from app.main import app
-from app.models import CatalogProduct, Category, Industry, InventoryItem, Label, Store, StoreMembership, StoreModeTransition, StorePlanGrant, SubscriptionPlan, SyncOperation, User, UserSession
+from app.models import CatalogProduct, Category, Industry, InventoryItem, Label, MediaAsset, Store, StoreMembership, StoreModeTransition, StorePlanGrant, SubscriptionPlan, SyncOperation, User, UserSession
 from app.routers.sync import _duplicate_result
 from app.schemas import SyncOperationIn
 from app.services.catalog_product_service import _reconcile_catalog_assignments
@@ -54,6 +55,7 @@ EXPECTED_TABLES = {
     "product_barcodes", "inventory_movements",
     "store_mode_transitions",
     "store_plan_grants",
+    "media_assets",
 }
 MIGRATION_EVIDENCE = {}
 
@@ -301,14 +303,16 @@ def test_migration_reaches_head_with_all_expected_tables(migrated_empty_database
     assert MIGRATION_EVIDENCE["mode_rollback"] == ("20261101_0009", True)
     assert EXPECTED_TABLES <= set(inspect(engine).get_table_names())
     with engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261103_0012"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261103_0013"
         user_columns = {column["name"]: column for column in inspect(engine).get_columns("users")}
         assert user_columns["first_name"]["nullable"] is True
         assert user_columns["last_name"]["nullable"] is True
         columns = {column["name"] for column in inspect(engine).get_columns("industries")}
         assert "tools_json" in columns
         inventory_columns = {column["name"] for column in inspect(engine).get_columns("inventory_items")}
-        assert {"sale_price", "purchase_price"} <= inventory_columns
+        assert {"sale_price", "purchase_price", "media_asset_id"} <= inventory_columns
+        media_columns = {column["name"] for column in inspect(engine).get_columns("media_assets")}
+        assert {"store_id", "actor_user_id", "transfer_id", "content_sha256", "storage_key", "available_at"} <= media_columns
         operation_columns = {column["name"] for column in inspect(engine).get_columns("sync_operations")}
         assert {"request_fingerprint", "execution_mode", "policy_version"} <= operation_columns
         assert next(column for column in inspect(engine).get_columns("inventory_items") if column["name"] == "store_id")["nullable"] is False
@@ -352,6 +356,37 @@ def test_concurrent_minimal_signup_provisions_one_complete_workspace(client):
         assert stores[0].operating_mode == "solo"
         assert memberships[0].is_owner is True
         assert db.scalar(select(func.count(StorePlanGrant.id)).where(StorePlanGrant.store_id == stores[0].id)) == 0
+
+
+@pytest.mark.postgres
+def test_concurrent_equivalent_media_transfer_converges_once(client):
+    created = signup(client)
+    assert created.status_code == 201
+    headers = {
+        "Authorization": f"Bearer {created.json()['access_token']}",
+        "X-Device-Fingerprint": "postgres-device",
+        "X-Client-Data-Schema": "3",
+    }
+    content = base64.b64decode(
+        "UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEAAUAmJaQAA3AA/v89WAAAAA=="
+    )
+    transfer_id = "70c45fa5-8664-4fef-94d0-49536b441c39"
+    digest = hashlib.sha256(content).hexdigest()
+
+    def submit():
+        return client.post(
+            "/api/media/transfers", headers=headers,
+            data={"transfer_id": transfer_id, "content_sha256": digest},
+            files={"file": ("image.webp", content, "image/webp")},
+        )
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        responses = list(pool.map(lambda _: submit(), range(2)))
+
+    assert [response.status_code for response in responses] == [200, 200]
+    assert len({response.json()["id"] for response in responses}) == 1
+    with SessionLocal() as db:
+        assert db.scalar(select(func.count(MediaAsset.id)).where(MediaAsset.transfer_id == transfer_id)) == 1
 
 
 @pytest.mark.postgres

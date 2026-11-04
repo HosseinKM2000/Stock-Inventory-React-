@@ -1,4 +1,7 @@
 import { imageService } from "@/shared/lib/infrastructure/media/image.service";
+import { isLocalImage } from "@/shared/lib/infrastructure/media/image.service";
+import { mediaTransferService } from "@/shared/lib/infrastructure/media/media-transfer.service";
+import { db } from "@/shared/lib/infrastructure/storage/db";
 import { queueService } from "@/shared/lib/infrastructure/sync/queue.service";
 import { accessState } from "@/shared/access/access-state";
 import { localMutationStorage } from "@/shared/lib/infrastructure/storage/local-mutation-storage";
@@ -193,21 +196,35 @@ class InventoryService {
     if (product.purchase_price != null) accessState.requireStorePermission?.("products.purchase_price.change");
     accessState.requireInventoryCapacity((await inventoryRepository.getAll()).length);
     const record = sanitize(product);
+    const mediaJob = isLocalImage(record.image_url)
+      ? await mediaTransferService.stage(record.image_url, record.id)
+      : null;
+    const commandPayload: Record<string, unknown> = mediaJob
+      ? { ...record, media_transfer_id: mediaJob.transferId }
+      : { ...record };
+    if (mediaJob) delete commandPayload.image_url;
 
     if (isTeamMode()) {
-      await teamCommandService.submit(PRODUCT_ENTITY, record.id, "CREATE", record);
+      if (mediaJob) await mediaTransferService.persist(mediaJob);
+      await teamCommandService.submit(PRODUCT_ENTITY, record.id, "CREATE", commandPayload);
       const confirmed = await inventoryRepository.get(record.id);
       if (!confirmed) throw new Error("TEAM_RESULT_MISSING");
+      if (mediaJob) {
+        const local = { ...confirmed, image_url: mediaJob.localPath, server_image_url: confirmed.image_url };
+        await inventoryRepository.save(local);
+        return local;
+      }
       return confirmed;
     }
 
     return localMutationStorage.inventory(async () => {
       await inventoryRepository.save(record);
+      if (mediaJob) await db.mediaTransfers.put(mediaJob);
 
       const saved = await inventoryRepository.get(record.id);
       if (!saved) throw new Error("product was not saved");
 
-      await queueService.enqueue(PRODUCT_ENTITY, saved.id, "CREATE", saved);
+      await queueService.enqueue(PRODUCT_ENTITY, saved.id, "CREATE", commandPayload);
       return saved;
     });
   }
@@ -337,20 +354,34 @@ class InventoryService {
     const payload = current.version == null
       ? updated
       : { id, version: current.version, ...input, ...(input.sale_price !== undefined ? { price: input.sale_price ?? 0, price_missing: input.sale_price == null } : {}) };
+    const mediaJob = isLocalImage(updated.image_url) && updated.image_url !== current.image_url
+      ? await mediaTransferService.stage(updated.image_url, id)
+      : null;
+    const commandPayload: Record<string, unknown> = mediaJob
+      ? { ...payload, media_transfer_id: mediaJob.transferId }
+      : payload;
+    if (mediaJob) delete commandPayload.image_url;
     if (isTeamMode()) {
-      await teamCommandService.submit(PRODUCT_ENTITY, id, productSyncAction(current), payload);
+      if (mediaJob) await mediaTransferService.persist(mediaJob);
+      await teamCommandService.submit(PRODUCT_ENTITY, id, productSyncAction(current), commandPayload);
       const confirmed = await inventoryRepository.get(id);
       if (!confirmed) throw new Error("TEAM_RESULT_MISSING");
+      if (mediaJob) {
+        const local = { ...confirmed, image_url: mediaJob.localPath, server_image_url: confirmed.image_url };
+        await inventoryRepository.save(local);
+        return local;
+      }
       return confirmed;
     }
 
     const saved = await localMutationStorage.inventory(async () => {
       await inventoryRepository.save(updated);
+      if (mediaJob) await db.mediaTransfers.put(mediaJob);
 
       const persisted = await inventoryRepository.get(id);
       if (!persisted) throw new Error("update failed");
 
-      await queueService.enqueue(PRODUCT_ENTITY, id, productSyncAction(current), payload);
+      await queueService.enqueue(PRODUCT_ENTITY, id, productSyncAction(current), commandPayload);
       return persisted;
     });
 

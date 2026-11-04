@@ -197,11 +197,11 @@ Observed UI issues are recorded separately:
 
 ## Outstanding release risks
 
-1. Metadata and image-byte completion are conflated; clean-device OPFS recovery is absent.
+1. Product-media transfer and clean-device OPFS recovery are implemented, but preview/detail currently share one optimized derivative and conservative no-delete retention can accumulate unreferenced bytes until a reviewed GC policy exists.
 2. Final Free/Pro/VIP allocations, prices, gift/grace rules, and the existing Starter transition remain unapproved; payment integration is absent. The 2A registry/admin/grant infrastructure is implemented, and Starter is historical-only.
 3. Server restore, deploy/rollback, monitoring, alerting, and backup drills are not evidenced end to end.
 4. Persistent dashboard scroll regression and the mobile status overlap remain.
-5. Schema `0012` and minimal accounts require controlled replacement; pre-03 workers are not safe once nullable profile names are in use.
+5. Schema `0013`, durable media storage, and minimal accounts require controlled replacement; pre-04 workers are not safe with the staged-asset protocol or nullable profile names.
 6. The 1C checkpoint/review journal is browser-local; browser-process kill, real post-commit termination, device-loss, and cross-browser File System Access recovery remain unverified.
 7. Activation warns about other devices and the server rejects their stale commands, but instant control of a disconnected device is not possible and no private team draft workflow exists.
 
@@ -292,3 +292,31 @@ Task 2B remains pending exactly the previously listed commercial decisions. TZ-V
 - Local `draft` integrated the branch with non-destructive merge `520fccddc109aef8a02ed07b7ee57edfd1b4128e` (`merge: integrate simplified signup profile reminder`). Task history is preserved.
 - Post-merge smoke passed 12 focused frontend validation/reminder tests and 4 backend signup/provisioning/profile tests.
 - Nothing was pushed, deployed, merged to `develop`, applied to a customer database, or granted to a real user. Task 2B and the next implementation task were not started.
+
+## TZ-V1-04 durable product image transfer and offline recovery
+
+Branch `feat/v1-durable-media-recovery`, based directly on accepted local `draft` `3c8742b50034d162f5c25fddec307fb43ef286e7`, separates product metadata, server byte availability, and local OPFS coverage without changing commercial allocations, operating mode, catalog administration, or Task 2B decisions:
+
+- Dexie v13 adds a person/store-partitioned binary transfer journal. A locally processed WebP is written to OPFS immediately; its transfer ID, digest, attempt state, bounded retry/backoff, and result persist independently from the operational queue. Once dispatch may have occurred, transfer identity and content stay immutable. Lost responses converge, mismatched reuse is terminal, and a failed image does not stop unrelated sync resources.
+- Server `MediaAsset` rows and the local durable-media adapter store validated, content-addressed bytes outside the database/deployment directory. Actual WebP structure, dimensions/pixel count, size, and SHA-256 are checked; bytes are atomically made durable before availability is committed. Protected reads require a current same-store product association.
+- In Team mode, upload staging is private and never publishes product metadata. The normal versioned sync command associates or removes the asset only after current membership, permission, entitlement, operating-mode/version, store, and resource checks. A stale upload conflicts, a deleted product is not resurrected, and catalog administrator media remains on its existing path.
+- Product lists use the protected preview endpoint and detail views use the detail endpoint. They currently return the same optimized WebP derivative. Old inline multipart operations remain readable for exact legacy replay. Replacement/deletion does not destructively collect durable bytes; retention/GC is intentionally deferred.
+- The Persian RTL sync page reports local/server/missing coverage and exposes `دریافت تصاویر برای استفاده آفلاین`. Recovery verifies authenticated partition, media identity/version/hash/type and browser quota before OPFS commit, then rechecks the current product so late replacement/deletion/account changes cannot be overwritten. Backups contain available local bytes and visibly record server-only coverage as unavailable.
+
+Alembic `20261103_0013` adds `media_assets` and the nullable inventory association without rewriting operational values, modes, plans/grants, sync IDs/payloads/fingerprints/results, or actor history. Schema `0013` is not rolling-compatible with pre-04 workers. Production requires stopped old workers, verified database and media-store backups, a current-copy `0012 -> 0013` migration and restore rehearsal, Alembic-head/media-mount confirmation, then only 04-or-newer artifacts. No customer/production database or external storage provider was used.
+
+Verification recorded for final review:
+
+| Command / scope | Result |
+|---|---|
+| Focused media client regressions | Passed: interrupted/lost response identity, immutable attempted commands, mismatch classification, account/store partitioning, clean-profile hydration, stale replacement/deletion guard, integrity and quota failure, and explicit Team staging-before-association. |
+| Focused backend media/sync tests | Passed: idempotent retry, mismatch, private staged bytes, same-store protected delivery, cross-store denial, replacement, stale version, deletion/no resurrection, invalid content, and legacy sync compatibility. |
+| `npm.cmd run test:backend:postgres:local` | Passed: 17 tests, including migration head and concurrent equivalent media transfer with one asset row. |
+| Disposable real-backend Chromium journey | Passed: 2 desktop/mobile cases. A synthetic owner uploaded and associated a WebP, a fresh browser profile downloaded protected bytes from the real backend, verified them into OPFS, then reopened offline and decoded the image. The stable same-origin test document isolates OPFS/IndexedDB from application-auth navigation; the protected byte response still comes from the disposable backend. No customer account or persistent non-test database was used. |
+| Production-preview media controls | Passed: 2 mocked-API desktop/mobile cases. The exact Persian action, RTL direction, reachability, and no horizontal overflow were checked. This is UI/layout evidence, not backend evidence. |
+| `npm.cmd test` | Passed: 76 files, 323 unit/component tests. |
+| `npm.cmd run test:backend` | Passed: 67 tests. |
+| `npm.cmd run test:typecheck` and `npm.cmd run lint` | Passed. |
+| `npm.cmd run build` | Passed with the existing stale Browserslist-data and large-chunk warnings; `bwip-js` remains about 930 kB. |
+
+Task 2B remains pending the existing explicit price/term, capability, capacity, gift, expiry/grace, and Starter-transition decisions. TZ-V1-04 adds no quota or tier allocation and does not begin the next task automatically.
