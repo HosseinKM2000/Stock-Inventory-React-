@@ -200,7 +200,7 @@ Observed UI issues are recorded separately:
 1. Product-media transfer and clean-device OPFS recovery are implemented, but preview/detail currently share one optimized derivative and conservative no-delete retention can accumulate unreferenced bytes until a reviewed GC policy exists.
 2. Final Free/Pro/VIP allocations, prices, gift/grace rules, and the existing Starter transition remain unapproved; payment integration is absent. The 2A registry/admin/grant infrastructure is implemented, and Starter is historical-only.
 3. Server restore, deploy/rollback, monitoring, alerting, and backup drills are not evidenced end to end.
-4. Persistent dashboard scroll regression and the mobile status overlap remain.
+4. The mobile status overlap remains. The dashboard scroll regression is resolved by TZ-V1-07 for the covered desktop/mobile Chromium paths.
 5. Schema `0014`, durable media storage, canonical unique signup phones, and nullable profile names require controlled replacement; pre-03F clients omit a required field and pre-03F workers do not enforce the new account-phone boundary.
 6. The 1C checkpoint/review journal is browser-local; browser-process kill, real post-commit termination, device-loss, and cross-browser File System Access recovery remain unverified.
 7. Activation warns about other devices and the server rejects their stale commands, but instant control of a disconnected device is not possible and no private team draft workflow exists.
@@ -435,3 +435,28 @@ Verification recorded before integration:
 | Typecheck/lint/build | Passed. The PDF generator is a separate lazy chunk and the existing stale Browserslist/large `bwip-js` warnings remain. |
 
 Remaining limits: PDF text is visually shaped by Chromium into page images and is not selectable/searchable or tagged for assistive PDF readers. Chromium is the verified engine; physical scanner/camera, native printer dialogs, mobile OS file-share sheets, other browser engines, and process-kill timing during generation remain unverified. Invoice numbering/retention, payments/tax, partial returns, and realized-profit reporting remain outside 06B. Task 2B and Task 05B remain pending; Task 07 was not started.
+
+## TZ-V1-07 operational dashboard and invoice reports
+
+Branch `feat/v1-operational-dashboard`, based directly on accepted local `draft` `7b36f3c2daddc2f215245daf0b498c7458ca5b0b`, completes the operational dashboard slice without changing backend schema, invoice acceptance, stock/movement effects, outbox semantics, commercial allocations, or Task 08:
+
+- Dashboard cards are grouped in operational order: overview, prioritized actions, inventory/invoice analysis, then information completion. Summary counts and detail lists share the same selectors. Active summaries exclude hidden/deleted/inactive or unresolved catalog records, while the explicit sanitized hidden-maintenance view remains available.
+- Compact all-product rows remain name plus quantity only. Out-of-stock and urgent-purchase cards receive the single urgent visual emphasis. Actions link directly to their remediation list. Urgent purchase means an enabled low-stock alert whose current quantity is at or below its threshold; the threshold is explicitly not a recommended order quantity.
+- Product and category value views state the `quantity × sale price` basis, include valid zero values, separate missing prices, expose priced/missing category membership, and keep uncategorized value outside category totals. Missing category and missing label remain independently selectable in the same completion view.
+- `/dashboard/reports` aggregates immutable invoice snapshots for Tehran calendar windows of today, 7 days, and 30 days. Accepted and cancellation-pending last-confirmed states count; cancelled/rejected/conflicted/Team-unknown records do not. Solo pending invoices are separate and unconfirmed. Missing data, valid zero, unavailable totals, partial history, and pending cancellation are distinct presentations.
+- Invoice capability, store permission, price visibility, person/store partition, and account changes are rechecked. Purchase totals and counts—including Solo pending aggregates—are unavailable without purchase-price visibility. A scoped complete-history timestamp distinguishes a successful full server hydration from partial local coverage. The UI does not call sales collected cash or derive realized profit.
+- The app-shell scroll root no longer remounts on every pathname. Router positions and explicit dashboard return anchors are scoped by person and store. Browser back and the in-app dashboard link now preserve the dashboard position in the covered desktop/mobile Chromium journeys.
+
+Verification recorded before final integration:
+
+| Command / scope | Result |
+|---|---|
+| Focused selectors/services/components | Passed: 7 files, 22 tests for shared count/detail rules, hidden/catalog eligibility, zero-versus-missing price, valuation/category details, prioritized actions, compact rows, report states/access redaction, and scoped scroll keys. |
+| `npm.cmd test` | Passed: 83 files, 355 unit/component tests. |
+| `npm.cmd run test:backend` | Passed: 76 tests. No backend runtime or schema changed. |
+| `npm.cmd run test:typecheck` and `npm.cmd run lint` | Passed. |
+| Production-preview dashboard/invoice journeys | Passed: 14 cases across desktop/mobile for dashboard order and scroll restoration, offline analysis mode, invoice entry/PDF compatibility, confirmed snapshot report totals, zero/no-data distinction, cancelled exclusion, coverage timestamp, and no horizontal overflow. |
+| Appearance/display matrix | Passed in desktop/mobile Chromium for light/compact and dark/large report layouts; headings and 30-day content remained reachable without horizontal overflow. |
+| Build | Passed. The report remains route-split; existing stale Browserslist data and large `bwip-js` warnings remain. |
+
+Remaining limits: report browser evidence uses mocked API responses plus real IndexedDB/route rendering, not a live PostgreSQL browser journey. History completeness means a successful full fetch at the displayed timestamp, not continuous server freshness. Chromium is the verified engine; other browser engines remain unverified. Current invoices do not establish cash collection, tax, partial returns, or realized profit. Task 2B and Task 05B remain pending; Task 08 was not started.

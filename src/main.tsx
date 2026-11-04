@@ -24,7 +24,11 @@ const router = createRouter({
   scrollRestoration: true,
   scrollToTopSelectors: ["[data-scroll-restoration-id='app-shell']"],
   getScrollRestorationKey: (location) =>
-    accountScrollRestorationKey(location, accessState.user()?.id),
+    accountScrollRestorationKey(
+      location,
+      accessState.user()?.id,
+      accessState.user()?.store_id,
+    ),
 });
 
 appUpdateService.initialize();

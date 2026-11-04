@@ -147,3 +147,34 @@ test("cancelled purchase snapshot produces a multipage PDF without current produ
   const path = await (await downloadPromise).path(); const bytes = await import("node:fs/promises").then((fs) => fs.readFile(path!));
   expect(bytes.toString("latin1").match(/\/Type \/Page\b/g)?.length).toBeGreaterThan(1);
 });
+
+test("dashboard reports only confirmed invoice snapshots and states coverage", async ({ page }) => {
+  await seed(page, [
+    { id: 301, invoice_type: "purchase", title: "خرید قطعی", counterparty: null, status: "posted", total_amount: 0, actor_user_id: owner.id, actor_membership_id: owner.membership_id, post_operation_id: "purchase-301", posted_at: now, lines: [] },
+    { id: 302, invoice_type: "sale", title: "فروش قطعی", counterparty: null, status: "posted", total_amount: 1250, actor_user_id: owner.id, actor_membership_id: owner.membership_id, post_operation_id: "sale-302", posted_at: now, lines: [] },
+    { id: 303, invoice_type: "sale", title: "فروش باطل", counterparty: null, status: "cancelled", total_amount: 9000, actor_user_id: owner.id, actor_membership_id: owner.membership_id, post_operation_id: "sale-303", posted_at: now, cancelled_at: now, lines: [] },
+  ]);
+  await page.goto("/dashboard/reports");
+
+  await expect(page.getByRole("heading", { name: "گزارش خرید و فروش", level: 1 })).toBeVisible();
+  await expect(page.getByText(/پوشش کامل آخرین بار/)).toBeVisible();
+  const sevenDays = page.getByRole("heading", { name: "۷ روز اخیر", level: 2 }).locator("xpath=ancestor::section");
+  await expect(sevenDays.getByText("۰ تومان", { exact: true })).toBeVisible();
+  await expect(sevenDays.getByText("۱٬۲۵۰ تومان", { exact: true })).toBeVisible();
+  await expect(sevenDays.getByText("۹٬۰۰۰ تومان", { exact: true })).not.toBeVisible();
+  await expect(page.getByText(/وجه وصول‌شده نیست/)).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+
+  for (const [appearance, size] of [["light", "compact"], ["dark", "large"]] as const) {
+    await page.evaluate(({ appearance, size }) => {
+      localStorage.setItem("inventory-appearance", appearance);
+      localStorage.setItem("inventory-display-size", size);
+    }, { appearance, size });
+    await page.reload();
+    await expect(page.locator("html")).toHaveAttribute("data-appearance", appearance);
+    await expect(page.locator("html")).toHaveAttribute("data-display-size", size);
+    await expect(page.getByRole("heading", { name: "گزارش خرید و فروش", level: 1 })).toBeVisible();
+    await page.getByRole("heading", { name: "۳۰ روز اخیر", level: 2 }).scrollIntoViewIfNeeded();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+  }
+});

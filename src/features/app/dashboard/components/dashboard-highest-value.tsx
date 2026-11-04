@@ -42,7 +42,7 @@ export function DashboardHighestValue() {
         </Text>
       )}
       {!isLoading && !isError && empty && (
-        <Flex justify="center" py="9"><Text color="gray">موردی با ارزش موجودی مثبت یافت نشد.</Text></Flex>
+        <Flex justify="center" py="9"><Text color="gray">مورد قیمت‌داری برای محاسبه ارزش موجودی یافت نشد.</Text></Flex>
       )}
 
       {data && mode === "products" && data.productValues.map(({ product, value }) => (
@@ -54,9 +54,17 @@ export function DashboardHighestValue() {
           <Flex justify="between" gap="4" align="center" wrap="wrap">
             <div>
               <Text as="div" weight="bold">{category.name}</Text>
-              <Text as="div" size="2" color="gray">{category.productCount.toLocaleString("fa-IR")} محصول</Text>
+              <Text as="div" size="2" color="gray">
+                {category.quantity.toLocaleString("fa-IR")} واحد از {category.pricedProductCount.toLocaleString("fa-IR")} محصول قیمت‌دار
+              </Text>
+              {category.missingPriceCount > 0 && <Text as="div" size="1" color="amber">
+                {category.missingPriceCount.toLocaleString("fa-IR")} محصول بی‌قیمت در جمع نیست
+              </Text>}
             </div>
-            <Text weight="bold" color="green">{category.value.toLocaleString("fa-IR")} تومان</Text>
+            <div className="text-end">
+              <Text as="div" size="1" color="gray">جمع تعداد × قیمت فروش هر محصول</Text>
+              <Text as="div" weight="bold" color="green">{category.value.toLocaleString("fa-IR")} تومان</Text>
+            </div>
           </Flex>
         </Card>
       ))}

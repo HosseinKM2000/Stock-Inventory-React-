@@ -2,12 +2,16 @@ import { isProductEligible } from "@/features/app/inventory/domain/product-eligi
 import type { Product } from "@/features/app/inventory/types";
 import type { Category, Label } from "@/features/setting/types";
 import type { SyncQueueItem } from "@/shared/lib/infrastructure/storage/types";
+import { DashboardFilters, type DashboardFilter } from "../types";
 
 export type RankedProductValue = { product: Product; value: number };
 export type RankedCategoryValue = {
   categoryId: number;
   name: string;
   productCount: number;
+  pricedProductCount: number;
+  missingPriceCount: number;
+  quantity: number;
   value: number;
 };
 
@@ -18,12 +22,12 @@ export type ClassificationResult = {
 };
 
 export type DashboardAction = {
-  kind: "out-of-stock" | "low-stock" | "no-price" | "classification";
+  kind: "out-of-stock" | "urgent-purchase" | "no-price" | "classification";
   title: string;
   count: number;
   to:
     | "/dashboard/products/out-of-stock"
-    | "/dashboard/products/low-stock"
+    | "/dashboard/products/urgent-purchase"
     | "/dashboard/products/no-price"
     | "/dashboard/products/unclassified";
 };
@@ -46,6 +50,39 @@ export function hasMissingPrice(product: Product): boolean {
   return product.price_missing === true || !Number.isFinite(product.price);
 }
 
+export function needsUrgentPurchase(product: Product) {
+  return product.low_stock_alert && product.quantity <= product.low_stock_threshold;
+}
+
+export function selectProductsForDashboardFilter(
+  products: readonly Product[],
+  filter: DashboardFilter,
+  now = new Date(),
+): Product[] {
+  switch (filter) {
+    case DashboardFilters.ALL:
+    case DashboardFilters.INVENTORY_VALUE:
+      return [...products];
+    case DashboardFilters.TODAY:
+      return products.filter((product) => {
+        const created = new Date(product.created_at);
+        return !Number.isNaN(created.getTime()) && created.getFullYear() === now.getFullYear() && created.getMonth() === now.getMonth() && created.getDate() === now.getDate();
+      });
+    case DashboardFilters.LOW_STOCK:
+      return products.filter((product) => product.status === "low_stock");
+    case DashboardFilters.OUT_OF_STOCK:
+      return products.filter((product) => product.status === "out_of_stock");
+    case DashboardFilters.NO_IMAGE:
+      return products.filter((product) => !product.image_url?.trim() && !product.catalog_product?.image_url?.trim());
+    case DashboardFilters.NO_PRICE:
+      return products.filter(hasMissingPrice);
+    case DashboardFilters.URGENT_PURCHASE:
+      return products.filter(needsUrgentPurchase);
+    default:
+      return [];
+  }
+}
+
 export function inventoryValue(product: Product): number | null {
   if (hasMissingPrice(product)) return null;
   if (!Number.isSafeInteger(product.quantity) || product.quantity < 0) return null;
@@ -61,7 +98,7 @@ export function rankProductsByInventoryValue(
   return products
     .flatMap((product) => {
       const value = inventoryValue(product);
-      return value !== null && value > 0 ? [{ product, value }] : [];
+      return value !== null ? [{ product, value }] : [];
     })
     .sort((left, right) => right.value - left.value || left.product.id - right.product.id)
     .slice(0, limit);
@@ -93,16 +130,24 @@ export function aggregateCategoriesByInventoryValue(
       categoryId: category.id,
       name: category.name,
       productCount: 0,
+      pricedProductCount: 0,
+      missingPriceCount: 0,
+      quantity: 0,
       value: 0,
     };
     current.productCount += 1;
-    if (value !== null) current.value += value;
+    if (value === null) current.missingPriceCount += 1;
+    else {
+      current.pricedProductCount += 1;
+      current.quantity += product.quantity;
+      current.value += value;
+    }
     aggregates.set(category.id, current);
   }
 
   return {
     categories: [...aggregates.values()]
-      .filter((item) => item.value > 0)
+      .filter((item) => item.pricedProductCount > 0)
       .sort((left, right) => right.value - left.value || left.categoryId - right.categoryId)
       .slice(0, limit),
     excludedUncategorizedValue,
@@ -150,7 +195,7 @@ export function buildTodayActions(
     item.status === "dead_letter",
   );
   const outOfStock = products.filter((product) => product.status === "out_of_stock").length;
-  const lowStock = products.filter((product) => product.status === "low_stock").length;
+  const urgentPurchase = products.filter(needsUrgentPurchase).length;
   const noPrice = products.filter(hasMissingPrice).length;
   const inventory: DashboardAction[] = [];
 
@@ -158,9 +203,9 @@ export function buildTodayActions(
     kind: "out-of-stock", title: "تکمیل موجودی کالاهای ناموجود",
     count: outOfStock, to: "/dashboard/products/out-of-stock",
   });
-  if (lowStock > 0) inventory.push({
-    kind: "low-stock", title: "بررسی کالاهای کم‌موجود",
-    count: lowStock, to: "/dashboard/products/low-stock",
+  if (urgentPurchase > 0) inventory.push({
+    kind: "urgent-purchase", title: "بررسی نیازهای فوری خرید",
+    count: urgentPurchase, to: "/dashboard/products/urgent-purchase",
   });
   if (noPrice > 0) inventory.push({
     kind: "no-price", title: "ثبت قیمت‌های ناقص",

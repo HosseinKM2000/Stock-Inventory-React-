@@ -33,4 +33,9 @@ describe("total products dashboard rows", () => {
     expect(link).not.toHaveTextContent("۵۰۰");
     expect(link).not.toHaveTextContent("تومان");
   });
+
+  it("explains that an urgent threshold is not a recommended purchase quantity", () => {
+    render(<Theme><DashboardProducts filter={DashboardFilters.URGENT_PURCHASE} /></Theme>);
+    expect(screen.getByText(/مقدار خرید پیشنهادی محسوب نمی‌شود/)).toBeVisible();
+  });
 });
