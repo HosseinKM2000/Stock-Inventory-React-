@@ -29,8 +29,8 @@ async function seedAuthenticatedUser(page: Page) {
 
 const orderedLabels = [
   "مجموع کالاها", "عدم موجودی", "کمبود موجودی", "نیاز به خرید",
-  "بدون قیمت", "اقدام‌های امروز", "محصولات بدون دسته یا برچسب",
-  "بدون تصویر", "ارزشمندترین‌ها", "ارزش موجودی",
+  "بدون قیمت", "اقدام‌های امروز", "ارزشمندترین‌ها", "ارزش موجودی",
+  "محصولات بدون دسته یا برچسب", "بدون تصویر",
   "محصولات افزوده‌شده امروز", "محصولات مخفی",
 ];
 
@@ -49,22 +49,24 @@ test("dashboard order is identical at mobile and desktop widths", async ({ page 
 
 test("dashboard restores scroll after browser back and in-app return", async ({ page }) => {
   await seedAuthenticatedUser(page);
-  await page.setViewportSize({ width: 390, height: 640 });
-  await page.goto("/dashboard");
-  const shell = page.locator("[data-scroll-restoration-id='app-shell']");
+  for (const viewport of [{ width: 390, height: 640 }, { width: 1440, height: 640 }]) {
+    await page.setViewportSize(viewport);
+    await page.goto("/dashboard");
+    const shell = page.locator("[data-scroll-restoration-id='app-shell']");
 
-  await shell.hover();
-  await page.mouse.wheel(0, 10_000);
-  await expect.poll(() => shell.evaluate((element) => element.scrollTop)).toBeGreaterThan(100);
-  await page.locator("#dashboard-section-highest-value").click();
-  await expect(page).toHaveURL(/\/dashboard\/products\/highest-value/);
-  await page.goBack();
-  await expect.poll(() => shell.evaluate((element) => element.scrollTop)).toBeGreaterThan(100);
+    await shell.hover();
+    await page.mouse.wheel(0, 10_000);
+    await expect.poll(() => shell.evaluate((element) => element.scrollTop)).toBeGreaterThan(100);
+    await page.locator("#dashboard-section-highest-value").click();
+    await expect(page).toHaveURL(/\/dashboard\/products\/highest-value/);
+    await page.goBack();
+    await expect.poll(() => shell.evaluate((element) => element.scrollTop)).toBeGreaterThan(100);
 
-  await page.locator("#dashboard-section-hidden").click();
-  await page.getByRole("navigation", { name: "ناوبری اصلی" }).getByRole("link", { name: "داشبورد" }).click();
-  await expect(page).toHaveURL(/\/dashboard\/?$/);
-  await expect.poll(() => shell.evaluate((element) => element.scrollTop)).toBeGreaterThan(100);
+    await page.locator("#dashboard-section-hidden").click();
+    await page.getByRole("navigation", { name: "ناوبری اصلی" }).getByRole("link", { name: "داشبورد" }).click();
+    await expect(page).toHaveURL(/\/dashboard\/?$/);
+    await expect.poll(() => shell.evaluate((element) => element.scrollTop)).toBeGreaterThan(100);
+  }
 });
 
 test("highest-value mode switching remains available offline", async ({ page, context }) => {
@@ -72,7 +74,7 @@ test("highest-value mode switching remains available offline", async ({ page, co
   await page.goto("/dashboard/products/highest-value");
   const select = page.getByRole("combobox", { name: "نوع رتبه‌بندی ارزش موجودی" });
   await expect(select).toBeVisible();
-  await expect(page.getByText("موردی با ارزش موجودی مثبت یافت نشد.")).toBeVisible();
+  await expect(page.getByText("مورد قیمت‌داری برای محاسبه ارزش موجودی یافت نشد.")).toBeVisible();
   await context.setOffline(true);
   await select.click();
   await page.getByRole("option", { name: "دسته‌بندی‌ها" }).click();

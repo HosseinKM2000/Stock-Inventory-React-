@@ -57,6 +57,7 @@ import { Route as appDashboardIndexRouteImport } from './routes/(app)/dashboard/
 import { Route as appInventoryListRouteImport } from './routes/(app)/inventory/list'
 import { Route as appInventoryEditRouteImport } from './routes/(app)/inventory/edit'
 import { Route as appInventoryAddRouteImport } from './routes/(app)/inventory/add'
+import { Route as appDashboardReportsRouteImport } from './routes/(app)/dashboard/reports'
 import { Route as appDashboardFinancialRouteImport } from './routes/(app)/dashboard/financial'
 import { Route as appDashboardProductsRouteRouteImport } from './routes/(app)/dashboard/products/route'
 import { Route as appDashboardProductsUrgentPurchaseIndexRouteImport } from './routes/(app)/dashboard/products/urgent-purchase/index'
@@ -312,6 +313,11 @@ const appInventoryAddRoute = appInventoryAddRouteImport.update({
   path: '/inventory/add',
   getParentRoute: () => appRouteRoute,
 } as any)
+const appDashboardReportsRoute = appDashboardReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => appDashboardRouteRoute,
+} as any)
 const appDashboardFinancialRoute = appDashboardFinancialRouteImport.update({
   id: '/financial',
   path: '/financial',
@@ -441,6 +447,7 @@ export interface FileRoutesByFullPath {
   '/tools/': typeof ToolsIndexRoute
   '/dashboard/products': typeof appDashboardProductsRouteRouteWithChildren
   '/dashboard/financial': typeof appDashboardFinancialRoute
+  '/dashboard/reports': typeof appDashboardReportsRoute
   '/inventory/add': typeof appInventoryAddRoute
   '/inventory/edit': typeof appInventoryEditRoute
   '/inventory/list': typeof appInventoryListRoute
@@ -499,6 +506,7 @@ export interface FileRoutesByTo {
   '/tools': typeof ToolsIndexRoute
   '/dashboard/products': typeof appDashboardProductsRouteRouteWithChildren
   '/dashboard/financial': typeof appDashboardFinancialRoute
+  '/dashboard/reports': typeof appDashboardReportsRoute
   '/inventory/add': typeof appInventoryAddRoute
   '/inventory/edit': typeof appInventoryEditRoute
   '/inventory/list': typeof appInventoryListRoute
@@ -564,6 +572,7 @@ export interface FileRoutesById {
   '/tools/': typeof ToolsIndexRoute
   '/(app)/dashboard/products': typeof appDashboardProductsRouteRouteWithChildren
   '/(app)/dashboard/financial': typeof appDashboardFinancialRoute
+  '/(app)/dashboard/reports': typeof appDashboardReportsRoute
   '/(app)/inventory/add': typeof appInventoryAddRoute
   '/(app)/inventory/edit': typeof appInventoryEditRoute
   '/(app)/inventory/list': typeof appInventoryListRoute
@@ -629,6 +638,7 @@ export interface FileRouteTypes {
     | '/tools/'
     | '/dashboard/products'
     | '/dashboard/financial'
+    | '/dashboard/reports'
     | '/inventory/add'
     | '/inventory/edit'
     | '/inventory/list'
@@ -687,6 +697,7 @@ export interface FileRouteTypes {
     | '/tools'
     | '/dashboard/products'
     | '/dashboard/financial'
+    | '/dashboard/reports'
     | '/inventory/add'
     | '/inventory/edit'
     | '/inventory/list'
@@ -751,6 +762,7 @@ export interface FileRouteTypes {
     | '/tools/'
     | '/(app)/dashboard/products'
     | '/(app)/dashboard/financial'
+    | '/(app)/dashboard/reports'
     | '/(app)/inventory/add'
     | '/(app)/inventory/edit'
     | '/(app)/inventory/list'
@@ -1117,6 +1129,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appInventoryAddRouteImport
       parentRoute: typeof appRouteRoute
     }
+    '/(app)/dashboard/reports': {
+      id: '/(app)/dashboard/reports'
+      path: '/reports'
+      fullPath: '/dashboard/reports'
+      preLoaderRoute: typeof appDashboardReportsRouteImport
+      parentRoute: typeof appDashboardRouteRoute
+    }
     '/(app)/dashboard/financial': {
       id: '/(app)/dashboard/financial'
       path: '/financial'
@@ -1266,12 +1285,14 @@ const appDashboardProductsRouteRouteWithChildren =
 interface appDashboardRouteRouteChildren {
   appDashboardProductsRouteRoute: typeof appDashboardProductsRouteRouteWithChildren
   appDashboardFinancialRoute: typeof appDashboardFinancialRoute
+  appDashboardReportsRoute: typeof appDashboardReportsRoute
   appDashboardIndexRoute: typeof appDashboardIndexRoute
 }
 
 const appDashboardRouteRouteChildren: appDashboardRouteRouteChildren = {
   appDashboardProductsRouteRoute: appDashboardProductsRouteRouteWithChildren,
   appDashboardFinancialRoute: appDashboardFinancialRoute,
+  appDashboardReportsRoute: appDashboardReportsRoute,
   appDashboardIndexRoute: appDashboardIndexRoute,
 }
 

@@ -14,10 +14,10 @@ import {
   aggregateCategoriesByInventoryValue,
   buildTodayActions,
   classifyProducts,
-  hasMissingPrice,
   inventoryValue,
   rankProductsByInventoryValue,
   selectEligibleProducts,
+  selectProductsForDashboardFilter,
 } from "./dashboard-selectors";
 
 async function localSnapshot() {
@@ -35,18 +35,6 @@ async function localSnapshot() {
 }
 
 class DashboardService {
-  private hasImage(product: Awaited<ReturnType<typeof inventoryService.getAll>>[number]) {
-    return Boolean(product.image_url?.trim() || product.catalog_product?.image_url?.trim());
-  }
-
-  private isSameLocalDate(value: string, date: Date): boolean {
-    const createdAt = new Date(value);
-    return !Number.isNaN(createdAt.getTime()) &&
-      createdAt.getFullYear() === date.getFullYear() &&
-      createdAt.getMonth() === date.getMonth() &&
-      createdAt.getDate() === date.getDate();
-  }
-
   async getAnalysis(): Promise<DashboardAnalysis> {
     const snapshot = await localSnapshot();
     const classification = classifyProducts(
@@ -85,17 +73,13 @@ class DashboardService {
         const value = inventoryValue(product);
         return value === null || !Number.isSafeInteger(sum + value) ? sum : sum + value;
       }, 0),
-      lowStockCount: snapshot.products.filter((product) => product.status === "low_stock").length,
-      outOfStockCount: snapshot.products.filter((product) => product.status === "out_of_stock").length,
+      lowStockCount: selectProductsForDashboardFilter(snapshot.products, DashboardFilters.LOW_STOCK, now).length,
+      outOfStockCount: selectProductsForDashboardFilter(snapshot.products, DashboardFilters.OUT_OF_STOCK, now).length,
       hiddenCount: snapshot.allProducts.filter((product) => product.is_hidden).length,
-      noImageCount: snapshot.products.filter((product) => !this.hasImage(product)).length,
-      noPriceCount: snapshot.products.filter(hasMissingPrice).length,
-      urgentPurchaseCount: snapshot.products.filter((product) =>
-        product.low_stock_alert && product.quantity <= product.low_stock_threshold,
-      ).length,
-      addedTodayCount: snapshot.products.filter((product) =>
-        this.isSameLocalDate(product.created_at, now),
-      ).length,
+      noImageCount: selectProductsForDashboardFilter(snapshot.products, DashboardFilters.NO_IMAGE, now).length,
+      noPriceCount: selectProductsForDashboardFilter(snapshot.products, DashboardFilters.NO_PRICE, now).length,
+      urgentPurchaseCount: selectProductsForDashboardFilter(snapshot.products, DashboardFilters.URGENT_PURCHASE, now).length,
+      addedTodayCount: selectProductsForDashboardFilter(snapshot.products, DashboardFilters.TODAY, now).length,
       missingClassificationCount: classification.distinctCount,
       valuedProductsCount: rankProductsByInventoryValue(
         snapshot.products,
@@ -115,31 +99,24 @@ class DashboardService {
     switch (filter) {
       case DashboardFilters.ALL:
         return { title: "مجموع کالاها", products };
-      case DashboardFilters.TODAY: {
-        const now = new Date();
-        return {
-          title: "محصولات افزوده‌شده امروز",
-          products: products.filter((product) => this.isSameLocalDate(product.created_at, now)),
-        };
-      }
+      case DashboardFilters.TODAY:
+        return { title: "محصولات افزوده‌شده امروز", products: selectProductsForDashboardFilter(products, filter) };
       case DashboardFilters.INVENTORY_VALUE:
-        return { title: "ارزش موجودی", products };
+        return { title: "ارزش موجودی", products: selectProductsForDashboardFilter(products, filter) };
       case DashboardFilters.LOW_STOCK:
-        return { title: "کالاهای دچار کمبود", products: products.filter((product) => product.status === "low_stock") };
+        return { title: "کالاهای دچار کمبود", products: selectProductsForDashboardFilter(products, filter) };
       case DashboardFilters.OUT_OF_STOCK:
-        return { title: "کالاهای ناموجود", products: products.filter((product) => product.status === "out_of_stock") };
+        return { title: "کالاهای ناموجود", products: selectProductsForDashboardFilter(products, filter) };
       case DashboardFilters.HIDDEN:
         return { title: "کالاهای مخفی", products: allProducts.filter((product) => product.is_hidden) };
       case DashboardFilters.NO_IMAGE:
-        return { title: "کالاهای بدون تصویر", products: products.filter((product) => !this.hasImage(product)) };
+        return { title: "کالاهای بدون تصویر", products: selectProductsForDashboardFilter(products, filter) };
       case DashboardFilters.NO_PRICE:
-        return { title: "کالاهای بدون قیمت", products: products.filter(hasMissingPrice) };
+        return { title: "کالاهای بدون قیمت", products: selectProductsForDashboardFilter(products, filter) };
       case DashboardFilters.URGENT_PURCHASE:
         return {
           title: "نیازمند خرید فوری",
-          products: products.filter((product) =>
-            product.low_stock_alert && product.quantity <= product.low_stock_threshold,
-          ),
+          products: selectProductsForDashboardFilter(products, filter),
         };
       default:
         return { title: "", products: [] };

@@ -6,7 +6,9 @@ import {
   classifyProducts,
   rankProductsByInventoryValue,
   selectEligibleProducts,
+  selectProductsForDashboardFilter,
 } from "@/features/app/dashboard/services/dashboard-selectors";
+import { DashboardFilters } from "@/features/app/dashboard/types";
 import type { SyncQueueItem } from "@/shared/lib/infrastructure/storage/types";
 import { product } from "../helpers/product";
 
@@ -37,6 +39,7 @@ describe("dashboard selectors", () => {
       [9, 1_200],
       [3, 1_000],
       [8, 1_000],
+      [11, 0],
     ]);
   });
 
@@ -56,9 +59,9 @@ describe("dashboard selectors", () => {
       ],
     );
 
-    expect(result.categories.map((item) => [item.categoryId, item.productCount, item.value])).toEqual([
-      [7, 3, 500],
-      [8, 1, 500],
+    expect(result.categories.map((item) => [item.categoryId, item.productCount, item.pricedProductCount, item.missingPriceCount, item.quantity, item.value])).toEqual([
+      [7, 3, 2, 1, 5, 500],
+      [8, 1, 1, 0, 5, 500],
     ]);
     expect(result.excludedUncategorizedValue).toBe(1_100);
     expect(result.missingPriceCount).toBe(1);
@@ -101,8 +104,19 @@ describe("dashboard selectors", () => {
     expect(actions.sync).toMatchObject({ count: 1, to: "/tools/recovery" });
     expect(actions.inventory.map((item) => item.kind)).toEqual([
       "out-of-stock",
-      "low-stock",
+      "urgent-purchase",
       "no-price",
     ]);
+  });
+
+  it("uses one filter rule for summary and detail and distinguishes zero from a missing price", () => {
+    const products = [
+      product({ id: 1, quantity: 0, status: "out_of_stock", price: 0, sale_price: 0, price_missing: false }),
+      product({ id: 2, quantity: 2, status: "low_stock", price: 0, sale_price: null, price_missing: true }),
+      product({ id: 3, quantity: 1, status: "in_stock", low_stock_alert: true, low_stock_threshold: 1 }),
+    ];
+    expect(selectProductsForDashboardFilter(products, DashboardFilters.OUT_OF_STOCK).map((item) => item.id)).toEqual([1]);
+    expect(selectProductsForDashboardFilter(products, DashboardFilters.NO_PRICE).map((item) => item.id)).toEqual([2]);
+    expect(selectProductsForDashboardFilter(products, DashboardFilters.URGENT_PURCHASE).map((item) => item.id)).toEqual([1, 2, 3]);
   });
 });

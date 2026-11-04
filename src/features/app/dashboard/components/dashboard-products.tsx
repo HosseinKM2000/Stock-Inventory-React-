@@ -25,6 +25,14 @@ const DashboardProducts = ({ filter }: DashboardProductsProps) => {
         {data?.title ?? ""}
       </Text>
 
+      {filter === DashboardFilters.URGENT_PURCHASE && (
+        <Callout.Root color="amber">
+          <Callout.Text>
+            این فهرست کالاهایی را نشان می‌دهد که هشدار کمبودشان فعال است و موجودی فعلی به حد هشدار یا پایین‌تر رسیده است. حد هشدار فقط برای اولویت بررسی است و مقدار خرید پیشنهادی محسوب نمی‌شود.
+          </Callout.Text>
+        </Callout.Root>
+      )}
+
       {isLoading && (
         <Flex justify="center" align="center" py="9">
           <Spinner />

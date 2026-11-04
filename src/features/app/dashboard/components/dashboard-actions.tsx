@@ -46,6 +46,9 @@ export function DashboardActions() {
               </Link>
             ))}
           </Flex>
+          <Text as="p" size="1" color="gray" mt="2">
+            نیاز فوری خرید از رسیدن موجودی به حد هشدار محاسبه می‌شود؛ این حد مقدار سفارش پیشنهادی نیست.
+          </Text>
         </section>
       )}
     </Flex>
