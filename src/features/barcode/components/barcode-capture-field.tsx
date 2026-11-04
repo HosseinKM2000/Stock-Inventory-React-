@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Button } from "@/shared/ui/button/button";
 import { sanitizeScannedValue } from "../domain/barcode";
+import { completedHardwareScan } from "../input/hardware-input";
 import { startCameraScanner, type CameraSession } from "../input/camera-scanner";
 
 type Props = {
@@ -12,9 +13,10 @@ type Props = {
   disabled?: boolean;
   placeholder?: string;
   tone?: "create" | "edit";
+  onScan?(value: string, source: "hardware" | "camera"): void;
 };
 
-export function BarcodeCaptureField({ value, onValueChange, disabled = false, placeholder = "اسکن یا ورود دستی", tone = "create" }: Props) {
+export function BarcodeCaptureField({ value, onValueChange, disabled = false, placeholder = "اسکن یا ورود دستی", tone = "create", onScan }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const sessionRef = useRef<CameraSession | null>(null);
   const cameraRequestRef = useRef(0);
@@ -32,7 +34,6 @@ export function BarcodeCaptureField({ value, onValueChange, disabled = false, pl
   }, []);
 
   useEffect(() => () => stopCamera(), [stopCamera]);
-
   const handleOpenChange = (open: boolean) => {
     if (!open) stopCamera();
     setCameraError(null);
@@ -49,9 +50,11 @@ export function BarcodeCaptureField({ value, onValueChange, disabled = false, pl
       const session = await startCameraScanner(
         videoRef.current,
         (rawValue) => {
+          if (cameraRequestRef.current !== request) return;
           const next = sanitizeScannedValue(rawValue);
           if (!next) return;
           onValueChange(next);
+          onScan?.(next, "camera");
           stopCamera();
           setCameraOpen(false);
         },
@@ -77,6 +80,10 @@ export function BarcodeCaptureField({ value, onValueChange, disabled = false, pl
         <TextField.Root
           value={value}
           onChange={(event) => onValueChange(event.target.value)}
+          onKeyDown={(event) => {
+            const scanned = completedHardwareScan(event.nativeEvent, value);
+            if (scanned) onScan?.(scanned, "hardware");
+          }}
           placeholder={placeholder}
           aria-label="کد بارکد"
           dir="ltr"

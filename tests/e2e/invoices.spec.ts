@@ -11,7 +11,7 @@ const owner = {
 
 async function json(route: Route, body: unknown, status = 200) { await route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) }); }
 
-async function seed(page: Page) {
+async function seed(page: Page, serverInvoices: unknown[] = []) {
   await page.addInitScript(({ user, captured }) => {
     localStorage.setItem("access_token", JSON.stringify("invoice-layout-token"));
     localStorage.setItem("inventory-last-user", JSON.stringify(user));
@@ -20,7 +20,7 @@ async function seed(page: Page) {
       status: "active", account_status: "active", started_at: null, expires_at: null,
       server_time: captured, synced_at: captured, verified_at: captured,
       captured_at_ms: Date.now(), last_observed_at_ms: Date.now(),
-      capabilities: { "inventory.read": true, "inventory.write": true, "invoices.purchase": true, "invoices.sale": true },
+      capabilities: { "inventory.read": true, "inventory.write": true, "barcode.lookup": true, "invoices.purchase": true, "invoices.sale": true },
       limits: { inventory_items: null },
     }));
   }, { user: owner, captured: now });
@@ -31,10 +31,15 @@ async function seed(page: Page) {
       user_id: owner.id, store_id: owner.store_id, plan: "free", label: "Synthetic invoices",
       status: "active", account_status: "active", started_at: null, expires_at: null,
       server_time: now, synced_at: now,
-      capabilities: { "inventory.read": true, "inventory.write": true, "invoices.purchase": true, "invoices.sale": true }, limits: { inventory_items: null },
+      capabilities: { "inventory.read": true, "inventory.write": true, "barcode.lookup": true, "invoices.purchase": true, "invoices.sale": true }, limits: { inventory_items: null },
     });
     if (path === "/api/sync/changes") return json(route, { cursor: 0, changes: [] });
-    if (path === "/api/sync/barcodes") return json(route, { items: [] });
+    if (path === "/api/invoices") return json(route, serverInvoices);
+    if (path === "/api/sync/barcodes") return json(route, { items: [{
+      id: 801, store_id: owner.store_id, product_id: 501, value: "6260000501", source: "manufacturer",
+      symbology: "unknown", meaning: "unit", scan_quantity: 1, is_active: true, is_default: true,
+      created_at: now, updated_at: now,
+    }] });
     if (path === "/api/sync/batch") {
       const data = await route.request().postDataBuffer();
       const body = data?.toString() ?? "";
@@ -48,7 +53,7 @@ async function seed(page: Page) {
     const request = indexedDB.open("inventory-db");
     const database = await new Promise<IDBDatabase>((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
     await new Promise<void>((resolve, reject) => {
-      const transaction = database.transaction(["inventoryItems", "syncMetadata"], "readwrite");
+      const transaction = database.transaction(["inventoryItems", "barcodes", "syncMetadata"], "readwrite");
       transaction.objectStore("inventoryItems").put({
         local_key: `${user.id}:${user.store_id}:501`, local_user_id: user.id, local_store_id: user.store_id,
         id: 501, catalog_product_id: 701, is_catalog_backed: false, category_id: null, label_ids: [], version: 1,
@@ -56,6 +61,12 @@ async function seed(page: Page) {
         custom_label: "کالای تست", note: null, low_stock_threshold: 1, low_stock_alert: true,
         is_hidden: false, image_url: null, deleted_at: null, status: "in_stock", created_at: captured, updated_at: captured,
         catalog_product: { id: 701, industry_id: 1, name: "کالای تست", description: null, brand: null, image_url: null, is_packaged: false, pack_size: null, created_at: captured },
+      });
+      transaction.objectStore("barcodes").put({
+        local_key: `${user.id}:${user.store_id}:801`, local_user_id: user.id, local_store_id: user.store_id,
+        store_id: user.store_id, id: 801, product_id: 501, value: "6260000501", source: "manufacturer",
+        symbology: "unknown", meaning: "unit", scan_quantity: 1, is_active: true, is_default: true,
+        created_at: captured, updated_at: captured,
       });
       transaction.objectStore("syncMetadata").put({
         key: `${user.id}:${user.store_id}:product-sync-initialized`, value: 1, updatedAt: Date.now(),
@@ -91,4 +102,48 @@ test("invoice form posts one atomic command and remains responsive", async ({ pa
   expect(state.products).toEqual(expect.arrayContaining([expect.objectContaining({ id: 501, quantity: 3, sale_price: 900, purchase_price: 600 })]));
   expect(state.invoices).toHaveLength(1);
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+});
+
+test("hardware scan selects without changing stock and exports a real offline Persian PDF", async ({ page, context }) => {
+  await seed(page);
+  const before = await page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => { const request = indexedDB.open("inventory-db"); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+    const count = (store: string) => new Promise<number>((resolve, reject) => { const request = database.transaction(store).objectStore(store).count(); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+    const values = await Promise.all([count("inventoryMovements"), count("invoices"), count("syncQueue")]); database.close(); return values;
+  });
+  await page.getByLabel("کد بارکد").fill("6260000501");
+  await page.getByLabel("کد بارکد").press("Enter");
+  await expect(page.getByLabel("محصول ردیف 1")).toHaveValue("501");
+  await expect(page.getByLabel("قیمت ردیف 1")).toHaveValue("900");
+  const afterScan = await page.evaluate(async () => {
+    const database = await new Promise<IDBDatabase>((resolve, reject) => { const request = indexedDB.open("inventory-db"); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+    const count = (store: string) => new Promise<number>((resolve, reject) => { const request = database.transaction(store).objectStore(store).count(); request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
+    const values = await Promise.all([count("inventoryMovements"), count("invoices"), count("syncQueue")]); database.close(); return values;
+  });
+  expect(afterScan).toEqual(before);
+  await page.getByLabel("عنوان فاکتور").fill("فروش بارکدی");
+  await page.getByRole("button", { name: "بررسی و ثبت قطعی" }).click();
+  await expect(page.getByText("ذخیره‌شده روی این دستگاه")).not.toBeVisible();
+  await context.setOffline(true);
+  const downloadPromise = page.waitForEvent("download");
+  await page.getByRole("button", { name: "دریافت PDF" }).click();
+  const download = await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/^invoice-.*\.pdf$/);
+  const path = await download.path();
+  const bytes = await import("node:fs/promises").then((fs) => fs.readFile(path!));
+  expect(bytes.subarray(0, 8).toString()).toBe("%PDF-1.4");
+  expect(bytes.toString("latin1").match(/\/Type \/Page\b/g)?.length).toBeGreaterThanOrEqual(1);
+  await page.getByRole("button", { name: "اشتراک‌گذاری" }).click();
+  await expect(page.getByRole("alert")).toContainText("PDF را دریافت کنید");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+});
+
+test("cancelled purchase snapshot produces a multipage PDF without current product data", async ({ page, context }) => {
+  const lines = Array.from({ length: 44 }, (_, index) => ({ id: index + 1, product_id: 9000 + index, product_name: `نام تاریخی بسیار بلند کالای خریداری‌شده ردیف ${index + 1} که دیگر در فهرست جاری وجود ندارد`, quantity: index + 1, unit: "عدد", pack_size: null, base_quantity: index + 1, unit_price: 1234567, line_total: (index + 1) * 1234567, before_quantity: 0, after_quantity: index + 1 }));
+  await seed(page, [{ id: 999, invoice_type: "purchase", title: "خرید چندصفحه‌ای باطل‌شده", counterparty: "تأمین‌کننده تاریخی", status: "cancelled", total_amount: lines.reduce((sum, line) => sum + line.line_total, 0), actor_user_id: owner.id, actor_membership_id: owner.membership_id, post_operation_id: "snapshot-reference", cancel_operation_id: "cancel-reference", posted_at: now, cancelled_at: now, lines }]);
+  await expect(page.getByText("خرید چندصفحه‌ای باطل‌شده", { exact: true })).toBeVisible(); await context.setOffline(true);
+  const card = page.getByText("خرید چندصفحه‌ای باطل‌شده", { exact: true }).locator("xpath=ancestor::div[contains(@class,'rt-Card')]");
+  const downloadPromise = page.waitForEvent("download"); await card.getByRole("button", { name: "دریافت PDF" }).click();
+  const path = await (await downloadPromise).path(); const bytes = await import("node:fs/promises").then((fs) => fs.readFile(path!));
+  expect(bytes.toString("latin1").match(/\/Type \/Page\b/g)?.length).toBeGreaterThan(1);
 });
