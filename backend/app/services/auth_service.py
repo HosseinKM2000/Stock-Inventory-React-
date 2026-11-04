@@ -4,6 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..models import User
+from ..mobile import DUPLICATE_MOBILE_MESSAGE
 from ..schemas import LoginRequest, TokenResponse, UserOut, SignupRequest, UserUpdate
 from .plan_policy import can_add_device
 from .store_service import attach_store_context, create_owner_store
@@ -35,6 +36,15 @@ def username_taken(
     return db.scalar(stmt) is not None
 
 
+def _integrity_conflict_detail(error: IntegrityError) -> str:
+    constraint_name = getattr(getattr(error, "orig", None), "diag", None)
+    constraint_name = getattr(constraint_name, "constraint_name", None)
+    message = str(getattr(error, "orig", error)).lower()
+    if constraint_name == "uq_users_phone_canonical" or "users.phone" in message:
+        return DUPLICATE_MOBILE_MESSAGE
+    return "Username already exists"
+
+
 def signup(
     db: Session,
     payload: SignupRequest,
@@ -64,7 +74,7 @@ def signup(
         db.flush()
     except IntegrityError as error:
         db.rollback()
-        raise HTTPException(status_code=409, detail="Username already exists") from error
+        raise HTTPException(status_code=409, detail=_integrity_conflict_detail(error)) from error
     create_owner_store(db, user)
 
     token = create_access_token(user.id)
@@ -76,7 +86,11 @@ def signup(
         token,
     )
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as error:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=_integrity_conflict_detail(error)) from error
     db.refresh(user)
 
     attach_store_context(db, user)
@@ -202,7 +216,11 @@ def update_user(
     for k, v in data.items():
         setattr(user, k, v)
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as error:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=_integrity_conflict_detail(error)) from error
     db.refresh(user)
 
     return user

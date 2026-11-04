@@ -29,8 +29,10 @@ def _account(client: TestClient, suffix: str):
         db.refresh(industry)
         industry_id = industry.id
     fingerprint = f"media-device-{suffix}"
+    digits = int(hashlib.sha256(suffix.encode()).hexdigest()[:12], 16) % 1_000_000_000
     response = client.post("/api/auth/signup", json={
         "username": f"media-{suffix}", "password": "StrongPass123!",
+        "phone": f"09{digits:09d}",
         "device_fingerprint": fingerprint,
     })
     assert response.status_code == 201, response.text

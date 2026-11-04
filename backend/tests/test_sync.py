@@ -3,9 +3,15 @@ import os
 import tempfile
 import unittest
 import uuid
+import hashlib
 from unittest.mock import patch
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+
+def _mobile(seed: str) -> str:
+    digits = int(hashlib.sha256(seed.encode()).hexdigest()[:12], 16) % 1_000_000_000
+    return f"09{digits:09d}"
 
 _database_path = Path(tempfile.mktemp(suffix="-inventory-test.db"))
 os.environ["DATABASE_URL"] = f"sqlite:///{_database_path.as_posix()}"
@@ -65,6 +71,7 @@ class SyncApiTest(unittest.TestCase):
                 "first_name": "Offline",
                 "last_name": "Tester",
                 "username": "offline-sync-test",
+                "phone": _mobile("offline-sync-test"),
                 "password": "StrongPass123!",
                 "device_fingerprint": "sync-test-device",
             },
@@ -340,6 +347,7 @@ class SyncApiTest(unittest.TestCase):
         username = f"rebase-device-{uuid.uuid4().hex[:8]}"
         signup = self.client.post("/api/auth/signup", json={
             "first_name": "Rebase", "last_name": "Owner", "username": username,
+            "phone": _mobile(username),
             "password": "StrongPass123!", "device_fingerprint": "rebase-device-a",
         })
         self.assertEqual(signup.status_code, 201, signup.text)
@@ -512,6 +520,7 @@ class SyncApiTest(unittest.TestCase):
 
         signup = self.client.post("/api/auth/signup", json={
             "first_name": "Label", "last_name": "Tenant", "username": "label-tenant-test",
+            "phone": _mobile("label-tenant-test"),
             "password": "StrongPass123!", "device_fingerprint": "label-tenant-device",
         })
         other_headers = {
@@ -852,6 +861,7 @@ class SyncApiTest(unittest.TestCase):
                 "first_name": "Catalog",
                 "last_name": "Existing",
                 "username": "catalog-existing-user",
+                "phone": _mobile("catalog-existing-user"),
                 "password": "StrongPass123!",
                 "device_fingerprint": "catalog-existing-device",
             },
@@ -1142,6 +1152,7 @@ class SyncApiTest(unittest.TestCase):
                 "first_name": "Catalog",
                 "last_name": "New",
                 "username": "catalog-new-user",
+                "phone": _mobile("catalog-new-user"),
                 "password": "StrongPass123!",
                 "device_fingerprint": "catalog-new-device",
             },
@@ -1610,6 +1621,7 @@ class SyncApiTest(unittest.TestCase):
                 "first_name": "Second",
                 "last_name": "Tenant",
                 "username": "second-tenant-test",
+                "phone": _mobile("second-tenant-test"),
                 "password": "StrongPass123!",
                 "device_fingerprint": "second-tenant-device",
             },
@@ -1659,6 +1671,7 @@ class SyncApiTest(unittest.TestCase):
         suffix = uuid.uuid4().hex[:8]
         signup = self.client.post("/api/auth/signup", json={
             "first_name": "Mode", "last_name": "Owner", "username": f"mode-{suffix}",
+            "phone": _mobile(f"mode-{suffix}"),
             "password": "StrongPass123!", "device_fingerprint": f"mode-device-{suffix}",
         })
         self.assertEqual(signup.status_code, 201, signup.text)
@@ -1777,6 +1790,7 @@ class SyncApiTest(unittest.TestCase):
 
         signup = self.client.post("/api/auth/signup", json={
             "first_name": "Grant", "last_name": "Owner", "username": "grant-owner-test",
+            "phone": _mobile("grant-owner-test"),
             "password": "StrongPass123!", "device_fingerprint": "grant-owner-device",
         })
         self.assertEqual(signup.status_code, 201, signup.text)
@@ -1865,6 +1879,7 @@ class SyncApiTest(unittest.TestCase):
     def test_grant_expiry_during_sync_uses_one_acceptance_instant(self) -> None:
         signup = self.client.post("/api/auth/signup", json={
             "first_name": "Boundary", "last_name": "Owner", "username": "grant-boundary-owner",
+            "phone": _mobile("grant-boundary-owner"),
             "password": "StrongPass123!", "device_fingerprint": "grant-boundary-device",
         })
         self.assertEqual(signup.status_code, 201, signup.text)
@@ -1954,10 +1969,12 @@ class SyncApiTest(unittest.TestCase):
     def test_starter_is_readable_for_existing_assignment_but_not_newly_assignable(self) -> None:
         existing = self.client.post("/api/auth/signup", json={
             "first_name": "Legacy", "last_name": "Starter", "username": "legacy-starter-owner",
+            "phone": _mobile("legacy-starter-owner"),
             "password": "StrongPass123!", "device_fingerprint": "legacy-starter-device",
         })
         new_user = self.client.post("/api/auth/signup", json={
             "first_name": "New", "last_name": "Subscriber", "username": "new-starter-candidate",
+            "phone": _mobile("new-starter-candidate"),
             "password": "StrongPass123!", "device_fingerprint": "new-starter-device",
         })
         with SessionLocal() as db:

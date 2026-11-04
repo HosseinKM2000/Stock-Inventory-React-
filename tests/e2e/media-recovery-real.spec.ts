@@ -31,6 +31,7 @@ test("live upload, fresh-profile hydration, and offline OPFS reopen render", asy
   const device = `media-owner-${suffix}`;
   const signup = await request.post(`${api}/auth/signup`, { data: {
     username: `media-owner-${suffix}`, password: "StrongPass123!", device_fingerprint: device,
+    phone: "09120000003",
   } });
   expect(signup.status()).toBe(201);
   const session = await signup.json();

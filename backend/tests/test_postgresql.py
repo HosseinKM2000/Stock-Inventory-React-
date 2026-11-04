@@ -216,6 +216,31 @@ def migrated_empty_database():
             "INSERT INTO store_memberships (id,store_id,user_id,status,is_owner) "
             "VALUES (9401,9401,9401,'active',true)"
         ))
+    command.upgrade(config, "20261103_0013")
+    with reset_engine.begin() as connection:
+        connection.execute(text(
+            "UPDATE users SET phone=CASE id "
+            "WHEN 9101 THEN '+۹۸۹۱۲۳۴۵۶۷۸۹' "
+            "WHEN 9201 THEN '09123456789' "
+            "WHEN 9401 THEN '02112345678' END "
+            "WHERE id IN (9101,9201,9401)"
+        ))
+    try:
+        command.upgrade(config, "head")
+    except Exception as error:
+        MIGRATION_EVIDENCE["mobile_preflight"] = str(error)
+    else:
+        raise AssertionError("Malformed and duplicate canonical mobile values must block migration")
+    with reset_engine.connect() as connection:
+        MIGRATION_EVIDENCE["mobile_rollback"] = (
+            connection.scalar(text("SELECT version_num FROM alembic_version")),
+            tuple(connection.execute(text(
+                "SELECT id,phone FROM users WHERE id IN (9101,9201,9401) ORDER BY id"
+            )).all()),
+        )
+    with reset_engine.begin() as connection:
+        connection.execute(text("UPDATE users SET phone=NULL WHERE id=9401"))
+        connection.execute(text("UPDATE users SET phone='00989911111111' WHERE id=9201"))
     command.upgrade(config, "head")
     with reset_engine.connect() as connection:
         row = connection.execute(text("""
@@ -246,6 +271,9 @@ def migrated_empty_database():
                    (SELECT count(*) FROM store_plan_grants WHERE store_id=s.id)
             FROM users u JOIN stores s ON s.owner_user_id=u.id WHERE u.id=9101
         """)).one()
+        MIGRATION_EVIDENCE["canonical_phones"] = tuple(connection.execute(text(
+            "SELECT id,phone FROM users WHERE id IN (9101,9201,9401) ORDER BY id"
+        )).all())
     with SessionLocal() as db:
         stored = db.get(SyncOperation, 9101)
         replay = _duplicate_result(stored, legacy_operation, legacy_fingerprint)
@@ -280,6 +308,7 @@ def signup(client: TestClient):
     return client.post("/api/auth/signup", json={
         "first_name": "Postgres", "last_name": "Tester",
         "username": "postgres-user", "password": "StrongPass123!",
+        "phone": "09120000001",
         "device_fingerprint": "postgres-device",
     })
 
@@ -303,7 +332,20 @@ def test_migration_reaches_head_with_all_expected_tables(migrated_empty_database
     assert MIGRATION_EVIDENCE["mode_rollback"] == ("20261101_0009", True)
     assert EXPECTED_TABLES <= set(inspect(engine).get_table_names())
     with engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261103_0013"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261104_0014"
+        assert "MOBILE_PHONE_PREFLIGHT" in MIGRATION_EVIDENCE["mobile_preflight"]
+        assert "malformed_count=1:user_ids=9401" in MIGRATION_EVIDENCE["mobile_preflight"]
+        assert "duplicate_groups=1:user_ids=9101,9201" in MIGRATION_EVIDENCE["mobile_preflight"]
+        assert "+۹۸۹۱۲۳۴۵۶۷۸۹" not in MIGRATION_EVIDENCE["mobile_preflight"]
+        assert MIGRATION_EVIDENCE["mobile_rollback"][0] == "20261103_0013"
+        assert MIGRATION_EVIDENCE["mobile_rollback"][1][0][1] == "+۹۸۹۱۲۳۴۵۶۷۸۹"
+        assert MIGRATION_EVIDENCE["canonical_phones"] == (
+            (9101, "09123456789"), (9201, "09911111111"), (9401, None),
+        )
+        assert any(
+            constraint["name"] == "uq_users_phone_canonical"
+            for constraint in inspect(engine).get_unique_constraints("users")
+        )
         user_columns = {column["name"]: column for column in inspect(engine).get_columns("users")}
         assert user_columns["first_name"]["nullable"] is True
         assert user_columns["last_name"]["nullable"] is True
@@ -332,27 +374,34 @@ def test_migration_reaches_head_with_all_expected_tables(migrated_empty_database
 
 
 @pytest.mark.postgres
-def test_concurrent_minimal_signup_provisions_one_complete_workspace(client):
-    username = "postgres-minimal-concurrent"
-    payload = {
-        "username": username,
-        "password": "StrongPass123!",
-        "device_fingerprint": "postgres-minimal-device",
-    }
+def test_concurrent_equivalent_mobile_signup_provisions_one_complete_workspace(client):
+    usernames = ("postgres-mobile-concurrent-a", "postgres-mobile-concurrent-b")
+    payloads = ({
+        "username": usernames[0], "phone": "۰۹۱۲۰۰۰۰۰۰۲",
+        "password": "StrongPass123!", "device_fingerprint": "postgres-mobile-device-a",
+    }, {
+        "username": usernames[1], "phone": "+989120000002",
+        "password": "StrongPass123!", "device_fingerprint": "postgres-mobile-device-b",
+    })
 
     with ThreadPoolExecutor(max_workers=2) as pool:
-        responses = list(pool.map(lambda _: client.post("/api/auth/signup", json=payload), range(2)))
+        responses = list(pool.map(lambda payload: client.post("/api/auth/signup", json=payload), payloads))
 
     assert sorted(response.status_code for response in responses) == [201, 409]
+    rejected = next(response for response in responses if response.status_code == 409)
+    assert rejected.json()["detail"] == "این شماره موبایل قبلاً ثبت شده است."
     with SessionLocal() as db:
-        user = db.scalar(select(User).where(User.username == username))
+        users = list(db.scalars(select(User).where(User.username.in_(usernames))))
+        assert len(users) == 1
+        user = users[0]
         assert user is not None
+        assert user.phone == "09120000002"
         assert user.first_name is None and user.last_name is None
         stores = list(db.scalars(select(Store).where(Store.owner_user_id == user.id)))
         memberships = list(db.scalars(select(StoreMembership).where(StoreMembership.user_id == user.id)))
         sessions = list(db.scalars(select(UserSession).where(UserSession.user_id == user.id)))
         assert len(stores) == len(memberships) == len(sessions) == 1
-        assert stores[0].name == username
+        assert stores[0].name == user.username
         assert stores[0].operating_mode == "solo"
         assert memberships[0].is_owner is True
         assert db.scalar(select(func.count(StorePlanGrant.id)).where(StorePlanGrant.store_id == stores[0].id)) == 0
@@ -495,6 +544,7 @@ def test_cross_store_relationship_constraints_reject_existing_ids(client):
     second = client.post("/api/auth/signup", json={
         "first_name": "Other", "last_name": "Store",
         "username": "postgres-other", "password": "StrongPass123!",
+        "phone": "09120000004",
         "device_fingerprint": "postgres-other-device",
     })
     assert first.status_code == second.status_code == 201

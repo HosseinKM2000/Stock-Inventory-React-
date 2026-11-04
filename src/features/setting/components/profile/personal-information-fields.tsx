@@ -16,6 +16,7 @@ import {
 } from "@/features/auth/mutations/use-register";
 
 import { Box, Callout, Grid, Text } from "@radix-ui/themes";
+import { DUPLICATE_MOBILE_MESSAGE } from "@/features/auth/mobile";
 import {
   profileSchema,
   type ProfileFormValues,
@@ -38,7 +39,13 @@ const PersonalInformationFields = () => {
     initialValues: emptyValues,
 
     onSubmit(values) {
-      updateProfile.mutate(values);
+      updateProfile.mutate(values, {
+        onError(error) {
+          if (error instanceof ApiError && error.message === DUPLICATE_MOBILE_MESSAGE) {
+            form.setFieldError("phone", DUPLICATE_MOBILE_MESSAGE);
+          }
+        },
+      });
     },
   });
   const loadForm = form.load;
@@ -56,7 +63,7 @@ const PersonalInformationFields = () => {
   }, [me, loadForm]);
 
   const errorMessage =
-    updateProfile.error instanceof ApiError
+    updateProfile.error instanceof ApiError && updateProfile.error.message !== DUPLICATE_MOBILE_MESSAGE
       ? updateProfile.error.message
       : null;
 
@@ -131,10 +138,13 @@ const PersonalInformationFields = () => {
             />
           </FormField>
 
-          <FormField label="شماره تماس" id="phone" error={form.errors.phone}>
+          <FormField label="شماره موبایل" id="phone" error={form.errors.phone}>
             <TextInput
               size="3"
               name="phone"
+              inputMode="tel"
+              autoComplete="tel"
+              dir="ltr"
               value={form.values.phone}
               onChange={form.handleChange}
             />

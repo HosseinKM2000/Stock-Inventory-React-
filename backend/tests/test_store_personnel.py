@@ -1,5 +1,6 @@
 import json
 import uuid
+import hashlib
 
 import pytest
 from fastapi import HTTPException
@@ -28,8 +29,10 @@ def client():
 
 
 def signup(client: TestClient, username: str):
+    digits = int(hashlib.sha256(username.encode()).hexdigest()[:12], 16) % 1_000_000_000
     response = client.post("/api/auth/signup", json={
         "first_name": "Store", "last_name": "Owner", "username": username,
+        "phone": f"09{digits:09d}",
         "password": "StrongPass123!", "device_fingerprint": f"device-{username}",
     })
     assert response.status_code == 201, response.text
