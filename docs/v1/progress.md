@@ -320,3 +320,11 @@ Verification recorded for final review:
 | `npm.cmd run build` | Passed with the existing stale Browserslist-data and large-chunk warnings; `bwip-js` remains about 930 kB. |
 
 Task 2B remains pending the existing explicit price/term, capability, capacity, gift, expiry/grace, and Starter-transition decisions. TZ-V1-04 adds no quota or tier allocation and does not begin the next task automatically.
+
+## TZ-V1-04 final review
+
+- Implementation commit `75ce020` was confirmed directly on accepted local `draft` `3c8742b50034d162f5c25fddec307fb43ef286e7`. The complete diff is limited to product-media durability/recovery, migration `0013`, focused tests, and V1 documentation; it does not alter plan allocations, grants, store ownership, mode switching, device policy, or catalog-administrator media.
+- Review made the Team boundary explicit in regression coverage: the transfer record is durable before command submission, staged upload alone cannot update the projection, and only the accepted product result becomes visible. Server tests prove private staged bytes, store isolation, version conflict, replacement, deletion/no resurrection, and retry fingerprint behavior.
+- The clean-profile journey initially exposed two test-lifecycle issues: application auth navigation could destroy an in-page storage operation, and a synthetic document had no Dexie object store. The final test uses a stable same-origin document plus an explicit disposable IndexedDB projection, without sleeps or weaker byte assertions; both desktop and mobile fetch the protected real-backend response, verify SHA-256, write OPFS, reopen offline, and decode the image.
+- Production-preview layout coverage uses mocked APIs and is reported separately from backend evidence. The exact Persian recovery action remains reachable in RTL at desktop/mobile widths without horizontal overflow.
+- Temporary SQLite databases and media directories contained only synthetic records and were removed after the run. No production/customer database, real account, external provider, deployment, push, `develop` update, grant, or Task 2B policy change occurred.
