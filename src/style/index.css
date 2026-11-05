@@ -1451,6 +1451,40 @@ body:has(.inventory-filter-dialog) .rt-DialogOverlay {
   outline: none;
 }
 
+.jalali-date-field {
+  display: grid;
+  min-width: 10.5rem;
+  gap: .35rem;
+  color: var(--gray-11);
+  font-size: .8rem;
+}
+
+.jalali-date-field small {
+  max-width: 14rem;
+  color: var(--red-11);
+  line-height: 1.5;
+}
+
+.grant-date-time {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(8rem, .65fr);
+  gap: .75rem;
+  padding: .75rem;
+  border: 1px solid var(--gray-a6);
+  border-radius: var(--radius-3);
+}
+.grant-date-time legend { padding-inline: .35rem; font-size: .875rem; font-weight: 600; }
+.grant-date-time > label { display: grid; gap: .35rem; }
+@media (max-width: 520px) { .grant-date-time { grid-template-columns: 1fr; } }
+
+.activity-card { overflow-wrap: anywhere; }
+.activity-diagnostic,
+.sync-diagnostic { margin-top: .5rem; color: var(--gray-11); font-size: .75rem; }
+.activity-diagnostic summary,
+.sync-diagnostic summary { width: fit-content; cursor: pointer; }
+.activity-diagnostic code,
+.sync-diagnostic code { display: block; margin-top: .35rem; user-select: all; }
+
 .sync-status-badge:focus-visible {
   box-shadow: 0 0 0 2px var(--focus-8);
 }
@@ -3852,6 +3886,7 @@ html[data-keyboard-open="true"] .app-bottom-navigation {
 
   .app-header-left {
     gap: 0;
+    overflow: hidden;
   }
 
   .app-header-right {

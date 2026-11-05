@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useCreateProduct } from "../mutations/use-products";
 import type { Product } from "../types";
 import { ProductForm } from "./inventory-form";
+import { userErrorMessage } from "@/shared/lib/presentation/user-error";
 
 const AddProductForm = () => {
   const navigate = useNavigate();
@@ -15,7 +16,7 @@ const AddProductForm = () => {
     <ProductForm
       mode="create"
       submitting={createProduct.isPending}
-      errorMessage={createProduct.error instanceof ApiError ? createProduct.error.message : null}
+      errorMessage={createProduct.error instanceof ApiError ? userErrorMessage(createProduct.error, "ایجاد محصول انجام نشد.") : null}
       onSubmit={(input, pendingBarcodes) => createProduct.mutate(input as Product, {
         onSuccess: async (created) => {
           try {
@@ -25,11 +26,11 @@ const AddProductForm = () => {
             toast.success("محصول و بارکدهای آن ایجاد شد");
             void navigate({ to: "/inventory/list" });
           } catch (error) {
-            toast.error(error instanceof Error ? `محصول ذخیره شد؛ بارکد نیاز به بررسی دارد: ${error.message}` : "محصول ذخیره شد؛ بارکد نیاز به بررسی دارد");
+            toast.error(userErrorMessage(error, "محصول ذخیره شد، اما بارکد نیاز به بررسی دارد."));
             void navigate({ to: "/inventory/edit", search: { id: created.id } });
           }
         },
-        onError: (error) => toast.error(error instanceof Error ? error.message : "ایجاد محصول ناموفق بود"),
+        onError: (error) => toast.error(userErrorMessage(error, "ایجاد محصول انجام نشد.")),
       })}
     />
   );

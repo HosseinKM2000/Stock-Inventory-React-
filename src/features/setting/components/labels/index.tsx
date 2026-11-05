@@ -6,6 +6,7 @@ import { useCreateLabel, useDeleteLabel, useLabels, useUpdateLabel } from "../..
 import { ConfirmDialog } from "@/shared/ui/dialog/confirm-dialog";
 import { toast } from "sonner";
 import { PageGuide } from "@/features/app/layout/page-guide";
+import { userErrorMessage } from "@/shared/lib/presentation/user-error";
 
 export default function LabelsPage() {
   const { data: labels = [], isLoading } = useLabels();
@@ -29,7 +30,7 @@ export default function LabelsPage() {
       setName("");
       setEditing(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "ذخیره برچسب ناموفق بود");
+      toast.error(userErrorMessage(error, "ذخیره برچسب انجام نشد."));
     }
   };
 
@@ -40,7 +41,7 @@ export default function LabelsPage() {
       toast.success(`برچسب «${deleteTarget.name}» حذف شد`);
       setDeleteTarget(null);
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : "حذف برچسب ناموفق بود");
+      toast.error(userErrorMessage(error, "حذف برچسب انجام نشد."));
     }
   };
 
@@ -59,7 +60,7 @@ export default function LabelsPage() {
           {editing != null && <Button variant="soft" onClick={() => { setEditing(null); setName(""); }}>انصراف</Button>}
         </Flex>
       </Card>
-      {error && <Callout.Root color="red"><Callout.Text>{error instanceof Error ? error.message : "ذخیره برچسب انجام نشد"}</Callout.Text></Callout.Root>}
+      {error && <Callout.Root color="red"><Callout.Text>{userErrorMessage(error, "ذخیره برچسب انجام نشد.")}</Callout.Text></Callout.Root>}
       {isLoading ? <Flex justify="center" py="8"><Spinner /></Flex> : labels.length === 0 ? (
         <Card><Flex direction="column" align="center" gap="3" py="8"><BookmarkIcon width="28" height="28"/><Text>هنوز برچسبی ندارید.</Text></Flex></Card>
       ) : (

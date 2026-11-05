@@ -1,3 +1,5 @@
+import { isValidJalaaliDate, toGregorian } from "jalaali-js";
+
 const latinDigits = "0123456789";
 const persianDigits = "۰۱۲۳۴۵۶۷۸۹";
 const arabicDigits = "٠١٢٣٤٥٦٧٨٩";
@@ -43,17 +45,31 @@ export function parseJalaliDate(value: string): string | null {
   const match = dateOnlyPattern.exec(normalized);
   if (!match) return null;
   const target = { year: Number(match[1]), month: Number(match[2]), day: Number(match[3]) };
-  if (target.year < 1200 || target.year > 1700 || target.month < 1 || target.month > 12 || target.day < 1 || target.day > 31) return null;
-  const start = Date.UTC(target.year + 621, 0, 1, 12);
-  for (let offset = 0; offset < 500; offset += 1) {
-    const candidate = new Date(start + offset * 86_400_000);
-    const candidateParts = parts(candidate, "UTC");
-    if (candidateParts.year === target.year && candidateParts.month === target.month && candidateParts.day === target.day) return candidate.toISOString().slice(0, 10);
-  }
-  return null;
+  if (target.year < 1200 || target.year > 1700 || !isValidJalaaliDate(target.year, target.month, target.day)) return null;
+  const gregorian = toGregorian(target.year, target.month, target.day);
+  return `${gregorian.gy.toString().padStart(4, "0")}-${gregorian.gm.toString().padStart(2, "0")}-${gregorian.gd.toString().padStart(2, "0")}`;
 }
 
 export function formatJalaliDateOnly(isoDate: string) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(isoDate)) return "—";
   return formatJalaliDate(`${isoDate}T12:00:00.000Z`, "UTC");
+}
+/** Inclusive UTC bounds for human-entered dates in the current Tehran civil time. */
+export function tehranDateRange(dateFrom: string | null, dateTo: string | null) {
+  const from = dateFrom ? parseJalaliDate(dateFrom) : null;
+  const to = dateTo ? parseJalaliDate(dateTo) : null;
+  const start = from ? new Date(`${from}T00:00:00+03:30`).toISOString() : undefined;
+  const end = to ? new Date(new Date(`${to}T00:00:00+03:30`).getTime() + 86_400_000 - 1).toISOString() : undefined;
+  return { start, end };
+}
+
+export function parseJalaliDateTime(dateValue: string, timeValue: string) {
+  const isoDate = parseJalaliDate(dateValue);
+  const normalizedTime = normalizeDateDigits(timeValue.trim());
+  const match = /^(\d{2}):(\d{2})$/.exec(normalizedTime);
+  if (!isoDate || !match) return null;
+  const hour = Number(match[1]);
+  const minute = Number(match[2]);
+  if (hour > 23 || minute > 59) return null;
+  return new Date(`${isoDate}T${match[1]}:${match[2]}:00+03:30`).toISOString();
 }

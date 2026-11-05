@@ -28,6 +28,7 @@ import {
   type StoreRole,
 } from "./api";
 import { teamActivationService } from "./services/team-activation.service";
+import { userErrorMessage } from "@/shared/lib/presentation/user-error";
 
 type PersonnelForm = {
   first_name: string;
@@ -115,7 +116,7 @@ function PersonnelContent() {
       void client.invalidateQueries({ queryKey: personnelKeys.mode });
       void refresh();
     },
-    onError: (error) => toast.error(error instanceof Error ? error.message : "فعال‌سازی حالت تیمی انجام نشد"),
+    onError: (error) => toast.error(userErrorMessage(error, "فعال‌سازی حالت تیمی انجام نشد.")),
   });
 
   const hasCapacity = capacity.data?.enabled === true && (capacity.data.available === null || capacity.data.available > 0);

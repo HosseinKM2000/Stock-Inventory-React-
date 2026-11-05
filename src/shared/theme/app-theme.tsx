@@ -39,6 +39,7 @@ const displayScaling: Record<DisplaySize, "90%" | "100%" | "110%"> = {
 export function AppTheme({ children }: PropsWithChildren) {
   const [appearance, update] = useState<Appearance>(getAppearance);
   const [systemDark, setSystemDark] = useState(() => matchMedia("(prefers-color-scheme: dark)").matches);
+  const [isNarrowViewport, setIsNarrowViewport] = useState(() => matchMedia("(max-width: 639px)").matches);
   const [displaySize, updateDisplaySize] = useState<DisplaySize>(getDisplaySize);
 
   useEffect(() => {
@@ -54,6 +55,13 @@ export function AppTheme({ children }: PropsWithChildren) {
       window.removeEventListener("appearance-change", onChange);
       window.removeEventListener(DISPLAY_SIZE_EVENT, onSizeChange);
     };
+  }, []);
+
+  useEffect(() => {
+    const media = matchMedia("(max-width: 639px)");
+    const onMedia = () => setIsNarrowViewport(media.matches);
+    media.addEventListener("change", onMedia);
+    return () => media.removeEventListener("change", onMedia);
   }, []);
 
   const resolved = appearance === "system" ? (systemDark ? "dark" : "light") : appearance;
@@ -82,11 +90,17 @@ export function AppTheme({ children }: PropsWithChildren) {
           dir="rtl"
           expand={false}
           duration={4500}
-          position="top-center"
+          position={isNarrowViewport ? "bottom-center" : "top-center"}
           gap={10}
           visibleToasts={4}
-          offset={{ top: "calc(1rem + env(safe-area-inset-top, 0px))" }}
-          mobileOffset={{ top: "calc(.5rem + env(safe-area-inset-top, 0px))", left: ".5rem", right: ".5rem" }}
+          offset={isNarrowViewport
+            ? { bottom: "calc(var(--app-content-bottom-inset) + .25rem)" }
+            : { top: "calc(1rem + env(safe-area-inset-top, 0px))" }}
+          mobileOffset={{
+            bottom: "calc(var(--app-content-bottom-inset) + .25rem)",
+            left: ".5rem",
+            right: ".5rem",
+          }}
           icons={toastIcons}
           toastOptions={{ classNames: toastClassNames, closeButtonAriaLabel: "بستن اعلان" }}
           containerAriaLabel="اعلان‌های برنامه"

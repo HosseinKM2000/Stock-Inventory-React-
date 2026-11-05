@@ -9,13 +9,24 @@ from ..models import StoreActivity, User
 from .store_service import active_store_context
 
 
-SENSITIVE_KEYS = frozenset({"password", "hashed_password", "access_token", "token"})
+SENSITIVE_KEYS = frozenset({
+    "password", "hashed_password", "access_token", "refresh_token", "token",
+    "authorization", "cookie", "secret", "temporary_password",
+})
+
+
+def _redact(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {key: _redact(item) for key, item in value.items() if key.lower() not in SENSITIVE_KEYS}
+    if isinstance(value, list):
+        return [_redact(item) for item in value]
+    return value
 
 
 def _safe(value: dict[str, Any] | None) -> str | None:
     if value is None:
         return None
-    return json.dumps({key: item for key, item in value.items() if key not in SENSITIVE_KEYS}, default=str)
+    return json.dumps(_redact(value), default=str)
 
 
 def record_store_activity(

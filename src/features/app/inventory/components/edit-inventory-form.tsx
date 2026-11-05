@@ -11,6 +11,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/shared/ui/dialog/confirm-dialog";
 import type { Product, ProductInput } from "../types";
+import { userErrorMessage } from "@/shared/lib/presentation/user-error";
 
 function changedProductFields(current: Product, next: Product): ProductInput {
   const output: ProductInput = {};
@@ -64,7 +65,7 @@ const EditProductForm = ({ id }: EditProductFormProps) => {
         deleting={deleteProduct.isPending}
         errorMessage={
           updateProduct.error instanceof ApiError
-            ? updateProduct.error.message
+            ? userErrorMessage(updateProduct.error, "ویرایش محصول انجام نشد.")
             : null
         }
         onSubmit={(input) =>
@@ -76,7 +77,7 @@ const EditProductForm = ({ id }: EditProductFormProps) => {
                 void navigate({ to: "/inventory/list" });
               },
               onError: (error) => {
-                toast.error(error instanceof Error ? error.message : "ویرایش محصول ناموفق بود");
+                toast.error(userErrorMessage(error, "ویرایش محصول انجام نشد."));
               },
             },
           )
@@ -99,7 +100,7 @@ const EditProductForm = ({ id }: EditProductFormProps) => {
               void navigate({ to: "/inventory/list" });
             },
             onError: (error) => {
-              toast.error(error instanceof Error ? error.message : "حذف محصول ناموفق بود");
+              toast.error(userErrorMessage(error, "حذف محصول انجام نشد."));
             },
           })
         }

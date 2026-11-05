@@ -17,12 +17,22 @@ export type SyncIndicator = {
 
 export function syncErrorMessage(error: string | null) {
   if (error === "PACK_SIZE_REQUIRED" || error === "PACKAGING_FLAG_INVALID") {
-    return "تنظیمات بسته‌بندی یکی از محصولات نامعتبر است";
+    return "تنظیمات بسته‌بندی یکی از محصولات کامل نیست؛ محصول را باز کنید و تعداد هر بسته را اصلاح کنید.";
   }
   if (error === "SYNC_PAUSED_FOR_RESTORE") {
-    return "همگام‌سازی پس از بازیابی فایل پشتیبان متوقف شده است";
+    return "همگام‌سازی برای بررسی بازیابی متوقف است؛ صفحه بازیابی را باز کنید و موارد باقی‌مانده را تعیین تکلیف کنید.";
   }
-  return error ?? "جزئیات خطا ثبت نشده است";
+  if (!error) return "نتیجه درخواست روشن نیست؛ اتصال را بررسی کنید و وضعیت را دوباره ببینید.";
+  if (/network|fetch|offline|timeout/i.test(error)) return "ارتباط با سرور کامل نشد؛ اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.";
+  if (/PERMISSION|FORBIDDEN|UNAUTHORIZED|MEMBERSHIP/i.test(error)) return "این تغییر با دسترسی فعلی پذیرفته نشد؛ از مالک مجموعه بخواهید نقش و دسترسی شما را بررسی کند.";
+  if (/ENTITLEMENT|CAPABILITY|PLAN_REQUIRED|CAPACITY/i.test(error)) return "طرح یا ظرفیت فعلی این تغییر را نمی‌پذیرد؛ جزئیات اشتراک را بررسی کنید.";
+  if (/VERSION|CONFLICT|STALE|POLICY/i.test(error)) return "اطلاعات تازه‌تری در مجموعه ثبت شده است؛ مورد را بررسی و با نسخه تازه دوباره انجام دهید.";
+  if (/UNCERTAIN|UNKNOWN|MISMATCH|FINGERPRINT/i.test(error)) return "نتیجه این درخواست قطعی نیست؛ همان کار را تکرار نکنید و جزئیات بازیابی را بررسی کنید.";
+  return "این تغییر پذیرفته نشد؛ جزئیات فنی برای پیگیری نگه داشته شده است.";
+}
+
+export function syncDiagnosticCode(error: string | null) {
+  return error && /^[A-Z0-9_.:-]+$/.test(error) ? error : null;
 }
 
 export function getSyncIndicator(status: SyncStatus, online: boolean): SyncIndicator {
@@ -31,8 +41,8 @@ export function getSyncIndicator(status: SyncStatus, online: boolean): SyncIndic
       kind: "pending",
       label: status.pending > 0 ? `${status.pending.toLocaleString("fa-IR")} در انتظار` : "آفلاین",
       tooltip: status.pending > 0
-        ? `${status.pending.toLocaleString("fa-IR")} تغییر پس از اتصال ارسال می‌شود`
-        : "تغییرات به‌صورت محلی ذخیره می‌شوند",
+        ? `${status.pending.toLocaleString("fa-IR")} تغییر روی این دستگاه ذخیره شده اما هنوز سرور آن را نپذیرفته است؛ پس از اتصال ارسال می‌شود.`
+        : "این دستگاه آفلاین است؛ اطلاعات تازه سرور تا زمان اتصال دریافت نمی‌شود.",
     };
   }
 
@@ -40,7 +50,7 @@ export function getSyncIndicator(status: SyncStatus, online: boolean): SyncIndic
     return {
       kind: "syncing",
       label: "در حال همگام‌سازی",
-      tooltip: "در حال ارسال تغییرات محلی و دریافت نسخه سرور",
+      tooltip: "در حال ارسال تغییرهای ثبت‌شده روی دستگاه و دریافت اطلاعات تأییدشده مجموعه است.",
     };
   }
 
@@ -66,7 +76,7 @@ export function getSyncIndicator(status: SyncStatus, online: boolean): SyncIndic
     return {
       kind: "pending",
       label: `${status.pending.toLocaleString("fa-IR")} در انتظار`,
-      tooltip: `${status.pending.toLocaleString("fa-IR")} تغییر در صف ارسال است`,
+      tooltip: `${status.pending.toLocaleString("fa-IR")} تغییر روی این دستگاه ذخیره شده و در انتظار پذیرش سرور است.`,
     };
   }
 
@@ -74,7 +84,7 @@ export function getSyncIndicator(status: SyncStatus, online: boolean): SyncIndic
     return {
       kind: "success",
       label: "همگام",
-      tooltip: "همه تغییرات با سرور همگام شده‌اند",
+      tooltip: "همه تغییرهای عملیاتی ارسال‌شده را سرور پذیرفته است؛ پوشش تصاویر و فایل پشتیبان جداگانه نمایش داده می‌شود.",
     };
   }
 
