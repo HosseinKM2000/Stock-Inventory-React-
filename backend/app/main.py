@@ -1,4 +1,8 @@
 from contextlib import asynccontextmanager
+import logging
+import re
+import time
+from uuid import uuid4
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -8,6 +12,10 @@ from sqlalchemy import text
 from .database import engine
 from .exceptions import global_exception_handler
 from .routers import admin, auth, categories, dashboard, plans, backup, industries, products, inventory, export, transactions, custom_products, catalog_products, sync, labels, personnel, files, media, invoices
+
+
+logger = logging.getLogger("tanzim.api")
+_REQUEST_ID = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
 
 
 @asynccontextmanager
@@ -22,6 +30,28 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="Tanzim API", version="1.0.0", lifespan=lifespan)
 app.add_exception_handler(Exception, global_exception_handler)
+
+
+@app.middleware("http")
+async def release_context(request, call_next):
+    supplied = request.headers.get("X-Request-ID", "")
+    request_id = supplied if _REQUEST_ID.fullmatch(supplied) else uuid4().hex
+    request.state.request_id = request_id
+    started = time.perf_counter()
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    response.headers["X-Tanzim-Build"] = settings.APP_BUILD_ID
+    response.headers["X-Tanzim-Schema"] = settings.DATABASE_SCHEMA_VERSION
+    if response.status_code >= 400:
+        logger.warning(
+            "API request failed request_id=%s method=%s path=%s status=%s duration_ms=%s",
+            request_id,
+            request.method,
+            request.url.path,
+            response.status_code,
+            round((time.perf_counter() - started) * 1000),
+        )
+    return response
 
 
 @app.middleware("http")
@@ -42,6 +72,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["X-Request-ID", "X-Tanzim-Build", "X-Tanzim-Schema"],
 )
 
 api = "/api"
@@ -73,5 +104,7 @@ def health():
 
     return {
         "status": "ok",
-        "database": "connected"
+        "database": "connected",
+        "build_id": settings.APP_BUILD_ID,
+        "schema_version": settings.DATABASE_SCHEMA_VERSION,
     }

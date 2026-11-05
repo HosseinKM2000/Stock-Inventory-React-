@@ -1,4 +1,5 @@
 import json
+import logging
 import hashlib
 import hmac
 import uuid
@@ -7,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, File, Form, Header, HTTPException, UploadFile
+from fastapi import APIRouter, File, Form, Header, HTTPException, Request, UploadFile
 from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -35,6 +36,10 @@ from ..services.store_authorization import StorePermission, effective_permission
 from ..services.store_service import active_store_context
 from ..services.store_mode_policy import validate_sync_acceptance
 from ..services.invoice_service import cancel_invoice, post_invoice
+
+
+logger = logging.getLogger("tanzim.sync")
+_SAFE_DIAGNOSTIC_CODE = re.compile(r"^[A-Z][A-Z0-9_.:-]{2,127}$")
 from ..schemas import (
     InventoryOut,
     InventoryMovementOut,
@@ -942,6 +947,7 @@ async def _apply_product_operation(
 
 @router.post("/batch", response_model=SyncBatchResponse)
 async def push_batch(
+    http_request: Request,
     operations_json: Annotated[str, Form()],
     current_user: CurrentProductReader,
     db: DbSession,
@@ -951,11 +957,11 @@ async def push_batch(
     _require_store_aware_client(client_data_schema)
     permissions = effective_permissions(active_store_context(db, current_user))
     projection_schema = client_data_schema or 2
-    request = SyncBatchRequest.model_validate_json(operations_json)
+    batch_request = SyncBatchRequest.model_validate_json(operations_json)
     image_files = {file.filename: file for file in files or [] if file.filename}
     results: list[SyncOperationResult] = []
 
-    for operation in request.operations:
+    for operation in batch_request.operations:
         fingerprint = await _operation_fingerprint(
             operation,
             image_files.get(operation.operation_id),
@@ -1138,6 +1144,24 @@ async def push_batch(
     cursor = db.scalar(
         select(func.max(SyncChange.id)).where(SyncChange.store_id == current_user.store_id)
     ) or 0
+    operations_by_id = {item.operation_id: item for item in batch_request.operations}
+    request_id = getattr(http_request.state, "request_id", "unavailable")
+    for result in results:
+        if result.status == "applied":
+            continue
+        operation = operations_by_id.get(result.operation_id)
+        error_code = result.error if result.error and _SAFE_DIAGNOSTIC_CODE.fullmatch(result.error) else "UNCLASSIFIED"
+        logger.warning(
+            "Sync operation not applied request_id=%s store_id=%s actor_user_id=%s operation_id=%s entity=%s action=%s status=%s code=%s",
+            request_id,
+            current_user.store_id,
+            current_user.id,
+            result.operation_id,
+            operation.entity if operation else "unknown",
+            operation.operation if operation else "unknown",
+            result.status,
+            error_code,
+        )
     for result in results:
         if isinstance(result.record, InventoryOut):
             raw_record = result.record.model_dump(mode="json")

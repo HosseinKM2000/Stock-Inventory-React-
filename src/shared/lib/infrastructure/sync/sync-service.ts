@@ -13,6 +13,7 @@ import {
   isSyncAccountCurrent,
 } from "./sync-account-context";
 import { mediaOperationBlocked, mediaTransferService } from "../media/media-transfer.service";
+import { recordDiagnostic } from "@/shared/lib/diagnostics/diagnostic-buffer";
 
 export type SyncHandlerResult = {
   itemId: string;
@@ -90,16 +91,19 @@ async function processGroup(entity: string, items: SyncQueueItem[]) {
         const error = new Error("Sync server omitted an operation result");
         await queueService.markFailed(item, error);
         lastError = error.message;
+        recordDiagnostic({ kind: "sync_failure", summary: "SYNC_RESULT_MISSING", operationId: item.operationId });
       } else if (result.status === "applied") {
         await queueService.removeIfUnchanged(item);
       } else if (result.status === "conflict") {
         const error = result.error ?? "Sync conflict";
         await queueService.markConflict(item, error);
         lastError = error;
+        recordDiagnostic({ kind: "sync_failure", summary: /^[A-Z][A-Z0-9_.:-]+$/.test(error) ? error : "SYNC_CONFLICT", operationId: item.operationId });
       } else {
         const error = new Error(result.error ?? "Server rejected the operation");
         await queueService.markFailed(item, error, true);
         lastError = error.message;
+        recordDiagnostic({ kind: "sync_failure", summary: /^[A-Z][A-Z0-9_.:-]+$/.test(error.message) ? error.message : "SYNC_REJECTED", operationId: item.operationId });
       }
     }
 
@@ -114,6 +118,13 @@ async function processGroup(entity: string, items: SyncQueueItem[]) {
       } else {
         await queueService.markFailed(item, error, isFatalRequest(error));
       }
+      recordDiagnostic({
+        kind: "sync_failure",
+        summary: error instanceof ApiError && /^[A-Z][A-Z0-9_.:-]+$/.test(error.message) ? error.message : "SYNC_REQUEST_FAILED",
+        requestId: error instanceof ApiError ? error.requestId : undefined,
+        operationId: item.operationId,
+        httpStatus: error instanceof ApiError ? error.status : undefined,
+      });
     }
 
     return {

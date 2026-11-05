@@ -493,3 +493,30 @@ Verification before integration:
 | Administrator grant compatibility | Passed in desktop/mobile Chromium with Jalali date and explicit 24-hour time entry. |
 
 Remaining limits: older activity rows without safe business evidence stay generic, and no bulk summary is inferred without a reliable shared bulk identifier. Chromium is the verified browser engine; physical print/share surfaces and other engines remain unverified. Activity browser evidence uses mocked API data rather than a live PostgreSQL browser journey. PostgreSQL was not rerun because 08 adds no schema, migration, acceptance, or transaction change. Task 2B and Task 05B remain pending; Task 09 was not started.
+
+## TZ-V1-09A risk-based hardening and release diagnostics
+
+Branch `fix/v1-release-hardening`, based directly on accepted local `draft` `15835067cdf7f7f445c1cd646728656b76a39d44`, adds narrowly scoped diagnostics and closes current release-evidence gaps without changing schema, authentication architecture, business effects, entitlements, commercial allocations or customer data:
+
+- API request IDs correlate browser failures, response headers and sanitized backend logs. Build/schema context is returned on success and controlled failure. Non-applied sync commands log their immutable operation identity and safe result code even when the batch returns HTTP 200.
+- Activity and browser redaction covers normalized nested secret-key variants. The browser buffer is person/store partitioned, bounded to 40 entries and 48 KiB, survives offline periods, and is exported only through explicit copy/download actions on the sync page.
+- The real two-build PWA rehearsal preserves current Dexie v14 pending invoice evidence and its stable operation ID in addition to inventory, attempted outbox state and OPFS bytes. The real media fixture opens v14.
+- Review reproduced a release-identity defect: ordinary builds both used package version `0.12.0`, so no update existed without externally supplied `TANZIM_BUILD_ID`. Explicit release/CI identities remain preferred and the fallback now stamps a unique UTC/process build identity.
+- Synthetic performance guards cover 5,000 inventory rows and 10,000 immutable invoice snapshots. The findings/evidence/recovery record is [release-hardening.md](release-hardening.md).
+
+Verification before integration:
+
+| Command / scope | Result |
+|---|---|
+| `npm.cmd test` | Passed: 86 files, 368 unit/component tests, including diagnostic bounds/redaction and 5,000-product/10,000-invoice guards. |
+| `npm.cmd run test:backend` | Passed: 81 tests, including request correlation, safe exception logging, nested activity redaction and payload-free non-applied command logs. |
+| `npm.cmd run test:backend:postgres:local` | Passed: 18 tests on disposable PostgreSQL; the existing pytest-cache workspace warning remains. |
+| Typecheck, lint and final production build | Passed. Builds now receive distinct fallback identities. Existing stale Browserslist data and large `bwip-js` warnings remain. |
+| Real two-build Chromium update | Passed: 2 desktop/mobile cases with incomplete install, lock deferral, distinct workers, Dexie v14 attempted outbox and pending invoice identity/payload preservation, old-tab lazy route, OPFS bytes and offline reopen. The API was mocked/aborted. |
+| Real media Chromium journey | Passed: 2 desktop/mobile cases against a disposable backend and isolated SQLite/media directory for protected upload, fresh-profile OPFS hydration and offline decode. Server concurrency/constraints remain separate PostgreSQL evidence. |
+| Critical production-preview Chromium set | Passed: 56 cases across dashboard, invoices/PDF, local restore, activity/help/navigation, diagnostic report controls, PWA storage and signup/profile in desktop/mobile projects. The sync report additionally sampled 320, 768 and 1440 pixel widths. APIs were mocked. |
+| Database plus media restore rehearsal | Passed on disposable local infrastructure: `tanzim_test` was dumped and restored into a separately named database; core counts and a synthetic product/media association matched. One media file was copied through backup/restore and relative path, size and SHA-256 matched. All rehearsal-only records, database, dump and temp copies were removed afterward. |
+
+The first update rehearsal failed deterministically because both ordinary builds stamped `0.12.0`; RH-09 fixed that release-identity defect and the same journey passed with two naturally distinct builds. The first disposable media harness attempt reached an unrelated process already bound to port 8000; a direct app reproduction passed, and the final run used an OS-assigned loopback port. These were investigated causes, not unexplained reruns.
+
+Firefox/WebKit binaries are not installed in this environment; only Chromium was claimed. Physical scanner/camera/printer/share surfaces, OS/browser-process kills, production deployment/monitoring and external backup storage remain unverified. Task 2B and Task 05B remain pending; no later task was started.

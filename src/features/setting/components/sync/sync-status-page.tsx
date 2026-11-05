@@ -17,6 +17,7 @@ import { mediaRecoveryService, type MediaRecoverySummary } from "@/shared/lib/in
 import { mediaTransferService } from "@/shared/lib/infrastructure/media/media-transfer.service";
 import { accessState } from "@/shared/access/access-state";
 import { toast } from "sonner";
+import { problemReportText } from "@/shared/lib/diagnostics/diagnostic-buffer";
 
 const dateFormatter = { format: formatJalaliDateTime };
 
@@ -114,6 +115,42 @@ export function SyncStatusPage() {
   };
 
   const canRecoverMedia = accessState.canUse("backup") && accessState.hasStorePermission("tools.backup");
+  const supportReport = () => problemReportText({
+    sync_state: status.state,
+    pending_count: status.pending,
+    queue: queue.slice(0, 20).map((item) => ({
+      operation_id: item.operationId,
+      entity: item.entity,
+      action: item.action,
+      status: item.status,
+      attempt_state: item.attemptState,
+      retry_count: item.retryCount,
+    })),
+    media: {
+      pending_count: mediaPending,
+      local_available: mediaSummary?.localAvailable ?? null,
+      server_available: mediaSummary?.serverAvailable ?? null,
+      missing_count: mediaSummary?.missing ?? null,
+    },
+  });
+
+  const copySupportReport = async () => {
+    try {
+      await navigator.clipboard.writeText(supportReport());
+      toast.success("گزارش امن برای پشتیبانی کپی شد");
+    } catch {
+      toast.error("کپی گزارش ممکن نشد؛ فایل گزارش را دریافت کنید");
+    }
+  };
+
+  const downloadSupportReport = () => {
+    const url = URL.createObjectURL(new Blob([supportReport()], { type: "application/json;charset=utf-8" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `tanzim-problem-report-${new Date().toISOString().slice(0, 10)}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
   const mediaCoverageColor = (mediaSummary?.missing ?? 0) > 0 ? "amber" : "green";
   const mediaCoverageLabel = `${(mediaSummary?.localAvailable ?? 0).toLocaleString("fa-IR")} محلی از ${(mediaSummary?.serverAvailable ?? 0).toLocaleString("fa-IR")}`;
 
@@ -256,6 +293,21 @@ export function SyncStatusPage() {
           )}
         </section>
       </Grid>
+
+      <section className="sync-detail-section mt-5" aria-labelledby="support-report-title">
+        <Flex align="center" justify="between" gap="4" wrap="wrap">
+          <Box className="min-w-0 flex-1">
+            <h2 id="support-report-title" className="text-lg font-bold">گزارش امن برای پشتیبانی</h2>
+            <Text as="p" size="2" color="gray" mt="1">
+              این گزارش فقط وضعیت فنی، شناسه‌های پیگیری و نسخه‌ها را نگه می‌دارد؛ رمز، توکن، متن کالا، تصویر و شناسه حساب در آن قرار نمی‌گیرد.
+            </Text>
+          </Box>
+          <Flex gap="2" wrap="wrap" className="w-full sm:w-auto">
+            <Button type="button" variant="soft" onClick={() => void copySupportReport()} className="flex-1 sm:flex-none">کپی گزارش</Button>
+            <Button type="button" variant="soft" onClick={downloadSupportReport} className="flex-1 sm:flex-none">دریافت فایل گزارش</Button>
+          </Flex>
+        </Flex>
+      </section>
 
       <section className="sync-flow" aria-labelledby="sync-flow-title">
         <h2 id="sync-flow-title" className="text-lg font-bold">چه زمانی این صفحه را بررسی کنید؟</h2>

@@ -98,3 +98,7 @@ The proposed order is valid with one scope clarification: task 1 must include th
 9. Hardening, observability, recovery drills, and release validation.
 
 Language/date conventions and diagnostic instrumentation apply within every relevant task, not only tasks 8–9.
+
+Release diagnostics are local and support-driven in V1. A bounded person/store-partitioned browser buffer may retain safe failure codes, request/operation identifiers and build/schema context, but excludes credentials, cookies, request bodies, product descriptions, images and unnecessary personal data. Export is an explicit user action and never an automatic third-party transmission. A possibly committed operation is investigated through its existing identity and fingerprint; diagnostics never authorize payload mutation or a new-ID retry.
+
+Database and durable media backup form one operational recovery set. Production restoration requires a separately verified database restore plus relative-path/size/SHA-256 media verification and a compatible build. TZ-V1-09A does not approve retention, encryption/key custody, scheduling, RPO/RTO, a monitoring vendor or disaster owner.

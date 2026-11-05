@@ -7,7 +7,8 @@ import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import { readFileSync, writeFileSync } from "node:fs";
 
 const appVersion = (JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8")) as { version: string }).version;
-const buildId = (process.env.TANZIM_BUILD_ID || appVersion).replace(/[^a-zA-Z0-9._-]/g, "-");
+const generatedBuildId = `${appVersion}-${new Date().toISOString().replace(/[-:.TZ]/g, "")}-${process.pid}`;
+const buildId = (process.env.TANZIM_BUILD_ID || process.env.GITHUB_SHA || generatedBuildId).replace(/[^a-zA-Z0-9._-]/g, "-");
 
 function stampServiceWorker() {
   return {

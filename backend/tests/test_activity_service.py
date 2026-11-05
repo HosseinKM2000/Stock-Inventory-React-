@@ -8,8 +8,14 @@ from app.schemas import SyncOperationIn, SyncOperationResult
 def test_activity_evidence_recursively_removes_credentials_and_tokens():
     encoded = _safe({
         "name": "نمونه",
-        "nested": {"token": "secret", "quantity": 2},
-        "items": [{"temporary_password": "never", "status": "active"}],
+        "nested": {
+            "token": "secret",
+            "password_hash": "hash",
+            "customerPasswordHash": "hash2",
+            "api_key": "key",
+            "quantity": 2,
+        },
+        "items": [{"temporary_password": "never", "set-cookie": "session=never", "status": "active"}],
     })
     assert encoded is not None
     value = json.loads(encoded)

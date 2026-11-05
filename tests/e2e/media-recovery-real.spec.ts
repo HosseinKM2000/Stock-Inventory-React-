@@ -11,6 +11,7 @@ const webp = Buffer.from(
 
 test("live upload, fresh-profile hydration, and offline OPFS reopen render", async ({ request, browser, baseURL }) => {
   const suffix = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  const phoneDigits = BigInt(`0x${crypto.createHash("sha256").update(suffix).digest("hex").slice(0, 12)}`) % 1_000_000_000n;
   const adminLogin = await request.post(`${api}/auth/login`, { data: {
     username: "HosseinKM2000", password: "Test-only-system-admin-password-123!",
     device_fingerprint: `media-admin-${suffix}`,
@@ -31,7 +32,7 @@ test("live upload, fresh-profile hydration, and offline OPFS reopen render", asy
   const device = `media-owner-${suffix}`;
   const signup = await request.post(`${api}/auth/signup`, { data: {
     username: `media-owner-${suffix}`, password: "StrongPass123!", device_fingerprint: device,
-    phone: "09120000003",
+    phone: `09${phoneDigits.toString().padStart(9, "0")}`,
   } });
   expect(signup.status()).toBe(201);
   const session = await signup.json();
@@ -110,7 +111,7 @@ test("live upload, fresh-profile hydration, and offline OPFS reopen render", asy
     await writable.close();
 
     const database = await new Promise<IDBDatabase>((resolve, reject) => {
-      const request = indexedDB.open("inventory-db", 13);
+      const request = indexedDB.open("inventory-db", 14);
       request.onupgradeneeded = () => {
         if (!request.result.objectStoreNames.contains("inventoryItems")) {
           request.result.createObjectStore("inventoryItems", { keyPath: "local_key" });
