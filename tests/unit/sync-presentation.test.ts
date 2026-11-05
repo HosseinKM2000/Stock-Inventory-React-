@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getSyncIndicator } from "@/features/app/layout/connection-status";
+import { getSyncIndicator, syncDiagnosticCode, syncErrorMessage } from "@/features/app/layout/connection-status";
 import type { SyncStatus } from "@/shared/lib/infrastructure/sync/sync-status";
 
 const base: SyncStatus = {
@@ -22,5 +22,14 @@ describe("sync status presentation", () => {
     const indicator = getSyncIndicator({ ...base, pending: 3 }, false);
     expect(indicator.kind).toBe("pending");
     expect(indicator.label).toContain("۳");
+    expect(indicator.tooltip).toContain("هنوز سرور آن را نپذیرفته");
+  });
+
+  it("keeps error classes distinct without presenting raw codes as the message", () => {
+    expect(syncErrorMessage("PERMISSION_DENIED")).toContain("دسترسی فعلی");
+    expect(syncErrorMessage("OPERATION_PAYLOAD_MISMATCH")).toContain("قطعی نیست");
+    expect(syncErrorMessage("SOME_NEW_INTERNAL_CODE")).not.toContain("SOME_NEW_INTERNAL_CODE");
+    expect(syncDiagnosticCode("SOME_NEW_INTERNAL_CODE")).toBe("SOME_NEW_INTERNAL_CODE");
+    expect(syncDiagnosticCode("Failed to fetch secret details")).toBeNull();
   });
 });

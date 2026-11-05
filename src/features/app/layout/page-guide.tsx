@@ -40,10 +40,10 @@ export function PageGuide({ section, sectionTo, title, description, icon: Icon, 
         <InfoCircledIcon className="page-guide-description-icon" width="20" height="20" aria-hidden="true" />
         <p>{description}</p>
         {helpTopic ? (
-          <a href={`/tools/help#${helpTopic}`} className="page-guide-help-link">
+          <Link to="/tools/help" hash={helpTopic} className="page-guide-help-link">
             <QuestionMarkCircledIcon aria-hidden="true" />
             راهنمای این بخش
-          </a>
+          </Link>
         ) : null}
       </div>
     </header>

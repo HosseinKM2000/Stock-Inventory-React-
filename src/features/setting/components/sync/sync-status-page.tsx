@@ -1,4 +1,4 @@
-import { getSyncIndicator, SyncStateIcon, syncErrorMessage } from "@/features/app/layout/connection-status";
+import { getSyncIndicator, SyncStateIcon, syncDiagnosticCode, syncErrorMessage } from "@/features/app/layout/connection-status";
 import { Button } from "@/shared/ui/button/button";
 import type { SyncQueueItem } from "@/shared/lib/infrastructure/storage/types";
 import { queueService } from "@/shared/lib/infrastructure/sync/queue.service";
@@ -153,6 +153,7 @@ export function SyncStatusPage() {
       {status.error && (
         <Callout.Root color="red" mt="5" role="alert">
           <Callout.Text>{syncErrorMessage(status.error)}</Callout.Text>
+          {syncDiagnosticCode(status.error) ? <details className="sync-diagnostic"><summary>جزئیات برای پشتیبانی</summary><code dir="ltr">{syncDiagnosticCode(status.error)}</code></details> : null}
         </Callout.Root>
       )}
 
@@ -210,9 +211,9 @@ export function SyncStatusPage() {
                         {actionLabels[item.action]} {entityLabels[item.entity] ?? item.entity}
                       </Text>
                       <Text as="div" size="1" color="gray" mt="1">
-                        شناسه {item.entityId.toLocaleString("fa-IR")} · {formatTime(item.updatedAt)}
+                        {formatTime(item.updatedAt)}
                       </Text>
-                      {item.lastError && <Text as="div" size="1" color="red" mt="1">{item.lastError}</Text>}
+                      {item.lastError && <><Text as="div" size="1" color="red" mt="1">{syncErrorMessage(item.lastError)}</Text>{syncDiagnosticCode(item.lastError) ? <details className="sync-diagnostic"><summary>جزئیات برای پشتیبانی</summary><code dir="ltr">{syncDiagnosticCode(item.lastError)}</code></details> : null}</>}
                     </Box>
                     <Badge color={item.status === "conflict" || item.status === "fatal_error" || item.status === "dead_letter" ? "red" : item.status === "in_flight" ? "blue" : "amber"}>
                       {queueStatusLabels[item.status]}

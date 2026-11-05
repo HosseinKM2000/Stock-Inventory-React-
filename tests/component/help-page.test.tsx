@@ -24,6 +24,9 @@ describe("Persian help", () => {
     expect(screen.getByRole("link", { name: "وضعیت همگام‌سازی" })).toHaveAttribute("href", "/setting/sync");
     expect(screen.getByText(/این صفحه نشان می‌دهد تغییرهای شما ثبت شده‌اند/)).toBeVisible();
     expect(screen.getByText("فایل اکسل پذیرفته نمی‌شود؛ مشکل از کجاست؟")).toBeVisible();
+    expect(screen.getByRole("heading", { name: "فاکتور، لغو و سند خروجی" })).toBeVisible();
+    expect(screen.getByRole("heading", { name: "فعالیت مجموعه" })).toBeVisible();
+    expect(screen.getByText(/ذخیره محلی مرورگر به‌تنهایی/)).toBeVisible();
   });
 
   it("shows administrator instructions only to administrators", () => {

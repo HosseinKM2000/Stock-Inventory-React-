@@ -325,6 +325,60 @@ test("help handbook keeps every topic accessible without horizontal scrolling", 
   }
 });
 
+test("Persian activity uses Jalali filters, human summaries, contextual help, and a non-overlapping status header", async ({ page }) => {
+  await seedAuthenticatedUser(page, "USER");
+  await page.route("http://localhost:8000/api/store/personnel", (route) => route.fulfill({ json: [{
+    membership_id: 9101, user_id: 7101, first_name: "مریم", last_name: "نمونه", username: "maryam",
+    role_id: 1, role_name: "انباردار", active: true, temporary_password_required: false,
+    credentials_notice_viewed: true, created_at: "2026-11-01T08:00:00Z", last_activity_at: null,
+  }] }));
+  await page.route(/http:\/\/localhost:8000\/api\/store\/activity(?:\?.*)?$/, (route) => route.fulfill({ json: {
+    items: [{
+      id: 1, actor_user_id: 7101, actor_membership_id: 9101, actor_display_name: "مریم نمونه",
+      actor_role_name: "انباردار", operation_id: "safe-support-123", target_entity: "inventory_movement",
+      target_id: "99", action: "inventory.scan.receive", before: null,
+      after: { name: "لنت جلو", before_quantity: 7, quantity: 12 }, outcome: "applied",
+      client_occurred_at: "2026-11-05T08:00:00Z", accepted_at: "2026-11-05T08:00:01Z",
+    }], total: 1, page: 1, page_size: 25,
+  } }));
+
+  for (const scenario of [
+    { viewport: { width: 390, height: 844 }, appearance: "dark", size: "large" },
+    { viewport: { width: 1440, height: 900 }, appearance: "light", size: "compact" },
+  ]) {
+    await page.setViewportSize(scenario.viewport);
+    await page.goto("/tools/activity");
+    await page.evaluate(({ appearance, size }) => {
+      localStorage.setItem("inventory-appearance", appearance);
+      localStorage.setItem("inventory-display-size", size);
+    }, scenario);
+    await page.reload();
+
+    await expect(page.getByRole("heading", { name: "فعالیت مجموعه" })).toBeVisible();
+    await expect(page.getByText("افزایش موجودی «لنت جلو»")).toBeVisible();
+    await expect(page.getByText("۵ عدد به موجودی اضافه شد (از ۷ به ۱۲).")).toBeVisible();
+    await expect(page.getByText("inventory.scan.receive")).not.toBeVisible();
+    const from = page.getByLabel("از تاریخ جلالی");
+    await expect(from).toHaveAttribute("placeholder", "۱۴۰۳/۱۲/۰۱");
+    await expect(from).toHaveAttribute("inputmode", "numeric");
+    await from.fill("۱۴۰۳/۱۳/۰۱");
+    await expect(page.getByText("تاریخ را به شکل ۱۴۰۳/۱۲/۰۱ وارد کنید.")).toBeVisible();
+    await from.fill("");
+
+    const headerBox = (await page.locator(".app-header").boundingBox())!;
+    const guideBox = (await page.locator(".page-guide").boundingBox())!;
+    expect(headerBox.y + headerBox.height).toBeLessThanOrEqual(guideBox.y + 1);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+  }
+
+  await page.getByText("جزئیات برای پشتیبانی").click();
+  await expect(page.getByText("inventory.scan.receive")).toBeVisible();
+
+  await page.getByRole("link", { name: "راهنمای این بخش" }).click();
+  await expect(page).toHaveURL(/\/tools\/help#activity$/);
+  await expect(page.getByRole("heading", { name: "فعالیت مجموعه" })).toBeVisible();
+});
+
 test("bottom navigation stays ordered and circular without covering the final page action", async ({ page }) => {
   await seedAuthenticatedUser(page, "USER");
   await page.addInitScript(() => localStorage.setItem("inventory-display-size", "large"));

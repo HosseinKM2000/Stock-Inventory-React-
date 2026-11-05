@@ -467,3 +467,29 @@ Remaining limits: report browser evidence uses mocked API responses plus real In
 - Local `draft` integrated the complete task branch with non-destructive merge `cdc6fb1` (`merge: integrate operational dashboard reports`). Task history is preserved.
 - Post-merge smoke passed the 7 focused selector/service/component files with all 22 tests.
 - Nothing was pushed, deployed, merged to `develop`, applied to a customer database, or used to change a real plan/grant. Task 2B and Task 05B remain pending; Task 08 was not started.
+
+## TZ-V1-08 clear Persian UX, contextual help, human activity, and Jalali dates
+
+Branch `feat/v1-persian-help-and-dates`, based directly on accepted local `draft` `08b632e30775b7f2853e2184d9a6a56827e886b6`, completes the presentation/date slice without changing backend schema, store ownership, authorization, invoice acceptance, stock/movement effects, outbox semantics, commercial allocations, or Task 09. Before the task branch was created, the accepted baseline was pushed explicitly to `origin/draft`; a direct remote-ref check confirmed the same full commit.
+
+- Primary customer errors now use actionable Persian for connectivity, permission, plan, version, locking, uncertain result, package, image, and restore states. Safe diagnostic codes remain available only in collapsed support details; unknown raw server messages are not presented as trusted primary copy. Synchronization surfaces distinguish local persistence, server acceptance, image-byte coverage, independent backup, and unknown outcomes.
+- Contextual help now covers dashboard interpretation, search/filter/bulk behavior, invoice posting/cancellation/PDF/print/share limits, synchronization evidence, image recovery, independent backup/device-loss limits, Solo versus Team acceptance, activity, and unresolved recovery. Page links use the application router and offline topic anchors.
+- Activity cards describe business actions in Persian with server-derived actor, Jalali time, applied/rejected/conflicted result, and accepted quantity changes when reliable evidence exists. New evidence is deliberately small and allow-listed; recursive redaction excludes credentials, tokens, authorization/cookies, hashes, and secrets. Sparse legacy events remain generic rather than guessed, and diagnostic action/operation IDs are collapsed for support.
+- Shared Jalali entry accepts Persian, Arabic-Indic, and Latin digits. Activity ranges and administrator grant dates validate through maintained `jalaali-js`, grant time is explicit 24-hour input, and Tehran ranges use inclusive local calendar days while API/storage timestamps stay ISO. Existing invoice history, reports, exports, and PDF retain the shared Jalali formatting path.
+- Narrow-screen transient notices now sit above the measured bottom navigation instead of covering the fixed top header/search area. Desktop notices remain top-centered. The affected activity/help layout was checked in dark/large and light/compact desktop/mobile configurations.
+- Dependency review selected `jalaali-js` `1.2.8` with its published `@types/jalaali-js` `1.2.0`; conversion assets are bundled for offline use. No calendar service, runtime network dependency, migration, backup-format change, new entitlement, grant, payment, tax, or Task 09 behavior was added.
+
+Verification before integration:
+
+| Command / scope | Result |
+|---|---|
+| Focused date/activity/message/help tests | Passed: Jalali digit/leap/invalid/inclusive-Tehran cases, human activity/redaction/result states, safe message classification, synchronization presentation, and contextual-help coverage. |
+| `npm.cmd test` | Passed: 85 files, 363 unit/component tests. |
+| `npm.cmd run test:backend` | Passed: 78 tests, including safe activity evidence/redaction. No backend schema or transaction path changed. |
+| `npm.cmd run test:typecheck` and `npm.cmd run lint` | Passed. |
+| `npm.cmd run build` | Passed. Jalali conversion remains a small route/shared chunk; existing stale Browserslist data and large `bwip-js` warnings remain. |
+| Production-preview activity/help journey | Passed in desktop/mobile Chromium with Persian business summaries, Jalali validation, collapsed support detail, contextual-help navigation, dark/large and light/compact layouts, and no horizontal overflow. |
+| Existing dashboard/invoice compatibility | Passed: 14 desktop/mobile cases retained dashboard scroll restoration, invoice entry/report states, and real Persian PDF/multipage cancellation output. |
+| Administrator grant compatibility | Passed in desktop/mobile Chromium with Jalali date and explicit 24-hour time entry. |
+
+Remaining limits: older activity rows without safe business evidence stay generic, and no bulk summary is inferred without a reliable shared bulk identifier. Chromium is the verified browser engine; physical print/share surfaces and other engines remain unverified. Activity browser evidence uses mocked API data rather than a live PostgreSQL browser journey. PostgreSQL was not rerun because 08 adds no schema, migration, acceptance, or transaction change. Task 2B and Task 05B remain pending; Task 09 was not started.

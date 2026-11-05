@@ -61,6 +61,33 @@ _MAX_IMAGE_BYTES = 10 * 1024 * 1024
 _MINIMUM_CLIENT_DATA_SCHEMA = 2
 
 
+def _activity_evidence(operation: SyncOperationIn, result: SyncOperationResult | None = None) -> dict[str, object] | None:
+    """Keep only small business-facing hints; never mirror an operation payload."""
+    payload = operation.payload or {}
+    record = result.record if result is not None and isinstance(result.record, dict) else {}
+    product = record.get("product") if isinstance(record.get("product"), dict) else record
+    movement = record.get("movement") if isinstance(record.get("movement"), dict) else {}
+    catalog = payload.get("catalog_product")
+    if not isinstance(catalog, dict) and isinstance(product, dict):
+        catalog = product.get("catalog_product")
+    catalog_name = catalog.get("name") if isinstance(catalog, dict) else None
+    name = next((value.strip() for value in (
+        payload.get("custom_label"), payload.get("product_name"), payload.get("title"),
+        payload.get("name"), product.get("custom_label") if isinstance(product, dict) else None, catalog_name,
+    ) if isinstance(value, str) and value.strip()), None)
+    evidence: dict[str, object] = {}
+    if name is not None:
+        evidence["name"] = name
+    quantity = payload.get("quantity")
+    if isinstance(quantity, int) and not isinstance(quantity, bool):
+        evidence["quantity"] = quantity
+    for source, destination in (("before_quantity", "before_quantity"), ("after_quantity", "quantity")):
+        value = movement.get(source)
+        if isinstance(value, int) and not isinstance(value, bool):
+            evidence[destination] = value
+    return evidence or None
+
+
 async def _operation_fingerprint(
     operation: SyncOperationIn,
     image: UploadFile | None,
@@ -957,7 +984,7 @@ async def push_batch(
             _authorize_operation(db, current_user, operation, accepted_at=accepted_at)
         except ValueError as error:
             result = SyncOperationResult(operation_id=operation.operation_id, status="fatal_error", entity_id=operation.entity_id, error=str(error))
-            record_store_activity(db, current_user, action=f"sync.{operation.operation.lower()}", target_entity=operation.entity, target_id=operation.entity_id, operation_id=operation.operation_id, outcome="rejected", client_occurred_at=operation.client_occurred_at)
+            record_store_activity(db, current_user, action=f"sync.{operation.operation.lower()}", target_entity=operation.entity, target_id=operation.entity_id, operation_id=operation.operation_id, after=_activity_evidence(operation), outcome="rejected", client_occurred_at=operation.client_occurred_at)
             db.add(SyncOperation(store_id=current_user.store_id, actor_user_id=current_user.id, user_id=current_user.data_owner_id, operation_id=operation.operation_id, request_fingerprint=fingerprint, result_payload=result.model_dump_json(), execution_mode=operation.execution_mode, policy_version=operation.policy_version))
             db.commit(); results.append(result); continue
 
@@ -1003,6 +1030,7 @@ async def push_batch(
             record_store_activity(
                 db, current_user, action=action, target_entity="invoice",
                 target_id=operation.entity_id, operation_id=operation.operation_id,
+                after=_activity_evidence(operation, result),
                 outcome="applied" if result.status == "applied" else ("conflict" if result.status == "conflict" else "rejected"),
                 client_occurred_at=operation.client_occurred_at,
             )
@@ -1037,6 +1065,7 @@ async def push_batch(
                 target_entity=operation.entity,
                 target_id=operation.entity_id,
                 operation_id=operation.operation_id,
+                after=_activity_evidence(operation, result),
                 outcome="applied" if result.status == "applied" else ("conflict" if result.status == "conflict" else "rejected"),
                 client_occurred_at=operation.client_occurred_at,
             )
@@ -1067,7 +1096,7 @@ async def push_batch(
                         entity_record.store_id = current_user.store_id
             except ValueError as error:
                 result = SyncOperationResult(operation_id=operation.operation_id, status="fatal_error", entity_id=operation.entity_id, error=str(error))
-            record_store_activity(db, current_user, action=f"sync.{operation.operation.lower()}", target_entity=operation.entity, target_id=operation.entity_id, operation_id=operation.operation_id, outcome="applied" if result.status == "applied" else "rejected", client_occurred_at=operation.client_occurred_at)
+            record_store_activity(db, current_user, action=f"sync.{operation.operation.lower()}", target_entity=operation.entity, target_id=operation.entity_id, operation_id=operation.operation_id, after=_activity_evidence(operation, result), outcome="applied" if result.status == "applied" else "rejected", client_occurred_at=operation.client_occurred_at)
             db.add(SyncOperation(store_id=current_user.store_id, actor_user_id=current_user.id, user_id=current_user.data_owner_id, operation_id=operation.operation_id, request_fingerprint=fingerprint, result_payload=result.model_dump_json(), execution_mode=operation.execution_mode, policy_version=operation.policy_version))
             db.commit()
             results.append(result)
@@ -1102,7 +1131,7 @@ async def push_batch(
                 policy_version=operation.policy_version,
             )
         )
-        record_store_activity(db, current_user, action=f"sync.{operation.operation.lower()}", target_entity=operation.entity, target_id=operation.entity_id, operation_id=operation.operation_id, outcome="applied" if result.status == "applied" else ("conflict" if result.status == "conflict" else "rejected"), client_occurred_at=operation.client_occurred_at)
+        record_store_activity(db, current_user, action=f"sync.{operation.operation.lower()}", target_entity=operation.entity, target_id=operation.entity_id, operation_id=operation.operation_id, after=_activity_evidence(operation, result), outcome="applied" if result.status == "applied" else ("conflict" if result.status == "conflict" else "rejected"), client_occurred_at=operation.client_occurred_at)
         db.commit()
         results.append(result)
 
