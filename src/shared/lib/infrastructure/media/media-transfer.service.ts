@@ -4,6 +4,7 @@ import { apiFetch } from "@/shared/api/client";
 import { db } from "../storage/db";
 import type { MediaTransferItem, SyncQueueItem } from "../storage/types";
 import { imageService, isLocalImage } from "./image.service";
+import { recordDiagnostic } from "@/shared/lib/diagnostics/diagnostic-buffer";
 
 export type MediaTransferResult = {
   id: string;
@@ -115,6 +116,13 @@ async function processJob(job: MediaTransferItem) {
       updatedAt: Date.now(),
     };
     await db.mediaTransfers.put(failed);
+    recordDiagnostic({
+      kind: "media_failure",
+      summary: error instanceof Error && /^[A-Z][A-Z0-9_.:-]+$/.test(error.message) ? error.message : "MEDIA_TRANSFER_FAILED",
+      requestId: error instanceof ApiError ? error.requestId : undefined,
+      operationId: claimed.transferId,
+      httpStatus: error instanceof ApiError ? error.status : undefined,
+    });
     return failed;
   }
 }

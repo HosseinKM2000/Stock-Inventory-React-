@@ -10,14 +10,26 @@ from .store_service import active_store_context
 
 
 SENSITIVE_KEYS = frozenset({
-    "password", "hashed_password", "access_token", "refresh_token", "token",
-    "authorization", "cookie", "secret", "temporary_password",
+    "password", "hashed_password", "password_hash", "access_token", "refresh_token", "token",
+    "authorization", "cookie", "set_cookie", "secret", "client_secret", "temporary_password",
+    "api_key",
 })
+
+
+def _key(value: str) -> str:
+    return "_".join(part for part in "".join(
+        character.lower() if character.isalnum() else " " for character in value
+    ).split())
+
+
+def _sensitive_key(value: str) -> bool:
+    compact = _key(value).replace("_", "")
+    return any(key.replace("_", "") in compact for key in SENSITIVE_KEYS)
 
 
 def _redact(value: Any) -> Any:
     if isinstance(value, dict):
-        return {key: _redact(item) for key, item in value.items() if key.lower() not in SENSITIVE_KEYS}
+        return {key: _redact(item) for key, item in value.items() if not _sensitive_key(key)}
     if isinstance(value, list):
         return [_redact(item) for item in value]
     return value

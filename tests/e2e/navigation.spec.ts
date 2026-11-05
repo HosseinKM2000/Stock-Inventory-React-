@@ -487,6 +487,11 @@ test("sync status links expose responsive details", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "تصاویر آفلاین" })).toBeVisible();
   const mediaAction = page.getByRole("button", { name: "دریافت تصاویر برای استفاده آفلاین" });
   await expect(mediaAction).toBeVisible();
+  const copyReport = page.getByRole("button", { name: "کپی گزارش" });
+  const downloadReport = page.getByRole("button", { name: "دریافت فایل گزارش" });
+  await expect(page.getByRole("heading", { name: "گزارش امن برای پشتیبانی" })).toBeVisible();
+  await expect(copyReport).toBeVisible();
+  await expect(downloadReport).toBeVisible();
   await expect(page.locator(".sync-detail-page")).toHaveAttribute("dir", "rtl");
 
   const header = page.locator(".app-header");
@@ -496,9 +501,11 @@ test("sync status links expose responsive details", async ({ page }) => {
 
   await expect(header.locator(".sync-status-label")).toHaveCount(0);
 
-  for (const viewport of [{ width: 320, height: 568 }, { width: 1440, height: 900 }]) {
+  for (const viewport of [{ width: 320, height: 568 }, { width: 768, height: 800 }, { width: 1440, height: 900 }]) {
     await page.setViewportSize(viewport);
     await expect(mediaAction).toBeVisible();
+    await expect(copyReport).toBeVisible();
+    await expect(downloadReport).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), `${viewport.width}px media overflow`).toBeLessThanOrEqual(1);
     const badgeBox = await header.locator(".sync-status-badge").boundingBox();
     const iconBox = await header.locator(".sync-status-icon").boundingBox();

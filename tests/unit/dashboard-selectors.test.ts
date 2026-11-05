@@ -119,4 +119,25 @@ describe("dashboard selectors", () => {
     expect(selectProductsForDashboardFilter(products, DashboardFilters.NO_PRICE).map((item) => item.id)).toEqual([2]);
     expect(selectProductsForDashboardFilter(products, DashboardFilters.URGENT_PURCHASE).map((item) => item.id)).toEqual([1, 2, 3]);
   });
+
+  it("keeps representative large inventory analysis responsive", () => {
+    const products = Array.from({ length: 5_000 }, (_, index) => product({
+      id: index + 1,
+      quantity: index % 23,
+      price: index % 17 === 0 ? 0 : 100 + index,
+      sale_price: index % 17 === 0 ? 0 : 100 + index,
+      price_missing: false,
+      category_id: index % 10,
+      low_stock_alert: true,
+      low_stock_threshold: 3,
+    }));
+    const started = performance.now();
+    const ranked = rankProductsByInventoryValue(products);
+    const urgent = selectProductsForDashboardFilter(products, DashboardFilters.URGENT_PURCHASE);
+    const elapsed = performance.now() - started;
+
+    expect(ranked).toHaveLength(10);
+    expect(urgent.length).toBeGreaterThan(0);
+    expect(elapsed).toBeLessThan(3_000);
+  });
 });

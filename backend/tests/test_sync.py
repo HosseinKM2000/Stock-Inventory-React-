@@ -130,6 +130,25 @@ class SyncApiTest(unittest.TestCase):
             files=files,
         )
 
+    def test_non_applied_command_log_uses_safe_operation_context(self) -> None:
+        operation_id = "release-log-missing-product"
+        with self.assertLogs("tanzim.sync", level="WARNING") as captured:
+            response = self.push([{
+                "operation_id": operation_id,
+                "entity": "product",
+                "entity_id": 9_090_909_091,
+                "operation": "UPDATE",
+                "payload": {"quantity": 987_654_321, "custom_label": "must-not-be-logged"},
+            }])
+        self.assertEqual(response.status_code, 200, response.text)
+        self.assertEqual(response.json()["results"][0]["status"], "fatal_error")
+        log = "\n".join(captured.output)
+        self.assertIn(operation_id, log)
+        self.assertIn("entity=product", log)
+        self.assertIn("status=fatal_error", log)
+        self.assertNotIn("must-not-be-logged", log)
+        self.assertNotIn("987654321", log)
+
     def test_atomic_invoice_post_replay_cancel_and_price_snapshots(self) -> None:
         product_id = 1_700_000_095_001
         invoice_id = 1_700_000_095_002

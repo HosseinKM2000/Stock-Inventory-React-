@@ -122,6 +122,14 @@ Human-facing date entry and output use the shared Jalali module. `jalaali-js` va
 
 On narrow viewports transient application notices are anchored above the measured bottom navigation inset instead of covering the fixed header/search region. Desktop notices remain top-centered. This is a layout correction only; notification meaning and persistence are unchanged.
 
+### Release diagnostics
+
+`apiFetch` supplies a safe correlation identifier and captures only classified failure metadata in a bounded local buffer. The backend returns the same request identifier with build and schema context and logs controlled method/path/status information. Non-applied sync results are logged separately because their HTTP batch can still succeed; that log contains the immutable operation identifier and server-derived store/actor IDs, never the semantic payload.
+
+The sync status page assembles the explicit support export from the active person/store partition. Queue entries contribute operation identity, entity/action, attempt/status and retry count only; media contributes counts only. Recursive sanitization redacts credentials, authorization/cookies, bodies/payloads, descriptions and image/content fields. No endpoint receives this report automatically.
+
+Production configuration requires an explicit database URL, rejects SQLite outside tests, requires a non-default production secret and requires an explicit production media mount. These startup checks are containment, not evidence of deployment automation, monitoring, backup scheduling or restore ownership.
+
 ### Restore
 
 `backupRestoreService.apply` treats a backup as untrusted input. It verifies integrity, supported/legacy shape, owner/store binding, business relationships, authority-field exclusion, operation types, and included media before touching live state. It captures the current actor/store projections, every queue state, preferences, reconciliation metadata, and available local image bytes in a durable browser-local checkpoint. The checkpoint is recovery evidence for this browser, not an independent external backup.

@@ -101,7 +101,7 @@ test("real two-build update preserves durable work, old tabs, and offline bytes"
         request.onerror = () => reject(request.error);
       });
       await new Promise<void>((resolve, reject) => {
-        const transaction = database.transaction(["inventoryItems", "syncQueue"], "readwrite");
+        const transaction = database.transaction(["inventoryItems", "syncQueue", "invoices"], "readwrite");
         transaction.objectStore("inventoryItems").put({
           local_key: "7001:7101:501", id: 501, local_user_id: 7001, local_store_id: 7101,
           custom_label: "کالای حفظ‌شده", quantity: 2, price: 100, sale_price: 100,
@@ -113,6 +113,15 @@ test("real two-build update preserves durable work, old tabs, and offline bytes"
           resourceKey: "product:501", attemptState: "attempted", entity: "product", entityId: 501,
           action: "UPDATE", payload: { quantity: 2 }, status: "in_flight", retryCount: 0,
           nextAttemptAt: 0, createdAt: 1, updatedAt: 2, executionMode: "solo", policyVersion: 1,
+        });
+        transaction.objectStore("invoices").put({
+          local_key: "7001:7101:invoice-501", local_user_id: 7001, local_store_id: 7101,
+          id: "invoice-501", invoice_type: "sale", title: "سند حفظ‌شده", counterparty: null,
+          status: "pending", total_amount: 200, actor_user_id: 7001, actor_membership_id: 7201,
+          post_operation_id: "durable-invoice-operation", posted_at: "2026-11-04T00:00:00Z",
+          lines: [{ product_id: 501, product_name: "کالای حفظ‌شده", quantity: 2, unit: "عدد",
+            pack_size: null, base_quantity: 2, unit_price: 100, line_total: 200,
+            before_quantity: 4, after_quantity: 2 }],
         });
         transaction.oncomplete = () => resolve();
         transaction.onerror = () => reject(transaction.error);
@@ -189,8 +198,15 @@ test("real two-build update preserves durable work, old tabs, and offline bytes"
         const request = database.transaction("syncQueue").objectStore("syncQueue").get("durable-queue");
         request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error);
       });
-      database.close(); return value;
-    })).toMatchObject({ operationId: "durable-operation-id", payload: { quantity: 2 }, attemptState: "attempted" });
+      const invoice = await new Promise<unknown>((resolve, reject) => {
+        const request = database.transaction("invoices").objectStore("invoices").get("7001:7101:invoice-501");
+        request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error);
+      });
+      database.close(); return { value, invoice };
+    })).toMatchObject({
+      value: { operationId: "durable-operation-id", payload: { quantity: 2 }, attemptState: "attempted" },
+      invoice: { status: "pending", post_operation_id: "durable-invoice-operation", lines: [{ product_name: "کالای حفظ‌شده" }] },
+    });
 
     await oldTab.getByRole("link", { name: /تنظیمات/ }).first().click();
     await expect(oldTab).toHaveURL(/\/setting/);
@@ -211,12 +227,17 @@ test("real two-build update preserves durable work, old tabs, and offline bytes"
         const request = database.transaction("syncQueue").objectStore("syncQueue").get("durable-queue");
         request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error);
       });
+      const invoice = await new Promise<Record<string, unknown>>((resolve, reject) => {
+        const request = database.transaction("invoices").objectStore("invoices").get("7001:7101:invoice-501");
+        request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error);
+      });
       database.close();
       const root = await navigator.storage.getDirectory();
       const file = await (await (await root.getDirectoryHandle("pwa-update")).getFileHandle("image.webp")).getFile();
-      return { operation, bytes: [...new Uint8Array(await file.arrayBuffer())] };
+      return { operation, invoice, bytes: [...new Uint8Array(await file.arrayBuffer())] };
     });
     expect(preserved.operation).toMatchObject({ operationId: "durable-operation-id", attemptState: "attempted" });
+    expect(preserved.invoice).toMatchObject({ status: "pending", post_operation_id: "durable-invoice-operation" });
     expect(preserved.bytes).toEqual([82, 73, 70, 70, 4, 0, 0, 0, 87, 69, 66, 80]);
   } finally {
     await context.setOffline(false);

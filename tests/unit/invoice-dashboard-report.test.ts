@@ -49,4 +49,20 @@ describe("invoice dashboard report", () => {
     expect(report.unconfirmedSolo.today.purchase).toEqual({ kind: "restricted" });
     expect(report.unconfirmedSolo.today.sale).toMatchObject({ kind: "value", count: 0, total: 0 });
   });
+
+  it("aggregates a representative large immutable history without blocking", () => {
+    const history = Array.from({ length: 10_000 }, (_, index) => invoice(index + 1, {
+      invoice_type: index % 3 === 0 ? "purchase" : "sale",
+      total_amount: index % 13 === 0 ? 0 : 100 + index,
+      status: index % 19 === 0 ? "cancelled" : "accepted",
+    }));
+    const started = performance.now();
+    const report = calculateInvoiceDashboardReport(history, {
+      now, completeHistory: true, canViewPurchase: true, canViewSale: true, solo: true,
+    });
+    const elapsed = performance.now() - started;
+
+    expect(report.windows.thirtyDays.sale).toMatchObject({ kind: "value" });
+    expect(elapsed).toBeLessThan(3_000);
+  });
 });
