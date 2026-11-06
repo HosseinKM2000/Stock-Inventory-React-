@@ -1,6 +1,6 @@
 # TZ-V1-09A release hardening record
 
-This record is an audit and release-evidence aid, not production approval. It used synthetic data and disposable/local infrastructure. Task 2B and Task 05B remain pending.
+This record is a historical audit and release-evidence aid, not production approval. It used synthetic data and disposable/local infrastructure. TZ-V1-05B and the invoice/pricing slice TZ-V1-02B1 were completed later; remaining commercial and current release decisions are consolidated in `release-readiness.md`.
 
 ## Findings register
 

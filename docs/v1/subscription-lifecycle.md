@@ -14,14 +14,14 @@ TZ-V1-05B verifies lifecycle mechanics only. It does not approve prices, terms, 
 | Attempted or unknown work | The original operation ID and semantic payload remain immutable until the server can resolve the outcome. | Recovery/reconciliation remains explicit. A new ID is reserved for a newly approved action after uncertainty is resolved. |
 | Renewal or entitlement restoration | A refreshed authoritative snapshot enables future permitted actions. | Terminal failures are not reset automatically. An explicit new action receives a new ID; explicit media retry keeps the original transfer ID and content hash. |
 | Product media around a transition | Upload and product association remain separate. Upload requires current write access; protected reads still require current membership, store scope, association, and read access. | Entitlement rejection leaves OPFS bytes and the transfer journal intact. Missing bytes are never marked uploaded and no automatic garbage collection runs. |
-| Membership revocation | Active membership remains an independent requirement and fails before customer-store access. A batch-level policy/permission `403` becomes terminal local evidence instead of an endless authentication retry. | Preserved data does not grant a revoked actor continued access or replay visibility. A `401` remains pending for reauthentication without pretending acceptance. |
+| Membership revocation | Active membership remains an independent requirement and fails before customer-store access. A first-attempt `403` is a definite rejection. A `403` after a possible dispatch stops retry but cannot prove the earlier attempt had no effect. | The latter remains terminal, immutable evidence marked outcome-unresolved because access is denied. A revoked actor cannot inspect the server result. A `401` remains pending for reauthentication without pretending acceptance. |
 | Solo and Team | Expiry, downgrade, grants, and renewal never switch operating mode. Solo keeps its cached local-first contract; Team still requires server acceptance for shared mutations. | Team commands with uncertain outcomes remain available for same-ID resolution. Personnel are not silently reactivated. |
 
 ## Work-state disposition
 
 - `pending`/never attempted: submitted under the original identity when online so current server policy can accept or terminally reject it.
 - `in_flight`/attempted/uncertain: identity and payload stay frozen; retries are same-ID resolution attempts.
-- `fatal_error` or policy rejection: retained as recovery evidence and excluded from automatic retry, including after renewal.
+- `fatal_error` or policy rejection: retained as recovery evidence and excluded from automatic retry, including after renewal. Definite first-attempt rejection remains distinct from an access-denied unresolved prior attempt.
 - `conflict`: retained for explicit reconciliation; a newer local edit is not overwritten by rollback.
 - `dead_letter`: retained and shown as stopped work; generic manual retry applies only to retryable/dead-letter transport failures, not terminal policy failures.
 - restored work: follows the existing recovery review and current authorization rules; backup content cannot restore subscription or authority.
@@ -31,3 +31,5 @@ TZ-V1-05B verifies lifecycle mechanics only. It does not approve prices, terms, 
 This task changes no PostgreSQL schema, Dexie schema, backup format, commercial allocation, operating-mode protocol, or payment boundary. Pre-05B clients can leave locally durable work pending across expiry and later submit it automatically after renewal; deploy the compatible frontend as a normal controlled application replacement. Server replay and terminal-result semantics remain backward compatible.
 
 The browser cannot revoke bytes already present on a disconnected device. Membership and entitlement are rechecked on reconnect. No automatic deletion, media garbage collection, grace period, checkout, or entitlement issuance is introduced.
+
+An authorized actor may explicitly resolve an access-denied uncertain operation through `GET /api/sync/operations/{operation_id}` after current membership/read access is restored. The lookup is scoped by the server-resolved store and original actor, returns only a recorded result projected through current read permissions, and returns not-recorded separately. It never dispatches the command, creates a new identity, or applies a domain effect. Renewal and reauthentication do not invoke this path silently.
