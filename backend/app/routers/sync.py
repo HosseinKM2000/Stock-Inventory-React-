@@ -66,6 +66,40 @@ _MAX_IMAGE_BYTES = 10 * 1024 * 1024
 _MINIMUM_CLIENT_DATA_SCHEMA = 2
 
 
+@router.get("/operations/{operation_id}", response_model=SyncOperationResult)
+def recorded_operation_result(
+    operation_id: str,
+    current_user: CurrentProductReader,
+    db: DbSession,
+    client_data_schema: Annotated[int | None, Header(alias="X-Client-Data-Schema")] = None,
+) -> SyncOperationResult:
+    """Return only an already-recorded result; never apply an operation."""
+    _require_store_aware_client(client_data_schema)
+    previous = db.scalar(select(SyncOperation).where(
+        SyncOperation.store_id == current_user.store_id,
+        SyncOperation.actor_user_id == current_user.id,
+        SyncOperation.operation_id == operation_id,
+    ))
+    if previous is None:
+        raise HTTPException(status_code=404, detail="SYNC_OPERATION_NOT_RECORDED")
+    result = SyncOperationResult.model_validate_json(previous.result_payload)
+    permissions = effective_permissions(active_store_context(db, current_user))
+    if isinstance(result.record, InventoryOut):
+        raw_record = result.record.model_dump(mode="json")
+    elif isinstance(result.record, dict):
+        raw_record = result.record
+    else:
+        return result
+    if "catalog_product_id" in raw_record:
+        result.record = _project_record(raw_record, permissions, client_data_schema or 2)
+    elif isinstance(raw_record.get("product"), dict):
+        result.record = {
+            **raw_record,
+            "product": _project_record(raw_record["product"], permissions, client_data_schema or 2),
+        }
+    return result
+
+
 def _activity_evidence(operation: SyncOperationIn, result: SyncOperationResult | None = None) -> dict[str, object] | None:
     """Keep only small business-facing hints; never mirror an operation payload."""
     payload = operation.payload or {}

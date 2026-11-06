@@ -9,6 +9,11 @@ const BASE_BACKOFF_MS = 5_000;
 
 const MAX_BACKOFF_MS = 5 * 60_000;
 const IN_FLIGHT_LEASE_MS = 60_000;
+export const ACCESS_DENIED_OUTCOME_UNRESOLVED = "SYNC_OUTCOME_UNRESOLVED_ACCESS_DENIED";
+
+export function isAccessDeniedOutcomeUnresolved(item: Pick<SyncQueueItem, "lastError">) {
+  return item.lastError?.startsWith(`${ACCESS_DENIED_OUTCOME_UNRESOLVED}:`) ?? false;
+}
 
 function queueId(entity: string, entityId: number, suffix = "") {
   const owner = accessState.user()?.id;
@@ -270,6 +275,20 @@ export const queueService = {
       nextAttemptAt: Date.now() + backoffDelay(retryCount),
 
       lastError: error instanceof Error ? error.message : String(error),
+    });
+  },
+
+  async markAccessDeniedUnresolved(item: SyncQueueItem, error: unknown) {
+    const current = await queueStorage.get(item.id);
+    if (!current || current.updatedAt !== item.updatedAt) return;
+    const code = error instanceof Error ? error.message : String(error);
+    await queueStorage.upsert({
+      ...item,
+      attemptState: "uncertain",
+      status: "fatal_error",
+      updatedAt: Date.now(),
+      nextAttemptAt: Number.MAX_SAFE_INTEGER,
+      lastError: `${ACCESS_DENIED_OUTCOME_UNRESOLVED}:${code}`,
     });
   },
 

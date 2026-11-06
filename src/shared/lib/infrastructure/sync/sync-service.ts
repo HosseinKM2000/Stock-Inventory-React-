@@ -3,7 +3,7 @@ import { isAuthenticated } from "@/shared/api/token-store";
 
 import { networkService } from "../network/network-service";
 import type { SyncQueueItem } from "../storage/types";
-import { queueService } from "./queue.service";
+import { isAccessDeniedOutcomeUnresolved, queueService } from "./queue.service";
 import { syncStatusStore } from "./sync-status";
 import { accessState } from "@/shared/access/access-state";
 import { entitlementService } from "@/shared/access/entitlement-service";
@@ -14,6 +14,7 @@ import {
 } from "./sync-account-context";
 import { mediaOperationBlocked, mediaTransferService } from "../media/media-transfer.service";
 import { recordDiagnostic } from "@/shared/lib/diagnostics/diagnostic-buffer";
+import { fetchRecordedOperationResult } from "./sync-operation-resolution";
 
 export type SyncHandlerResult = {
   itemId: string;
@@ -68,7 +69,9 @@ async function processGroup(entity: string, items: SyncQueueItem[]) {
   const account = captureSyncAccountContext();
 
   const active: SyncQueueItem[] = [];
+  const possiblePriorAttempts = new Set<string>();
   for (const item of items) {
+    if (item.attemptState !== "never") possiblePriorAttempts.add(item.id);
     assertSyncAccountCurrent(account);
     const claimed = await queueService.markInFlight(item);
     assertSyncAccountCurrent(account);
@@ -114,6 +117,12 @@ async function processGroup(entity: string, items: SyncQueueItem[]) {
     for (const item of active) {
       if (error instanceof ApiError && error.status === 401) {
         await queueService.releaseAfterAuthFailure(item, error);
+      } else if (
+        error instanceof ApiError &&
+        error.status === 403 &&
+        possiblePriorAttempts.has(item.id)
+      ) {
+        await queueService.markAccessDeniedUnresolved(item, error);
       } else {
         await queueService.markFailed(item, error, isFatalRequest(error));
       }
@@ -292,6 +301,33 @@ export const syncService = {
   async retry() {
     await queueService.resetFailures();
     return this.sync();
+  },
+
+  async resolveAccessDeniedOutcome(item: SyncQueueItem) {
+    if (!isAccessDeniedOutcomeUnresolved(item)) {
+      throw new Error("SYNC_OPERATION_RESOLUTION_NOT_ALLOWED");
+    }
+    const account = captureSyncAccountContext();
+    try {
+      const result = await fetchRecordedOperationResult(item.operationId);
+      assertSyncAccountCurrent(account);
+      if (result.status === "applied") {
+        await queueService.removeIfUnchanged(item);
+      } else if (result.status === "conflict") {
+        await queueService.markConflict(item, result.error ?? "SYNC_CONFLICT");
+      } else {
+        await queueService.markFailed(item, new Error(result.error ?? "SYNC_REJECTED"), true);
+      }
+      await this.sync();
+      return result.status;
+    } catch (error) {
+      assertSyncAccountCurrent(account);
+      if (error instanceof ApiError && error.status === 404) {
+        await queueService.markFailed(item, new Error("SYNC_OPERATION_NOT_RECORDED"), true);
+        return "not_recorded" as const;
+      }
+      throw error;
+    }
   },
 
   async refreshPending() {
