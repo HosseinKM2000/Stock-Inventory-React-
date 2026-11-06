@@ -6,8 +6,11 @@ export const listAvailablePlans = () => apiFetch<SubscriptionPlan[]>("/plans");
 export const listAdminPlans = () => apiFetch<SubscriptionPlan[]>("/admin/plans");
 export const createPlan = (plan: SubscriptionPlanInput) =>
   apiFetch<SubscriptionPlan>("/admin/plans", { method: "POST", json: plan });
-export const updatePlan = (id: string, plan: Partial<SubscriptionPlanInput>) =>
-  apiFetch<SubscriptionPlan>(`/admin/plans/${id}`, { method: "PATCH", json: plan });
+export const updatePlan = (id: string, plan: Partial<SubscriptionPlanInput>) => {
+  const { id: _pathId, ...payload } = plan;
+  void _pathId;
+  return apiFetch<SubscriptionPlan>(`/admin/plans/${id}`, { method: "PATCH", json: payload });
+};
 export const deletePlan = (id: string) =>
   apiFetch<void>(`/admin/plans/${id}`, { method: "DELETE" });
 export const listPlanSubscribers = (id: string) =>

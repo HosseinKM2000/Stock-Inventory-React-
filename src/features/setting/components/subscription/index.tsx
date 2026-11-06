@@ -26,7 +26,7 @@ import type { ReactNode } from "react";
 import { useAvailablePlans } from "../../mutations/use-admin";
 import {
   FEATURE_LABELS,
-  formatToman,
+  formatPlanPrice,
 } from "../subscription-management/plan-options";
 import { formatJalaliDate } from "@/shared/lib/date/jalali";
 import { PageGuide } from "@/features/app/layout/page-guide";
@@ -182,7 +182,7 @@ export default function SubscriptionSettings() {
               </Flex>
             }
             label="قیمت طرح"
-            value={formatToman(plan?.price_minor ?? null)}
+            value={plan ? formatPlanPrice(plan) : "قیمت تعیین نشده"}
             accent="violet"
           />
         </Grid>

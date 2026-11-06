@@ -40,3 +40,9 @@ export function formatToman(value: number | null): string {
   const toman = priceMinorToToman(value);
   return toman == null ? "تعیین نشده" : `${new Intl.NumberFormat("fa-IR").format(toman)} تومان`;
 }
+
+export function formatPlanPrice(plan: { id: string; price_toman: number | null }): string {
+  if (plan.id === "free") return "رایگان";
+  if (plan.price_toman == null) return "قیمت طرح پولی تعیین نشده";
+  return `${new Intl.NumberFormat("fa-IR").format(plan.price_toman)} تومان`;
+}

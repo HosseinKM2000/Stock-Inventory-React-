@@ -36,18 +36,27 @@ describe("invoice barcode selection and immutable output", () => {
   it("finds one authorized barcode without creating stock, movement, invoice, or outbox effects", async () => {
     await db.barcodes.put({ local_key: "607:707:1", local_user_id: 607, local_store_id: 707, store_id: 707, id: 1, product_id: 91, value: "626123", source: "manufacturer", symbology: "unknown", meaning: "package", scan_quantity: 12, is_active: true, is_default: true, created_at: "2026-01-01", updated_at: "2026-01-01" });
     const products = await inventoryStorage.getAll();
-    await expect(lookupInvoiceBarcode("626123", products)).resolves.toMatchObject({ kind: "unique", product: { id: 91 } });
+    await expect(lookupInvoiceBarcode("626123", products, "sale")).resolves.toMatchObject({ kind: "unique", product: { id: 91 } });
     expect(await db.inventoryMovements.count()).toBe(0); expect(await db.invoices.count()).toBe(0); expect(await db.syncQueue.count()).toBe(0);
     expect(await inventoryStorage.get(91)).toMatchObject({ sale_price: 900, purchase_price: 500 });
   });
 
+  it("does not let the general barcode entitlement bypass paid invoice access", async () => {
+    accessState.saveEntitlement({
+      ...policy,
+      capabilities: { ...policy.capabilities, "invoices.purchase": false, "invoices.sale": false },
+    });
+    await expect(lookupInvoiceBarcode("626123", await inventoryStorage.getAll(), "sale"))
+      .rejects.toThrow("CAPABILITY_REQUIRED:invoices.sale");
+  });
+
   it("fails closed for unknown, ambiguous, and a late result after account change", async () => {
     const products = await inventoryStorage.getAll();
-    await expect(lookupInvoiceBarcode("missing", products)).resolves.toEqual({ kind: "unknown" });
+    await expect(lookupInvoiceBarcode("missing", products, "sale")).resolves.toEqual({ kind: "unknown" });
     await db.barcodes.bulkPut([1, 2].map((id) => ({ local_key: `607:707:${id}`, local_user_id: 607, local_store_id: 707, store_id: 707, id, product_id: 90 + id, value: "same", source: "manufacturer" as const, symbology: "unknown" as const, meaning: "unit" as const, scan_quantity: 1, is_active: true, is_default: true, created_at: "2026-01-01", updated_at: "2026-01-01" })));
-    await expect(lookupInvoiceBarcode("same", products)).resolves.toEqual({ kind: "ambiguous" });
+    await expect(lookupInvoiceBarcode("same", products, "sale")).resolves.toEqual({ kind: "ambiguous" });
     const get = vi.spyOn(db.barcodes, "where");
-    const pending = lookupInvoiceBarcode("same", products); accessState.saveUser({ ...user, id: 608, store_id: 708 });
+    const pending = lookupInvoiceBarcode("same", products, "sale"); accessState.saveUser({ ...user, id: 608, store_id: 708 });
     await expect(pending).rejects.toThrow("SYNC_ACCOUNT_CHANGED"); get.mockRestore();
   });
 

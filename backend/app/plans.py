@@ -64,6 +64,17 @@ for _definition in PLAN_CATALOG.values():
         _definition["capabilities"], _definition["limits"]
     )
 
+# TZ-V1-02B1 approves only the invoice allocation. Other observed allocations
+# remain compatibility data until their own commercial decision is accepted.
+for _plan_id, _enabled in {"free": False, "starter": False, "pro": True, "vip": True}.items():
+    PLAN_CATALOG[_plan_id]["capabilities"]["invoices.purchase"] = _enabled
+    PLAN_CATALOG[_plan_id]["capabilities"]["invoices.sale"] = _enabled
+
+# No paid price or billing term has been approved. A paid offer becomes
+# available only after an administrator explicitly supplies both.
+for _plan_id in ("pro", "vip"):
+    PLAN_CATALOG[_plan_id]["duration_days"] = None
+
 
 def subscription_expired(
     plan: str,

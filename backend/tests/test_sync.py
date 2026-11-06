@@ -246,6 +246,42 @@ class SyncApiTest(unittest.TestCase):
             self.assertEqual(db.get(InventoryItem, product_id).quantity, 1)
             self.assertEqual(db.get(Invoice, purchase_id).status, "posted")
 
+    def test_invoice_downgrade_preserves_history_and_exact_replay_but_denies_new_effects(self) -> None:
+        product_id = 1_700_000_097_001
+        invoice_id = 1_700_000_097_002
+        self.push([{"operation_id": "downgrade-product", "entity": "product", "entity_id": product_id,
+                   "operation": "CREATE", "payload": {"quantity": 3, "sale_price": 100,
+                   "custom_label": "Downgrade item", "catalog_product": {"id": 0, "name": "Downgrade item"}}}])
+        operation = {"operation_id": "downgrade-invoice", "entity": "invoice", "entity_id": invoice_id,
+                     "operation": "CREATE", "payload": {"invoice_type": "sale", "title": "Historical invoice",
+                     "lines": [{"product_id": product_id, "quantity": 1, "unit": "unit", "unit_price": 100}]}}
+        accepted = self.push([operation]).json()["results"][0]
+        self.assertEqual(accepted["status"], "applied")
+        with SessionLocal() as db:
+            plan = db.get(SubscriptionPlan, "free")
+            features = json.loads(plan.features_json)
+            features.update({"invoices.purchase": False, "invoices.sale": False})
+            plan.features_json = json.dumps(features)
+            db.commit()
+        try:
+            history = self.client.get(f"/api/invoices/{invoice_id}", headers=self.headers)
+            self.assertEqual(history.status_code, 200, history.text)
+            replay = self.push([operation]).json()["results"][0]
+            self.assertEqual(replay, accepted)
+            denied = self.push([{**operation, "operation_id": "downgrade-new-invoice", "entity_id": invoice_id + 1}]).json()["results"][0]
+            self.assertEqual(denied["status"], "fatal_error")
+            self.assertEqual(denied["error"], "CAPABILITY_REQUIRED:invoices.sale")
+            with SessionLocal() as db:
+                self.assertIsNone(db.get(Invoice, invoice_id + 1))
+                self.assertEqual(db.get(InventoryItem, product_id).quantity, 2)
+        finally:
+            with SessionLocal() as db:
+                plan = db.get(SubscriptionPlan, "free")
+                features = json.loads(plan.features_json)
+                features.update({"invoices.purchase": True, "invoices.sale": True})
+                plan.features_json = json.dumps(features)
+                db.commit()
+
     def test_barcode_and_inventory_movements_are_store_scoped_and_idempotent(self) -> None:
         product_id = 1_700_000_090_001
         barcode_id = 1_700_000_090_002
@@ -1521,10 +1557,10 @@ class SyncApiTest(unittest.TestCase):
                 "id": "test_release_plan",
                 "name": "Test release plan",
                 "description": "Automated test",
-                "price_minor": None,
-                "currency": "IRR",
+                "price_toman": None,
                 "duration": None,
                 "duration_unit": None,
+                "is_offer_available": False,
                 "is_active": True,
                 "features": {key: key in {"inventory.read", "inventory.write"} for key in SUBSCRIPTION_CAPABILITIES},
                 "limits": {"inventory_items": 10, "devices": None, "active_personnel": 0},
@@ -1600,6 +1636,43 @@ class SyncApiTest(unittest.TestCase):
             "/api/admin/plans/test_release_plan", headers=self.admin_headers
         )
         self.assertEqual(deleted_plan.status_code, 204, deleted_plan.text)
+
+    def test_admin_managed_toman_offer_is_authoritative_and_checkout_stays_disabled(self) -> None:
+        plans = self.client.get("/api/admin/plans", headers=self.admin_headers)
+        pro = next(item for item in plans.json() if item["id"] == "pro")
+        denied = self.client.patch(
+            "/api/admin/plans/pro", headers=self.headers,
+            json={"expected_revision": pro["policy_revision"], "reason": "Unauthorized price edit", "price_toman": 125_000},
+        )
+        self.assertEqual(denied.status_code, 403, denied.text)
+        incomplete = self.client.patch(
+            "/api/admin/plans/pro", headers=self.admin_headers,
+            json={"expected_revision": pro["policy_revision"], "reason": "Incomplete offer must fail", "is_offer_available": True},
+        )
+        self.assertEqual(incomplete.status_code, 422, incomplete.text)
+        self.assertEqual(incomplete.json()["detail"], "PLAN_OFFER_CONFIGURATION_INCOMPLETE")
+        configured = self.client.patch(
+            "/api/admin/plans/pro", headers=self.admin_headers,
+            json={
+                "expected_revision": pro["policy_revision"], "reason": "Configure synthetic paid offer",
+                "price_toman": 125_000, "duration": 1, "duration_unit": "month",
+                "is_offer_available": True,
+            },
+        )
+        self.assertEqual(configured.status_code, 200, configured.text)
+        self.assertEqual(configured.json()["price_toman"], 125_000)
+        self.assertEqual(configured.json()["price_minor"], 1_250_000)
+        offer = self.client.get("/api/plans/pro/offer", headers=self.headers)
+        self.assertEqual(offer.status_code, 200, offer.text)
+        self.assertEqual(offer.json()["amount_toman"], 125_000)
+        self.assertEqual(offer.json()["currency"], "TOMAN")
+        self.assertFalse(offer.json()["checkout_available"])
+        self.assertEqual(offer.json()["checkout_status"], "PAYMENT_PROVIDER_NOT_CONFIGURED")
+        stale = self.client.patch(
+            "/api/admin/plans/pro", headers=self.admin_headers,
+            json={"expected_revision": pro["policy_revision"], "reason": "Stale price must lose", "price_toman": 200_000},
+        )
+        self.assertEqual(stale.status_code, 409, stale.text)
 
     def test_delete_catalog_product_6_permanently_removes_dependencies(self) -> None:
         with SessionLocal() as db:

@@ -8,6 +8,14 @@ from app.entitlements import (
     registry_payload,
     validate_policy,
 )
+from app.models import SubscriptionPlan
+from app.plans import PLAN_CATALOG
+from app.services.plan_pricing import (
+    capture_plan_offer,
+    price_minor_from_toman,
+    validate_invoice_allocation,
+    validate_offer_configuration,
+)
 
 
 def valid_policy():
@@ -65,3 +73,58 @@ def test_legacy_normalization_preserves_values_without_enabling_planned_work() -
     assert features["dashboard.analytics"] is True
     assert features["invoices.sale"] is False
     assert limits == {"inventory_items": 50, "devices": None, "active_personnel": 0}
+
+
+def test_approved_invoice_allocation_is_limited_to_pro_and_vip() -> None:
+    for plan_id in ("free", "starter"):
+        assert PLAN_CATALOG[plan_id]["capabilities"]["invoices.purchase"] is False
+        assert PLAN_CATALOG[plan_id]["capabilities"]["invoices.sale"] is False
+    for plan_id in ("pro", "vip"):
+        assert PLAN_CATALOG[plan_id]["capabilities"]["invoices.purchase"] is True
+        assert PLAN_CATALOG[plan_id]["capabilities"]["invoices.sale"] is True
+        assert PLAN_CATALOG[plan_id]["price_minor"] is None
+        assert PLAN_CATALOG[plan_id]["duration_days"] is None
+    validate_invoice_allocation("pro", PLAN_CATALOG["pro"]["capabilities"])
+    with pytest.raises(HTTPException) as changed:
+        validate_invoice_allocation("free", {"invoices.purchase": True, "invoices.sale": False})
+    assert changed.value.detail == "PLAN_INVOICE_ALLOCATION_FIXED:free"
+
+
+def test_offer_configuration_distinguishes_unconfigured_and_available_paid_plans() -> None:
+    validate_offer_configuration(
+        plan_id="pro", price_minor=None, duration=None,
+        duration_unit=None, is_offer_available=False,
+    )
+    with pytest.raises(HTTPException) as incomplete:
+        validate_offer_configuration(
+            plan_id="pro", price_minor=None, duration=None,
+            duration_unit=None, is_offer_available=True,
+        )
+    assert incomplete.value.detail == "PLAN_OFFER_CONFIGURATION_INCOMPLETE"
+    with pytest.raises(HTTPException) as free_offer:
+        validate_offer_configuration(
+            plan_id="free", price_minor=0, duration=30,
+            duration_unit="day", is_offer_available=True,
+        )
+    assert free_offer.value.detail == "PLAN_OFFER_NOT_ELIGIBLE"
+    assert price_minor_from_toman(125_000) == 1_250_000
+
+
+def test_server_offer_snapshot_is_immutable_and_checkout_independent() -> None:
+    plan = SubscriptionPlan(
+        id="pro", name="Pro", price_minor=1_250_000, currency="IRR",
+        duration=1, duration_unit="month", is_offer_available=True,
+        is_active=True, features_json="{}", limits_json="{}", policy_revision=7,
+    )
+
+    class Db:
+        def get(self, model, plan_id):
+            assert model is SubscriptionPlan and plan_id == "pro"
+            return plan
+
+    snapshot = capture_plan_offer(Db(), "pro")
+    plan.price_minor = 2_000_000
+    plan.policy_revision = 8
+    assert snapshot.amount_toman == 125_000
+    assert snapshot.plan_revision == 7
+    assert snapshot.offer_id == "pro:r7"

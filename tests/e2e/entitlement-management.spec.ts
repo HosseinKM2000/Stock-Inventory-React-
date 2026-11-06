@@ -21,18 +21,20 @@ const capabilities = {
   backup: true,
   sync: true,
   "media.recovery": false,
-  "invoices.purchase": false,
-  "invoices.sale": false,
+  "invoices.purchase": true,
+  "invoices.sale": true,
 };
 
 const plan = {
   id: "pro",
   name: "Pro",
   description: "پیکربندی فعلی آزمایشی",
-  price_minor: 1_000_000,
+  price_minor: null,
+  price_toman: null,
   currency: "IRR",
-  duration: 30,
-  duration_unit: "day",
+  duration: null,
+  duration_unit: null,
+  is_offer_available: false,
   is_active: true,
   features: capabilities,
   limits: { inventory_items: 5000, active_personnel: 10, devices: null },
@@ -147,9 +149,14 @@ test("administrator policy and explicit grant controls stay reachable", async ({
 
   await page.goto("/management/subscriptions");
   await expect(page.getByText("pro", { exact: true })).toBeVisible();
+  await expect(page.getByText("قیمت طرح پولی تعیین نشده")).toBeVisible();
+  await expect(page.getByText("پیشنهاد غیرفعال")).toBeVisible();
   await expect(page.getByText("تخصیص‌های تأییدنشده")).toBeVisible();
   await expect(page.getByText("بازبینی سیاست: 4")).toBeVisible();
   await page.getByRole("button", { name: "ویرایش" }).click();
+  await expect(page.getByLabel("قیمت (تومان)")).toHaveValue("");
+  await expect(page.getByRole("switch", { name: "پیشنهاد خرید این طرح نمایش داده شود" })).not.toBeChecked();
+  await expect(page.getByText(/درگاه پرداخت هنوز متصل نیست/)).toBeVisible();
   const planned = page.getByRole("checkbox", { name: /بازیابی رسانه برنامه‌ریزی‌شده/ });
   await expect(planned).toBeDisabled();
   await expect(page.getByText(/وابسته به: backup/)).toBeVisible();

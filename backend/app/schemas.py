@@ -700,9 +700,11 @@ class PlanDefinitionOut(BaseModel):
     name: str
     description: str | None = None
     price_minor: int | None = None
+    price_toman: int | None = None
     currency: str
     duration: int | None = None
     duration_unit: Literal["day", "month", "year"] | None = None
+    is_offer_available: bool = False
     is_active: bool
     features: dict[str, bool]
     limits: dict[str, int | None]
@@ -715,13 +717,14 @@ class PlanDefinitionOut(BaseModel):
 
 
 class PlanCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     id: str = Field(pattern=r"^[a-z0-9_-]+$", min_length=2, max_length=40)
     name: str = Field(min_length=1, max_length=120)
     description: str | None = None
-    price_minor: int | None = Field(default=None, ge=0)
-    currency: str = Field(default="IRR", min_length=3, max_length=10)
+    price_toman: StrictInt | None = Field(default=None, ge=0, le=10_000_000_000)
     duration: int | None = Field(default=None, gt=0)
     duration_unit: Literal["day", "month", "year"] | None = None
+    is_offer_available: bool = False
     is_active: bool = True
     features: dict[str, bool]
     limits: dict[str, int | None]
@@ -729,17 +732,31 @@ class PlanCreate(BaseModel):
 
 
 class PlanPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     expected_revision: int = Field(ge=1)
     reason: str = Field(min_length=3, max_length=1000)
     name: str | None = Field(default=None, min_length=1, max_length=120)
     description: str | None = None
-    price_minor: int | None = Field(default=None, ge=0)
-    currency: str | None = Field(default=None, min_length=3, max_length=10)
+    price_toman: StrictInt | None = Field(default=None, ge=0, le=10_000_000_000)
     duration: int | None = Field(default=None, gt=0)
     duration_unit: Literal["day", "month", "year"] | None = None
+    is_offer_available: bool | None = None
     is_active: bool | None = None
     features: dict[str, bool] | None = None
     limits: dict[str, int | None] | None = None
+
+
+class PlanOfferOut(BaseModel):
+    offer_id: str
+    plan_id: str
+    plan_revision: int
+    amount_toman: int
+    currency: Literal["TOMAN"]
+    term_count: int
+    term_unit: Literal["day", "month", "year"]
+    captured_at: datetime
+    checkout_available: Literal[False] = False
+    checkout_status: Literal["PAYMENT_PROVIDER_NOT_CONFIGURED"] = "PAYMENT_PROVIDER_NOT_CONFIGURED"
 
 
 

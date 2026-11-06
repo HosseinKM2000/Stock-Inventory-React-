@@ -828,6 +828,24 @@ class SyncChange(Base):
 
 class SubscriptionPlan(Base):
     __tablename__ = "subscription_plans"
+    __table_args__ = (
+        CheckConstraint(
+            "price_minor IS NULL OR (price_minor >= 0 AND price_minor % 10 = 0)",
+            name="ck_subscription_plans_price_toman_storage",
+        ),
+        CheckConstraint(
+            "(duration IS NULL AND duration_unit IS NULL) OR "
+            "(duration > 0 AND duration_unit IN ('day','month','year'))",
+            name="ck_subscription_plans_duration_pair",
+        ),
+        CheckConstraint(
+            "NOT is_offer_available OR (id IN ('pro','vip') "
+            "AND price_minor IS NOT NULL AND price_minor > 0 "
+            "AND duration IS NOT NULL AND duration > 0 "
+            "AND duration_unit IS NOT NULL AND duration_unit IN ('day','month','year'))",
+            name="ck_subscription_plans_offer_complete",
+        ),
+    )
 
     id: Mapped[str] = mapped_column(String(40), primary_key=True)
     name: Mapped[str] = mapped_column(String(120))
@@ -836,6 +854,7 @@ class SubscriptionPlan(Base):
     currency: Mapped[str] = mapped_column(String(10), default="IRR")
     duration: Mapped[int | None] = mapped_column(Integer, nullable=True)
     duration_unit: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    is_offer_available: Mapped[bool] = mapped_column(Boolean, default=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     features_json: Mapped[str] = mapped_column(Text, default="{}")
     limits_json: Mapped[str] = mapped_column(Text, default="{}")

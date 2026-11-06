@@ -9,7 +9,7 @@ export type NavigationGroup = "primary" | "settings" | "tools" | "management";
 export type NavigationRoute = "/dashboard" | "/inventory/list" | "/setting" | "/setting/sync" | "/setting/update" | "/setting/profile" | "/setting/security" | "/setting/appearance" | "/setting/backup" | "/setting/industry" | "/setting/subscription" | "/setting/personnel" | "/setting/roles" | "/tools" | "/tools/invoices" | "/tools/scanner" | "/tools/categories" | "/tools/export" | "/tools/catalog" | "/tools/recovery" | "/tools/import" | "/tools/labels" | "/tools/help" | "/tools/activity" | "/management" | "/management/subscriptions" | "/management/users" | "/management/catalogs" | "/management/industries";
 type NavigationIcon = ComponentType<{ width?: number | string; height?: number | string }>;
 
-export type NavigationItem = { id: string; label: string; description?: string; to: NavigationRoute; icon: NavigationIcon; group: NavigationGroup; adminOnly?: boolean; ownerOnly?: boolean; storePermission?: string; requiresOnline?: boolean; toolId?: DomainToolId };
+export type NavigationItem = { id: string; label: string; description?: string; to: NavigationRoute; icon: NavigationIcon; group: NavigationGroup; adminOnly?: boolean; ownerOnly?: boolean; storePermission?: string; capabilities?: string[]; requiresOnline?: boolean; toolId?: DomainToolId };
 
 const basePrimaryNavigationItems = [
   { id: "dashboard", label: "داشبورد", to: "/dashboard", icon: DashboardIcon, group: "primary" },
@@ -32,7 +32,7 @@ export const settingsNavigationItems = [
 ] as const satisfies readonly NavigationItem[];
 
 export const toolsNavigationItems = [
-  { id: "invoices", storePermission: "invoices.view", label: "فاکتورها", description: "ثبت اتمیک خرید و فروش و تاریخچه غیرقابل‌ویرایش", to: "/tools/invoices", icon: FileTextIcon, group: "tools" },
+  { id: "invoices", storePermission: "invoices.view", capabilities: ["invoices.purchase", "invoices.sale"], label: "فاکتورها", description: "ثبت اتمیک خرید و فروش و تاریخچه غیرقابل‌ویرایش", to: "/tools/invoices", icon: FileTextIcon, group: "tools" },
   { id: "scanner", toolId: "scanner", storePermission: "barcodes.lookup", label: "اسکنر", description: "جست‌وجو و عملیات امن موجودی با دوربین یا بارکدخوان", to: "/tools/scanner", icon: MagnifyingGlassIcon, group: "tools" },
   { id: "activity", label: "فعالیت مجموعه", description: "تغییرات تأییدشده و ردشده با نام انجام‌دهنده", to: "/tools/activity", icon: ActivityLogIcon, group: "tools", ownerOnly: true, requiresOnline: true },
   { id: "help", label: "راهنمای برنامه", description: "راهنمای کوتاه و مرحله‌به‌مرحله همه بخش‌های برنامه", to: "/tools/help", icon: QuestionMarkCircledIcon, group: "tools" },
@@ -51,5 +51,5 @@ export const managementNavigationItems = [
   { id: "industry-management", label: "مدیریت حوزه‌ها", description: "ایجاد و نگهداری حوزه‌های کاری", to: "/management/industries", icon: GearIcon, group: "management", adminOnly: true, requiresOnline: true },
 ] as const satisfies readonly NavigationItem[];
 
-export function visibleNavigationItems(items: readonly NavigationItem[], user: User | null | undefined) { const administrator = isAdmin(user); return items.filter((item) => (!item.adminOnly || administrator) && (!item.ownerOnly || administrator || user?.is_store_owner !== false) && (!item.storePermission || accessState.hasStorePermission(item.storePermission)) && (!item.toolId || accessState.canUseTool(item.toolId))); }
+export function visibleNavigationItems(items: readonly NavigationItem[], user: User | null | undefined) { const administrator = isAdmin(user); return items.filter((item) => (!item.adminOnly || administrator) && (!item.ownerOnly || administrator || user?.is_store_owner !== false) && (!item.storePermission || accessState.hasStorePermission(item.storePermission)) && (!item.capabilities || item.capabilities.some((key) => accessState.canUse(key))) && (!item.toolId || accessState.canUseTool(item.toolId))); }
 export function primaryNavigationItems(user: User | null | undefined) { void user; return [...basePrimaryNavigationItems]; }

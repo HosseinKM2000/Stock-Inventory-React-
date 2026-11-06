@@ -22,8 +22,9 @@ const emptyLine = (): DraftLine => ({ productId: "", quantity: "1", price: "", u
 function toman(value: number | null) { return value == null ? "قابل مشاهده نیست" : `${new Intl.NumberFormat("fa-IR").format(value)} تومان`; }
 
 export function InvoicesPage() {
-  const canPurchase = accessState.canUse("invoices.purchase");
-  const canSale = accessState.canUse("invoices.sale");
+  const canPost = accessState.hasStorePermission("invoices.post");
+  const canPurchase = accessState.canUse("invoices.purchase") && canPost && accessState.hasStorePermission("products.purchase_price.view");
+  const canSale = accessState.canUse("invoices.sale") && canPost;
   const [products, setProducts] = useState<Product[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [type, setType] = useState<"purchase" | "sale">(() => accessState.entitlement()?.capabilities["invoices.sale"] === true || canSale ? "sale" : "purchase");
@@ -76,7 +77,7 @@ export function InvoicesPage() {
     if (lastScan.current.value === normalized && now - lastScan.current.at < 1200) return;
     lastScan.current = { value: normalized, at: now };
     try {
-      const result = await lookupInvoiceBarcode(normalized, products);
+      const result = await lookupInvoiceBarcode(normalized, products, type);
       if (result.kind === "unknown") throw new Error("محصولی با این بارکد پیدا نشد");
       if (result.kind === "ambiguous") throw new Error("این بارکد به بیش از یک محصول مرتبط است؛ محصول را دستی انتخاب کنید.");
       const existing = lines.findIndex((line) => Number(line.productId) === result.product.id);
@@ -112,11 +113,11 @@ export function InvoicesPage() {
     finally { setBusy(false); }
   };
 
-  if (!canPurchase && !canSale) return <Card><Heading size="4">فاکتورها</Heading><Text as="p" mt="2">قابلیت فاکتور در طرح فعلی فعال نیست.</Text></Card>;
   return <Box dir="rtl" className="mx-auto w-full max-w-5xl space-y-4 px-3 pb-8">
     <PageGuide section="ابزارها" sectionTo="/tools" title="فاکتورها" description="خرید و فروش را با ردیف‌های ثابت ثبت کنید و سند تأییدشده را دریافت یا چاپ کنید." icon={FileTextIcon} helpTopic="invoices" />
     <Text as="p" color="gray">مبالغ به تومان هستند. فاکتور ثبت‌شده و ردیف‌های آن قابل ویرایش نیستند.</Text>
-    <Card>
+    {!canPurchase && !canSale && <Card><Heading size="4">فاکتورهای تاریخی</Heading><Text as="p" mt="2">طرح فعلی اجازهٔ ثبت، لغو، گزارش یا خروجی فاکتور را نمی‌دهد. سوابق مجاز قبلی فقط برای مشاهده نگه‌داری می‌شوند.</Text></Card>}
+    {(canPurchase || canSale) && <Card>
       <Form onSubmit={submit} isSubmitting={busy} isDirty={dirty} className="space-y-4">
         <Flex gap="3" wrap="wrap">
           <label>نوع<br/><select aria-label="نوع فاکتور" value={type} onChange={(event) => { const next = event.target.value as "purchase" | "sale"; setType(next); setLines((current) => current.map((line) => ({ ...line, price: products.find((item) => item.id === Number(line.productId))?.[next === "purchase" ? "purchase_price" : "sale_price"]?.toString() ?? "" }))); }}><option value="sale" disabled={!canSale}>فروش</option><option value="purchase" disabled={!canPurchase}>خرید</option></select></label>
@@ -137,19 +138,19 @@ export function InvoicesPage() {
         <Flex justify="between" align="center" wrap="wrap" gap="3"><Button type="button" variant="soft" onClick={() => setLines((current) => [...current, emptyLine()])}>افزودن ردیف</Button><Text weight="bold">جمع: {toman(total)}</Text><Button type="submit" loading={busy}>بررسی و ثبت قطعی</Button></Flex>
         {error && <Box role="alert"><Text as="p" color="red">{error}</Text>{errorCode ? <details className="sync-diagnostic"><summary>جزئیات برای پشتیبانی</summary><code dir="ltr">{errorCode}</code></details> : null}</Box>}
       </Form>
-    </Card>
+    </Card>}
     <Heading size="4">تاریخچه</Heading>
     <div className="grid gap-3 md:grid-cols-2">{invoices.map((invoice) => <Card key={invoice.id}>
       <Flex justify="between" gap="2"><Box><Text weight="bold">{invoice.title}</Text><Text as="div" size="2" color="gray">{invoice.invoice_type === "purchase" ? "خرید" : "فروش"} · {formatJalaliDateTime(invoice.posted_at)}</Text></Box><Badge color={invoice.status === "accepted" ? "green" : invoice.status === "cancelled" ? "gray" : invoice.status === "rejected" || invoice.status === "conflict" ? "red" : "orange"}>{{ accepted: "تأییدشده", cancelled: "باطل‌شده", pending: "ذخیره‌شده روی این دستگاه", cancel_pending: "لغو در انتظار تأیید", rejected: "پذیرفته‌نشده", conflict: "نیازمند بررسی" }[invoice.status]}</Badge></Flex>
       {invoice.counterparty && <Text as="p" mt="2">طرف حساب: {invoice.counterparty}</Text>}
       {invoice.lines.map((line) => <Text as="div" size="2" key={line.product_id}>{line.product_name}: {line.quantity} {line.unit} × {toman(line.unit_price)}</Text>)}
       <Text as="div" weight="bold" mt="2">جمع: {toman(invoice.total_amount)}</Text>
-      {(invoice.status === "accepted" || invoice.status === "cancelled" || (invoice.status === "pending" && accessState.user()?.store_operating_mode === "solo")) && <Flex mt="3" gap="2" wrap="wrap">
+      {accessState.canUse(`invoices.${invoice.invoice_type}`) && accessState.hasStorePermission(invoice.invoice_type === "purchase" ? "products.purchase_price.view" : "products.sale_price.view") && (invoice.status === "accepted" || invoice.status === "cancelled" || (invoice.status === "pending" && accessState.user()?.store_operating_mode === "solo")) && <Flex mt="3" gap="2" wrap="wrap">
         <Button type="button" variant="soft" loading={outputBusy === invoice.id} onClick={() => void runOutput(invoice, "download")}>دریافت PDF</Button>
         <Button type="button" variant="soft" onClick={() => void runOutput(invoice, "print")}>چاپ</Button>
         <Button type="button" variant="soft" onClick={() => void runOutput(invoice, "share")}>اشتراک‌گذاری</Button>
       </Flex>}
-      {!(["cancelled", "cancel_pending", "rejected", "conflict"] as string[]).includes(invoice.status) && <Button mt="3" color="red" variant="soft" onClick={async () => { try { await invoiceService.cancel(invoice.id); await load(); } catch (cause) { setError(userErrorMessage(cause, "لغو فاکتور انجام نشد.")); setErrorCode(diagnosticErrorCode(cause)); } }}>لغو کامل فاکتور</Button>}
+      {accessState.canUse(`invoices.${invoice.invoice_type}`) && accessState.hasStorePermission("invoices.cancel") && !(["cancelled", "cancel_pending", "rejected", "conflict"] as string[]).includes(invoice.status) && <Button mt="3" color="red" variant="soft" onClick={async () => { try { await invoiceService.cancel(invoice.id); await load(); } catch (cause) { setError(userErrorMessage(cause, "لغو فاکتور انجام نشد.")); setErrorCode(diagnosticErrorCode(cause)); } }}>لغو کامل فاکتور</Button>}
     </Card>)}</div>
   </Box>;
 }

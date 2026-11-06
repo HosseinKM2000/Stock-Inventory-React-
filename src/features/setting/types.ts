@@ -98,9 +98,11 @@ export type SubscriptionPlan = {
   name: string;
   description: string | null;
   price_minor: number | null;
+  price_toman: number | null;
   currency: string;
   duration: number | null;
   duration_unit: "day" | "month" | "year" | null;
+  is_offer_available: boolean;
   is_active: boolean;
   features: Record<string, boolean>;
   limits: Record<string, number | null>;
@@ -111,7 +113,7 @@ export type SubscriptionPlan = {
   updated_at: string;
 };
 
-export type SubscriptionPlanInput = Omit<SubscriptionPlan, "created_at" | "updated_at" | "policy_revision" | "commercial_status" | "configuration_errors"> & {
+export type SubscriptionPlanInput = Omit<SubscriptionPlan, "created_at" | "updated_at" | "policy_revision" | "commercial_status" | "configuration_errors" | "price_minor" | "currency"> & {
   reason: string;
   expected_revision?: number;
 };

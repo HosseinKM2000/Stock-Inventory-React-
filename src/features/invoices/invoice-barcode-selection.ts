@@ -9,7 +9,8 @@ export type InvoiceBarcodeResult =
   | { kind: "unknown" }
   | { kind: "ambiguous" };
 
-export async function lookupInvoiceBarcode(value: string, products: Product[]): Promise<InvoiceBarcodeResult> {
+export async function lookupInvoiceBarcode(value: string, products: Product[], invoiceType: "purchase" | "sale"): Promise<InvoiceBarcodeResult> {
+  accessState.requireCapability(invoiceType === "purchase" ? "invoices.purchase" : "invoices.sale");
   accessState.requireCapability("barcode.lookup");
   accessState.requireStorePermission("barcodes.lookup");
   const account = captureSyncAccountContext();
