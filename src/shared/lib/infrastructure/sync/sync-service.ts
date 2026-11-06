@@ -58,8 +58,7 @@ function isFatalRequest(error: unknown) {
     error.status !== 423 &&
     error.status !== 408 &&
     error.status !== 409 &&
-    error.status !== 429 &&
-    error.message !== "SUBSCRIPTION_EXPIRED"
+    error.status !== 429
   );
 }
 
@@ -113,7 +112,7 @@ async function processGroup(entity: string, items: SyncQueueItem[]) {
       return { changed: false, error: "SYNC_ACCOUNT_CHANGED" };
     }
     for (const item of active) {
-      if (error instanceof ApiError && (error.status === 401 || error.status === 403)) {
+      if (error instanceof ApiError && error.status === 401) {
         await queueService.releaseAfterAuthFailure(item, error);
       } else {
         await queueService.markFailed(item, error, isFatalRequest(error));
@@ -164,14 +163,18 @@ async function runSync() {
     return;
   }
 
-  const writeAllowed = accessState.canWrite();
   syncStatusStore.set({ state: "syncing", pending: await queueService.count(), error: null });
 
   let changed = false;
-  let lastError: string | null = writeAllowed ? null : "SUBSCRIPTION_EXPIRED";
+  let lastError: string | null = null;
 
   const attemptedThisRun = new Set<string>();
-  while (writeAllowed && networkService.isOnline()) {
+  // Durable work predates the freshly verified entitlement snapshot. Submit it
+  // under its original identity so the server can either resolve a committed
+  // replay or persist a terminal current-policy rejection. Holding it locally
+  // until a later renewal would silently replay stale intent under a new
+  // commercial state.
+  while (networkService.isOnline()) {
     // Binary transfer has its own retry lifecycle. Its failure never prevents
     // unrelated operational records from draining.
     await mediaTransferService.processDue().catch(() => undefined);

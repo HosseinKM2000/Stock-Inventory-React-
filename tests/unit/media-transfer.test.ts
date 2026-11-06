@@ -102,4 +102,35 @@ describe("durable media transfer queue", () => {
       status: "fatal_error", lastError: "MEDIA_ACCOUNT_CHANGED",
     });
   });
+
+  it("keeps local bytes and transfer identity after entitlement rejection until explicit retry", async () => {
+    const job = await mediaTransferService.stage("local://expired.webp", 13);
+    await mediaTransferService.persist(job);
+    mocks.apiFetch.mockRejectedValueOnce(new ApiError(403, "ENTITLEMENT_EXPIRED"));
+
+    await mediaTransferService.processDue();
+
+    expect(await db.mediaTransfers.get(job.id)).toMatchObject({
+      localPath: "local://expired.webp",
+      transferId: job.transferId,
+      contentSha256: job.contentSha256,
+      attemptState: "attempted",
+      status: "fatal_error",
+      lastError: "ENTITLEMENT_EXPIRED",
+    });
+    await mediaTransferService.processDue();
+    expect(mocks.apiFetch).toHaveBeenCalledTimes(1);
+
+    mocks.apiFetch.mockImplementationOnce(async (_path, options) =>
+      response(String(options.formData.get("transfer_id")), job.contentSha256));
+    await mediaTransferService.retryFailures();
+
+    expect(mocks.apiFetch).toHaveBeenCalledTimes(2);
+    expect(mocks.apiFetch.mock.calls[1]?.[1].formData.get("transfer_id")).toBe(job.transferId);
+    expect(await db.mediaTransfers.get(job.id)).toMatchObject({
+      status: "uploaded",
+      mediaAssetId: "asset-1",
+      transferId: job.transferId,
+    });
+  });
 });

@@ -1864,6 +1864,90 @@ class SyncApiTest(unittest.TestCase):
             user.subscription_expires_at = None
             db.commit()
 
+    def test_subscription_expiry_replay_and_renewal_preserve_identity_and_data(self) -> None:
+        product_id = 1_700_000_098_001
+        rejected_product_id = product_id + 1
+        operation = {
+            "operation_id": "lifecycle-accepted-before-expiry",
+            "entity": "product",
+            "entity_id": product_id,
+            "operation": "CREATE",
+            "payload": {
+                "quantity": 4,
+                "sale_price": 250,
+                "custom_label": "Lifecycle retained product",
+                "low_stock_threshold": 0,
+                "low_stock_alert": False,
+                "is_hidden": False,
+                "catalog_product": {"id": 0, "name": "Lifecycle retained product"},
+            },
+        }
+        rejected = {
+            **operation,
+            "operation_id": "lifecycle-rejected-at-expiry",
+            "entity_id": rejected_product_id,
+        }
+        expiration = datetime.now(timezone.utc) + timedelta(minutes=5)
+        with SessionLocal() as db:
+            user = db.get(User, self.user_id)
+            store = db.scalar(select(Store).where(Store.owner_user_id == self.user_id))
+            user.plan = store.plan = "pro"
+            user.subscription_expires_at = store.subscription_expires_at = expiration
+            self.assertEqual(entitlement_for_store(db, store, as_of=expiration)["status"], "expired")
+            db.commit()
+
+        try:
+            accepted = self.push([operation]).json()["results"][0]
+            self.assertEqual(accepted["status"], "applied")
+
+            with SessionLocal() as db:
+                user = db.get(User, self.user_id)
+                store = db.scalar(select(Store).where(Store.owner_user_id == self.user_id))
+                expired_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+                user.subscription_expires_at = store.subscription_expires_at = expired_at
+                db.commit()
+
+            # A lost response resolves from the committed operation before the
+            # current entitlement is evaluated, with no duplicate effect.
+            self.assertEqual(self.push([operation]).json()["results"][0], accepted)
+            denied = self.push([rejected]).json()["results"][0]
+            self.assertEqual((denied["status"], denied["error"]), ("fatal_error", "ENTITLEMENT_EXPIRED"))
+
+            with SessionLocal() as db:
+                user = db.get(User, self.user_id)
+                store = db.scalar(select(Store).where(Store.owner_user_id == self.user_id))
+                renewed_until = datetime.now(timezone.utc) + timedelta(days=1)
+                user.subscription_expires_at = store.subscription_expires_at = renewed_until
+                db.commit()
+
+            # Renewal does not reinterpret the terminal operation. A newly
+            # approved action needs a new identity and remains distinguishable.
+            self.assertEqual(self.push([rejected]).json()["results"][0], denied)
+            approved_new_action = self.push([{
+                **rejected,
+                "operation_id": "lifecycle-approved-after-renewal",
+            }]).json()["results"][0]
+            self.assertEqual(approved_new_action["status"], "applied")
+
+            with SessionLocal() as db:
+                self.assertEqual(db.get(InventoryItem, product_id).quantity, 4)
+                self.assertEqual(db.get(InventoryItem, rejected_product_id).quantity, 4)
+                self.assertEqual(db.query(SyncOperation).filter(
+                    SyncOperation.operation_id.in_([
+                        operation["operation_id"],
+                        rejected["operation_id"],
+                        "lifecycle-approved-after-renewal",
+                    ])
+                ).count(), 3)
+        finally:
+            with SessionLocal() as db:
+                user = db.get(User, self.user_id)
+                store = db.scalar(select(Store).where(Store.owner_user_id == self.user_id))
+                user.plan = store.plan = "free"
+                user.subscription_started_at = store.subscription_started_at = None
+                user.subscription_expires_at = store.subscription_expires_at = None
+                db.commit()
+
     def test_team_mode_requires_current_policy_and_preserves_historical_replay(self) -> None:
         suffix = uuid.uuid4().hex[:8]
         signup = self.client.post("/api/auth/signup", json={

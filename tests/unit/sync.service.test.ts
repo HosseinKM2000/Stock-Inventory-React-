@@ -1,12 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SyncQueueItem } from "@/shared/lib/infrastructure/storage/types";
+import { ApiError } from "@/shared/api/api-error";
 
 const mocks = vi.hoisted(() => ({
   isOffline: vi.fn(), isOnline: vi.fn(), isAuthenticated: vi.fn(),
   count: vi.fn(), getDue: vi.fn(), getAll: vi.fn(), markInFlight: vi.fn(),
   markFailed: vi.fn(), markConflict: vi.fn(), removeIfUnchanged: vi.fn(), resetFailures: vi.fn(),
-  canAccess: vi.fn(), canWrite: vi.fn(), ensureVerified: vi.fn(), setStatus: vi.fn(), getStatus: vi.fn(),
+  releaseAfterAuthFailure: vi.fn(),
+  canAccess: vi.fn(), ensureVerified: vi.fn(), setStatus: vi.fn(), getStatus: vi.fn(),
   user: vi.fn(),
+  processMediaDue: vi.fn(),
 }));
 vi.mock("@/shared/api/token-store", () => ({ isAuthenticated: mocks.isAuthenticated }));
 vi.mock("@/shared/lib/infrastructure/network/network-service", () => ({
@@ -17,14 +20,19 @@ vi.mock("@/shared/lib/infrastructure/sync/queue.service", () => ({
     count: mocks.count, getDue: mocks.getDue, getAll: mocks.getAll,
     markInFlight: mocks.markInFlight, markFailed: mocks.markFailed,
     markConflict: mocks.markConflict,
+    releaseAfterAuthFailure: mocks.releaseAfterAuthFailure,
     removeIfUnchanged: mocks.removeIfUnchanged, resetFailures: mocks.resetFailures,
   },
 }));
 vi.mock("@/shared/access/access-state", () => ({
-  accessState: { canAccess: mocks.canAccess, canWrite: mocks.canWrite, user: mocks.user },
+  accessState: { canAccess: mocks.canAccess, user: mocks.user },
 }));
 vi.mock("@/shared/access/entitlement-service", () => ({
   entitlementService: { ensureVerified: mocks.ensureVerified },
+}));
+vi.mock("@/shared/lib/infrastructure/media/media-transfer.service", () => ({
+  mediaOperationBlocked: () => false,
+  mediaTransferService: { processDue: mocks.processMediaDue },
 }));
 vi.mock("@/shared/lib/infrastructure/sync/sync-status", () => ({
   syncStatusStore: { set: mocks.setStatus, get: mocks.getStatus },
@@ -47,9 +55,9 @@ describe("synchronization orchestration", () => {
     mocks.isOnline.mockReturnValue(true);
     mocks.isAuthenticated.mockReturnValue(true);
     mocks.canAccess.mockReturnValue(true);
-    mocks.canWrite.mockReturnValue(true);
     mocks.user.mockReturnValue({ id: 1, store_id: 1 });
     mocks.ensureVerified.mockResolvedValue(undefined);
+    mocks.processMediaDue.mockResolvedValue([]);
     mocks.markInFlight.mockImplementation(async (queued) => queued);
     mocks.removeIfUnchanged.mockResolvedValue(true);
     mocks.getAll.mockResolvedValue([]);
@@ -170,13 +178,64 @@ describe("synchronization orchestration", () => {
     }));
   });
 
-  it("does not push queued writes after subscription expiry", async () => {
-    mocks.canWrite.mockReturnValue(false);
-    mocks.getAll.mockResolvedValue([item("preserved-test")]);
+  it("stops automatic retry when current membership or entitlement denies the batch", async () => {
+    const entity = "revoked-membership-test";
+    const queued = item(entity);
+    mocks.getDue.mockResolvedValueOnce([queued]).mockResolvedValueOnce([]);
+    registerSyncHandler(entity, vi.fn().mockRejectedValue(
+      new ApiError(403, "STORE_MEMBERSHIP_INACTIVE"),
+    ));
+
     await syncService.sync();
-    expect(mocks.getDue).not.toHaveBeenCalled();
+
+    expect(mocks.releaseAfterAuthFailure).not.toHaveBeenCalled();
+    expect(mocks.markFailed).toHaveBeenCalledWith(
+      queued,
+      expect.objectContaining({ message: "STORE_MEMBERSHIP_INACTIVE" }),
+      true,
+    );
+  });
+
+  it("keeps a command pending when authentication must be renewed", async () => {
+    const entity = "authentication-renewal-test";
+    const queued = item(entity);
+    mocks.getDue.mockResolvedValueOnce([queued]).mockResolvedValueOnce([]);
+    registerSyncHandler(entity, vi.fn().mockRejectedValue(
+      new ApiError(401, "AUTHENTICATION_REQUIRED"),
+    ));
+
+    await syncService.sync();
+
+    expect(mocks.releaseAfterAuthFailure).toHaveBeenCalledWith(
+      queued,
+      expect.objectContaining({ message: "AUTHENTICATION_REQUIRED" }),
+    );
+    expect(mocks.markFailed).not.toHaveBeenCalled();
+  });
+
+  it("submits durable work after subscription expiry so the server can preserve a terminal rejection", async () => {
+    const entity = "expired-test";
+    const queued = item(entity);
+    const handler = vi.fn().mockResolvedValue([{
+      itemId: queued.id,
+      status: "fatal_error",
+      error: "ENTITLEMENT_EXPIRED",
+    }]);
+    registerSyncHandler(entity, handler);
+    mocks.getDue.mockResolvedValueOnce([queued]).mockResolvedValueOnce([]);
+    mocks.getAll.mockResolvedValue([{
+      ...queued,
+      status: "fatal_error",
+      lastError: "ENTITLEMENT_EXPIRED",
+    }]);
+
+    await syncService.sync();
+
+    expect(handler).toHaveBeenCalledWith([queued]);
+    expect(mocks.markFailed).toHaveBeenCalledWith(queued, expect.any(Error), true);
+    expect(mocks.removeIfUnchanged).not.toHaveBeenCalled();
     expect(mocks.setStatus).toHaveBeenLastCalledWith(expect.objectContaining({
-      state: "failed", pending: 1, error: "SUBSCRIPTION_EXPIRED",
+      state: "failed", pending: 1, error: "ENTITLEMENT_EXPIRED",
     }));
   });
 });
