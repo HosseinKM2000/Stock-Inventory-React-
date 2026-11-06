@@ -25,6 +25,9 @@ This document records target policy. It does not claim that the current implemen
 - Plan-wide edits require the current policy revision and an audit reason. A stale revision fails instead of overwriting another administrator. Existing allocations remain explicitly legacy/unapproved until Task 2B confirms the launch catalog.
 - `Starter` remains readable for existing historical assignments but is not offered publicly or assignable to a new subscriber. It is not silently remapped to Free, Pro, or VIP.
 - Device capacity remains an extension point only: all V1 tiers are unrestricted and attempts to activate a device limit are rejected.
+- Invoice purchase and sale are excluded from Free and historical Starter and included in Pro and VIP. Current store permissions and operating-mode acceptance remain independent requirements. Historical invoice records remain readable to an otherwise authorized store member after downgrade, while posting, cancellation, reports, output, and invoice-draft barcode selection require current paid invoice access.
+- Paid price is an administrator-managed exact integer Toman amount with an explicit billing term and separate offer-availability switch. Free, unconfigured paid, and configured paid are distinct states. No paid offer is available until its positive price and term are complete.
+- The future payment boundary uses a server-captured immutable offer snapshot; client amounts are never authoritative. Purchase, provider, and entitlement identities remain separate, provider conversion is explicit, and only verified idempotent provider confirmation may create entitlement. No provider or checkout is selected in TZ-V1-02B1.
 
 ### Durability, synchronization, media, and backup
 
@@ -67,7 +70,7 @@ This document records target policy. It does not claim that the current implemen
 
 ## Unresolved business decisions
 
-- Exact tier capacities, capability allocations, paid prices, gift duration, renewal/grace rules, and retention periods.
+- Exact tier capacities, non-invoice capability allocations, actual paid prices/terms, gift duration, renewal/grace rules, and retention periods.
 - Future private, non-executable team drafts, their retention, and who may submit them. They are not implemented by TZ-V1-01D.
 - Conflict policy for concurrent absolute quantity changes and operator handling of unknown outcomes.
 - Media retention/garbage-collection policy, any future quota, and the original-versus-optimized-derivative archival promise. V1 adds no commercial media quota and keeps durable unreferenced bytes rather than risking destructive collection.

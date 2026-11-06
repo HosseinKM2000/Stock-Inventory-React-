@@ -7,7 +7,6 @@ from ..models import Invoice
 from ..services.invoice_service import invoice_record
 from ..services.store_authorization import StorePermission, effective_permissions
 from ..services.store_service import active_store_context
-from ..services.subscription_service import entitlement_for_user
 
 
 router = APIRouter(prefix="/invoices", tags=["invoices"])
@@ -17,10 +16,8 @@ def _read_context(db: DbSession, user: CurrentProductReader):
     permissions = effective_permissions(active_store_context(db, user))
     if StorePermission.INVOICES_VIEW.value not in permissions:
         raise HTTPException(403, detail=f"PERMISSION_REQUIRED:{StorePermission.INVOICES_VIEW.value}")
-    entitlement = entitlement_for_user(db, user)
-    if not any(entitlement["capabilities"].get(key, False) for key in ("invoices.purchase", "invoices.sale")):
-        detail = "ENTITLEMENT_EXPIRED" if entitlement["status"] == "expired" else "CAPABILITY_REQUIRED:invoices"
-        raise HTTPException(403, detail=detail)
+    # Historical invoices remain readable after a downgrade. New posting,
+    # cancellation, reports and output still require the current capability.
     return permissions
 
 

@@ -520,3 +520,28 @@ Verification before integration:
 The first update rehearsal failed deterministically because both ordinary builds stamped `0.12.0`; RH-09 fixed that release-identity defect and the same journey passed with two naturally distinct builds. The first disposable media harness attempt reached an unrelated process already bound to port 8000; a direct app reproduction passed, and the final run used an OS-assigned loopback port. These were investigated causes, not unexplained reruns.
 
 Firefox/WebKit binaries are not installed in this environment; only Chromium was claimed. Physical scanner/camera/printer/share surfaces, OS/browser-process kills, production deployment/monitoring and external backup storage remain unverified. Task 2B and Task 05B remain pending; no later task was started.
+
+## TZ-V1-02B1 paid invoice access and administrator-managed Toman pricing
+
+Branch `feat/v1-plan-pricing-and-invoice-access`, based directly on accepted local `draft` `0ddbee4500481cc2e3738bd914d4196e3ae052c8`, implements only the approved invoice allocation and pricing/payment boundary:
+
+- Free and historical Starter have no purchase/sale invoice capability; Pro and VIP have both. Posting, cancellation, invoice-draft barcode lookup, reports, PDF, print, and share still require current capability plus their existing store permissions and operating-mode acceptance. The general barcode tool is not granted by invoice access.
+- Store-scoped immutable invoice history remains readable to an otherwise authorized member after downgrade. New effects and presentation outputs are denied, while an exact already-committed operation replay still returns its recorded result without a second stock or invoice effect. Existing local invoice/outbox evidence is not deleted or rewritten.
+- Administrators edit an exact integer Toman price, explicit term, and independent offer-availability switch under the existing row lock, expected revision, reason, and audit trail. Free, unconfigured paid, and configured paid are distinct UI/API states. Only Pro/VIP can be offered, and availability requires a positive price and complete term.
+- The client never supplies a trusted checkout amount. A server-captured immutable offer includes plan/revision, Toman amount, term, and capture time; checkout remains explicitly disabled with `PAYMENT_PROVIDER_NOT_CONFIGURED`. No provider, purchase flow, callback, entitlement issuance, real price, gift, grace rule, capacity change, or Starter transition was added.
+- Alembic `20261106_0016` adds `is_offer_available`, Toman-alignment/term/offer checks, and only the approved built-in invoice feature delta. Untouched illustrative Pro/VIP 30-day terms are cleared; explicit administrator revisions are preserved. Subscriptions, grants, modes, invoices, movements, sync IDs/payloads/fingerprints/results, and actor history are not rewritten.
+
+Detailed policy and the future provider boundary are recorded in [paid-invoice-access.md](paid-invoice-access.md).
+
+Verification before integration:
+
+| Command / scope | Result |
+|---|---|
+| `npm.cmd test` | Passed: 86 files, 369 unit/component tests, including invoice barcode paid-access enforcement. |
+| `npm.cmd run test:backend` | Passed: 86 tests, including fixed tier allocation, offer validation/snapshot immutability, authoritative Toman pricing, stale revision denial, historical read/exact replay, and denial of new downgraded effects. |
+| `npm.cmd run test:backend:postgres:local` | Passed: 19 tests after a red/green correction for SQL three-valued `CHECK` behavior. Migration allocation, untouched-term clearing, Toman alignment, complete paid offers, Free/Starter exclusion, and existing concurrency evidence run on disposable PostgreSQL. |
+| `npm.cmd run test:typecheck` and `npm.cmd run lint` | Passed. |
+| `npm.cmd run build` | Passed with the existing stale Browserslist data and large `bwip-js` chunk warning. |
+| Focused production-preview Chromium | Passed: 14 desktop/mobile cases for administrator/customer pricing states, invoice entry/barcode/PDF/cancellation compatibility, reports, and downgraded historical read-only presentation without paid actions or horizontal overflow. APIs were mocked; backend/PostgreSQL evidence is reported separately. |
+
+Deployment is not rolling-compatible with pre-02B1 workers because they do not enforce offer availability or the fixed invoice allocation. Use a controlled replacement after verified backup and rehearsal of `0015 -> 0016` on a current database copy. No production/customer database, real account, plan price, grant, payment, push, deployment, or `develop` update was used. Actual prices/terms and all remaining Task 2B decisions stay pending; no next task was started.

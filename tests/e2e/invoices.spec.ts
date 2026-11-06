@@ -11,8 +11,8 @@ const owner = {
 
 async function json(route: Route, body: unknown, status = 200) { await route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) }); }
 
-async function seed(page: Page, serverInvoices: unknown[] = []) {
-  await page.addInitScript(({ user, captured }) => {
+async function seed(page: Page, serverInvoices: unknown[] = [], paid = true) {
+  await page.addInitScript(({ user, captured, hasInvoiceAccess }) => {
     localStorage.setItem("access_token", JSON.stringify("invoice-layout-token"));
     localStorage.setItem("inventory-last-user", JSON.stringify(user));
     localStorage.setItem(`inventory-entitlement-v2:${user.id}:${user.store_id}`, JSON.stringify({
@@ -20,10 +20,10 @@ async function seed(page: Page, serverInvoices: unknown[] = []) {
       status: "active", account_status: "active", started_at: null, expires_at: null,
       server_time: captured, synced_at: captured, verified_at: captured,
       captured_at_ms: Date.now(), last_observed_at_ms: Date.now(),
-      capabilities: { "inventory.read": true, "inventory.write": true, "barcode.lookup": true, "invoices.purchase": true, "invoices.sale": true },
+      capabilities: { "inventory.read": true, "inventory.write": true, "barcode.lookup": true, "invoices.purchase": hasInvoiceAccess, "invoices.sale": hasInvoiceAccess },
       limits: { inventory_items: null },
     }));
-  }, { user: owner, captured: now });
+  }, { user: owner, captured: now, hasInvoiceAccess: paid });
   await page.route("http://localhost:8000/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
     if (path === "/api/auth/me") return json(route, owner);
@@ -31,7 +31,7 @@ async function seed(page: Page, serverInvoices: unknown[] = []) {
       user_id: owner.id, store_id: owner.store_id, plan: "free", label: "Synthetic invoices",
       status: "active", account_status: "active", started_at: null, expires_at: null,
       server_time: now, synced_at: now,
-      capabilities: { "inventory.read": true, "inventory.write": true, "barcode.lookup": true, "invoices.purchase": true, "invoices.sale": true }, limits: { inventory_items: null },
+      capabilities: { "inventory.read": true, "inventory.write": true, "barcode.lookup": true, "invoices.purchase": paid, "invoices.sale": paid }, limits: { inventory_items: null },
     });
     if (path === "/api/sync/changes") return json(route, { cursor: 0, changes: [] });
     if (path === "/api/invoices") return json(route, serverInvoices);
@@ -80,6 +80,23 @@ async function seed(page: Page, serverInvoices: unknown[] = []) {
   }, { user: owner, captured: now });
   await page.reload();
 }
+
+test("downgraded Free account keeps historical read-only evidence without paid actions", async ({ page }) => {
+  await seed(page, [{
+    id: 211, invoice_type: "sale", title: "فاکتور تاریخی", counterparty: null,
+    status: "posted", total_amount: 100, actor_user_id: owner.id,
+    actor_membership_id: owner.membership_id, post_operation_id: "historical-211",
+    posted_at: now, lines: [{ product_id: 501, product_name: "کالای تاریخی", quantity: 1,
+      unit: "عدد", pack_size: null, base_quantity: 1, unit_price: 100,
+      line_total: 100, before_quantity: 2, after_quantity: 1 }],
+  }], false);
+  await expect(page.getByRole("heading", { name: "فاکتورهای تاریخی" })).toBeVisible();
+  await expect(page.getByText("فاکتور تاریخی")).toBeVisible();
+  await expect(page.getByRole("button", { name: "بررسی و ثبت قطعی" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "دریافت PDF" })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "لغو کامل فاکتور" })).toHaveCount(0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+});
 
 test("invoice form posts one atomic command and remains responsive", async ({ page }) => {
   await seed(page);

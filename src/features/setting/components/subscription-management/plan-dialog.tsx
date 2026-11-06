@@ -7,7 +7,6 @@ import { toast } from "sonner";
 import { useCreatePlan, useEntitlementRegistry, useUpdatePlan } from "../../mutations/use-admin";
 import type { SubscriptionPlan, SubscriptionPlanInput } from "../../types";
 import { adminErrorMessage } from "../admin-error";
-import { priceMinorToToman, tomanToPriceMinor } from "./plan-options";
 import { formatGroupedIntegerText, normalizeOptionalInteger } from "@/features/app/inventory/services/localized-integer";
 
 type Props = { plan?: SubscriptionPlan; trigger: ReactNode };
@@ -25,7 +24,8 @@ export default function PlanDialog({ plan, trigger }: Props) {
   const [reason, setReason] = useState("");
   const [price, setPrice] = useState("");
   const [duration, setDuration] = useState("");
-  const [unit, setUnit] = useState<DurationUnit>("day");
+  const [unit, setUnit] = useState<DurationUnit | "">("");
+  const [offerAvailable, setOfferAvailable] = useState(false);
   const [active, setActive] = useState(true);
   const [features, setFeatures] = useState<Record<string, boolean>>({});
   const [limits, setLimits] = useState<Record<string, string>>({});
@@ -42,20 +42,21 @@ export default function PlanDialog({ plan, trigger }: Props) {
         ? `وابسته به: ${option.dependencies.join("، ")}`
         : option.status === "planned" ? "برنامه‌ریزی‌شده و در این نسخه قابل فعال‌سازی نیست" : "قابلیت پیاده‌سازی‌شده",
       group: option.status,
-      disabled: option.status === "planned",
+      disabled: option.status === "planned" || option.key === "invoices.purchase" || option.key === "invoices.sale",
     }));
   }, [registry.data]);
   const limitOptions = registry.data?.capacities ?? [];
 
   function resetForm() {
-    const planPrice = priceMinorToToman(plan?.price_minor ?? null);
+    const planPrice = plan?.price_toman ?? null;
     setId(plan?.id ?? "");
     setName(plan?.name ?? "");
     setDescription(plan?.description ?? "");
     setReason("");
     setPrice(planPrice == null ? "" : formatGroupedIntegerText(planPrice));
     setDuration(plan?.duration == null ? "" : String(plan.duration));
-    setUnit(plan?.duration_unit ?? "day");
+    setUnit(plan?.duration_unit ?? "");
+    setOfferAvailable(plan?.is_offer_available ?? false);
     setActive(plan?.is_active ?? true);
     setFeatures({
       ...Object.fromEntries((registry.data?.capabilities ?? []).map((option) => [option.key, false])),
@@ -79,7 +80,7 @@ export default function PlanDialog({ plan, trigger }: Props) {
     const parsedPrice = normalizeOptionalInteger(price) ?? null;
     const parsedDuration = duration === "" ? null : Number(duration);
     const parsedLimits = Object.fromEntries(Object.entries(limits).map(([key, value]) => [key, value === "" ? null : Number(value)]));
-    if ((parsedPrice !== null && (!Number.isInteger(parsedPrice) || parsedPrice < 0)) ||
+    if ((parsedPrice !== null && (!Number.isSafeInteger(parsedPrice) || parsedPrice < 0 || parsedPrice > 10_000_000_000)) ||
         (parsedDuration !== null && (!Number.isInteger(parsedDuration) || parsedDuration < 1)) ||
         Object.entries(parsedLimits).some(([key, value]) => {
           const definition = limitOptions.find((item) => item.key === key);
@@ -88,10 +89,15 @@ export default function PlanDialog({ plan, trigger }: Props) {
       toast.error("مقدار ظرفیت یا حالت نامحدود با تعریف مرکزی سازگار نیست");
       return;
     }
+    if (offerAvailable && (parsedPrice === null || parsedPrice <= 0 || parsedDuration === null || unit === "")) {
+      toast.error("برای فعال‌کردن پیشنهاد خرید، قیمت مثبت و دورهٔ صورتحساب را کامل کنید");
+      return;
+    }
     setDraft({
       id: id.trim(), name: name.trim(), description: description.trim() || null,
-      price_minor: tomanToPriceMinor(parsedPrice), currency: "IRR", duration: parsedDuration,
-      duration_unit: parsedDuration === null ? null : unit, is_active: active,
+      price_toman: parsedPrice, duration: parsedDuration,
+      duration_unit: parsedDuration === null ? null : unit || null,
+      is_offer_available: offerAvailable, is_active: active,
       features, limits: parsedLimits, reason: reason.trim(), expected_revision: plan?.policy_revision,
     });
     setConfirmOpen(true);
@@ -127,10 +133,12 @@ export default function PlanDialog({ plan, trigger }: Props) {
               <label><Text size="2">قیمت (تومان)</Text><TextField.Root type="text" inputMode="numeric" value={price} onChange={(event) => setPrice(formatGroupedIntegerText(event.target.value))} /></label>
               <Grid columns="2" gap="2">
                 <label><Text size="2">مدت</Text><TextField.Root type="number" min="1" inputMode="numeric" value={duration} onChange={(event) => setDuration(event.target.value)} /></label>
-                <label><Text size="2">واحد</Text><Select.Root value={unit} onValueChange={(value) => setUnit(value as DurationUnit)} disabled={!duration}><Select.Trigger /><Select.Content><Select.Item value="day">روز</Select.Item><Select.Item value="month">ماه</Select.Item><Select.Item value="year">سال</Select.Item></Select.Content></Select.Root></label>
+                <label><Text size="2">واحد</Text><Select.Root value={unit || undefined} onValueChange={(value) => setUnit(value as DurationUnit)} disabled={!duration}><Select.Trigger placeholder="انتخاب کنید" /><Select.Content><Select.Item value="day">روز</Select.Item><Select.Item value="month">ماه</Select.Item><Select.Item value="year">سال</Select.Item></Select.Content></Select.Root></label>
               </Grid>
             </Grid>
             <Flex align="center" gap="2" mt="4"><Switch checked={active} onCheckedChange={setActive} /><Text>طرح برای تخصیص به کاربران فعال باشد</Text></Flex>
+            <label><Flex align="center" gap="2" mt="3"><Switch checked={offerAvailable} onCheckedChange={setOfferAvailable} disabled={!(["pro", "vip"].includes(id))} /><Text>پیشنهاد خرید این طرح نمایش داده شود</Text></Flex></label>
+            <Text as="div" size="1" color="gray" mt="2">درگاه پرداخت هنوز متصل نیست؛ فعال‌بودن پیشنهاد فقط قیمت و دورهٔ معتبر را منتشر می‌کند و خرید را آغاز نمی‌کند.</Text>
           </Card>
 
           <Card>

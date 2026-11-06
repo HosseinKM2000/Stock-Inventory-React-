@@ -242,6 +242,15 @@ def migrated_empty_database():
     with reset_engine.begin() as connection:
         connection.execute(text("UPDATE users SET phone=NULL WHERE id=9401"))
         connection.execute(text("UPDATE users SET phone='00989911111111' WHERE id=9201"))
+        connection.execute(text(
+            "INSERT INTO subscription_plans "
+            "(id,name,price_minor,currency,duration,duration_unit,is_active,features_json,limits_json,policy_revision,commercial_status) "
+            "VALUES ('pro','Pro',NULL,'IRR',30,'day',true,:features,:limits,1,'legacy_unapproved'), "
+            "('vip','VIP',NULL,'IRR',30,'day',true,:features,:limits,1,'legacy_unapproved')"
+        ), {
+            "features": json.dumps({"inventory.read": True, "invoices.purchase": False, "invoices.sale": False}),
+            "limits": json.dumps({"inventory_items": 5000, "devices": None, "active_personnel": 0}),
+        })
     command.upgrade(config, "head")
     with reset_engine.connect() as connection:
         row = connection.execute(text("""
@@ -274,6 +283,10 @@ def migrated_empty_database():
         """)).one()
         MIGRATION_EVIDENCE["canonical_phones"] = tuple(connection.execute(text(
             "SELECT id,phone FROM users WHERE id IN (9101,9201,9401) ORDER BY id"
+        )).all())
+        MIGRATION_EVIDENCE["paid_invoice_plans"] = tuple(connection.execute(text(
+            "SELECT id,features_json,price_minor,duration,duration_unit,is_offer_available "
+            "FROM subscription_plans WHERE id IN ('pro','vip') ORDER BY id"
         )).all())
     with SessionLocal() as db:
         stored = db.get(SyncOperation, 9101)
@@ -333,7 +346,7 @@ def test_migration_reaches_head_with_all_expected_tables(migrated_empty_database
     assert MIGRATION_EVIDENCE["mode_rollback"] == ("20261101_0009", True)
     assert EXPECTED_TABLES <= set(inspect(engine).get_table_names())
     with engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261104_0015"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261106_0016"
         assert "MOBILE_PHONE_PREFLIGHT" in MIGRATION_EVIDENCE["mobile_preflight"]
         assert "malformed_count=1:user_ids=9401" in MIGRATION_EVIDENCE["mobile_preflight"]
         assert "duplicate_groups=1:user_ids=9101,9201" in MIGRATION_EVIDENCE["mobile_preflight"]
@@ -371,7 +384,38 @@ def test_migration_reaches_head_with_all_expected_tables(migrated_empty_database
         assert starter_assignment[2] == starter_assignment[3]
         assert starter_assignment[4:] == ("team", 0)
         plan_columns = {column["name"] for column in inspect(engine).get_columns("subscription_plans")}
-        assert {"policy_revision", "commercial_status"} <= plan_columns
+        assert {"policy_revision", "commercial_status", "is_offer_available"} <= plan_columns
+        for row in MIGRATION_EVIDENCE["paid_invoice_plans"]:
+            assert row[0] in {"pro", "vip"}
+            features = json.loads(row[1])
+            assert features["invoices.purchase"] is True
+            assert features["invoices.sale"] is True
+            assert row[2:] == (None, None, None, False)
+
+
+@pytest.mark.postgres
+def test_paid_offer_constraints_reject_incomplete_or_non_toman_configuration(migrated_empty_database):
+    with engine.begin() as connection:
+        connection.execute(text(
+            "INSERT INTO subscription_plans "
+            "(id,name,currency,is_active,features_json,limits_json,policy_revision,commercial_status,is_offer_available) "
+            "VALUES ('pro','Pro','IRR',true,'{}','{}',1,'legacy_unapproved',false), "
+            "('free','Free','IRR',true,'{}','{}',1,'legacy_unapproved',false)"
+        ))
+    with pytest.raises(IntegrityError):
+        with engine.begin() as connection:
+            connection.execute(text("UPDATE subscription_plans SET is_offer_available=true WHERE id='pro'"))
+    with pytest.raises(IntegrityError):
+        with engine.begin() as connection:
+            connection.execute(text("UPDATE subscription_plans SET price_minor=125001 WHERE id='pro'"))
+    with pytest.raises(IntegrityError):
+        with engine.begin() as connection:
+            connection.execute(text(
+                "UPDATE subscription_plans SET price_minor=1000, duration=1, duration_unit='month', "
+                "is_offer_available=true WHERE id='free'"
+            ))
+    with engine.connect() as connection:
+        assert connection.scalar(text("SELECT is_offer_available FROM subscription_plans WHERE id='pro'")) is False
 
 
 @pytest.mark.postgres

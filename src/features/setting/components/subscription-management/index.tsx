@@ -8,7 +8,7 @@ import { useAdminPlans, useDeletePlan } from "../../mutations/use-admin";
 import type { SubscriptionPlan } from "../../types";
 import { adminErrorMessage } from "../admin-error";
 import PlanDialog from "./plan-dialog";
-import { FEATURE_LABELS, formatToman } from "./plan-options";
+import { FEATURE_LABELS, formatPlanPrice } from "./plan-options";
 import SubscribersDialog from "./subscribers-dialog";
 
 const builtInPlans = new Set(["free", "starter", "pro", "vip"]);
@@ -53,7 +53,7 @@ export default function SubscriptionManagement({ hideHeading = false }: { hideHe
             <Text as="div" color="gray" size="2" mt="3" className="min-h-10">{plan.description || "بدون توضیحات"}</Text>
             <Text as="div" color="gray" size="1">بازبینی سیاست: {plan.policy_revision}</Text>
             {plan.configuration_errors.length > 0 ? <Callout.Root color="red" mt="2"><Callout.Text>{plan.configuration_errors.join("، ")}</Callout.Text></Callout.Root> : null}
-            <Flex align="center" gap="2" mt="4"><Text size="5" weight="bold" color="violet">{formatToman(plan.price_minor)}</Text></Flex>
+            <Flex align="center" gap="2" mt="4"><Text size="5" weight="bold" color="violet">{formatPlanPrice(plan)}</Text>{plan.is_offer_available ? <Badge color="green">پیشنهاد فعال</Badge> : <Badge color="gray">پیشنهاد غیرفعال</Badge>}</Flex>
             <Flex align="center" gap="2" mt="2"><ClockIcon /><Text size="2">{plan.duration == null || plan.duration_unit == null ? "بدون انقضا" : `${plan.duration} ${durationLabels[plan.duration_unit]}`}</Text></Flex>
             <Separator size="4" my="4" />
             <Text size="2" weight="bold">قابلیت‌های فعال ({enabled.length})</Text>

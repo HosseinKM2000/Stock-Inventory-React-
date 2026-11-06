@@ -42,6 +42,7 @@ from ..services.subscription_service import (
     plan_payload,
 )
 from ..services.plan_policy import effective_device_policy
+from ..services.plan_pricing import price_minor_from_toman, validate_invoice_allocation, validate_offer_configuration
 from ..services.entitlement_grant_service import create_store_grant, grant_payload, revoke_store_grant
 
 router = APIRouter(prefix="/admin", tags=["administration"])
@@ -316,16 +317,22 @@ def plan_subscribers(plan_id: str, _: CurrentPlanManager, db: DbSession):
 def create_plan(payload: PlanCreate, admin: CurrentPlanManager, db: DbSession):
     if db.get(SubscriptionPlan, payload.id) is not None:
         raise HTTPException(status_code=409, detail="PLAN_EXISTS")
-    _validate_duration(payload.duration, payload.duration_unit)
+    price_minor = price_minor_from_toman(payload.price_toman)
+    validate_offer_configuration(
+        plan_id=payload.id, price_minor=price_minor, duration=payload.duration,
+        duration_unit=payload.duration_unit, is_offer_available=payload.is_offer_available,
+    )
     validate_policy(payload.features, payload.limits)
+    validate_invoice_allocation(payload.id, payload.features)
     plan = SubscriptionPlan(
         id=payload.id,
         name=payload.name,
         description=payload.description,
-        price_minor=payload.price_minor,
-        currency=payload.currency,
+        price_minor=price_minor,
+        currency="IRR",
         duration=payload.duration,
         duration_unit=payload.duration_unit,
+        is_offer_available=payload.is_offer_available,
         is_active=payload.is_active,
         features_json=json.dumps(payload.features),
         limits_json=json.dumps(payload.limits),
@@ -357,16 +364,25 @@ def update_plan(
     reason = values.pop("reason")
     if plan.policy_revision != expected_revision:
         raise HTTPException(status_code=409, detail="PLAN_REVISION_CONFLICT")
+    if "price_toman" in values:
+        values["price_minor"] = price_minor_from_toman(values.pop("price_toman"))
     resulting_duration = values.get("duration", plan.duration)
     resulting_unit = values.get("duration_unit", plan.duration_unit)
-    _validate_duration(resulting_duration, resulting_unit)
+    resulting_price = values.get("price_minor", plan.price_minor)
+    resulting_offer_available = values.get("is_offer_available", plan.is_offer_available)
+    validate_offer_configuration(
+        plan_id=plan.id, price_minor=resulting_price, duration=resulting_duration,
+        duration_unit=resulting_unit, is_offer_available=resulting_offer_available,
+    )
     resulting_features = values.get("features", json.loads(plan.features_json or "{}"))
     resulting_limits = values.get("limits", json.loads(plan.limits_json or "{}"))
     validate_policy(resulting_features, resulting_limits)
+    validate_invoice_allocation(plan.id, resulting_features)
     before = {
         "name": plan.name, "description": plan.description, "price_minor": plan.price_minor,
         "currency": plan.currency, "duration": plan.duration, "duration_unit": plan.duration_unit,
-        "is_active": plan.is_active, "features": json.loads(plan.features_json or "{}"),
+        "is_offer_available": plan.is_offer_available, "is_active": plan.is_active,
+        "features": json.loads(plan.features_json or "{}"),
         "limits": json.loads(plan.limits_json or "{}"),
     }
     if "features" in values:
@@ -379,6 +395,11 @@ def update_plan(
     record_admin_action(db, admin, "plan.changed", metadata={
         "plan": plan.id, "reason": reason, "previous_revision": expected_revision,
         "revision": plan.policy_revision, "previous": before,
+        "current": {
+            "price_minor": plan.price_minor, "currency": plan.currency,
+            "duration": plan.duration, "duration_unit": plan.duration_unit,
+            "is_offer_available": plan.is_offer_available,
+        },
         "warning": "Affects existing subscriptions immediately",
     })
     db.commit()
