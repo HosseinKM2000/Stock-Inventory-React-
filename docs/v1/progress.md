@@ -545,3 +545,28 @@ Verification before integration:
 | Focused production-preview Chromium | Passed: 14 desktop/mobile cases for administrator/customer pricing states, invoice entry/barcode/PDF/cancellation compatibility, reports, and downgraded historical read-only presentation without paid actions or horizontal overflow. APIs were mocked; backend/PostgreSQL evidence is reported separately. |
 
 Deployment is not rolling-compatible with pre-02B1 workers because they do not enforce offer availability or the fixed invoice allocation. Use a controlled replacement after verified backup and rehearsal of `0015 -> 0016` on a current database copy. No production/customer database, real account, plan price, grant, payment, push, deployment, or `develop` update was used. Actual prices/terms and all remaining Task 2B decisions stay pending; no next task was started.
+
+## TZ-V1-05B data-safe subscription lifecycle transitions
+
+Branch `fix/v1-safe-subscription-transitions`, based directly on accepted local `draft` `ece0362ae58199092d046e89c63c5007a32d2f3e`, verifies and closes the lifecycle boundary without changing PostgreSQL/Dexie schema, backup format, operating mode, commercial allocation, payment behavior, or customer data:
+
+- Existing server behavior was confirmed for start-inclusive/end-exclusive grants, expiry and revocation revealing the unchanged base subscription, one acceptance instant, exact committed replay before current-policy rejection, capacity reductions blocking only new admission, preserved historical reads, and mode independence.
+- The client no longer leaves pre-transition durable operations indefinitely pending merely because current writes are disabled. When online it submits the original immutable operation identity for authoritative classification: a committed operation resolves to its recorded result, while a current-policy denial becomes retained terminal recovery evidence and is not automatically retried after renewal.
+- Batch-level `403` membership, permission, or entitlement failures now become terminal local evidence instead of entering an endless authentication retry. A `401` remains pending for reauthentication. This does not authorize new work: normal creation paths still require the current entitlement, membership, permission, store scope, and Solo/Team rules.
+- Entitlement-denied media keeps its OPFS path, transfer journal, transfer ID, content hash, and attempted state. Automatic retry stops; an explicit retry reuses the immutable transfer identity and still requires current server acceptance.
+- The subscription page now states in Persian that products, invoices, images, and recovery evidence were not deleted and links directly to synchronization and recovery review. The behavior matrix and compatibility boundary are recorded in [subscription-lifecycle.md](subscription-lifecycle.md).
+
+Verification before integration:
+
+| Command / scope | Result |
+|---|---|
+| Focused sync/media lifecycle regressions | Passed: expired durable dispatch and terminal retention, exact identity, membership `403`, reauthentication `401`, media rejection and explicit retry. |
+| Real backend lifecycle scenario | Passed against the real application and disposable test database: exact expiry boundary, pre-expiry acceptance, lost-response same-ID replay after expiry with one effect, terminal denial of new work, renewal without reinterpretation, explicit new-ID acceptance, and retained product/history. |
+| `npm.cmd test` | Passed: 86 files, 372 unit/component tests. |
+| `npm.cmd run test:backend` | Passed: 87 tests. |
+| `npm.cmd run test:backend:postgres:local` | Passed: 19 tests after starting the stopped local disposable PostgreSQL container and confirming it healthy. The first fresh attempt failed entirely in setup because port 5432 was unavailable; no application assertion ran in that attempt. |
+| `npm.cmd run test:typecheck` and `npm.cmd run lint` | Passed. |
+| `npm.cmd run build` | Passed with the existing stale Browserslist data and large `bwip-js` chunk warning. |
+| Production-preview Chromium | Passed: 6 desktop/mobile cases on the final build, including retained-data guidance, synchronization/recovery links, and no horizontal overflow. APIs were mocked; this is browser UI/storage evidence and is reported separately from backend/PostgreSQL evidence. |
+
+No migration is required. Pre-05B clients may keep durable work pending through expiry and submit it automatically after a later renewal; the compatible frontend should therefore replace them through the existing controlled application release process. Prices and terms, grace, retention, capacity allocations, gift audience/duration, Starter transition, and a payment provider remain unapproved and unchanged. No production/customer database, real account, plan, grant, payment, push, deployment, or `develop` update was used.

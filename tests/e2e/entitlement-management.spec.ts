@@ -62,7 +62,15 @@ async function json(route: Route, body: unknown, status = 200) {
   await route.fulfill({ status, contentType: "application/json", body: JSON.stringify(body) });
 }
 
-async function seed(page: Page, admin: boolean) {
+async function seed(page: Page, admin: boolean, initial?: {
+  status: "active" | "expired";
+  expiresAt: string;
+  capabilities: Record<string, boolean>;
+  entitlementSource: "subscription" | "grant";
+  basePlan: string;
+  serverTime: string;
+  offline?: boolean;
+}) {
   const user = {
     id: admin ? 9001 : 9002,
     first_name: admin ? "مدیر" : "مالک",
@@ -83,32 +91,44 @@ async function seed(page: Page, admin: boolean) {
     subscription_expires_at: expiry,
     created_at: now,
   };
-  await page.addInitScript(({ value, capturedAt, caps, grantExpiry }) => {
+  const seeded = initial ?? {
+    status: "active" as const,
+    expiresAt: expiry,
+    capabilities,
+    entitlementSource: "grant" as const,
+    basePlan: "free",
+    serverTime: now,
+    offline: false,
+  };
+  await page.addInitScript(({ value, capturedAt, initialState }) => {
+    if (initialState.offline) {
+      Object.defineProperty(navigator, "onLine", { configurable: true, get: () => false });
+    }
     localStorage.setItem("access_token", JSON.stringify("entitlement-e2e-token"));
     localStorage.setItem("inventory-last-user", JSON.stringify(value));
     localStorage.setItem(`inventory-entitlement-v2:${value.id}:${value.store_id}`, JSON.stringify({
       user_id: value.id,
       store_id: value.store_id,
       plan: value.is_admin ? "administrator" : "pro",
-      base_plan: "free",
-      entitlement_source: value.is_admin ? "administrator" : "grant",
-      grant_id: value.is_admin ? null : 44,
-      grant_expires_at: value.is_admin ? null : grantExpiry,
+      base_plan: initialState.basePlan,
+      entitlement_source: value.is_admin ? "administrator" : initialState.entitlementSource,
+      grant_id: value.is_admin || initialState.entitlementSource !== "grant" ? null : 44,
+      grant_expires_at: value.is_admin || initialState.entitlementSource !== "grant" ? null : initialState.expiresAt,
       policy_revision: 4,
       label: value.is_admin ? "مدیر سامانه" : "Pro",
-      status: "active",
+      status: initialState.status,
       account_status: "active",
       started_at: capturedAt,
-      expires_at: grantExpiry,
-      server_time: capturedAt,
-      synced_at: capturedAt,
-      verified_at: capturedAt,
+      expires_at: initialState.expiresAt,
+      server_time: initialState.serverTime,
+      synced_at: initialState.serverTime,
+      verified_at: initialState.serverTime,
       captured_at_ms: Date.now(),
       last_observed_at_ms: Date.now(),
-      capabilities: caps,
+      capabilities: initialState.capabilities,
       limits: { inventory_items: 5000, active_personnel: 10, devices: null },
     }));
-  }, { value: user, capturedAt: now, caps: capabilities, grantExpiry: expiry });
+  }, { value: user, capturedAt: now, initialState: seeded });
   return user;
 }
 
@@ -202,4 +222,57 @@ test("customer sees effective grant and preserved base subscription", async ({ p
   await expect(page.getByText(/هدیه زمان‌دار تا/)).toBeVisible();
   await expect(page.getByText(/اشتراک پایه «free»/)).toBeVisible();
   await expect(page.getByText("Pro", { exact: true }).first()).toBeVisible();
+});
+
+test("expired subscription explains retained data and recovery paths", async ({ page }) => {
+  const expiredAt = "2026-11-02T08:00:00.000Z";
+  const expiredCapabilities = Object.fromEntries(
+    Object.keys(capabilities).map((key) => [key, key === "inventory.read"]),
+  );
+  const customer = await seed(page, false, {
+    status: "expired",
+    expiresAt: expiredAt,
+    capabilities: expiredCapabilities,
+    entitlementSource: "subscription",
+    basePlan: "pro",
+    serverTime: "2026-11-06T08:00:00.000Z",
+    offline: true,
+  });
+  await page.route("http://localhost:8000/api/**", async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === "/api/auth/me") return json(route, {
+      ...customer,
+      plan: "pro",
+      subscription_expires_at: expiredAt,
+    });
+    if (url.pathname === "/api/plans") return json(route, [plan]);
+    if (url.pathname === "/api/plans/current") return json(route, {
+      user_id: customer.id,
+      store_id: customer.store_id,
+      plan: "pro",
+      base_plan: "pro",
+      entitlement_source: "subscription",
+      grant_id: null,
+      grant_expires_at: null,
+      policy_revision: 4,
+      label: "Pro",
+      status: "expired",
+      account_status: "active",
+      started_at: now,
+      expires_at: expiredAt,
+      server_time: "2026-11-06T08:00:00.000Z",
+      synced_at: "2026-11-06T08:00:00.000Z",
+      capabilities: expiredCapabilities,
+      limits: plan.limits,
+      tools: {},
+    });
+    return json(route, {});
+  });
+
+  await page.goto("/setting/subscription");
+  await expect(page.getByText(/محصولات، فاکتورها، تصاویر و شواهد بازیابی حذف نشده‌اند/)).toBeVisible();
+  await expect(page.getByRole("link", { name: "همگام‌سازی", exact: true })).toHaveAttribute("href", "/setting/sync");
+  await expect(page.getByRole("link", { name: "بازیابی", exact: true })).toHaveAttribute("href", "/tools/recovery");
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
 });

@@ -23,6 +23,7 @@ import {
   Text,
 } from "@radix-ui/themes";
 import type { ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 import { useAvailablePlans } from "../../mutations/use-admin";
 import {
   FEATURE_LABELS,
@@ -100,6 +101,17 @@ export default function SubscriptionSettings() {
           </Callout.Text>
         </Callout.Root>
       )}
+
+      {expired ? (
+        <Callout.Root color="amber" mt="3" dir="rtl">
+          <Callout.Text>
+            محصولات، فاکتورها، تصاویر و شواهد بازیابی حذف نشده‌اند. کارهای ثبت‌شده روی این دستگاه
+            پس از اتصال با سیاست فعلی سرور بررسی می‌شوند؛ نتیجهٔ ردشده یا نامشخص موفق تلقی نمی‌شود.
+            وضعیت هر کار را در <Link to="/setting/sync">همگام‌سازی</Link> ببینید و برای تصمیم‌گیری
+            دربارهٔ شواهد حل‌نشده به <Link to="/tools/recovery">بازیابی</Link> بروید.
+          </Callout.Text>
+        </Callout.Root>
+      ) : null}
 
       {verifying && (
         <Callout.Root color="blue" mt="5" dir="rtl">
