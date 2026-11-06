@@ -31,5 +31,7 @@ describe("sync status presentation", () => {
     expect(syncErrorMessage("SOME_NEW_INTERNAL_CODE")).not.toContain("SOME_NEW_INTERNAL_CODE");
     expect(syncDiagnosticCode("SOME_NEW_INTERNAL_CODE")).toBe("SOME_NEW_INTERNAL_CODE");
     expect(syncDiagnosticCode("Failed to fetch secret details")).toBeNull();
+    expect(syncErrorMessage("SYNC_OUTCOME_UNRESOLVED_ACCESS_DENIED:STORE_MEMBERSHIP_INACTIVE"))
+      .toContain("ثابت نمی‌کند");
   });
 });

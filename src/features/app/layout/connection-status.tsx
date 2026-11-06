@@ -16,6 +16,9 @@ export type SyncIndicator = {
 };
 
 export function syncErrorMessage(error: string | null) {
+  if (error?.startsWith("SYNC_OUTCOME_UNRESOLVED_ACCESS_DENIED:")) {
+    return "دسترسی فعلی اجازهٔ بررسی نتیجهٔ تلاش قبلی را نمی‌دهد. این وضعیت ثابت نمی‌کند که آن تلاش بی‌اثر بوده است؛ پس از بازگشت دسترسی، نتیجه را با همان شناسه بررسی کنید.";
+  }
   if (error === "PACK_SIZE_REQUIRED" || error === "PACKAGING_FLAG_INVALID") {
     return "تنظیمات بسته‌بندی یکی از محصولات کامل نیست؛ محصول را باز کنید و تعداد هر بسته را اصلاح کنید.";
   }

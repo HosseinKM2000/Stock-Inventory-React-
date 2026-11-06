@@ -7,7 +7,7 @@ import { queueStorage } from "@/shared/lib/infrastructure/storage/queue-storage"
 import type { User } from "@/features/auth/types";
 import { product } from "../helpers/product";
 import { localMutationStorage } from "@/shared/lib/infrastructure/storage/local-mutation-storage";
-import { queueService } from "@/shared/lib/infrastructure/sync/queue.service";
+import { isAccessDeniedOutcomeUnresolved, queueService } from "@/shared/lib/infrastructure/sync/queue.service";
 import { inventoryService } from "@/features/app/inventory/services/inventory-service";
 
 function user(id: number): User {
@@ -41,6 +41,30 @@ describe("IndexedDB repositories", () => {
       db.syncQueue.clear(),
       db.syncMetadata.clear(),
     ]);
+  });
+
+  it("keeps a prior-attempt access denial as non-retrying unresolved evidence", async () => {
+    accessState.saveUser({ ...user(1), store_id: 91, is_store_owner: true });
+    await queueService.enqueue("product", 901, "UPDATE", { id: 901, quantity: 2 });
+    const pending = (await queueService.getAll())[0];
+    const claimed = await queueService.markInFlight(pending);
+    expect(claimed).toBeDefined();
+
+    await queueService.markAccessDeniedUnresolved(
+      claimed!,
+      new Error("STORE_MEMBERSHIP_INACTIVE"),
+    );
+
+    const preserved = (await queueService.getAll())[0];
+    expect(preserved).toMatchObject({
+      operationId: pending.operationId,
+      payload: pending.payload,
+      attemptState: "uncertain",
+      status: "fatal_error",
+      nextAttemptAt: Number.MAX_SAFE_INTEGER,
+    });
+    expect(isAccessDeniedOutcomeUnresolved(preserved)).toBe(true);
+    expect(await queueService.getDue()).toEqual([]);
   });
 
   it("persists inventory across close/reopen and isolates it by user", async () => {

@@ -41,7 +41,7 @@ class Settings:
     ]
     SYSTEM_ADMIN_PASSWORD: str | None = os.getenv("SYSTEM_ADMIN_PASSWORD")
     APP_BUILD_ID: str = os.getenv("APP_BUILD_ID", "development").strip() or "development"
-    DATABASE_SCHEMA_VERSION: str = "20261104_0015"
+    DATABASE_SCHEMA_VERSION: str = "20261106_0016"
     UPLOAD_DIR: Path = BASE_DIR / "uploads"
     # Product media must survive application/database replacement. Production
     # deployments provide an absolute durable mount; tests/development use an

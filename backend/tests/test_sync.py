@@ -35,6 +35,7 @@ from app.models import (
     SyncChange,
     SyncOperation,
     Store,
+    StoreMembership,
     StorePlanGrant,
     SubscriptionPlan,
     User,
@@ -1946,6 +1947,67 @@ class SyncApiTest(unittest.TestCase):
                 user.plan = store.plan = "free"
                 user.subscription_started_at = store.subscription_started_at = None
                 user.subscription_expires_at = store.subscription_expires_at = None
+                db.commit()
+
+    def test_recorded_operation_resolution_requires_restored_membership_and_never_reapplies(self) -> None:
+        product_id = 1_700_000_098_101
+        operation_id = "lifecycle-resolution-after-restored-access"
+        operation = {
+            "operation_id": operation_id,
+            "entity": "product",
+            "entity_id": product_id,
+            "operation": "CREATE",
+            "payload": {
+                "quantity": 6,
+                "sale_price": 300,
+                "custom_label": "Resolution retained product",
+                "low_stock_threshold": 0,
+                "low_stock_alert": False,
+                "is_hidden": False,
+                "catalog_product": {"id": 0, "name": "Resolution retained product"},
+            },
+        }
+        accepted = self.push([operation]).json()["results"][0]
+        self.assertEqual(accepted["status"], "applied")
+
+        with SessionLocal() as db:
+            membership = db.scalar(select(StoreMembership).where(
+                StoreMembership.user_id == self.user_id,
+                StoreMembership.is_owner.is_(True),
+            ))
+            membership.status = "inactive"
+            db.commit()
+
+        try:
+            blocked = self.client.get(f"/api/sync/operations/{operation_id}", headers=self.headers)
+            self.assertEqual(blocked.status_code, 403, blocked.text)
+            self.assertEqual(blocked.json()["detail"], "STORE_MEMBERSHIP_INACTIVE")
+
+            with SessionLocal() as db:
+                membership = db.scalar(select(StoreMembership).where(
+                    StoreMembership.user_id == self.user_id,
+                    StoreMembership.is_owner.is_(True),
+                ))
+                membership.status = "active"
+                db.commit()
+
+            resolved = self.client.get(f"/api/sync/operations/{operation_id}", headers=self.headers)
+            self.assertEqual(resolved.status_code, 200, resolved.text)
+            self.assertEqual(resolved.json(), accepted)
+            missing = self.client.get("/api/sync/operations/not-recorded", headers=self.headers)
+            self.assertEqual(missing.status_code, 404, missing.text)
+            self.assertEqual(missing.json()["detail"], "SYNC_OPERATION_NOT_RECORDED")
+
+            with SessionLocal() as db:
+                self.assertEqual(db.get(InventoryItem, product_id).quantity, 6)
+                self.assertEqual(db.query(SyncOperation).filter_by(operation_id=operation_id).count(), 1)
+        finally:
+            with SessionLocal() as db:
+                membership = db.scalar(select(StoreMembership).where(
+                    StoreMembership.user_id == self.user_id,
+                    StoreMembership.is_owner.is_(True),
+                ))
+                membership.status = "active"
                 db.commit()
 
     def test_team_mode_requires_current_policy_and_preserves_historical_replay(self) -> None:

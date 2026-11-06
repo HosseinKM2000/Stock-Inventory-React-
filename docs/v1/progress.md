@@ -188,20 +188,20 @@ Current supplemental screenshots are local-only under ignored `test-results/v1-b
 
 The tracked gallery at `artifacts/ui-layout-gallery-2026-10-20/` remains a visual baseline for settings, tools, and administrator management on desktop/mobile because TZ-V1-01A intentionally made no UI or styling changes. Runtime synchronization and persistence implementation has changed since the screenshots were captured, so they are visual evidence only, not evidence that runtime behavior is unchanged or that every theme/size combination is correct.
 
-Observed UI issues are recorded separately:
+These baseline observations are historical; current disposition is:
 
-- Dashboard scroll restoration consistently returns the app shell to the top after browser back in desktop and mobile.
+- Dashboard scroll restoration was corrected by TZ-V1-07 for the covered desktop/mobile Chromium paths.
 - Desktop display-scaling failed once and passed the focused rerun; it remains timing-sensitive/unclassified.
-- The mobile product screenshot shows the connection/status notice overlapping the top search/header region. Existing automated overflow tests passed, so this is a visual overlap finding rather than a horizontal-overflow failure.
+- The mobile connection/status notice placement was corrected by TZ-V1-08 for the covered narrow Chromium layouts.
 - Physical camera/scanner/printer behavior, Safari/Firefox, File System Access persistence, and every theme/size/route combination were not verified.
 
 ## Outstanding release risks
 
 1. Product-media transfer and clean-device OPFS recovery are implemented, but preview/detail currently share one optimized derivative and conservative no-delete retention can accumulate unreferenced bytes until a reviewed GC policy exists.
-2. Final Free/Pro/VIP allocations, prices, gift/grace rules, and the existing Starter transition remain unapproved; payment integration is absent. The 2A registry/admin/grant infrastructure is implemented, and Starter is historical-only.
-3. Server restore, deploy/rollback, monitoring, alerting, and backup drills are not evidenced end to end.
-4. The mobile status overlap remains. The dashboard scroll regression is resolved by TZ-V1-07 for the covered desktop/mobile Chromium paths.
-5. Schema `0014`, durable media storage, canonical unique signup phones, and nullable profile names require controlled replacement; pre-03F clients omit a required field and pre-03F workers do not enforce the new account-phone boundary.
+2. Invoice capability allocation is fixed for Free/Starter versus Pro/VIP and offer administration exists, but actual prices/terms, remaining capabilities/capacities, gift/grace/retention, Starter transition, and payment integration remain unapproved.
+3. A disposable database-plus-media restore rehearsal exists, but target deployment/rollback, external backup storage, monitoring, alerting, and operator ownership are not evidenced end to end.
+4. Firefox/WebKit and physical Android/desktop camera, scanner, print, share, file-permission, offline-install, and update behavior remain unverified.
+5. Current Alembic head `20261106_0016`, durable media, canonical unique signup phones, nullable profile names, invoices, and offer policy require controlled replacement; incompatible old workers/clients must not be mixed.
 6. The 1C checkpoint/review journal is browser-local; browser-process kill, real post-commit termination, device-loss, and cross-browser File System Access recovery remain unverified.
 7. Activation warns about other devices and the server rejects their stale commands, but instant control of a disconnected device is not possible and no private team draft workflow exists.
 
@@ -570,3 +570,11 @@ Verification before integration:
 | Production-preview Chromium | Passed: 6 desktop/mobile cases on the final build, including retained-data guidance, synchronization/recovery links, and no horizontal overflow. APIs were mocked; this is browser UI/storage evidence and is reported separately from backend/PostgreSQL evidence. |
 
 No migration is required. Pre-05B clients may keep durable work pending through expiry and submit it automatically after a later renewal; the compatible frontend should therefore replace them through the existing controlled application release process. Prices and terms, grace, retention, capacity allocations, gift audience/duration, Starter transition, and a payment provider remain unapproved and unchanged. No production/customer database, real account, plan, grant, payment, push, deployment, or `develop` update was used.
+
+## TZ-V1-09B final V1 acceptance
+
+Branch `chore/v1-final-acceptance`, based directly on accepted local `draft` `6a9f4ee1e2bbe503e9a2d4897b5f2c08dc06715c`, closes the remaining 05B ambiguity: a `403` after a possible dispatch is retained as an access-denied unresolved outcome, not mislabeled as proof of no effect. An explicit current-authority, same-store/actor read-only lookup can resolve an already-recorded result without command replay or a second domain effect; revoked access remains denied and result fields are projected through current permissions. Never-attempted denial remains a definite rejection, and renewal/reauthentication never silently retries terminal work.
+
+The fresh automated matrix passed 375 frontend tests, 88 backend tests, 19 isolated PostgreSQL tests, typecheck, lint, and the production build stamped `TZ-V1-09B-20261106-1`. Real desktop/mobile Chromium journeys passed for media recovery, same-ID operation resolution, and two-build PWA update. The 110-case production-preview matrix had 101 passes, 8 environment-gated skips, and one blank-document timeout; the exact mobile case passed 3/3 focused reruns after investigation. Evidence boundaries, controlled release steps, manual physical-device checks, and separate PASS/BLOCKED decisions are consolidated in [release-readiness.md](release-readiness.md).
+
+Technical candidate readiness is PASS on local/disposable evidence. Limited early-user release is BLOCKED on target preparation, operator assignments, explicit plan/grant choices, and physical-device checks. Public paid launch is BLOCKED on the intentionally absent payment implementation plus unapproved prices/terms and remaining commercial policy. No production/customer system, real offer/grant/payment, push, deployment, `develop` merge, or public tag was used.

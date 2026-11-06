@@ -1,7 +1,7 @@
 import { getSyncIndicator, SyncStateIcon, syncDiagnosticCode, syncErrorMessage } from "@/features/app/layout/connection-status";
 import { Button } from "@/shared/ui/button/button";
 import type { SyncQueueItem } from "@/shared/lib/infrastructure/storage/types";
-import { queueService } from "@/shared/lib/infrastructure/sync/queue.service";
+import { isAccessDeniedOutcomeUnresolved, queueService } from "@/shared/lib/infrastructure/sync/queue.service";
 import { syncService } from "@/shared/lib/infrastructure/sync/sync-service";
 import {
   useOnline,
@@ -57,6 +57,7 @@ export function SyncStatusPage() {
   const [mediaPending, setMediaPending] = useState(0);
   const [mediaWorking, setMediaWorking] = useState(false);
   const [mediaProgress, setMediaProgress] = useState<string | null>(null);
+  const [resolvingOperationId, setResolvingOperationId] = useState<string | null>(null);
   const indicator = getSyncIndicator(status, online);
   const paused = syncService.isPaused();
 
@@ -91,6 +92,23 @@ export function SyncStatusPage() {
   const runSync = () => {
     if (!online || status.state === "syncing" || paused) return;
     void syncService.retry();
+  };
+
+  const resolveAccessDeniedOutcome = async (item: SyncQueueItem) => {
+    if (!online || resolvingOperationId) return;
+    setResolvingOperationId(item.operationId);
+    try {
+      const result = await syncService.resolveAccessDeniedOutcome(item);
+      toast.success(result === "applied"
+        ? "نتیجهٔ ثبت‌شده پیدا شد و اثر دوباره اجرا نشد"
+        : result === "not_recorded"
+          ? "سرور نتیجه‌ای برای این شناسه ثبت نکرده است"
+          : "نتیجهٔ ثبت‌شده دریافت شد");
+    } catch (error) {
+      toast.error(syncErrorMessage(error instanceof Error ? error.message : String(error)));
+    } finally {
+      setResolvingOperationId(null);
+    }
   };
 
   const recoverMedia = async () => {
@@ -251,9 +269,21 @@ export function SyncStatusPage() {
                         {formatTime(item.updatedAt)}
                       </Text>
                       {item.lastError && <><Text as="div" size="1" color="red" mt="1">{syncErrorMessage(item.lastError)}</Text>{syncDiagnosticCode(item.lastError) ? <details className="sync-diagnostic"><summary>جزئیات برای پشتیبانی</summary><code dir="ltr">{syncDiagnosticCode(item.lastError)}</code></details> : null}</>}
+                      {isAccessDeniedOutcomeUnresolved(item) ? (
+                        <Button
+                          type="button"
+                          mt="2"
+                          variant="soft"
+                          disabled={!online}
+                          loading={resolvingOperationId === item.operationId}
+                          onClick={() => void resolveAccessDeniedOutcome(item)}
+                        >
+                          بررسی نتیجه با همان شناسه
+                        </Button>
+                      ) : null}
                     </Box>
-                    <Badge color={item.status === "conflict" || item.status === "fatal_error" || item.status === "dead_letter" ? "red" : item.status === "in_flight" ? "blue" : "amber"}>
-                      {queueStatusLabels[item.status]}
+                    <Badge color={isAccessDeniedOutcomeUnresolved(item) ? "amber" : item.status === "conflict" || item.status === "fatal_error" || item.status === "dead_letter" ? "red" : item.status === "in_flight" ? "blue" : "amber"}>
+                      {isAccessDeniedOutcomeUnresolved(item) ? "نتیجه نامشخص" : queueStatusLabels[item.status]}
                     </Badge>
                   </Flex>
                 </li>

@@ -6,21 +6,25 @@ const mocks = vi.hoisted(() => ({
   isOffline: vi.fn(), isOnline: vi.fn(), isAuthenticated: vi.fn(),
   count: vi.fn(), getDue: vi.fn(), getAll: vi.fn(), markInFlight: vi.fn(),
   markFailed: vi.fn(), markConflict: vi.fn(), removeIfUnchanged: vi.fn(), resetFailures: vi.fn(),
-  releaseAfterAuthFailure: vi.fn(),
+  releaseAfterAuthFailure: vi.fn(), markAccessDeniedUnresolved: vi.fn(),
   canAccess: vi.fn(), ensureVerified: vi.fn(), setStatus: vi.fn(), getStatus: vi.fn(),
   user: vi.fn(),
   processMediaDue: vi.fn(),
+  fetchRecordedOperationResult: vi.fn(),
 }));
 vi.mock("@/shared/api/token-store", () => ({ isAuthenticated: mocks.isAuthenticated }));
 vi.mock("@/shared/lib/infrastructure/network/network-service", () => ({
   networkService: { isOffline: mocks.isOffline, isOnline: mocks.isOnline },
 }));
 vi.mock("@/shared/lib/infrastructure/sync/queue.service", () => ({
+  isAccessDeniedOutcomeUnresolved: (item: { lastError?: string }) =>
+    item.lastError?.startsWith("SYNC_OUTCOME_UNRESOLVED_ACCESS_DENIED:") ?? false,
   queueService: {
     count: mocks.count, getDue: mocks.getDue, getAll: mocks.getAll,
     markInFlight: mocks.markInFlight, markFailed: mocks.markFailed,
     markConflict: mocks.markConflict,
     releaseAfterAuthFailure: mocks.releaseAfterAuthFailure,
+    markAccessDeniedUnresolved: mocks.markAccessDeniedUnresolved,
     removeIfUnchanged: mocks.removeIfUnchanged, resetFailures: mocks.resetFailures,
   },
 }));
@@ -36,6 +40,9 @@ vi.mock("@/shared/lib/infrastructure/media/media-transfer.service", () => ({
 }));
 vi.mock("@/shared/lib/infrastructure/sync/sync-status", () => ({
   syncStatusStore: { set: mocks.setStatus, get: mocks.getStatus },
+}));
+vi.mock("@/shared/lib/infrastructure/sync/sync-operation-resolution", () => ({
+  fetchRecordedOperationResult: mocks.fetchRecordedOperationResult,
 }));
 
 import { registerSyncHandler, syncService } from "@/shared/lib/infrastructure/sync/sync-service";
@@ -180,7 +187,7 @@ describe("synchronization orchestration", () => {
 
   it("stops automatic retry when current membership or entitlement denies the batch", async () => {
     const entity = "revoked-membership-test";
-    const queued = item(entity);
+    const queued = { ...item(entity), attemptState: "attempted" as const };
     mocks.getDue.mockResolvedValueOnce([queued]).mockResolvedValueOnce([]);
     registerSyncHandler(entity, vi.fn().mockRejectedValue(
       new ApiError(403, "STORE_MEMBERSHIP_INACTIVE"),
@@ -189,9 +196,27 @@ describe("synchronization orchestration", () => {
     await syncService.sync();
 
     expect(mocks.releaseAfterAuthFailure).not.toHaveBeenCalled();
-    expect(mocks.markFailed).toHaveBeenCalledWith(
+    expect(mocks.markAccessDeniedUnresolved).toHaveBeenCalledWith(
       queued,
       expect.objectContaining({ message: "STORE_MEMBERSHIP_INACTIVE" }),
+    );
+    expect(mocks.markFailed).not.toHaveBeenCalled();
+  });
+
+  it("records a first-attempt 403 as a definite server rejection", async () => {
+    const entity = "first-attempt-denial-test";
+    const queued = { ...item(entity), attemptState: "never" as const };
+    mocks.getDue.mockResolvedValueOnce([queued]).mockResolvedValueOnce([]);
+    registerSyncHandler(entity, vi.fn().mockRejectedValue(
+      new ApiError(403, "ENTITLEMENT_EXPIRED"),
+    ));
+
+    await syncService.sync();
+
+    expect(mocks.markAccessDeniedUnresolved).not.toHaveBeenCalled();
+    expect(mocks.markFailed).toHaveBeenCalledWith(
+      expect.objectContaining({ operationId: queued.operationId }),
+      expect.objectContaining({ message: "ENTITLEMENT_EXPIRED" }),
       true,
     );
   });
@@ -237,5 +262,29 @@ describe("synchronization orchestration", () => {
     expect(mocks.setStatus).toHaveBeenLastCalledWith(expect.objectContaining({
       state: "failed", pending: 1, error: "ENTITLEMENT_EXPIRED",
     }));
+  });
+
+  it("resolves an access-denied uncertain outcome read-only under the same operation identity", async () => {
+    const queued = {
+      ...item("resolution-test"),
+      attemptState: "uncertain" as const,
+      status: "fatal_error" as const,
+      lastError: "SYNC_OUTCOME_UNRESOLVED_ACCESS_DENIED:STORE_MEMBERSHIP_INACTIVE",
+    };
+    mocks.fetchRecordedOperationResult.mockResolvedValue({
+      operation_id: queued.operationId,
+      status: "applied",
+      entity_id: queued.entityId,
+      record: { id: queued.entityId },
+      error: null,
+    });
+    mocks.getDue.mockResolvedValue([]);
+    mocks.getAll.mockResolvedValue([]);
+
+    await syncService.resolveAccessDeniedOutcome(queued);
+
+    expect(mocks.fetchRecordedOperationResult).toHaveBeenCalledWith(queued.operationId);
+    expect(mocks.removeIfUnchanged).toHaveBeenCalledWith(queued);
+    expect(mocks.markFailed).not.toHaveBeenCalled();
   });
 });
