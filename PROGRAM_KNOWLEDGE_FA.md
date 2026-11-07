@@ -472,7 +472,7 @@ scopeها:
 - rate limiting، lockout تلاش ورود و CSP در کد فعلی دیده نمی‌شود.
 - static uploadها authentication ندارند و با URL قابل دریافت‌اند.
 - credentialed E2E کامل، offline/reconnect واقعی مرورگر، Safari/WebKit OPFS و سفرهای کامل کاتالوگ/اشتراک هنوز ریسک تست‌شده‌نشده‌اند.
-- dependency `keycloak-js` در package وجود دارد، اما جریان فعلی احراز هویت از آن استفاده نمی‌کند.
+- جریان فعلی احراز هویت داخلی است و وابستگی بلااستفادهٔ `keycloak-js` از package حذف شده است.
 
 ## 21. مدل‌های داده اصلی PostgreSQL
 
