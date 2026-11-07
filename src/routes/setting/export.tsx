@@ -1,18 +1,5 @@
-import ExportTools from "@/features/setting/components/export";
-import { Box, Text } from "@radix-ui/themes";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/setting/export")({
-  component: RouteComponent,
+  beforeLoad: () => { throw redirect({ to: "/tools/export", replace: true }); },
 });
-
-function RouteComponent() {
-  return (
-    <Box>
-      <Text className="text-2xl font-bold">
-        فایل خروجی
-      </Text>
-      <ExportTools />
-    </Box>
-  );
-}
