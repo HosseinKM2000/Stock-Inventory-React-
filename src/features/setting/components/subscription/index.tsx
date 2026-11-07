@@ -120,6 +120,13 @@ export default function SubscriptionSettings() {
         </Callout.Root>
       )}
 
+      <Callout.Root color="blue" mt="5" dir="rtl">
+        <Callout.Icon><DesktopIcon /></Callout.Icon>
+        <Callout.Text>
+          تعداد دستگاه محدود نیست. استفاده یک مالک روی چند دستگاه مجاز است؛ اما برای کار هم‌زمان چند نفر باید طرح «تیم» فعال باشد و هر نفر با حساب و نقش مستقل وارد شود. اشتراک‌گذاری نام کاربری یا رمز عبور پشتیبانی نمی‌شود.
+        </Callout.Text>
+      </Callout.Root>
+
       <Card mt="5" size="3">
         <Flex justify="between" align="start" wrap="wrap" gap="4">
           <Flex align="center" gap="3">
@@ -255,6 +262,16 @@ export default function SubscriptionSettings() {
                     : String(current.limits.devices)
                 }
               />
+              <InfoCard
+                icon={<Flex align="center" justify="center" height="100%"><ArchiveIcon /></Flex>}
+                label="کالای کاتالوگی"
+                value={administrator || current?.limits.catalog_items == null ? "نامحدود" : String(current.limits.catalog_items)}
+              />
+              <InfoCard
+                icon={<Flex align="center" justify="center" height="100%"><TokensIcon /></Flex>}
+                label="پرسنل مستقل"
+                value={administrator || current?.limits.active_personnel == null ? "نامحدود" : String(current.limits.active_personnel)}
+              />
             </Grid>
             <Flex align="center" gap="2" mt="4">
               <ClockIcon />
@@ -278,6 +295,24 @@ export default function SubscriptionSettings() {
           </Callout.Root>
         )}
       </Card>
+      <Box mt="6">
+        <Text as="div" size="5" weight="bold">مقایسه طرح‌ها</Text>
+        <Text as="p" size="2" color="gray" mt="1">قابلیت‌های محلی پایه در طرح رایگان باقی می‌مانند؛ ارتقا برای ظرفیت، همگام‌سازی ابری و همکاری امن تیمی است.</Text>
+        <Grid columns={{ initial: "1", sm: "2", lg: "4" }} gap="3" mt="4">
+          {plans.data?.map((candidate) => (
+            <Card key={candidate.id} size="2" style={candidate.id === "pro" ? { borderColor: "var(--violet-8)" } : undefined}>
+              <Flex justify="between" align="center" gap="2">
+                <Text weight="bold">{candidate.name}</Text>
+                {candidate.id === "pro" ? <Badge color="violet">محبوب‌ترین</Badge> : null}
+              </Flex>
+              <Text as="div" size="4" weight="bold" mt="3">{formatPlanPrice(candidate)}<Text size="1" color="gray"> / ماه</Text></Text>
+              <Text as="p" size="2" color="gray" mt="2">تا {candidate.limits.inventory_items?.toLocaleString("fa-IR") ?? "نامحدود"} کالا</Text>
+              <Text as="p" size="2" color="gray">{candidate.features.sync ? "همگام‌سازی ابری" : "استفاده محلی بدون همگام‌سازی"}</Text>
+              <Text as="p" size="2" color="gray">{candidate.features.personnel ? `مالک + ${candidate.limits.active_personnel ?? 0} همکار` : "یک کاربر مالک"}</Text>
+            </Card>
+          ))}
+        </Grid>
+      </Box>
       <Text as="div" size="2" color="gray" mt="3">
         خرید و درگاه پرداخت در این مرحله فعال نیست؛ ساختار طرح‌ها برای اتصال
         آینده به پرداخت حفظ شده است.

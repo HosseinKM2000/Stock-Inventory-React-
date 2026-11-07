@@ -255,6 +255,10 @@ def _authorize_operation(
         raise ValueError(f"PERMISSION_REQUIRED:{sorted(missing)[0]}")
     entitlement = entitlement_for_user(db, user, as_of=accepted_at)
     capabilities = entitlement["capabilities"]
+    if not capabilities.get("sync", False):
+        if entitlement["status"] == "expired":
+            raise ValueError("ENTITLEMENT_EXPIRED")
+        raise ValueError("CAPABILITY_REQUIRED:sync")
     feature = (
         "barcode.manage" if operation.entity == "barcode"
         else "barcode.lookup" if operation.entity == "inventory_movement"
@@ -1221,6 +1225,9 @@ def barcode_snapshot(
     if StorePermission.BARCODE_LOOKUP.value not in permissions:
         raise HTTPException(status_code=403, detail=f"PERMISSION_REQUIRED:{StorePermission.BARCODE_LOOKUP.value}")
     entitlement = entitlement_for_user(db, current_user)
+    if not entitlement["capabilities"].get("sync", False):
+        detail = "ENTITLEMENT_EXPIRED" if entitlement["status"] == "expired" else "CAPABILITY_REQUIRED:sync"
+        raise HTTPException(status_code=403, detail=detail)
     if not entitlement["capabilities"].get("barcode.lookup", False):
         detail = "ENTITLEMENT_EXPIRED" if entitlement["status"] == "expired" else "CAPABILITY_REQUIRED:barcode.lookup"
         raise HTTPException(status_code=403, detail=detail)
@@ -1236,6 +1243,10 @@ def pull_changes(
     client_data_schema: Annotated[int | None, Header(alias="X-Client-Data-Schema")] = None,
 ) -> SyncChangesResponse:
     _require_store_aware_client(client_data_schema)
+    entitlement = entitlement_for_user(db, current_user)
+    if not entitlement["capabilities"].get("sync", False):
+        detail = "ENTITLEMENT_EXPIRED" if entitlement["status"] == "expired" else "CAPABILITY_REQUIRED:sync"
+        raise HTTPException(status_code=403, detail=detail)
     permissions = effective_permissions(active_store_context(db, current_user))
     projection_schema = client_data_schema or 2
     latest = db.scalar(

@@ -125,7 +125,7 @@ export type EntitlementRegistry = {
 };
 
 export type StorePlanGrant = {
-  id: number; request_id: string; store_id: number; plan_id: "pro" | "vip";
+  id: number; request_id: string; store_id: number; plan_id: "personal" | "pro" | "vip";
   source: string; reason: string; starts_at: string; ends_at: string;
   granted_by_user_id: number; revoked_at: string | null; revoked_by_user_id: number | null;
   revocation_reason: string | null; created_at: string;

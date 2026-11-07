@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 
 from app.database import Base, SessionLocal, engine
 from app.main import app
-from app.models import Industry, MediaAsset
+from app.models import Industry, MediaAsset, Store, User
 from app.services.bootstrap_service import ensure_system_admin
 from app.services.subscription_service import seed_default_plans
 
@@ -43,6 +43,11 @@ def _account(client: TestClient, suffix: str):
     }
     selected = client.patch("/api/auth/industry", headers=headers, json={"industry_id": industry_id})
     assert selected.status_code == 200, selected.text
+    with SessionLocal() as db:
+        user = db.get(User, response.json()["user"]["id"])
+        store = user.store_memberships[0].store
+        user.plan = store.plan = "pro"
+        db.commit()
     return headers
 
 

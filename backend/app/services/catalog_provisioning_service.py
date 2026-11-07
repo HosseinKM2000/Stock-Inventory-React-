@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 from ..models import CatalogProduct, Industry, InventoryItem, Store, SyncChange, User
 from ..schemas import InventoryOut
 from .store_service import owner_store_context
+from .subscription_service import entitlement_for_store
 
 
 def _record_inventory_change(db: Session, item: InventoryItem) -> None:
@@ -66,6 +67,10 @@ def provision_industry_inventory(
     existing_by_catalog = {
         item.catalog_product_id: item for item in existing_items
     }
+    limits = entitlement_for_store(db, store)["limits"]
+    inventory_remaining = None if limits["inventory_items"] is None else max(0, limits["inventory_items"] - len(existing_items))
+    catalog_used = sum(1 for item in existing_items if item.is_catalog_backed)
+    catalog_remaining = None if limits["catalog_items"] is None else max(0, limits["catalog_items"] - catalog_used)
     changed: list[InventoryItem] = []
 
     # Preserve operational data when an industry changes. Old provisioned
@@ -91,6 +96,9 @@ def provision_industry_inventory(
                 changed.append(existing)
             continue
 
+        if inventory_remaining == 0 or catalog_remaining == 0:
+            continue
+
         item = InventoryItem(
             store_id=store.id,
             user_id=store.owner_user_id,
@@ -100,6 +108,10 @@ def provision_industry_inventory(
         )
         db.add(item)
         changed.append(item)
+        if inventory_remaining is not None:
+            inventory_remaining -= 1
+        if catalog_remaining is not None:
+            catalog_remaining -= 1
 
     store.industry_id = industry.id
     # Keep the legacy owner profile field as a compatibility mirror while the

@@ -839,7 +839,7 @@ class SubscriptionPlan(Base):
             name="ck_subscription_plans_duration_pair",
         ),
         CheckConstraint(
-            "NOT is_offer_available OR (id IN ('pro','vip') "
+            "NOT is_offer_available OR (id IN ('personal','pro','vip') "
             "AND price_minor IS NOT NULL AND price_minor > 0 "
             "AND duration IS NOT NULL AND duration > 0 "
             "AND duration_unit IS NOT NULL AND duration_unit IN ('day','month','year'))",

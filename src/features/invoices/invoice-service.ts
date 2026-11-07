@@ -103,7 +103,7 @@ export const invoiceService = {
     const now = new Date().toISOString();
     await localMutationStorage.invoice(async () => {
       for (const effect of effects) await inventoryRepository.save({ ...effect.product, quantity: effect.after, status: status(effect.after, effect.product.low_stock_threshold), updated_at: now });
-      await invoiceRepository.save({ ...invoice, status: "cancel_pending", cancel_operation_id: operationId, cancel_effects: payload.effects });
+      await invoiceRepository.save({ ...invoice, status: accessState.canUse("sync") ? "cancel_pending" : "cancelled", cancel_operation_id: operationId, cancel_effects: payload.effects });
       await queueService.enqueue(INVOICE_ENTITY, invoiceId, "UPDATE", payload, { operationId, forceNew: true });
     });
   },

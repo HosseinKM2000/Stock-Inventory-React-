@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from ..models import Store, StoreMembership, StorePlanGrant, SubscriptionPlan, User
 from .tool_policy import industry_tool_policy
 from ..plans import PLAN_CATALOG, SUBSCRIPTION_CAPABILITIES, subscription_expired
-from ..entitlements import CAPABILITY_REGISTRY, validate_policy
+from ..entitlements import CAPABILITY_REGISTRY, SUBSCRIPTION_CAPACITIES, validate_policy
 from .authorization_service import is_admin
 
 
@@ -65,7 +65,7 @@ def plan_payload(plan: SubscriptionPlan) -> dict[str, Any]:
         "is_offer_available": plan.is_offer_available,
         "is_active": plan.is_active,
         "features": {key: features.get(key) is True for key in SUBSCRIPTION_CAPABILITIES},
-        "limits": {key: limits.get(key) for key in ("inventory_items", "devices", "active_personnel")},
+        "limits": {key: limits.get(key) for key in SUBSCRIPTION_CAPACITIES},
         "policy_revision": plan.policy_revision,
         "commercial_status": plan.commercial_status,
         "configuration_errors": configuration_errors,
@@ -107,7 +107,7 @@ def entitlement_for_user(
                 key: definition.status == "implemented"
                 for key, definition in CAPABILITY_REGISTRY.items()
             },
-            "limits": {key: None for key in ("inventory_items", "devices", "active_personnel")},
+            "limits": {key: None for key in SUBSCRIPTION_CAPACITIES},
             "tools": industry_tool_policy(None),
             "base_plan": user.plan, "entitlement_source": "administrator",
             "grant_id": None, "grant_expires_at": None, "policy_revision": 0,
@@ -194,7 +194,7 @@ def entitlement_for_store(
     capabilities = {key: features[key] is True for key in SUBSCRIPTION_CAPABILITIES}
     if expired:
         capabilities = {key: value if key == "inventory.read" else False for key, value in capabilities.items()}
-    limits = {key: limits[key] for key in ("inventory_items", "devices", "active_personnel")}
+    limits = {key: limits[key] for key in SUBSCRIPTION_CAPACITIES}
     if store.personnel_limit_override is not None:
         limits["active_personnel"] = store.personnel_limit_override
     return {

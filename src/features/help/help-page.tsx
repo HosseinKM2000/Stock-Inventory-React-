@@ -10,6 +10,7 @@ import { PageGuide } from "@/features/app/layout/page-guide";
 import { useAuth } from "@/shared/auth/use-auth";
 import { Link } from "@tanstack/react-router";
 import { Box, Card, Flex, Text } from "@radix-ui/themes";
+import { accessState } from "@/shared/access/access-state";
 import {
   gettingStartedSteps,
   gettingStartedTracks,
@@ -32,6 +33,12 @@ function DirectLinks({ links }: { links: readonly HelpLink[] }) {
 }
 
 function GettingStartedGuide() {
+  const tracks = gettingStartedTracks.filter((track) => track.id !== "team" || accessState.canUse("personnel"));
+  const visibleLink = (to: string) => {
+    if (to === "/setting/sync" || to === "/tools/activity") return accessState.canUse("sync");
+    if (to === "/setting/personnel" || to === "/setting/roles") return accessState.canUse("personnel");
+    return true;
+  };
   return (
     <section id="getting-started" className="help-start-guide scroll-mt-24" aria-labelledby="getting-started-title">
       <header className="help-start-heading">
@@ -44,7 +51,7 @@ function GettingStartedGuide() {
       </header>
 
       <div className="help-start-tracks" aria-label="روش شروع بر اساس نوع مجموعه">
-        {gettingStartedTracks.map((track) => (
+        {tracks.map((track) => (
           <article key={track.id}>
             <span aria-hidden="true"><PersonIcon width="20" height="20" /></span>
             <div><h3>{track.title}</h3><p>{track.description}</p></div>
@@ -59,7 +66,7 @@ function GettingStartedGuide() {
             <div className="help-start-step-copy">
               <h3>{step.title}</h3>
               <p>{step.description}</p>
-              <DirectLinks links={step.links} />
+              <DirectLinks links={step.links.filter((link) => visibleLink(link.to))} />
             </div>
           </li>
         ))}
@@ -103,7 +110,10 @@ function HelpSectionCard({ section }: { section: HelpSection }) {
 
 export function HelpPage() {
   const { user } = useAuth();
-  const sections = helpSections.filter((section) => !section.adminOnly || isAdmin(user));
+  const sections = helpSections.filter((section) =>
+    (!section.adminOnly || isAdmin(user))
+    && (!section.capabilities?.length || section.capabilities.some((capability) => accessState.canUse(capability))),
+  );
 
   return (
     <Box dir="rtl" className="help-page mx-auto w-full max-w-5xl">

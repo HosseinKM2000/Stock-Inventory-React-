@@ -4,7 +4,7 @@ export type PlanFeatureOption = {
   key: string;
   label: string;
   description: string;
-  group: "آفلاین و موجودی" | "داده و خروجی";
+  group: "آفلاین و موجودی" | "داده و خروجی" | "ابری و تیمی";
 };
 
 export const PLAN_FEATURE_OPTIONS: readonly PlanFeatureOption[] = [
@@ -13,7 +13,13 @@ export const PLAN_FEATURE_OPTIONS: readonly PlanFeatureOption[] = [
   { key: "categories.write", label: "مدیریت دسته‌بندی‌ها", description: "ایجاد و ویرایش دسته‌بندی‌های موجودی", group: "آفلاین و موجودی" },
   { key: "export.local", label: "خروجی آفلاین", description: "ساخت خروجی از داده‌های محلی دستگاه", group: "داده و خروجی" },
   { key: "export.server", label: "خروجی آنلاین", description: "ساخت خروجی کامل با پردازش سرور", group: "داده و خروجی" },
-  { key: "backup", label: "پشتیبان‌گیری", description: "دریافت نسخه پشتیبان آنلاین", group: "داده و خروجی" },
+  { key: "backup", label: "پشتیبان‌گیری محلی", description: "ساخت و بازیابی فایل پشتیبان روی دستگاه", group: "داده و خروجی" },
+  { key: "catalog.use", label: "کاتالوگ حوزه کاری", description: "استفاده از اقلام آماده کاتالوگ تا سقف طرح", group: "آفلاین و موجودی" },
+  { key: "barcode.lookup", label: "اسکنر و جست‌وجوی بارکد", description: "اسکن و پیدا کردن کالای محلی", group: "آفلاین و موجودی" },
+  { key: "invoices.purchase", label: "فاکتور خرید محلی", description: "ثبت، چاپ و خروجی فاکتور خرید روی دستگاه", group: "آفلاین و موجودی" },
+  { key: "invoices.sale", label: "فاکتور فروش محلی", description: "ثبت، چاپ و خروجی فاکتور فروش روی دستگاه", group: "آفلاین و موجودی" },
+  { key: "sync", label: "همگام‌سازی ابری", description: "ارسال عملیات و دریافت تاریخچه از سرور", group: "ابری و تیمی" },
+  { key: "personnel", label: "کاربران تیم و نقش‌ها", description: "حساب مستقل، نقش و ثبت فعالیت برای هر همکار", group: "ابری و تیمی" },
   { key: CAPABILITIES.bulkEdit, label: "ویرایش گروهی", description: "نقطه پیکربندی آینده؛ اکنون بدون محدودیت تجاری فعال است", group: "آفلاین و موجودی" },
   { key: CAPABILITIES.labelsWrite, label: "مدیریت برچسب‌ها", description: "نقطه پیکربندی آینده برای برچسب‌های شخصی", group: "آفلاین و موجودی" },
   { key: CAPABILITIES.importXlsx, label: "ورود از اکسل", description: "نقطه پیکربندی آینده برای ورود گروهی محلی", group: "داده و خروجی" },
@@ -21,7 +27,9 @@ export const PLAN_FEATURE_OPTIONS: readonly PlanFeatureOption[] = [
 
 export const PLAN_LIMIT_OPTIONS = [
   { key: "inventory_items", label: "حداکثر تعداد کالا", description: "خالی به معنی نامحدود" },
-  { key: "devices", label: "حداکثر دستگاه فعال", description: "خالی به معنی نامحدود" },
+  { key: "catalog_items", label: "حداکثر کالای کاتالوگی", description: "بخشی از سقف کل کالا و نه ظرفیتی جداگانه" },
+  { key: "active_personnel", label: "حداکثر پرسنل فعال", description: "مالک در این عدد محاسبه نمی‌شود" },
+  { key: "devices", label: "دستگاه فعال", description: "در همه طرح‌ها نامحدود؛ چندکاربره فقط با طرح تیم" },
 ] as const;
 
 export const FEATURE_LABELS = Object.fromEntries(

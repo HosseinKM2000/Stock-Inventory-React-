@@ -172,6 +172,13 @@ async function runSync() {
     return;
   }
 
+  // Free/local plans keep the durable outbox as upgrade-safe local history,
+  // but never send operational data to the server.
+  if (!accessState.canUse("sync")) {
+    syncStatusStore.set({ state: "idle", pending: await queueService.count(), error: null });
+    return;
+  }
+
   syncStatusStore.set({ state: "syncing", pending: await queueService.count(), error: null });
 
   let changed = false;

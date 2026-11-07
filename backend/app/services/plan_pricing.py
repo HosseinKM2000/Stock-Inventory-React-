@@ -9,7 +9,8 @@ from ..models import SubscriptionPlan
 
 TOMAN_TO_IRR = 10
 MAX_PLAN_PRICE_TOMAN = 10_000_000_000
-PAID_OFFER_PLANS = frozenset({"pro", "vip"})
+PAID_OFFER_PLANS = frozenset({"personal", "pro", "vip"})
+LOCAL_INVOICE_PLANS = frozenset({"free", "starter", "personal", "pro", "vip"})
 INVOICE_CAPABILITIES = ("invoices.purchase", "invoices.sale")
 
 
@@ -47,7 +48,9 @@ def validate_offer_configuration(
 
 
 def validate_invoice_allocation(plan_id: str, features: dict[str, bool]) -> None:
-    expected = plan_id in PAID_OFFER_PLANS
+    # Invoice creation/output is a local core tool. Cloud persistence remains
+    # protected independently by the sync entitlement.
+    expected = plan_id in LOCAL_INVOICE_PLANS
     if any(features.get(key) is not expected for key in INVOICE_CAPABILITIES):
         raise HTTPException(422, detail=f"PLAN_INVOICE_ALLOCATION_FIXED:{plan_id}")
 

@@ -1,8 +1,9 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-const state = vi.hoisted(() => ({ role: "USER" }));
+const state = vi.hoisted(() => ({ role: "USER", disabled: new Set<string>() }));
 vi.mock("@/shared/auth/use-auth", () => ({ useAuth: () => ({ user: { role: state.role, is_admin: state.role === "ADMIN", is_system_admin: false } }) }));
+vi.mock("@/shared/access/access-state", () => ({ accessState: { canUse: (capability: string) => !state.disabled.has(capability) } }));
 vi.mock("@tanstack/react-router", () => ({
   Link: ({ to, children, ...props }: { to: string; children: React.ReactNode }) => <a href={to} {...props}>{children}</a>,
   useNavigate: () => vi.fn(),
@@ -36,5 +37,15 @@ describe("Persian help", () => {
     view.rerender(<HelpPage />);
     expect(screen.getByRole("heading", { name: "راهنمای مدیریت سامانه" })).toBeVisible();
     state.role = "USER";
+  });
+
+  it("hides cloud and team guidance when the effective plan does not include it", () => {
+    state.disabled = new Set(["sync", "personnel"]);
+    render(<HelpPage />);
+    expect(screen.queryByText("اگر چند نفر هستید")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "همگام‌سازی و وضعیت عملیات" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "فعالیت مجموعه" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "فاکتور، لغو و سند خروجی" })).toBeVisible();
+    state.disabled = new Set();
   });
 });
