@@ -1,6 +1,8 @@
-import { Box, Text } from "@radix-ui/themes";
+import { Box } from "@radix-ui/themes";
 import { createFileRoute } from "@tanstack/react-router";
 import AppearanceOptions from "@/features/setting/components/appearance";
+import { MixerHorizontalIcon } from "@radix-ui/react-icons";
+import { PageGuide } from "@/features/app/layout/page-guide";
 
 export const Route = createFileRoute("/setting/appearance")({
   component: AppearanceComponent,
@@ -8,10 +10,8 @@ export const Route = createFileRoute("/setting/appearance")({
 
 function AppearanceComponent() {
   return (
-    <Box>
-      <Text className="text-2xl font-bold">
-        تنظیمات ظاهری
-      </Text>
+    <Box dir="rtl" className="settings-detail-workspace mx-auto w-full max-w-5xl">
+      <PageGuide section="تنظیمات" sectionTo="/setting" title="تنظیمات ظاهری" description="حالت نمایش برنامه را متناسب با دستگاه یا ترجیح شخصی خود انتخاب کنید؛ این تنظیم روی همین دستگاه ذخیره می‌شود." icon={MixerHorizontalIcon} helpTopic="account" />
       <AppearanceOptions />
     </Box>
   );
