@@ -1,12 +1,13 @@
-/* eslint-disable react-refresh/only-export-components */
 import { createRootRoute, Outlet } from "@tanstack/react-router";
-import { TanStackRouterDevtools } from "@tanstack/router-devtools";
+import { AuthProvider } from "@/shared/auth/auth-provider";
+import { AccessBoundary } from "@/shared/access/access-boundary";
+import { AuthenticatedPwaInstallPromotion } from "@/shared/lib/infrastructure/pwa/pwa-install-button";
 
 export const Route = createRootRoute({
   component: () => (
-    <>
-      <Outlet />
-      <TanStackRouterDevtools />
-    </>
+    <AuthProvider>
+      <AccessBoundary><Outlet /></AccessBoundary>
+      <AuthenticatedPwaInstallPromotion />
+    </AuthProvider>
   ),
 });
