@@ -8,6 +8,7 @@ type ButtonProps = ComponentPropsWithoutRef<typeof RadixButton> & {
   loading?: boolean;
   leftIcon?: ReactNode;
   rightIcon?: ReactNode;
+  intent?: "positive";
 };
 
 export function Button({
@@ -16,6 +17,7 @@ export function Button({
   disabled,
   leftIcon,
   rightIcon,
+  intent,
   ...props
 }: ButtonProps) {
   return (
@@ -23,6 +25,7 @@ export function Button({
       size="3"
       loading={loading}
       disabled={disabled || loading}
+      data-intent={intent}
       {...props}
     >
       {!loading && leftIcon}
