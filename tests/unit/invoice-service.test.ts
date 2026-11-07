@@ -89,7 +89,7 @@ describe("atomic local invoices", () => {
     ] });
     await invoiceService.cancel(invoice.id);
     expect(await inventoryStorage.get(91)).toMatchObject({ quantity: 5 });
-    expect(await invoiceRepository.get(invoice.id)).toMatchObject({ status: "cancel_pending", lines: [{ product_name: "کالای فاکتور", before_quantity: 5, after_quantity: 7 }] });
+    expect(await invoiceRepository.get(invoice.id)).toMatchObject({ status: "cancelled", lines: [{ product_name: "کالای فاکتور", before_quantity: 5, after_quantity: 7 }] });
     await expect(invoiceService.cancel(invoice.id)).rejects.toThrow("قبلاً لغو");
     expect(await db.syncQueue.count()).toBe(2);
   });

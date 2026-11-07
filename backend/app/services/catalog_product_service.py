@@ -11,6 +11,7 @@ from ..models import CatalogProduct, Industry, InventoryItem, Store, SyncChange,
 from ..repositories import catalog_products as repository
 from ..schemas import CatalogProductCreate, CatalogProductUpdate, InventoryOut
 from .audit_service import record_admin_action
+from .subscription_service import entitlement_for_store
 
 
 def _record_inventory_change(db: Session, item: InventoryItem) -> None:
@@ -81,6 +82,16 @@ def _reconcile_catalog_assignments(db: Session, product: CatalogProduct) -> None
     )
     for store in stores:
         if store.id in by_store:
+            continue
+        limits = entitlement_for_store(db, store)["limits"]
+        inventory_count = db.scalar(select(func.count(InventoryItem.id)).where(InventoryItem.store_id == store.id)) or 0
+        catalog_count = db.scalar(select(func.count(InventoryItem.id)).where(
+            InventoryItem.store_id == store.id,
+            InventoryItem.is_catalog_backed.is_(True),
+        )) or 0
+        if limits["inventory_items"] is not None and inventory_count >= limits["inventory_items"]:
+            continue
+        if limits["catalog_items"] is not None and catalog_count >= limits["catalog_items"]:
             continue
         item = InventoryItem(
             store_id=store.id,

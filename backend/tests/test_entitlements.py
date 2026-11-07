@@ -21,7 +21,7 @@ from app.services.plan_pricing import (
 def valid_policy():
     features = {key: False for key in SUBSCRIPTION_CAPABILITIES}
     features["inventory.read"] = True
-    limits = {"inventory_items": 0, "active_personnel": 0, "devices": None}
+    limits = {"inventory_items": 0, "catalog_items": 0, "active_personnel": 0, "devices": None}
     return features, limits
 
 
@@ -72,22 +72,31 @@ def test_legacy_normalization_preserves_values_without_enabling_planned_work() -
     assert features["inventory.write"] is True
     assert features["dashboard.analytics"] is True
     assert features["invoices.sale"] is False
-    assert limits == {"inventory_items": 50, "devices": None, "active_personnel": 0}
+    assert limits == {"inventory_items": 50, "catalog_items": 50, "devices": None, "active_personnel": 0}
 
 
-def test_approved_invoice_allocation_is_limited_to_pro_and_vip() -> None:
-    for plan_id in ("free", "starter"):
-        assert PLAN_CATALOG[plan_id]["capabilities"]["invoices.purchase"] is False
-        assert PLAN_CATALOG[plan_id]["capabilities"]["invoices.sale"] is False
-    for plan_id in ("pro", "vip"):
+def test_local_invoices_are_available_in_every_builtin_plan() -> None:
+    for plan_id in ("free", "starter", "personal", "pro", "vip"):
         assert PLAN_CATALOG[plan_id]["capabilities"]["invoices.purchase"] is True
         assert PLAN_CATALOG[plan_id]["capabilities"]["invoices.sale"] is True
-        assert PLAN_CATALOG[plan_id]["price_minor"] is None
-        assert PLAN_CATALOG[plan_id]["duration_days"] is None
     validate_invoice_allocation("pro", PLAN_CATALOG["pro"]["capabilities"])
     with pytest.raises(HTTPException) as changed:
         validate_invoice_allocation("free", {"invoices.purchase": True, "invoices.sale": False})
     assert changed.value.detail == "PLAN_INVOICE_ALLOCATION_FIXED:free"
+
+
+def test_final_plan_matrix_keeps_local_core_free_and_team_multi_user_only() -> None:
+    free = PLAN_CATALOG["free"]
+    assert free["limits"] == {"inventory_items": 200, "catalog_items": 100, "devices": None, "active_personnel": 0}
+    assert free["capabilities"]["export.local"] is True
+    assert free["capabilities"]["backup"] is True
+    assert free["capabilities"]["barcode.lookup"] is True
+    assert free["capabilities"]["sync"] is False
+    assert free["capabilities"]["export.server"] is False
+    assert PLAN_CATALOG["personal"]["limits"]["inventory_items"] == 3000
+    assert PLAN_CATALOG["pro"]["limits"]["inventory_items"] == 15000
+    assert PLAN_CATALOG["vip"]["limits"]["active_personnel"] == 9
+    assert all(plan["limits"]["devices"] is None for plan in PLAN_CATALOG.values())
 
 
 def test_offer_configuration_distinguishes_unconfigured_and_available_paid_plans() -> None:

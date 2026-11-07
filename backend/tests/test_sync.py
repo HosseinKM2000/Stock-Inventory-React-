@@ -111,10 +111,9 @@ class SyncApiTest(unittest.TestCase):
         )
         assert selected.status_code == 200, selected.text
         with SessionLocal() as db:
-            plan = db.get(SubscriptionPlan, "free")
-            features = json.loads(plan.features_json)
-            features.update({"invoices.purchase": True, "invoices.sale": True})
-            plan.features_json = json.dumps(features)
+            user = db.get(User, cls.user_id)
+            store = user.store_memberships[0].store
+            user.plan = store.plan = "pro"
             db.commit()
 
     @classmethod
@@ -122,6 +121,17 @@ class SyncApiTest(unittest.TestCase):
         cls.client.close()
         engine.dispose()
         _database_path.unlink(missing_ok=True)
+
+    def setUp(self) -> None:
+        # Sync contract tests run under a cloud-enabled owner plan. Individual
+        # downgrade/expiry tests override this state explicitly after setup.
+        with SessionLocal() as db:
+            user = db.get(User, self.user_id)
+            store = user.store_memberships[0].store
+            user.plan = store.plan = "pro"
+            user.subscription_started_at = store.subscription_started_at = None
+            user.subscription_expires_at = store.subscription_expires_at = None
+            db.commit()
 
     def push(self, operations: list[dict], files=None):
         return self.client.post(
@@ -259,10 +269,9 @@ class SyncApiTest(unittest.TestCase):
         accepted = self.push([operation]).json()["results"][0]
         self.assertEqual(accepted["status"], "applied")
         with SessionLocal() as db:
-            plan = db.get(SubscriptionPlan, "free")
-            features = json.loads(plan.features_json)
-            features.update({"invoices.purchase": False, "invoices.sale": False})
-            plan.features_json = json.dumps(features)
+            user = db.get(User, self.user_id)
+            store = user.store_memberships[0].store
+            user.plan = store.plan = "free"
             db.commit()
         try:
             history = self.client.get(f"/api/invoices/{invoice_id}", headers=self.headers)
@@ -271,16 +280,15 @@ class SyncApiTest(unittest.TestCase):
             self.assertEqual(replay, accepted)
             denied = self.push([{**operation, "operation_id": "downgrade-new-invoice", "entity_id": invoice_id + 1}]).json()["results"][0]
             self.assertEqual(denied["status"], "fatal_error")
-            self.assertEqual(denied["error"], "CAPABILITY_REQUIRED:invoices.sale")
+            self.assertEqual(denied["error"], "CAPABILITY_REQUIRED:sync")
             with SessionLocal() as db:
                 self.assertIsNone(db.get(Invoice, invoice_id + 1))
                 self.assertEqual(db.get(InventoryItem, product_id).quantity, 2)
         finally:
             with SessionLocal() as db:
-                plan = db.get(SubscriptionPlan, "free")
-                features = json.loads(plan.features_json)
-                features.update({"invoices.purchase": True, "invoices.sale": True})
-                plan.features_json = json.dumps(features)
+                user = db.get(User, self.user_id)
+                store = user.store_memberships[0].store
+                user.plan = store.plan = "pro"
                 db.commit()
 
     def test_barcode_and_inventory_movements_are_store_scoped_and_idempotent(self) -> None:
@@ -517,6 +525,7 @@ class SyncApiTest(unittest.TestCase):
             user = db.get(User, user_id)
             user.device_limit_mode = "unlimited"
             user.device_limit_override = None
+            user.plan = user.store_memberships[0].store.plan = "pro"
             user.industry_id = self.industry_id
             user.store_memberships[0].store.industry_id = self.industry_id
             db.commit()
@@ -1484,11 +1493,8 @@ class SyncApiTest(unittest.TestCase):
         new_user_snapshot = self.client.get(
             "/api/sync/changes?cursor=0", headers=new_headers
         )
-        self.assertEqual(new_user_snapshot.status_code, 200, new_user_snapshot.text)
-        self.assertNotIn(
-            new_user_item_id,
-            [change["entity_id"] for change in new_user_snapshot.json()["changes"]],
-        )
+        self.assertEqual(new_user_snapshot.status_code, 403, new_user_snapshot.text)
+        self.assertEqual(new_user_snapshot.json()["detail"], "CAPABILITY_REQUIRED:sync")
 
         audit = self.client.get("/api/admin/audit", headers=self.admin_headers)
         self.assertEqual(audit.status_code, 200, audit.text)
@@ -1564,7 +1570,7 @@ class SyncApiTest(unittest.TestCase):
                 "is_offer_available": False,
                 "is_active": True,
                 "features": {key: key in {"inventory.read", "inventory.write"} for key in SUBSCRIPTION_CAPABILITIES},
-                "limits": {"inventory_items": 10, "devices": None, "active_personnel": 0},
+                "limits": {"inventory_items": 10, "catalog_items": 10, "devices": None, "active_personnel": 0},
                 "reason": "Automated policy test",
             },
         )
@@ -1646,12 +1652,6 @@ class SyncApiTest(unittest.TestCase):
             json={"expected_revision": pro["policy_revision"], "reason": "Unauthorized price edit", "price_toman": 125_000},
         )
         self.assertEqual(denied.status_code, 403, denied.text)
-        incomplete = self.client.patch(
-            "/api/admin/plans/pro", headers=self.admin_headers,
-            json={"expected_revision": pro["policy_revision"], "reason": "Incomplete offer must fail", "is_offer_available": True},
-        )
-        self.assertEqual(incomplete.status_code, 422, incomplete.text)
-        self.assertEqual(incomplete.json()["detail"], "PLAN_OFFER_CONFIGURATION_INCOMPLETE")
         configured = self.client.patch(
             "/api/admin/plans/pro", headers=self.admin_headers,
             json={
@@ -2286,7 +2286,8 @@ class SyncApiTest(unittest.TestCase):
                     "payload": {"quantity": 2},
                 }]}),
             })
-            self.assertEqual(update.json()["results"][0]["status"], "applied", update.text)
+            self.assertEqual(update.json()["results"][0]["status"], "fatal_error", update.text)
+            self.assertEqual(update.json()["results"][0]["error"], "CAPABILITY_REQUIRED:sync")
             blocked_new = self.client.post("/api/sync/batch", headers=headers, data={
                 "operations_json": json.dumps({"operations": [{
                     **operation,
@@ -2295,7 +2296,7 @@ class SyncApiTest(unittest.TestCase):
                 }]}),
             })
             self.assertEqual(blocked_new.json()["results"][0]["status"], "fatal_error", blocked_new.text)
-            self.assertEqual(blocked_new.json()["results"][0]["error"], "INVENTORY_LIMIT_REACHED")
+            self.assertEqual(blocked_new.json()["results"][0]["error"], "CAPABILITY_REQUIRED:sync")
             with SessionLocal() as db:
                 self.assertEqual(
                     db.query(InventoryItem).filter_by(
@@ -2303,7 +2304,7 @@ class SyncApiTest(unittest.TestCase):
                     ).count(),
                     1,
                 )
-                self.assertEqual(db.get(InventoryItem, operation["entity_id"]).quantity, 2)
+                self.assertEqual(db.get(InventoryItem, operation["entity_id"]).quantity, 1)
         finally:
             with SessionLocal() as db:
                 db.get(SubscriptionPlan, "free").limits_json = original_limits

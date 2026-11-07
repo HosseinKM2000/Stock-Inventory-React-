@@ -763,7 +763,7 @@ class PlanOfferOut(BaseModel):
 class StorePlanGrantCreate(BaseModel):
     request_id: str = Field(pattern=r"^[A-Za-z0-9_-]+$", min_length=8, max_length=64)
     store_id: int = Field(gt=0)
-    plan_id: Literal["pro", "vip"]
+    plan_id: Literal["personal", "pro", "vip"]
     source: Literal["early_user_gift", "support", "promotion", "manual"]
     reason: str = Field(min_length=3, max_length=2000)
     starts_at: datetime

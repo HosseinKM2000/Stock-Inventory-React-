@@ -137,7 +137,7 @@ export default function PlanDialog({ plan, trigger }: Props) {
               </Grid>
             </Grid>
             <Flex align="center" gap="2" mt="4"><Switch checked={active} onCheckedChange={setActive} /><Text>طرح برای تخصیص به کاربران فعال باشد</Text></Flex>
-            <label><Flex align="center" gap="2" mt="3"><Switch checked={offerAvailable} onCheckedChange={setOfferAvailable} disabled={!(["pro", "vip"].includes(id))} /><Text>پیشنهاد خرید این طرح نمایش داده شود</Text></Flex></label>
+            <label><Flex align="center" gap="2" mt="3"><Switch checked={offerAvailable} onCheckedChange={setOfferAvailable} disabled={!(["personal", "pro", "vip"].includes(id))} /><Text>پیشنهاد خرید این طرح نمایش داده شود</Text></Flex></label>
             <Text as="div" size="1" color="gray" mt="2">درگاه پرداخت هنوز متصل نیست؛ فعال‌بودن پیشنهاد فقط قیمت و دورهٔ معتبر را منتشر می‌کند و خرید را آغاز نمی‌کند.</Text>
           </Card>
 

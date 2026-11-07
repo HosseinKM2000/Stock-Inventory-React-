@@ -17,6 +17,6 @@ export const listPlanSubscribers = (id: string) =>
   apiFetch<AdminUser[]>(`/admin/plans/${id}/subscribers`);
 export const getEntitlementRegistry = () => apiFetch<EntitlementRegistry>("/admin/entitlements/registry");
 export const createStorePlanGrant = (value: {
-  request_id: string; store_id: number; plan_id: "pro" | "vip"; source: string;
+  request_id: string; store_id: number; plan_id: "personal" | "pro" | "vip"; source: string;
   reason: string; starts_at: string; ends_at: string;
 }) => apiFetch<StorePlanGrant>("/admin/grants", { method: "POST", json: value });

@@ -14,8 +14,10 @@ dist-ssr
 coverage/
 playwright-report/
 test-results/
+artifacts/codex-*/
 .tanstack/tmp/
 backend/.coverage
+backend/.pytest_cache/
 backend/htmlcov/
 backend/coverage/
 

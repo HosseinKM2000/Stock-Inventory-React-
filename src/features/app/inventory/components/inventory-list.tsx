@@ -31,6 +31,7 @@ import { barcodeService } from "@/features/barcode/services/barcode-service";
 import { barcodeRepository } from "@/features/barcode/services/barcode-repository";
 import type { ProductBarcode } from "@/features/barcode/types";
 import { accessState } from "@/shared/access/access-state";
+import { inventoryCapacityNotice } from "@/shared/access/subscription-limit";
 
 const QUICK_STOCK_HINT_KEY = "inventory-quick-stock-hint-v3";
 const EMPTY_PRODUCTS: Product[] = [];
@@ -46,6 +47,7 @@ const InventoryList = () => {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [labelPrintOpen, setLabelPrintOpen] = useState(false);
   const [barcodeMatchResult, setBarcodeMatchResult] = useState<{ key: string; hidden: boolean } | null>(null);
+  const [inventoryCount, setInventoryCount] = useState<number | null>(null);
   const closeBulkOnAccountChange = useCallback(() => {
     setBulkOpen(false);
     setBulkDeleteOpen(false);
@@ -95,6 +97,9 @@ const InventoryList = () => {
   const barcodeFilterKey = `${search}|${categoryId ?? ""}|${selectedLabelIds.join(",")}|${catalogProductsHidden}`;
   const barcodeMatchHidden = barcodeMatchResult?.key === barcodeFilterKey && barcodeMatchResult.hidden;
   const canPrintLabels = accessState.canUse("label.print") && accessState.hasStorePermission("labels.print");
+  const inventoryNotice = inventoryCount == null
+    ? null
+    : inventoryCapacityNotice(inventoryCount, accessState.entitlement()?.limits.inventory_items);
   const { parentRef, virtualizer } = useInventoryVirtual(
     viewMode === "grid" ? 0 : products.length,
     viewMode === "compact" ? 86 : 250,
@@ -134,6 +139,14 @@ const InventoryList = () => {
   useEffect(() => {
     inventoryListPreferences.update({ search, sort, categoryId, viewMode });
   }, [search, sort, categoryId, viewMode]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void inventoryService.getAll({ include_hidden: true })
+      .then((all) => { if (!cancelled) setInventoryCount(all.length); })
+      .catch(() => { if (!cancelled) setInventoryCount(null); });
+    return () => { cancelled = true; };
+  }, [data]);
 
   useEffect(() => {
     let cancelled = false;
@@ -266,6 +279,15 @@ const InventoryList = () => {
         />
         </aside>
         <Box className="inventory-list-results min-h-0 min-w-0">
+          {inventoryNotice ? (
+            <Callout.Root color={inventoryNotice.level === "approaching" ? "blue" : inventoryNotice.level === "near" ? "amber" : "red"} mb="3">
+              <Callout.Text>
+                {inventoryNotice.level === "full"
+                  ? `ظرفیت ${inventoryNotice.limit.toLocaleString("fa-IR")} کالای طرح شما تکمیل شده است؛ برای افزودن کالای جدید، طرح را ارتقا دهید.`
+                  : `${inventoryNotice.used.toLocaleString("fa-IR")} از ${inventoryNotice.limit.toLocaleString("fa-IR")} ظرفیت کالا استفاده شده و ${inventoryNotice.remaining.toLocaleString("fa-IR")} جای خالی مانده است.`}
+              </Callout.Text>
+            </Callout.Root>
+          ) : null}
           {barcodeMatchHidden ? <Callout.Root color="amber" mb="3"><Callout.Text>بارکد دقیق پیدا شد، اما فیلترهای فعال محصول را پنهان کرده‌اند. برای نمایش، فیلتر دسته/برچسب یا محصولات کاتالوگی را پاک کنید.</Callout.Text></Callout.Root> : null}
           {isLoading && <Flex justify="center" align="center" className="h-full"><Spinner /></Flex>}
           {isError && <Callout.Root color="red"><Callout.Text>خطا در دریافت محصولات</Callout.Text></Callout.Root>}

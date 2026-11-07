@@ -63,6 +63,7 @@ CAPABILITY_REGISTRY: dict[str, CapabilityDefinition] = {
 CAPACITY_REGISTRY: dict[str, CapacityDefinition] = {
     item.key: item for item in (
         CapacityDefinition("inventory_items", "تعداد کالا", "record", 0, 10_000_000, True, "inventory.write", ("products.create", "sync.acceptance")),
+        CapacityDefinition("catalog_items", "کالای متصل به کاتالوگ", "record", 0, 10_000_000, True, "catalog.use", ("catalog.provision", "sync.acceptance")),
         CapacityDefinition("active_personnel", "پرسنل فعال", "membership", 0, 100_000, False, "personnel", ("personnel.create", "personnel.reactivate")),
         # V1 keeps every tier unrestricted.  The extension point remains typed.
         CapacityDefinition("devices", "دستگاه فعال", "session", 0, 100_000, True, None, ("session.admission",)),
@@ -135,4 +136,7 @@ def normalize_legacy_policy(features: dict[str, Any], limits: dict[str, Any]) ->
         normalized_limits["devices"] = None
     if "inventory_items" not in limits:
         normalized_limits["inventory_items"] = 0
+    if "catalog_items" not in limits:
+        # Before Commercial V1 the catalog shared the inventory ceiling.
+        normalized_limits["catalog_items"] = normalized_limits["inventory_items"]
     return normalized_features, normalized_limits

@@ -286,7 +286,7 @@ def migrated_empty_database():
         )).all())
         MIGRATION_EVIDENCE["paid_invoice_plans"] = tuple(connection.execute(text(
             "SELECT id,features_json,price_minor,duration,duration_unit,is_offer_available "
-            "FROM subscription_plans WHERE id IN ('pro','vip') ORDER BY id"
+            "FROM subscription_plans WHERE id IN ('personal','pro','vip') ORDER BY id"
         )).all())
     with SessionLocal() as db:
         stored = db.get(SyncOperation, 9101)
@@ -346,7 +346,7 @@ def test_migration_reaches_head_with_all_expected_tables(migrated_empty_database
     assert MIGRATION_EVIDENCE["mode_rollback"] == ("20261101_0009", True)
     assert EXPECTED_TABLES <= set(inspect(engine).get_table_names())
     with engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261106_0016"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261107_0017"
         assert "MOBILE_PHONE_PREFLIGHT" in MIGRATION_EVIDENCE["mobile_preflight"]
         assert "malformed_count=1:user_ids=9401" in MIGRATION_EVIDENCE["mobile_preflight"]
         assert "duplicate_groups=1:user_ids=9101,9201" in MIGRATION_EVIDENCE["mobile_preflight"]
@@ -386,11 +386,13 @@ def test_migration_reaches_head_with_all_expected_tables(migrated_empty_database
         plan_columns = {column["name"] for column in inspect(engine).get_columns("subscription_plans")}
         assert {"policy_revision", "commercial_status", "is_offer_available"} <= plan_columns
         for row in MIGRATION_EVIDENCE["paid_invoice_plans"]:
-            assert row[0] in {"pro", "vip"}
+            assert row[0] in {"personal", "pro", "vip"}
             features = json.loads(row[1])
             assert features["invoices.purchase"] is True
             assert features["invoices.sale"] is True
-            assert row[2:] == (None, None, None, False)
+            assert features["sync"] is True
+            assert row[2] in {4_900_000, 9_900_000, 18_900_000}
+            assert row[3:] == (1, "month", False)
 
 
 @pytest.mark.postgres
@@ -764,6 +766,9 @@ def test_concurrent_inventory_admission_respects_finite_capacity_atomically(clie
         limits = json.loads(free.limits_json)
         limits["inventory_items"] = 1
         free.limits_json = json.dumps(limits)
+        features = json.loads(free.features_json)
+        features["sync"] = True
+        free.features_json = json.dumps(features)
         db.commit()
         store_id = store.id
 
@@ -883,7 +888,7 @@ def test_concurrent_sale_invoices_serialize_last_stock_atomically(client):
         db.add(product)
         free = db.get(SubscriptionPlan, "free")
         features = json.loads(free.features_json)
-        features.update({"invoices.purchase": True, "invoices.sale": True})
+        features.update({"invoices.purchase": True, "invoices.sale": True, "sync": True})
         free.features_json = json.dumps(features)
         db.commit(); product_id = product.id; store_id = store.id
 
@@ -930,6 +935,11 @@ def test_concurrent_equivalent_sync_submission_applies_once(client):
         "X-Device-Fingerprint": "postgres-device",
         "X-Client-Data-Schema": "2",
     }
+    with SessionLocal() as db:
+        user = db.get(User, user_id)
+        store = db.scalar(select(Store).where(Store.owner_user_id == user_id))
+        user.plan = store.plan = "personal"
+        db.commit()
     operation = {
         "operation_id": "postgres-concurrent-category",
         "entity": "category",

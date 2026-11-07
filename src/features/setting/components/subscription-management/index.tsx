@@ -11,7 +11,7 @@ import PlanDialog from "./plan-dialog";
 import { FEATURE_LABELS, formatPlanPrice } from "./plan-options";
 import SubscribersDialog from "./subscribers-dialog";
 
-const builtInPlans = new Set(["free", "starter", "pro", "vip"]);
+const builtInPlans = new Set(["free", "starter", "personal", "pro", "vip"]);
 const durationLabels = { day: "روز", month: "ماه", year: "سال" } as const;
 
 export default function SubscriptionManagement({ hideHeading = false }: { hideHeading?: boolean }) {

@@ -8,7 +8,7 @@ from ..models import Store, StorePlanGrant, SubscriptionPlan, User
 from .audit_service import record_admin_action
 
 
-PAID_GRANT_PLAN_IDS = frozenset({"pro", "vip"})
+PAID_GRANT_PLAN_IDS = frozenset({"personal", "pro", "vip"})
 
 
 def _utc(value: datetime) -> datetime:

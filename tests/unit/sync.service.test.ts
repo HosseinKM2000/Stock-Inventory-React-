@@ -8,6 +8,7 @@ const mocks = vi.hoisted(() => ({
   markFailed: vi.fn(), markConflict: vi.fn(), removeIfUnchanged: vi.fn(), resetFailures: vi.fn(),
   releaseAfterAuthFailure: vi.fn(), markAccessDeniedUnresolved: vi.fn(),
   canAccess: vi.fn(), ensureVerified: vi.fn(), setStatus: vi.fn(), getStatus: vi.fn(),
+  canUse: vi.fn(),
   user: vi.fn(),
   processMediaDue: vi.fn(),
   fetchRecordedOperationResult: vi.fn(),
@@ -29,7 +30,7 @@ vi.mock("@/shared/lib/infrastructure/sync/queue.service", () => ({
   },
 }));
 vi.mock("@/shared/access/access-state", () => ({
-  accessState: { canAccess: mocks.canAccess, user: mocks.user },
+  accessState: { canAccess: mocks.canAccess, canUse: mocks.canUse, user: mocks.user },
 }));
 vi.mock("@/shared/access/entitlement-service", () => ({
   entitlementService: { ensureVerified: mocks.ensureVerified },
@@ -62,6 +63,7 @@ describe("synchronization orchestration", () => {
     mocks.isOnline.mockReturnValue(true);
     mocks.isAuthenticated.mockReturnValue(true);
     mocks.canAccess.mockReturnValue(true);
+    mocks.canUse.mockReturnValue(true);
     mocks.user.mockReturnValue({ id: 1, store_id: 1 });
     mocks.ensureVerified.mockResolvedValue(undefined);
     mocks.processMediaDue.mockResolvedValue([]);
