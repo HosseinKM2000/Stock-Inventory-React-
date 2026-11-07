@@ -1,0 +1,356 @@
+{
+  "generatedAt": "2026-10-20T07:36:50.743Z",
+  "appUrl": "http://127.0.0.1:4178",
+  "captures": [
+    {
+      "viewport": "desktop",
+      "section": "settings",
+      "name": "00-settings-index",
+      "route": "/setting",
+      "relativePath": "desktop/settings/00-settings-index.png"
+    },
+    {
+      "viewport": "desktop",
+      "section": "settings",
+      "name": "01-personnel",
+      "route": "/setting/personnel",
+      "relativePath": "desktop/settings/01-personnel.png"
+    },
+    {
+      "viewport": "desktop",
+      "section": "settings",
+      "name": "02-roles",
+      "route": "/setting/roles",
+      "relativePath": "desktop/settings/02-roles.png"
+    },
+    {
+      "viewport": "desktop",
+      "section": "settings",
+      "name": "03-sync",
+      "route": "/setting/sync",
+      "relativePath": "desktop/settings/03-sync.png"
+    },
+    {
+      "viewport": "desktop",
+      "section": "settings",
+      "name": "04-backup",
+      "route": "/setting/backup",
+      "relativePath": "desktop/settings/04-backup.png"
+    },
+    {
+      "viewport": "desktop",
+      "section": "settings",
+      "name": "05-profile",
+      "route": "/setting/profile",
+      "relativePath": "desktop/settings/05-profile.png"
+    },
+    {
+      "viewport": "desktop",
+      "section": "settings",
+      "name": "06-security",
+      "route": "/setting/security",
+      "relativePath": "desktop/settings/06-security.png"
+    },
+    {
+      "viewport": "desktop",
+      "section": "settings",
+      "name": "07-appearance",
+      "route": "/setting/appearance",
+      "relativePath": "desktop/settings/07-appearance.png"
+    },
+    {
+      "viewport": "desktop",
+      "section": "settings",
+      "name": "08-industry",
+      "route": "/setting/industry",
+      "relativePath": "desktop/settings/08-industry.png"
+    },
+    {
+      "viewport": "desktop",
+      "section": "settings",
+      "name": "09-subscription",
+      "route": "/setting/subscription",
+      "relativePath": "desktop/settings/09-subscription.png"
+    },
+    {
+      "viewport": "desktop",
+      "section": "tools",
+      "name": "00-tools-index",
+      "route": "/tools",
+      "relativePath": "desktop/tools/00-tools-index.png"
+    },
+    {
+      "viewport": "desktop",
+      "section": "tools",
+      "name": "01-scanner",
+      "route": "/tools/scanner",
+      "relativePath": "desktop/tools/01-scanner.png"
+    },
+    {
+      "viewport": "desktop",
+      "section": "tools",
+      "name": "02-activity",
+      "route": "/tools/activity",
+      "relativePath": "desktop/tools/02-activity.png"
+    },
+    {
+      "viewport": "desktop",
+      "section": "tools",
+      "name": "03-help",
+      "route": "/tools/help",
+      "relativePath": "desktop/tools/03-help.png"
+    },
+    {
+      "viewport": "desktop",
+      "section": "tools",
+      "name": "04-import",
+      "route": "/tools/import",
+      "relativePath": "desktop/tools/04-import.png"
+    },
+    {
+      "viewport": "desktop",
+      "section": "tools",
+      "name": "05-labels",
+      "route": "/tools/labels",
+      "relativePath": "desktop/tools/05-labels.png"
+    },
+    {
+      "viewport": "desktop",
+      "section": "tools",
+      "name": "06-categories",
+      "route": "/tools/categories",
+      "relativePath": "desktop/tools/06-categories.png"
+    },
+    {
+      "viewport": "desktop",
+      "section": "tools",
+      "name": "07-export",
+      "route": "/tools/export",
+      "relativePath": "desktop/tools/07-export.png"
+    },
+    {
+      "viewport": "desktop",
+      "section": "tools",
+      "name": "08-catalog",
+      "route": "/tools/catalog",
+      "relativePath": "desktop/tools/08-catalog.png"
+    },
+    {
+      "viewport": "desktop",
+      "section": "tools",
+      "name": "09-recovery",
+      "route": "/tools/recovery",
+      "relativePath": "desktop/tools/09-recovery.png"
+    },
+    {
+      "viewport": "desktop",
+      "section": "management",
+      "name": "00-management-index",
+      "route": "/management",
+      "relativePath": "desktop/management/00-management-index.png"
+    },
+    {
+      "viewport": "desktop",
+      "section": "management",
+      "name": "01-subscriptions",
+      "route": "/management/subscriptions",
+      "relativePath": "desktop/management/01-subscriptions.png"
+    },
+    {
+      "viewport": "desktop",
+      "section": "management",
+      "name": "02-users",
+      "route": "/management/users",
+      "relativePath": "desktop/management/02-users.png"
+    },
+    {
+      "viewport": "desktop",
+      "section": "management",
+      "name": "03-catalogs",
+      "route": "/management/catalogs",
+      "relativePath": "desktop/management/03-catalogs.png"
+    },
+    {
+      "viewport": "desktop",
+      "section": "management",
+      "name": "04-industries",
+      "route": "/management/industries",
+      "relativePath": "desktop/management/04-industries.png"
+    },
+    {
+      "viewport": "mobile",
+      "section": "settings",
+      "name": "00-settings-index",
+      "route": "/setting",
+      "relativePath": "mobile/settings/00-settings-index.png"
+    },
+    {
+      "viewport": "mobile",
+      "section": "settings",
+      "name": "01-personnel",
+      "route": "/setting/personnel",
+      "relativePath": "mobile/settings/01-personnel.png"
+    },
+    {
+      "viewport": "mobile",
+      "section": "settings",
+      "name": "02-roles",
+      "route": "/setting/roles",
+      "relativePath": "mobile/settings/02-roles.png"
+    },
+    {
+      "viewport": "mobile",
+      "section": "settings",
+      "name": "03-sync",
+      "route": "/setting/sync",
+      "relativePath": "mobile/settings/03-sync.png"
+    },
+    {
+      "viewport": "mobile",
+      "section": "settings",
+      "name": "04-backup",
+      "route": "/setting/backup",
+      "relativePath": "mobile/settings/04-backup.png"
+    },
+    {
+      "viewport": "mobile",
+      "section": "settings",
+      "name": "05-profile",
+      "route": "/setting/profile",
+      "relativePath": "mobile/settings/05-profile.png"
+    },
+    {
+      "viewport": "mobile",
+      "section": "settings",
+      "name": "06-security",
+      "route": "/setting/security",
+      "relativePath": "mobile/settings/06-security.png"
+    },
+    {
+      "viewport": "mobile",
+      "section": "settings",
+      "name": "07-appearance",
+      "route": "/setting/appearance",
+      "relativePath": "mobile/settings/07-appearance.png"
+    },
+    {
+      "viewport": "mobile",
+      "section": "settings",
+      "name": "08-industry",
+      "route": "/setting/industry",
+      "relativePath": "mobile/settings/08-industry.png"
+    },
+    {
+      "viewport": "mobile",
+      "section": "settings",
+      "name": "09-subscription",
+      "route": "/setting/subscription",
+      "relativePath": "mobile/settings/09-subscription.png"
+    },
+    {
+      "viewport": "mobile",
+      "section": "tools",
+      "name": "00-tools-index",
+      "route": "/tools",
+      "relativePath": "mobile/tools/00-tools-index.png"
+    },
+    {
+      "viewport": "mobile",
+      "section": "tools",
+      "name": "01-scanner",
+      "route": "/tools/scanner",
+      "relativePath": "mobile/tools/01-scanner.png"
+    },
+    {
+      "viewport": "mobile",
+      "section": "tools",
+      "name": "02-activity",
+      "route": "/tools/activity",
+      "relativePath": "mobile/tools/02-activity.png"
+    },
+    {
+      "viewport": "mobile",
+      "section": "tools",
+      "name": "03-help",
+      "route": "/tools/help",
+      "relativePath": "mobile/tools/03-help.png"
+    },
+    {
+      "viewport": "mobile",
+      "section": "tools",
+      "name": "04-import",
+      "route": "/tools/import",
+      "relativePath": "mobile/tools/04-import.png"
+    },
+    {
+      "viewport": "mobile",
+      "section": "tools",
+      "name": "05-labels",
+      "route": "/tools/labels",
+      "relativePath": "mobile/tools/05-labels.png"
+    },
+    {
+      "viewport": "mobile",
+      "section": "tools",
+      "name": "06-categories",
+      "route": "/tools/categories",
+      "relativePath": "mobile/tools/06-categories.png"
+    },
+    {
+      "viewport": "mobile",
+      "section": "tools",
+      "name": "07-export",
+      "route": "/tools/export",
+      "relativePath": "mobile/tools/07-export.png"
+    },
+    {
+      "viewport": "mobile",
+      "section": "tools",
+      "name": "08-catalog",
+      "route": "/tools/catalog",
+      "relativePath": "mobile/tools/08-catalog.png"
+    },
+    {
+      "viewport": "mobile",
+      "section": "tools",
+      "name": "09-recovery",
+      "route": "/tools/recovery",
+      "relativePath": "mobile/tools/09-recovery.png"
+    },
+    {
+      "viewport": "mobile",
+      "section": "management",
+      "name": "00-management-index",
+      "route": "/management",
+      "relativePath": "mobile/management/00-management-index.png"
+    },
+    {
+      "viewport": "mobile",
+      "section": "management",
+      "name": "01-subscriptions",
+      "route": "/management/subscriptions",
+      "relativePath": "mobile/management/01-subscriptions.png"
+    },
+    {
+      "viewport": "mobile",
+      "section": "management",
+      "name": "02-users",
+      "route": "/management/users",
+      "relativePath": "mobile/management/02-users.png"
+    },
+    {
+      "viewport": "mobile",
+      "section": "management",
+      "name": "03-catalogs",
+      "route": "/management/catalogs",
+      "relativePath": "mobile/management/03-catalogs.png"
+    },
+    {
+      "viewport": "mobile",
+      "section": "management",
+      "name": "04-industries",
+      "route": "/management/industries",
+      "relativePath": "mobile/management/04-industries.png"
+    }
+  ]
+}
