@@ -1,0 +1,468 @@
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+
+from fastapi import APIRouter, HTTPException, status
+from sqlalchemy import select, update
+
+from ..deps import CurrentAdmin, CurrentPlanManager, CurrentUserManager, DbSession
+from ..config import settings
+from ..models import (
+    AdminAuditLog,
+    CatalogProduct,
+    Store,
+    StoreMembership,
+    StorePlanGrant,
+    SubscriptionPlan,
+    SyncChange,
+    SyncOperation,
+    User,
+)
+from ..schemas import (
+    AdminSubscriptionUpdate,
+    AdminUserOut,
+    AdminUserRoleUpdate,
+    AdminUserStateUpdate,
+    AdminDevicePolicyUpdate,
+    PlanCreate,
+    PlanDefinitionOut,
+    PlanPatch,
+    StorePlanGrantCreate,
+    StorePlanGrantOut,
+    StorePlanGrantRevoke,
+)
+from ..services.audit_service import record_admin_action
+from ..plans import PLAN_CATALOG
+from ..entitlements import registry_payload, validate_policy
+from ..services.authorization_service import RoleId, set_role
+from ..services.subscription_service import (
+    assign_subscription,
+    entitlement_for_user,
+    list_plans,
+    plan_payload,
+)
+from ..services.plan_policy import effective_device_policy
+from ..services.plan_pricing import price_minor_from_toman, validate_invoice_allocation, validate_offer_configuration
+from ..services.entitlement_grant_service import create_store_grant, grant_payload, revoke_store_grant
+
+router = APIRouter(prefix="/admin", tags=["administration"])
+
+
+def _validate_duration(duration: int | None, unit: str | None) -> None:
+    if (duration is None) != (unit is None):
+        raise HTTPException(status_code=422, detail="PLAN_DURATION_INVALID")
+
+
+def _as_utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    return value if value.tzinfo is not None else value.replace(tzinfo=timezone.utc)
+
+
+def _user_or_404(db: DbSession, user_id: int) -> User:
+    user = db.get(User, user_id)
+    if user is None:
+        raise HTTPException(status_code=404, detail="USER_NOT_FOUND")
+    return user
+
+
+def _admin_user_payload(db: DbSession, user: User) -> dict:
+    entitlement = entitlement_for_user(db, user)
+    last_activity = max(
+        (timestamp for session in user.sessions if (timestamp := _as_utc(session.last_seen)) is not None),
+        default=None,
+    )
+    remaining_days = None
+    device_policy = effective_device_policy(db, user)
+    owner_store_id = db.scalar(select(Store.id).where(Store.owner_user_id == user.id))
+    if user.subscription_expires_at is not None:
+        expiration = user.subscription_expires_at
+        if expiration.tzinfo is None:
+            expiration = expiration.replace(tzinfo=timezone.utc)
+        remaining_days = max(0, (expiration - datetime.now(timezone.utc)).days)
+    return {
+        **AdminUserOut.model_validate(
+            {
+                **user.__dict__,
+                "subscription_status": entitlement["status"],
+                "last_activity_at": last_activity,
+                "remaining_days": remaining_days,
+                "device_limit_mode": user.device_limit_mode,
+                "device_limit_override": user.device_limit_override,
+                "effective_device_limit": device_policy["limit"],
+                "device_limit_source": device_policy["source"],
+                "active_session_count": sum(1 for session in user.sessions if session.is_active),
+                "store_id": owner_store_id,
+            }
+        ).model_dump(),
+    }
+
+
+@router.patch("/users/{user_id}/device-policy", response_model=AdminUserOut)
+def update_user_device_policy(
+    user_id: int,
+    payload: AdminDevicePolicyUpdate,
+    admin: CurrentUserManager,
+    db: DbSession,
+):
+    if payload.mode == "limited":
+        raise HTTPException(status_code=409, detail="DEVICE_RESTRICTION_NOT_AVAILABLE_V1")
+    user = _user_or_404(db, user_id)
+    user.device_limit_mode = payload.mode
+    user.device_limit_override = payload.limit if payload.mode == "limited" else None
+    record_admin_action(db, admin, "device_policy.updated", user, {
+        "mode": payload.mode, "limit": payload.limit,
+    })
+    db.commit()
+    db.refresh(user)
+    return _admin_user_payload(db, user)
+
+
+@router.get("/users", response_model=list[AdminUserOut])
+def list_users(_: CurrentAdmin, db: DbSession):
+    users = list(
+        db.scalars(select(User).order_by(User.created_at.desc(), User.id.desc()))
+    )
+    return [_admin_user_payload(db, user) for user in users]
+
+
+@router.patch("/users/{user_id}/state", response_model=AdminUserOut)
+def update_user_state(
+    user_id: int,
+    payload: AdminUserStateUpdate,
+    admin: CurrentUserManager,
+    db: DbSession,
+):
+    user = _user_or_404(db, user_id)
+    if user.is_system_admin and not payload.is_active:
+        raise HTTPException(status_code=409, detail="SYSTEM_ADMIN_IMMUTABLE")
+    if user.id == admin.id and not payload.is_active:
+        raise HTTPException(status_code=400, detail="CANNOT_DISABLE_SELF")
+
+    user.is_active = payload.is_active
+    if not user.is_active:
+        for session in user.sessions:
+            session.is_active = False
+    record_admin_action(
+        db,
+        admin,
+        "account.enabled" if payload.is_active else "account.disabled",
+        user,
+    )
+    db.commit()
+    db.refresh(user)
+    return _admin_user_payload(db, user)
+
+
+@router.patch("/users/{user_id}/role", response_model=AdminUserOut)
+def update_user_role(
+    user_id: int,
+    payload: AdminUserRoleUpdate,
+    admin: CurrentUserManager,
+    db: DbSession,
+):
+    user = _user_or_404(db, user_id)
+    role = RoleId(payload.role)
+    if user.id == admin.id and not user.is_system_admin and role is not RoleId.ADMIN:
+        raise HTTPException(status_code=400, detail="CANNOT_DEMOTE_SELF")
+    set_role(user, role)
+    record_admin_action(
+        db,
+        admin,
+        "role.admin_granted" if role is RoleId.ADMIN else "role.admin_revoked",
+        user,
+    )
+    db.commit()
+    db.refresh(user)
+    return _admin_user_payload(db, user)
+
+
+@router.patch("/users/{user_id}/subscription", response_model=AdminUserOut)
+def update_user_subscription(
+    user_id: int,
+    payload: AdminSubscriptionUpdate,
+    admin: CurrentUserManager,
+    db: DbSession,
+):
+    user = _user_or_404(db, user_id)
+    previous = {
+        "plan": user.plan,
+        "started_at": (
+            user.subscription_started_at.isoformat()
+            if user.subscription_started_at
+            else None
+        ),
+        "expires_at": (
+            user.subscription_expires_at.isoformat()
+            if user.subscription_expires_at
+            else None
+        ),
+    }
+    assign_subscription(
+        db,
+        user,
+        payload.plan,
+        payload.subscription_started_at,
+        payload.subscription_expires_at,
+    )
+    record_admin_action(
+        db,
+        admin,
+        "subscription.changed",
+        user,
+        {
+            "previous_plan": previous["plan"],
+            "plan": user.plan,
+            "previous": previous,
+            "current": {
+                "plan": user.plan,
+                "started_at": (
+                    user.subscription_started_at.isoformat()
+                    if user.subscription_started_at
+                    else None
+                ),
+                "expires_at": (
+                    user.subscription_expires_at.isoformat()
+                    if user.subscription_expires_at
+                    else None
+                ),
+            },
+        },
+    )
+    db.commit()
+    db.refresh(user)
+    return _admin_user_payload(db, user)
+
+
+@router.delete("/users/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_user(user_id: int, admin: CurrentUserManager, db: DbSession) -> None:
+    user = _user_or_404(db, user_id)
+    if user.is_system_admin:
+        raise HTTPException(status_code=409, detail="SYSTEM_ADMIN_IMMUTABLE")
+    if user.id == admin.id:
+        raise HTTPException(status_code=400, detail="CANNOT_DELETE_SELF")
+    if db.scalar(select(Store.id).where(Store.owner_user_id == user.id)) is not None or db.scalar(
+        select(StoreMembership.id).where(StoreMembership.user_id == user.id)
+    ) is not None:
+        raise HTTPException(status_code=409, detail="STORE_IDENTITY_DELETE_FORBIDDEN")
+    if db.scalar(select(SyncOperation.id).where(SyncOperation.actor_user_id == user.id)) is not None or db.scalar(
+        select(SyncChange.id).where(SyncChange.actor_user_id == user.id)
+    ) is not None:
+        raise HTTPException(status_code=409, detail="ACTOR_HISTORY_DELETE_FORBIDDEN")
+    inventory_items = list(user.inventory_items)
+    private_catalogs = {
+        item.catalog_product
+        for item in inventory_items
+        if not item.catalog_product.is_shared
+    }
+    uploaded_images = {
+        path
+        for path in [
+            *(item.image_url for item in inventory_items),
+            *(catalog.image_url for catalog in private_catalogs),
+        ]
+        if path and path.startswith("/uploads/")
+    }
+
+    try:
+        # Audit history survives, but a deleted actor can no longer remain an FK.
+        db.execute(
+            update(AdminAuditLog)
+            .where(AdminAuditLog.actor_user_id == user.id)
+            .values(actor_user_id=None)
+        )
+        record_admin_action(db, admin, "user.deleted", user, {"username": user.username})
+        db.flush()
+        db.delete(user)
+        db.flush()
+        for catalog in private_catalogs:
+            db.delete(catalog)
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+
+    for image_url in uploaded_images:
+        try:
+            (settings.UPLOAD_DIR / Path(image_url).name).unlink(missing_ok=True)
+        except OSError:
+            pass
+
+
+@router.get("/plans", response_model=list[PlanDefinitionOut])
+def admin_list_plans(_: CurrentPlanManager, db: DbSession):
+    return [plan_payload(plan) for plan in list_plans(db)]
+
+
+@router.get("/entitlements/registry")
+def entitlement_registry(_: CurrentPlanManager):
+    return registry_payload()
+
+
+@router.get("/plans/{plan_id}/subscribers", response_model=list[AdminUserOut])
+def plan_subscribers(plan_id: str, _: CurrentPlanManager, db: DbSession):
+    if db.get(SubscriptionPlan, plan_id) is None:
+        raise HTTPException(status_code=404, detail="PLAN_NOT_FOUND")
+    users = list(
+        db.scalars(
+            select(User)
+            .where(User.plan == plan_id)
+            .order_by(User.created_at.desc(), User.id.desc())
+        )
+    )
+    return [_admin_user_payload(db, user) for user in users]
+
+
+@router.post("/plans", response_model=PlanDefinitionOut, status_code=201)
+def create_plan(payload: PlanCreate, admin: CurrentPlanManager, db: DbSession):
+    if db.get(SubscriptionPlan, payload.id) is not None:
+        raise HTTPException(status_code=409, detail="PLAN_EXISTS")
+    price_minor = price_minor_from_toman(payload.price_toman)
+    validate_offer_configuration(
+        plan_id=payload.id, price_minor=price_minor, duration=payload.duration,
+        duration_unit=payload.duration_unit, is_offer_available=payload.is_offer_available,
+    )
+    validate_policy(payload.features, payload.limits)
+    validate_invoice_allocation(payload.id, payload.features)
+    plan = SubscriptionPlan(
+        id=payload.id,
+        name=payload.name,
+        description=payload.description,
+        price_minor=price_minor,
+        currency="IRR",
+        duration=payload.duration,
+        duration_unit=payload.duration_unit,
+        is_offer_available=payload.is_offer_available,
+        is_active=payload.is_active,
+        features_json=json.dumps(payload.features),
+        limits_json=json.dumps(payload.limits),
+    )
+    db.add(plan)
+    record_admin_action(db, admin, "plan.created", metadata={"plan": plan.id, "reason": payload.reason})
+    db.commit()
+    db.refresh(plan)
+    return plan_payload(plan)
+
+
+@router.patch("/plans/{plan_id}", response_model=PlanDefinitionOut)
+def update_plan(
+    plan_id: str,
+    payload: PlanPatch,
+    admin: CurrentPlanManager,
+    db: DbSession,
+):
+    plan = db.scalar(
+        select(SubscriptionPlan)
+        .where(SubscriptionPlan.id == plan_id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+    if plan is None:
+        raise HTTPException(status_code=404, detail="PLAN_NOT_FOUND")
+    values = payload.model_dump(exclude_unset=True)
+    expected_revision = values.pop("expected_revision")
+    reason = values.pop("reason")
+    if plan.policy_revision != expected_revision:
+        raise HTTPException(status_code=409, detail="PLAN_REVISION_CONFLICT")
+    if "price_toman" in values:
+        values["price_minor"] = price_minor_from_toman(values.pop("price_toman"))
+    resulting_duration = values.get("duration", plan.duration)
+    resulting_unit = values.get("duration_unit", plan.duration_unit)
+    resulting_price = values.get("price_minor", plan.price_minor)
+    resulting_offer_available = values.get("is_offer_available", plan.is_offer_available)
+    validate_offer_configuration(
+        plan_id=plan.id, price_minor=resulting_price, duration=resulting_duration,
+        duration_unit=resulting_unit, is_offer_available=resulting_offer_available,
+    )
+    resulting_features = values.get("features", json.loads(plan.features_json or "{}"))
+    resulting_limits = values.get("limits", json.loads(plan.limits_json or "{}"))
+    validate_policy(resulting_features, resulting_limits)
+    validate_invoice_allocation(plan.id, resulting_features)
+    before = {
+        "name": plan.name, "description": plan.description, "price_minor": plan.price_minor,
+        "currency": plan.currency, "duration": plan.duration, "duration_unit": plan.duration_unit,
+        "is_offer_available": plan.is_offer_available, "is_active": plan.is_active,
+        "features": json.loads(plan.features_json or "{}"),
+        "limits": json.loads(plan.limits_json or "{}"),
+    }
+    if "features" in values:
+        plan.features_json = json.dumps(values.pop("features"))
+    if "limits" in values:
+        plan.limits_json = json.dumps(values.pop("limits"))
+    for field, value in values.items():
+        setattr(plan, field, value)
+    plan.policy_revision += 1
+    record_admin_action(db, admin, "plan.changed", metadata={
+        "plan": plan.id, "reason": reason, "previous_revision": expected_revision,
+        "revision": plan.policy_revision, "previous": before,
+        "current": {
+            "price_minor": plan.price_minor, "currency": plan.currency,
+            "duration": plan.duration, "duration_unit": plan.duration_unit,
+            "is_offer_available": plan.is_offer_available,
+        },
+        "warning": "Affects existing subscriptions immediately",
+    })
+    db.commit()
+    db.refresh(plan)
+    return plan_payload(plan)
+
+
+@router.get("/grants", response_model=list[StorePlanGrantOut])
+def list_grants(_: CurrentPlanManager, db: DbSession, store_id: int | None = None):
+    statement = select(StorePlanGrant).order_by(StorePlanGrant.created_at.desc(), StorePlanGrant.id.desc())
+    if store_id is not None:
+        statement = statement.where(StorePlanGrant.store_id == store_id)
+    return [grant_payload(item) for item in db.scalars(statement)]
+
+
+@router.post("/grants", response_model=StorePlanGrantOut, status_code=201)
+def create_grant(payload: StorePlanGrantCreate, admin: CurrentPlanManager, db: DbSession):
+    grant = create_store_grant(db, admin, **payload.model_dump())
+    db.commit()
+    db.refresh(grant)
+    return grant_payload(grant)
+
+
+@router.post("/grants/{grant_id}/revoke", response_model=StorePlanGrantOut)
+def revoke_grant(grant_id: int, payload: StorePlanGrantRevoke, admin: CurrentPlanManager, db: DbSession):
+    grant = revoke_store_grant(db, admin, grant_id, payload.reason)
+    db.commit()
+    db.refresh(grant)
+    return grant_payload(grant)
+
+
+@router.delete("/plans/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_plan(plan_id: str, admin: CurrentPlanManager, db: DbSession) -> None:
+    plan = db.get(SubscriptionPlan, plan_id)
+    if plan is None:
+        raise HTTPException(status_code=404, detail="PLAN_NOT_FOUND")
+    if plan_id in PLAN_CATALOG:
+        raise HTTPException(status_code=409, detail="PLAN_BUILT_IN")
+    if db.scalar(select(User.id).where(User.plan == plan_id).limit(1)) is not None:
+        raise HTTPException(status_code=409, detail="PLAN_HAS_SUBSCRIBERS")
+    record_admin_action(db, admin, "plan.deleted", metadata={"plan": plan.id})
+    db.flush()
+    db.delete(plan)
+    db.commit()
+
+
+@router.get("/audit")
+def audit_log(_: CurrentAdmin, db: DbSession, limit: int = 100):
+    records = list(
+        db.scalars(
+            select(AdminAuditLog)
+            .order_by(AdminAuditLog.created_at.desc(), AdminAuditLog.id.desc())
+            .limit(min(max(limit, 1), 500))
+        )
+    )
+    return [
+        {
+            "id": item.id,
+            "actor_user_id": item.actor_user_id,
+            "target_user_id": item.target_user_id,
+            "action": item.action,
+            "metadata": json.loads(item.metadata_json) if item.metadata_json else None,
+            "created_at": item.created_at,
+        }
+        for item in records
+    ]
