@@ -1,0 +1,182 @@
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { SyncQueueItem } from "@/shared/lib/infrastructure/storage/types";
+
+const mocks = vi.hoisted(() => ({
+  isOffline: vi.fn(), isOnline: vi.fn(), isAuthenticated: vi.fn(),
+  count: vi.fn(), getDue: vi.fn(), getAll: vi.fn(), markInFlight: vi.fn(),
+  markFailed: vi.fn(), markConflict: vi.fn(), removeIfUnchanged: vi.fn(), resetFailures: vi.fn(),
+  canAccess: vi.fn(), canWrite: vi.fn(), ensureVerified: vi.fn(), setStatus: vi.fn(), getStatus: vi.fn(),
+  user: vi.fn(),
+}));
+vi.mock("@/shared/api/token-store", () => ({ isAuthenticated: mocks.isAuthenticated }));
+vi.mock("@/shared/lib/infrastructure/network/network-service", () => ({
+  networkService: { isOffline: mocks.isOffline, isOnline: mocks.isOnline },
+}));
+vi.mock("@/shared/lib/infrastructure/sync/queue.service", () => ({
+  queueService: {
+    count: mocks.count, getDue: mocks.getDue, getAll: mocks.getAll,
+    markInFlight: mocks.markInFlight, markFailed: mocks.markFailed,
+    markConflict: mocks.markConflict,
+    removeIfUnchanged: mocks.removeIfUnchanged, resetFailures: mocks.resetFailures,
+  },
+}));
+vi.mock("@/shared/access/access-state", () => ({
+  accessState: { canAccess: mocks.canAccess, canWrite: mocks.canWrite, user: mocks.user },
+}));
+vi.mock("@/shared/access/entitlement-service", () => ({
+  entitlementService: { ensureVerified: mocks.ensureVerified },
+}));
+vi.mock("@/shared/lib/infrastructure/sync/sync-status", () => ({
+  syncStatusStore: { set: mocks.setStatus, get: mocks.getStatus },
+}));
+
+import { registerSyncHandler, syncService } from "@/shared/lib/infrastructure/sync/sync-service";
+
+function item(entity: string): SyncQueueItem {
+  return {
+    id: `1:${entity}-1`, ownerUserId: 1, operationId: "operation-1",
+    entity, entityId: 1, action: "UPDATE", payload: { quantity: 2 },
+    createdAt: 1, updatedAt: 1, retryCount: 0, status: "pending", nextAttemptAt: 0,
+  };
+}
+
+describe("synchronization orchestration", () => {
+  beforeEach(() => {
+    Object.values(mocks).forEach((mock) => mock.mockReset());
+    mocks.isOffline.mockReturnValue(false);
+    mocks.isOnline.mockReturnValue(true);
+    mocks.isAuthenticated.mockReturnValue(true);
+    mocks.canAccess.mockReturnValue(true);
+    mocks.canWrite.mockReturnValue(true);
+    mocks.user.mockReturnValue({ id: 1, store_id: 1 });
+    mocks.ensureVerified.mockResolvedValue(undefined);
+    mocks.markInFlight.mockImplementation(async (queued) => queued);
+    mocks.removeIfUnchanged.mockResolvedValue(true);
+    mocks.getAll.mockResolvedValue([]);
+    mocks.getStatus.mockReturnValue({ lastSyncedAt: null });
+  });
+
+  it("leaves queued work untouched while offline", async () => {
+    mocks.isOffline.mockReturnValue(true);
+    mocks.count.mockResolvedValue(2);
+    await syncService.sync();
+    expect(mocks.getDue).not.toHaveBeenCalled();
+    expect(mocks.setStatus).toHaveBeenCalledWith({ state: "idle", pending: 2 });
+  });
+
+  it("marks applied operations in flight and removes only the unchanged record", async () => {
+    const entity = "applied-test";
+    const queued = item(entity);
+    mocks.getDue.mockResolvedValue([queued]);
+    registerSyncHandler(entity, vi.fn().mockResolvedValue([{ itemId: queued.id, status: "applied" }]));
+    await syncService.sync();
+    expect(mocks.markInFlight).toHaveBeenCalledWith(queued);
+    expect(mocks.removeIfUnchanged).toHaveBeenCalledWith(queued);
+    expect(mocks.setStatus).toHaveBeenLastCalledWith(expect.objectContaining({ state: "synced", pending: 0 }));
+  });
+
+  it("does not dispatch when the durable in-flight claim fails", async () => {
+    const entity = "claim-failure-test";
+    const queued = item(entity);
+    const handler = vi.fn();
+    mocks.getDue.mockResolvedValue([queued]);
+    mocks.markInFlight.mockRejectedValue(new Error("indexeddb unavailable"));
+    registerSyncHandler(entity, handler);
+
+    await syncService.sync();
+
+    expect(handler).not.toHaveBeenCalled();
+    expect(mocks.removeIfUnchanged).not.toHaveBeenCalled();
+    expect(mocks.setStatus).toHaveBeenLastCalledWith(expect.objectContaining({
+      state: "failed",
+      error: "indexeddb unavailable",
+    }));
+  });
+
+  it("drains a newly unblocked successor in the same synchronization run", async () => {
+    const entity = "successor-test";
+    const first = item(entity);
+    const successor = {
+      ...first,
+      id: `1:${entity}-2`,
+      operationId: "operation-2",
+      createdAt: 2,
+      updatedAt: 2,
+    };
+    const handler = vi.fn(async (items: SyncQueueItem[]) => (
+      items.map((queued) => ({ itemId: queued.id, status: "applied" as const }))
+    ));
+    mocks.getDue
+      .mockResolvedValueOnce([first])
+      .mockResolvedValueOnce([successor])
+      .mockResolvedValueOnce([]);
+    registerSyncHandler(entity, handler);
+
+    await syncService.sync();
+
+    expect(handler).toHaveBeenNthCalledWith(1, [first]);
+    expect(handler).toHaveBeenNthCalledWith(2, [successor]);
+    expect(mocks.removeIfUnchanged).toHaveBeenCalledTimes(2);
+  });
+
+  it("retains an operation for retry when the server omits its result", async () => {
+    const entity = "omitted-test";
+    const queued = item(entity);
+    mocks.getDue.mockResolvedValue([queued]);
+    registerSyncHandler(entity, vi.fn().mockResolvedValue([]));
+    await syncService.sync();
+    expect(mocks.markFailed).toHaveBeenCalledWith(queued, expect.any(Error));
+    expect(mocks.removeIfUnchanged).not.toHaveBeenCalled();
+  });
+
+  it("does not acknowledge an old partition after the authenticated account changes", async () => {
+    const entity = "account-change-test";
+    const queued = item(entity);
+    mocks.getDue.mockResolvedValue([queued]);
+    registerSyncHandler(entity, vi.fn().mockImplementation(async () => {
+      mocks.user.mockReturnValue({ id: 2, store_id: 2 });
+      return [{ itemId: queued.id, status: "applied" }];
+    }));
+
+    await syncService.sync();
+
+    expect(mocks.removeIfUnchanged).not.toHaveBeenCalled();
+    expect(mocks.markFailed).not.toHaveBeenCalled();
+    expect(mocks.setStatus).toHaveBeenLastCalledWith(expect.objectContaining({
+      state: "failed",
+      error: "SYNC_ACCOUNT_CHANGED",
+    }));
+  });
+
+  it("retains a rejected local change as an inspectable conflict", async () => {
+    const entity = "conflict-test";
+    const queued = item(entity);
+    mocks.getDue.mockResolvedValue([queued]);
+    mocks.getAll.mockResolvedValue([{ ...queued, status: "conflict", lastError: "newer server version" }]);
+    registerSyncHandler(entity, vi.fn().mockResolvedValue([{
+      itemId: queued.id,
+      status: "conflict",
+      error: "newer server version",
+    }]));
+
+    await syncService.sync();
+
+    expect(mocks.markConflict).toHaveBeenCalledWith(queued, "newer server version");
+    expect(mocks.removeIfUnchanged).not.toHaveBeenCalled();
+    expect(mocks.setStatus).toHaveBeenLastCalledWith(expect.objectContaining({
+      state: "conflict",
+      pending: 1,
+      error: "newer server version",
+    }));
+  });
+
+  it("does not push queued writes after subscription expiry", async () => {
+    mocks.canWrite.mockReturnValue(false);
+    mocks.getAll.mockResolvedValue([item("preserved-test")]);
+    await syncService.sync();
+    expect(mocks.getDue).not.toHaveBeenCalled();
+    expect(mocks.setStatus).toHaveBeenLastCalledWith(expect.objectContaining({
+      state: "failed", pending: 1, error: "SUBSCRIPTION_EXPIRED",
+    }));
+  });
+});
