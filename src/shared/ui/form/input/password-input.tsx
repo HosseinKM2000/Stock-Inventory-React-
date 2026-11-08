@@ -6,16 +6,17 @@ import { useState, type ComponentPropsWithoutRef, type ReactNode } from "react";
 
 type PasswordInputProps = ComponentPropsWithoutRef<typeof TextField.Root> & {
   leftSlot?: ReactNode;
+  eyeSide?: "left" | "right";
 };
 
-export function PasswordInput({ leftSlot, ...props }: PasswordInputProps) {
+export function PasswordInput({ leftSlot, eyeSide = "right", ...props }: PasswordInputProps) {
   const [visible, setVisible] = useState(false);
 
   return (
     <TextField.Root {...props} type={visible ? "text" : "password"}>
       {leftSlot && <TextField.Slot side="left">{leftSlot}</TextField.Slot>}
 
-      <TextField.Slot side="right">
+      <TextField.Slot side={eyeSide}>
         <IconButton
           size="1"
           color="gray"

@@ -1,4 +1,5 @@
 from datetime import datetime
+import re
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, StrictInt, field_validator, model_validator
@@ -10,10 +11,23 @@ from .mobile import INVALID_MOBILE_MESSAGE, normalize_iranian_mobile
 # =========================================================
 # AUTH / USER
 # =========================================================
+USERNAME_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9._-]*$")
+
+
 class UserBase(BaseModel):
     first_name: str | None = Field(default=None, min_length=1, max_length=120)
     last_name: str | None = Field(default=None, min_length=1, max_length=120)
-    username: str = Field(min_length=3, max_length=120)
+    username: str = Field(min_length=3, max_length=30)
+
+    @field_validator("username", mode="before")
+    @classmethod
+    def validate_username(cls, value: object) -> str:
+        if not isinstance(value, str):
+            raise ValueError("USERNAME_INVALID")
+        username = value.strip()
+        if not USERNAME_PATTERN.fullmatch(username):
+            raise ValueError("USERNAME_INVALID")
+        return username
 
 
 class SignupRequest(UserBase):
@@ -44,13 +58,31 @@ class SignupRequest(UserBase):
     def validate_password_bytes(cls, value: str) -> str:
         if len(value.encode("utf-8")) > 72:
             raise ValueError("PASSWORD_TOO_LONG")
+        if not any(character.isupper() for character in value):
+            raise ValueError("PASSWORD_UPPERCASE_REQUIRED")
+        if not any(character.islower() for character in value):
+            raise ValueError("PASSWORD_LOWERCASE_REQUIRED")
+        if not any(character.isdigit() for character in value):
+            raise ValueError("PASSWORD_NUMBER_REQUIRED")
         return value
 
 
 class LoginRequest(BaseModel):
-    username: str
-    password: str
-    device_fingerprint: str
+    username: str = Field(min_length=1, max_length=120)
+    password: str = Field(min_length=1, max_length=128)
+    device_fingerprint: str = Field(min_length=1, max_length=255)
+
+    @field_validator("username")
+    @classmethod
+    def normalize_identifier(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("password")
+    @classmethod
+    def validate_login_password_bytes(cls, value: str) -> str:
+        if len(value.encode("utf-8")) > 72:
+            raise ValueError("PASSWORD_TOO_LONG")
+        return value
 
 
 class UserUpdate(BaseModel):
