@@ -13,7 +13,12 @@ const mobileSchema = z.string().transform((value, context) => {
 
 export const registerSchema = z
   .object({
-    username: z.string().trim().min(5, "نام کاربری باید حداقل ۵ کاراکتر داشته باشد."),
+    username: z
+      .string()
+      .trim()
+      .min(3, "نام کاربری باید حداقل ۳ کاراکتر داشته باشد.")
+      .max(30, "نام کاربری نباید بیشتر از ۳۰ کاراکتر باشد.")
+      .regex(/^[A-Za-z][A-Za-z0-9._-]*$/, "نام کاربری باید با حرف انگلیسی شروع شود و فقط شامل حروف انگلیسی، عدد، نقطه، خط تیره یا زیرخط باشد."),
     phone: mobileSchema,
     password: passwordSchema,
     repeatPassword: z.string(),

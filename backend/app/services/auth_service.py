@@ -4,7 +4,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..models import User
-from ..mobile import DUPLICATE_MOBILE_MESSAGE
+from ..mobile import DUPLICATE_MOBILE_MESSAGE, normalize_iranian_mobile
 from ..schemas import LoginRequest, TokenResponse, UserOut, SignupRequest, UserUpdate
 from .plan_policy import can_add_device
 from .store_service import attach_store_context, create_owner_store
@@ -109,11 +109,20 @@ def login(
     # ----------------------------------------------------
     # Authenticate User
     # ----------------------------------------------------
-    user = db.scalar(
-        select(User).where(
-            User.username == payload.username
-        )
-    )
+    identifier = payload.username
+    try:
+        canonical_mobile = normalize_iranian_mobile(identifier)
+    except ValueError:
+        canonical_mobile = None
+
+    user = None
+    if canonical_mobile:
+        user = db.scalar(select(User).where(User.phone == canonical_mobile))
+
+    # Keep exact username lookup as a fallback for existing accounts whose
+    # username resembles a phone number.
+    if user is None:
+        user = db.scalar(select(User).where(User.username == identifier))
 
     if (
         user is None

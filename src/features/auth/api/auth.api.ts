@@ -11,10 +11,14 @@ import type {
 import { normalizeUser } from "../normalize-user";
 
 export async function login(payload: LoginPayload): Promise<AuthResponse> {
+  const credentials = {
+    username: payload.username,
+    password: payload.password,
+  };
   const response = await apiFetch<AuthResponse>("/auth/login", {
     method: "POST",
     json: {
-      ...payload,
+      ...credentials,
       device_fingerprint: getDeviceFingerprint(),
     },
   });

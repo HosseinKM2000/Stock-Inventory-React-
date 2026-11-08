@@ -179,3 +179,32 @@ def test_legacy_account_without_phone_can_still_login(client: TestClient):
     })
     assert logged_in.status_code == 200, logged_in.text
     assert logged_in.json()["user"]["phone"] is None
+
+
+def test_login_accepts_username_and_equivalent_mobile_forms(client: TestClient):
+    username = f"mobile-login-{uuid.uuid4().hex[:8]}"
+    payload = minimal_payload(username)
+    created = client.post("/api/auth/signup", json=payload)
+    assert created.status_code == 201, created.text
+
+    for identifier in (username, f"+98{payload['phone'][1:]}"):
+        logged_in = client.post("/api/auth/login", json={
+            "username": identifier,
+            "password": payload["password"],
+            "device_fingerprint": f"login-{uuid.uuid4().hex}",
+        })
+        assert logged_in.status_code == 200, logged_in.text
+        assert logged_in.json()["user"]["username"] == username
+
+
+@pytest.mark.parametrize("username", ["ab", "9owner", "owner name", "مالک"])
+def test_signup_rejects_invalid_username_contract(client: TestClient, username: str):
+    response = client.post("/api/auth/signup", json=minimal_payload(username))
+    assert response.status_code == 422
+
+
+@pytest.mark.parametrize("password", ["alllowercase1", "ALLUPPERCASE1", "NoNumberHere"])
+def test_signup_rejects_weak_password_contract(client: TestClient, password: str):
+    username = f"weak-{uuid.uuid4().hex[:8]}"
+    response = client.post("/api/auth/signup", json={**minimal_payload(username), "password": password})
+    assert response.status_code == 422

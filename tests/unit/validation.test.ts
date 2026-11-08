@@ -5,8 +5,34 @@ import { passwordSchema } from "@/shared/validation/password.schema";
 
 describe("authentication validation", () => {
   it("trims a valid login username and rejects missing credentials", () => {
-    expect(loginSchema.parse({ username: "  tester  ", password: "secret" }).username).toBe("tester");
+    const result = loginSchema.parse({ username: "  tester  ", password: "secret" });
+    expect(result.username).toBe("tester");
+    expect(result.remember).toBe(false);
     expect(loginSchema.safeParse({ username: " ", password: "" }).success).toBe(false);
+  });
+
+  it.each(["09123456789", "+989123456789", "۰۹۱۲۳۴۵۶۷۸۹", "٠٩١٢٣٤٥٦٧٨٩"])(
+    "accepts and canonicalizes mobile login identifier %s",
+    (username) => {
+      expect(loginSchema.parse({ username, password: "secret", remember: true })).toEqual({
+        username: "09123456789",
+        password: "secret",
+        remember: true,
+      });
+    },
+  );
+
+  it("rejects a phone-shaped but invalid login identifier", () => {
+    expect(loginSchema.safeParse({ username: "09123", password: "secret" }).success).toBe(false);
+  });
+
+  it.each(["ab", "9owner", "owner name", "مالک"])("rejects invalid registration username %s", (username) => {
+    expect(registerSchema.safeParse({
+      username,
+      phone: "09123456789",
+      password: "StrongPass123!",
+      repeatPassword: "StrongPass123!",
+    }).success).toBe(false);
   });
 
   it.each(["short1A", "alllowercase1", "ALLUPPERCASE1", "NoNumberHere"])(

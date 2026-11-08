@@ -48,6 +48,7 @@ export type AuthResponse = {
 export type LoginPayload = {
   username: string;
   password: string;
+  remember?: boolean;
 };
 
 export type RegisterPayload = {

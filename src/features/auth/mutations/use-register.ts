@@ -39,8 +39,8 @@ export function useLogin() {
   return useMutation({
     mutationFn: login,
 
-    onSuccess: async (data: AuthResponse) => {
-      setToken(data.access_token);
+    onSuccess: async (data: AuthResponse, variables) => {
+      setToken(data.access_token, variables.remember ?? true);
       transitionToAccount(queryClient, data.user);
 
       if (data.user.temporary_password_required) {
