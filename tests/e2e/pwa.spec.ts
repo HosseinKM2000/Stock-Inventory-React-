@@ -14,10 +14,27 @@ test("PWA manifest and service worker are served", async ({ request }) => {
   ]));
 
   for (const asset of [
+    "/favicon-16.png",
+    "/favicon-32.png",
+    "/favicon-48.png",
+    "/pwa-icon-96.png",
+    "/pwa-icon-128.png",
+    "/pwa-icon-144.png",
     "/pwa-icon-192.png",
+    "/pwa-icon-256.png",
+    "/pwa-icon-384.png",
     "/pwa-icon-512.png",
     "/pwa-icon-maskable-192.png",
+    "/pwa-icon-maskable-96.png",
+    "/pwa-icon-maskable-128.png",
+    "/pwa-icon-maskable-144.png",
+    "/pwa-icon-maskable-256.png",
+    "/pwa-icon-maskable-384.png",
     "/pwa-icon-maskable-512.png",
+    "/apple-touch-icon-120.png",
+    "/apple-touch-icon-152.png",
+    "/apple-touch-icon-167.png",
+    "/apple-touch-icon-180.png",
     "/apple-touch-icon.png",
   ]) {
     const response = await request.get(asset);
