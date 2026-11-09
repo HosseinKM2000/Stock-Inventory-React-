@@ -11,3 +11,11 @@
 - Activity attribution uses stable server-derived actor and membership IDs; never persist passwords or tokens.
 
 Detailed architecture and extension rules: [docs/store-personnel-architecture.md](docs/store-personnel-architecture.md).
+
+## Git development workflow
+
+- Never implement a product change directly on `draft`.
+- Start each change from a clean, up-to-date `draft` and create a focused branch with a matching prefix such as `feat/`, `fix/`, `refactor/`, `test/`, `docs/`, or `chore/`.
+- Keep commits scoped to the requested change, run proportionate tests, and resolve failures before integration.
+- Integrate completed work back into `draft` with an explicit merge commit (`--no-ff`) so the development history remains auditable.
+- Do not push, delete branches, or rewrite shared history unless the user explicitly requests it.

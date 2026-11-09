@@ -23,12 +23,12 @@ describe("dashboard section order", () => {
   it("keeps visual, DOM, and keyboard order aligned with operational priority", () => {
     render(<Theme><DashboardComponent /></Theme>);
     const expected = [
-      "مجموع کالاها",
-      "عدم موجودی",
-      "کمبود موجودی",
       "نیاز به خرید",
       "بدون قیمت",
       "اقدام‌های امروز",
+      "مجموع کالاها",
+      "عدم موجودی",
+      "کمبود موجودی",
       "ارزشمندترین‌ها",
       "ارزش موجودی",
       "محصولات بدون دسته یا برچسب",
