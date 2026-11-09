@@ -53,10 +53,12 @@
   padding: max(1.5rem, env(safe-area-inset-top)) 0 max(1.75rem, env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
-.auth-header { text-align: center; }
+/* Auto margins center the full content group only while free space exists.
+   On vertical overflow they collapse to zero, keeping scrolling start-aligned. */
+.auth-header { margin-top: auto; text-align: center; }
 
 .auth-brand {
   display: inline-flex;
@@ -231,7 +233,7 @@
   background: rgb(122 26 52 / 34%);
 }
 
-.auth-footer { text-align: center; }
+.auth-footer { margin-bottom: auto; text-align: center; }
 .auth-switch { margin: 1.5rem 0 0; color: var(--auth-text); font-size: 1rem; }
 .auth-switch a { color: var(--auth-accent); font-weight: 800; text-decoration: underline; text-underline-offset: .4rem; }
 .auth-trust { margin: 1.15rem 0 0; display: flex; align-items: center; justify-content: center; gap: .55rem; color: var(--auth-muted); font-size: .86rem; }
