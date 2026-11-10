@@ -8,9 +8,21 @@ import {
   useSyncEvents,
   useSyncStatus,
 } from "@/shared/lib/infrastructure/sync/use-sync-status";
-import { CheckIcon, ClockIcon, ReloadIcon } from "@radix-ui/react-icons";
+import {
+  ArchiveIcon,
+  CheckIcon,
+  ClockIcon,
+  CounterClockwiseClockIcon,
+  GearIcon,
+  GlobeIcon,
+  ImageIcon,
+  MagnifyingGlassIcon,
+  MobileIcon,
+  ReloadIcon,
+} from "@radix-ui/react-icons";
 import { Badge, Box, Callout, Flex, Grid, Text } from "@radix-ui/themes";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { formatJalaliDateTime } from "@/shared/lib/date/jalali";
 import { PageGuide } from "@/features/app/layout/page-guide";
 import { mediaRecoveryService, type MediaRecoverySummary } from "@/shared/lib/infrastructure/media/media-recovery.service";
@@ -25,6 +37,9 @@ const entityLabels: Record<string, string> = {
   product: "محصول",
   category: "دسته‌بندی",
   label: "برچسب",
+  barcode: "بارکد",
+  inventory_movement: "تغییر موجودی",
+  invoice: "فاکتور",
 };
 
 const actionLabels: Record<SyncQueueItem["action"], string> = {
@@ -46,6 +61,21 @@ function formatTime(value: number | null) {
   return value ? dateFormatter.format(value) : "هنوز انجام نشده";
 }
 
+type QueueFilter = "all" | "pending" | "sending" | "error";
+
+const queueFilters: Array<{ value: QueueFilter; label: string }> = [
+  { value: "all", label: "همه" },
+  { value: "pending", label: "در انتظار" },
+  { value: "sending", label: "در حال ارسال" },
+  { value: "error", label: "نیازمند بررسی" },
+];
+
+function queueFilterFor(item: SyncQueueItem): Exclude<QueueFilter, "all"> {
+  if (item.status === "in_flight") return "sending";
+  if (item.status === "conflict" || item.status === "fatal_error" || item.status === "dead_letter" || isAccessDeniedOutcomeUnresolved(item)) return "error";
+  return "pending";
+}
+
 export function SyncStatusPage() {
   const online = useOnline();
   const status = useSyncStatus();
@@ -58,8 +88,25 @@ export function SyncStatusPage() {
   const [mediaWorking, setMediaWorking] = useState(false);
   const [mediaProgress, setMediaProgress] = useState<string | null>(null);
   const [resolvingOperationId, setResolvingOperationId] = useState<string | null>(null);
+  const [queueFilter, setQueueFilter] = useState<QueueFilter>("all");
+  const [queueSearch, setQueueSearch] = useState("");
   const indicator = getSyncIndicator(status, online);
   const paused = syncService.isPaused();
+
+  const queueCounts = useMemo(() => queue.reduce((counts, item) => {
+    counts[queueFilterFor(item)] += 1;
+    return counts;
+  }, { pending: 0, sending: 0, error: 0 }), [queue]);
+
+  const visibleQueue = useMemo(() => {
+    const query = queueSearch.trim().toLocaleLowerCase("fa");
+    return queue.filter((item) => {
+      if (queueFilter !== "all" && queueFilterFor(item) !== queueFilter) return false;
+      if (!query) return true;
+      const searchable = `${actionLabels[item.action]} ${entityLabels[item.entity] ?? item.entity} ${queueStatusLabels[item.status]} ${item.operationId}`;
+      return searchable.toLocaleLowerCase("fa").includes(query);
+    });
+  }, [queue, queueFilter, queueSearch]);
 
   useEffect(() => {
     let current = true;
@@ -171,14 +218,15 @@ export function SyncStatusPage() {
   };
   const mediaCoverageColor = (mediaSummary?.missing ?? 0) > 0 ? "amber" : "green";
   const mediaCoverageLabel = `${(mediaSummary?.localAvailable ?? 0).toLocaleString("fa-IR")} محلی از ${(mediaSummary?.serverAvailable ?? 0).toLocaleString("fa-IR")}`;
+  const scrollTo = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 
   return (
-    <Box dir="rtl" className="sync-detail-page mx-auto w-full max-w-5xl">
-      <PageGuide section="تنظیمات" sectionTo="/setting" title="همگام‌سازی" description="اینجا ببینید تغییرها ثبت شده‌اند یا به اتصال و بررسی شما نیاز دارند." icon={ReloadIcon} helpTopic="sync" />
+    <Box dir="rtl" className="sync-detail-page mx-auto w-full max-w-6xl">
+      <PageGuide section="تنظیمات" sectionTo="/setting" title="همگام‌سازی و بک‌لاگ" description="وضعیت ارسال تغییرها، صف عملیات و دسترسی آفلاین این دستگاه را یکجا ببینید." icon={ReloadIcon} helpTopic="sync" />
 
-      <section className="sync-overview" aria-labelledby="sync-current-title">
-        <Flex align="center" justify="between" gap="4" wrap="wrap">
-          <Flex align="center" gap="3">
+      <section className="sync-overview sync-control-hero" data-status={indicator.kind} aria-labelledby="sync-current-title">
+        <div className="sync-control-hero-main">
+          <Flex align="center" gap="3" className="sync-control-summary">
             <span className="sync-overview-icon" data-status={indicator.kind} aria-hidden="true">
               <SyncStateIcon kind={indicator.kind} />
             </span>
@@ -192,16 +240,17 @@ export function SyncStatusPage() {
             onClick={runSync}
             disabled={!online || paused}
             loading={status.state === "syncing"}
+            className="sync-primary-action"
           >
             <ReloadIcon /> همگام‌سازی اکنون
           </Button>
-        </Flex>
+        </div>
 
-        <Grid columns={{ initial: "2", md: "4" }} gap="4" mt="6" className="sync-facts">
-          <Box><Text size="1" color="gray">اتصال</Text><Text as="div" weight="bold" mt="1">{online ? "آنلاین" : "آفلاین"}</Text></Box>
-          <Box><Text size="1" color="gray">در انتظار</Text><Text as="div" weight="bold" mt="1">{status.pending.toLocaleString("fa-IR")} تغییر</Text></Box>
+        <Grid columns={{ initial: "2", md: "4" }} gap="4" className="sync-facts">
+          <Box><GlobeIcon aria-hidden="true" /><span><Text size="1" color="gray">اتصال</Text><Text as="div" weight="bold" mt="1">{online ? "آنلاین" : "آفلاین"}</Text></span></Box>
+          <Box><MobileIcon aria-hidden="true" /><span><Text size="1" color="gray">این دستگاه</Text><Text as="div" weight="bold" mt="1">فعال</Text></span></Box>
+          <Box><ArchiveIcon aria-hidden="true" /><span><Text size="1" color="gray">در انتظار</Text><Text as="div" weight="bold" mt="1">{status.pending.toLocaleString("fa-IR")} تغییر</Text></span></Box>
           <Box><Text size="1" color="gray">آخرین همگام‌سازی</Text><Text as="div" weight="bold" mt="1">{formatTime(status.lastSyncedAt)}</Text></Box>
-          <Box><Text size="1" color="gray">پیگیری خودکار</Text><Text as="div" weight="bold" mt="1">{paused ? "متوقف" : "فعال"}</Text></Box>
         </Grid>
       </section>
 
@@ -212,7 +261,118 @@ export function SyncStatusPage() {
         </Callout.Root>
       )}
 
-      <section className="sync-detail-section mt-5" aria-labelledby="offline-media-title">
+      <div className="sync-action-grid" aria-label="اقدام‌های همگام‌سازی">
+        <button type="button" className="sync-action-tile sync-action-tile-primary" aria-label="همگام‌سازی تغییرهای منتظر" onClick={runSync} disabled={!online || paused || status.state === "syncing"}>
+          <ReloadIcon aria-hidden="true" />
+          <span><strong>همگام‌سازی اکنون</strong><small>{status.pending ? `${status.pending.toLocaleString("fa-IR")} تغییر آماده ارسال` : "دریافت و ارسال تازه‌ترین تغییرها"}</small></span>
+        </button>
+        <button type="button" className="sync-action-tile" onClick={() => scrollTo("sync-backlog")}>
+          <CounterClockwiseClockIcon aria-hidden="true" />
+          <span><strong>تاریخچه و بک‌لاگ</strong><small>بررسی نتیجه عملیات اخیر</small></span>
+        </button>
+        <button type="button" className="sync-action-tile" onClick={() => scrollTo("offline-media-title")}>
+          <ImageIcon aria-hidden="true" />
+          <span><strong>دسترسی آفلاین</strong><small>تصاویر ذخیره‌شده روی دستگاه</small></span>
+        </button>
+        <Link to="/setting/backup" className="sync-action-tile">
+          <GearIcon aria-hidden="true" />
+          <span><strong>پشتیبان‌گیری</strong><small>تنظیم فایل و بازیابی اطلاعات</small></span>
+        </Link>
+      </div>
+
+      <div className="sync-workspace-grid mt-5">
+        <section id="sync-backlog" className="sync-detail-section sync-backlog-panel" aria-labelledby="sync-queue-title">
+          <div className="sync-section-heading">
+            <Box>
+              <h2 id="sync-queue-title" className="text-lg font-bold">کارهای در انتظار</h2>
+              <Text as="p" size="2" color="gray" mt="1">عملیات این دستگاه تا دریافت نتیجه قطعی در این فهرست می‌مانند.</Text>
+            </Box>
+            <Badge color={queue.length > 0 ? "amber" : "green"} radius="full">{queue.length.toLocaleString("fa-IR")}</Badge>
+          </div>
+
+          <div className="sync-queue-toolbar">
+            <label className="sync-search-field">
+              <MagnifyingGlassIcon aria-hidden="true" />
+              <span className="sr-only">جست‌وجوی عملیات</span>
+              <input value={queueSearch} onChange={(event) => setQueueSearch(event.target.value)} placeholder="جست‌وجوی عملیات…" />
+            </label>
+            <div className="sync-filter-list" role="group" aria-label="فیلتر وضعیت عملیات">
+              {queueFilters.map((filter) => {
+                const count = filter.value === "all" ? queue.length : queueCounts[filter.value];
+                return (
+                  <button key={filter.value} type="button" data-active={queueFilter === filter.value} onClick={() => setQueueFilter(filter.value)}>
+                    {filter.label}<span>{count.toLocaleString("fa-IR")}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {queueError ? (
+            <Callout.Root color="red"><Callout.Text>{queueError}</Callout.Text></Callout.Root>
+          ) : queueLoading ? (
+            <Text color="gray">در حال بررسی…</Text>
+          ) : visibleQueue.length === 0 ? (
+            <Flex align="center" gap="2" className="sync-empty-state">
+              <CheckIcon aria-hidden="true" />
+              <Text size="2">{queue.length ? "عملیاتی با این فیلتر پیدا نشد." : "تغییر منتظری وجود ندارد."}</Text>
+            </Flex>
+          ) : (
+            <ol className="sync-queue-list">
+              {visibleQueue.slice(0, 20).map((item) => (
+                <li key={item.id} data-state={queueFilterFor(item)}>
+                  <span className="sync-operation-icon" aria-hidden="true"><ArchiveIcon /></span>
+                  <Box className="sync-operation-copy">
+                    <Text as="div" size="2" weight="bold">{actionLabels[item.action]} {entityLabels[item.entity] ?? item.entity}</Text>
+                    <Text as="div" size="1" color="gray" mt="1">{formatTime(item.updatedAt)}</Text>
+                    {item.lastError && <><Text as="div" size="1" color="red" mt="1">{syncErrorMessage(item.lastError)}</Text>{syncDiagnosticCode(item.lastError) ? <details className="sync-diagnostic"><summary>جزئیات برای پشتیبانی</summary><code dir="ltr">{syncDiagnosticCode(item.lastError)}</code></details> : null}</>}
+                    {isAccessDeniedOutcomeUnresolved(item) ? (
+                      <Button type="button" mt="2" variant="soft" disabled={!online} loading={resolvingOperationId === item.operationId} onClick={() => void resolveAccessDeniedOutcome(item)}>
+                        بررسی نتیجه با همان شناسه
+                      </Button>
+                    ) : null}
+                  </Box>
+                  <Badge className="sync-operation-status" color={isAccessDeniedOutcomeUnresolved(item) ? "amber" : item.status === "conflict" || item.status === "fatal_error" || item.status === "dead_letter" ? "red" : item.status === "in_flight" ? "blue" : "amber"}>
+                    {isAccessDeniedOutcomeUnresolved(item) ? "نتیجه نامشخص" : queueStatusLabels[item.status]}
+                  </Badge>
+                </li>
+              ))}
+            </ol>
+          )}
+        </section>
+
+        <section className="sync-detail-section sync-events-panel" aria-labelledby="sync-events-title">
+          <Box mb="4">
+            <h2 id="sync-events-title" className="text-lg font-bold">گزارش وضعیت اخیر</h2>
+            <Text as="p" size="1" color="gray" mt="1">آخرین نتیجه‌های ثبت‌شده در این اجرا</Text>
+          </Box>
+          {events.length === 0 ? (
+            <Flex align="center" gap="2" className="sync-empty-state">
+              <ClockIcon aria-hidden="true" />
+              <Text size="2">هنوز رخدادی در این اجرا ثبت نشده است.</Text>
+            </Flex>
+          ) : (
+            <ol className="sync-event-list">
+              {events.slice(0, 10).map((event) => {
+                const eventIndicator = getSyncIndicator(event, online);
+                return (
+                  <li key={event.id}>
+                    <span className="sync-event-marker" data-status={eventIndicator.kind} aria-hidden="true"><SyncStateIcon kind={eventIndicator.kind} /></span>
+                    <Box>
+                      <Text as="div" size="2" weight="bold">{eventIndicator.label}</Text>
+                      <Text as="div" size="1" color="gray" mt="1">{formatTime(event.occurredAt)}</Text>
+                      {event.error && <Text as="div" size="1" color="red" mt="1">{syncErrorMessage(event.error)}</Text>}
+                    </Box>
+                  </li>
+                );
+              })}
+            </ol>
+          )}
+        </section>
+      </div>
+
+      <Grid columns={{ initial: "1", lg: "2" }} gap="5" mt="5">
+      <section className="sync-detail-section sync-media-panel" aria-labelledby="offline-media-title">
         <Flex align="center" justify="between" gap="4" wrap="wrap">
           <Box className="min-w-0 flex-1">
             <h2 id="offline-media-title" className="text-lg font-bold">تصاویر آفلاین</h2>
@@ -234,97 +394,7 @@ export function SyncStatusPage() {
           )}
         </Flex>
       </section>
-
-      <Grid columns={{ initial: "1", lg: "2" }} gap="5" mt="5">
-        <section className="sync-detail-section" aria-labelledby="sync-queue-title">
-          <Flex align="center" justify="between" gap="3" mb="4">
-            <Box>
-              <h2 id="sync-queue-title" className="text-lg font-bold">کارهای در انتظار</h2>
-              <Text as="p" size="1" color="gray" mt="1">تغییرهایی که هنوز نتیجه نهایی آن‌ها مشخص نشده است</Text>
-            </Box>
-            <Badge color={queue.length > 0 ? "amber" : "green"} radius="full">
-              {queue.length.toLocaleString("fa-IR")}
-            </Badge>
-          </Flex>
-
-          {queueError ? (
-            <Callout.Root color="red"><Callout.Text>{queueError}</Callout.Text></Callout.Root>
-          ) : queueLoading ? (
-            <Text color="gray">در حال بررسی…</Text>
-          ) : queue.length === 0 ? (
-            <Flex align="center" gap="2" className="sync-empty-state">
-              <CheckIcon aria-hidden="true" />
-              <Text size="2">تغییر منتظری وجود ندارد.</Text>
-            </Flex>
-          ) : (
-            <ol className="sync-queue-list">
-              {queue.slice(0, 12).map((item) => (
-                <li key={item.id}>
-                  <Flex justify="between" gap="3" align="start">
-                    <Box>
-                      <Text as="div" size="2" weight="bold">
-                        {actionLabels[item.action]} {entityLabels[item.entity] ?? item.entity}
-                      </Text>
-                      <Text as="div" size="1" color="gray" mt="1">
-                        {formatTime(item.updatedAt)}
-                      </Text>
-                      {item.lastError && <><Text as="div" size="1" color="red" mt="1">{syncErrorMessage(item.lastError)}</Text>{syncDiagnosticCode(item.lastError) ? <details className="sync-diagnostic"><summary>جزئیات برای پشتیبانی</summary><code dir="ltr">{syncDiagnosticCode(item.lastError)}</code></details> : null}</>}
-                      {isAccessDeniedOutcomeUnresolved(item) ? (
-                        <Button
-                          type="button"
-                          mt="2"
-                          variant="soft"
-                          disabled={!online}
-                          loading={resolvingOperationId === item.operationId}
-                          onClick={() => void resolveAccessDeniedOutcome(item)}
-                        >
-                          بررسی نتیجه با همان شناسه
-                        </Button>
-                      ) : null}
-                    </Box>
-                    <Badge color={isAccessDeniedOutcomeUnresolved(item) ? "amber" : item.status === "conflict" || item.status === "fatal_error" || item.status === "dead_letter" ? "red" : item.status === "in_flight" ? "blue" : "amber"}>
-                      {isAccessDeniedOutcomeUnresolved(item) ? "نتیجه نامشخص" : queueStatusLabels[item.status]}
-                    </Badge>
-                  </Flex>
-                </li>
-              ))}
-            </ol>
-          )}
-        </section>
-
-        <section className="sync-detail-section" aria-labelledby="sync-events-title">
-          <Box mb="4">
-            <h2 id="sync-events-title" className="text-lg font-bold">گزارش وضعیت اخیر</h2>
-            <Text as="p" size="1" color="gray" mt="1">آخرین نتیجه‌هایی که برای پیگیری شما نمایش داده شده‌اند</Text>
-          </Box>
-          {events.length === 0 ? (
-            <Flex align="center" gap="2" className="sync-empty-state">
-              <ClockIcon aria-hidden="true" />
-              <Text size="2">هنوز رخدادی در این اجرا ثبت نشده است.</Text>
-            </Flex>
-          ) : (
-            <ol className="sync-event-list">
-              {events.slice(0, 10).map((event) => {
-                const eventIndicator = getSyncIndicator(event, online);
-                return (
-                  <li key={event.id}>
-                    <span className="sync-event-marker" data-status={eventIndicator.kind} aria-hidden="true">
-                      <SyncStateIcon kind={eventIndicator.kind} />
-                    </span>
-                    <Box>
-                      <Text as="div" size="2" weight="bold">{eventIndicator.label}</Text>
-                      <Text as="div" size="1" color="gray" mt="1">{formatTime(event.occurredAt)}</Text>
-                      {event.error && <Text as="div" size="1" color="red" mt="1">{syncErrorMessage(event.error)}</Text>}
-                    </Box>
-                  </li>
-                );
-              })}
-            </ol>
-          )}
-        </section>
-      </Grid>
-
-      <section className="sync-detail-section mt-5" aria-labelledby="support-report-title">
+      <section className="sync-detail-section sync-support-panel" aria-labelledby="support-report-title">
         <Flex align="center" justify="between" gap="4" wrap="wrap">
           <Box className="min-w-0 flex-1">
             <h2 id="support-report-title" className="text-lg font-bold">گزارش امن برای پشتیبانی</h2>
@@ -338,15 +408,11 @@ export function SyncStatusPage() {
           </Flex>
         </Flex>
       </section>
+      </Grid>
 
       <section className="sync-flow" aria-labelledby="sync-flow-title">
-        <h2 id="sync-flow-title" className="text-lg font-bold">چه زمانی این صفحه را بررسی کنید؟</h2>
-        <ol>
-          <li><span>۱</span><div><strong>بعد از تغییرهای زیاد</strong><small>پس از ورود گروهی یا ویرایش چند محصول، نتیجه را اینجا بررسی کنید.</small></div></li>
-          <li><span>۲</span><div><strong>پیش از خروج یا پاک‌سازی مرورگر</strong><small>مطمئن شوید کاری در انتظار نمانده است.</small></div></li>
-          <li><span>۳</span><div><strong>وقتی وضعیت «در انتظار» است</strong><small>اتصال اینترنت را بررسی کنید و «همگام‌سازی اکنون» را بزنید.</small></div></li>
-          <li><span>۴</span><div><strong>وقتی خطا می‌بینید</strong><small>راهنمای همان پیام را دنبال کنید و عملیات را چندبار تکرار نکنید.</small></div></li>
-        </ol>
+        <span className="sync-flow-icon" aria-hidden="true"><ReloadIcon /></span>
+        <div><h2 id="sync-flow-title" className="text-lg font-bold">همگام‌سازی چطور کار می‌کند؟</h2><p>تغییرهای شما ابتدا امن روی این دستگاه ثبت می‌شوند و پس از اتصال، با حساب مجموعه همگام می‌شوند. پیش از خروج یا پاک‌سازی مرورگر، بک‌لاگ را بررسی کنید.</p></div>
       </section>
     </Box>
   );

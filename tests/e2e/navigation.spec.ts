@@ -482,9 +482,12 @@ test("sync status control exposes responsive details without navigation", async 
   await seedAuthenticatedUser(page, "USER");
   await page.goto("/setting/sync");
 
-  await expect(page.getByRole("heading", { name: "همگام‌سازی", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: "همگام‌سازی اکنون" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "همگام‌سازی و بک‌لاگ", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "همگام‌سازی اکنون", exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "همگام‌سازی تغییرهای منتظر" })).toBeVisible();
+  await expect(page.getByRole("link", { name: /پشتیبان‌گیری/ })).toHaveAttribute("href", "/setting/backup");
   await expect(page.getByRole("heading", { name: "کارهای در انتظار" })).toBeVisible();
+  await expect(page.getByRole("group", { name: "فیلتر وضعیت عملیات" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "گزارش وضعیت اخیر" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "تصاویر آفلاین" })).toBeVisible();
   const mediaAction = page.getByRole("button", { name: "دریافت تصاویر برای استفاده آفلاین" });
