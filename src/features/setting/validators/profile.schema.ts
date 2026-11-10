@@ -11,6 +11,7 @@ const mobileSchema = z.string().transform((value, context) => {
 });
 
 export const profileSchema = z.object({
+  store_name: z.string().trim().min(1, "نام مجموعه الزامی است").max(160, "نام مجموعه بیش از حد طولانی است"),
   first_name: z.string().min(1, "نام الزامی است"),
   last_name: z.string().min(1, "نام خانوادگی الزامی است"),
   username: z.string().min(3, "حداقل ۳ کاراکتر"),

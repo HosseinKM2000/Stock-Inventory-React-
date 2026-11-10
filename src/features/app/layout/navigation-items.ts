@@ -19,7 +19,7 @@ const basePrimaryNavigationItems = [
 ] as const satisfies readonly NavigationItem[];
 
 export const settingsNavigationItems = [
-  { id: "profile", label: "پروفایل", description: "اطلاعات حساب و تصویر پروفایل", to: "/setting/profile", icon: PersonIcon, group: "settings", requiresOnline: true },
+  { id: "profile", label: "پروفایل", description: "اطلاعات حساب و نام مجموعه", to: "/setting/profile", icon: PersonIcon, group: "settings", requiresOnline: true },
   { id: "appearance", label: "ظاهر", description: "رنگ و حالت نمایش برنامه", to: "/setting/appearance", icon: MixerHorizontalIcon, group: "settings" },
   { id: "security", label: "امنیت", description: "تغییر رمز عبور و تنظیمات امنیتی", to: "/setting/security", icon: LockClosedIcon, group: "settings", requiresOnline: true },
   { id: "industry", label: "حوزه کاری", description: "انتخاب حوزه فعالیت حساب", to: "/setting/industry", icon: CubeIcon, group: "settings", requiresOnline: true },

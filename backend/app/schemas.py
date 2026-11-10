@@ -92,6 +92,7 @@ class UserUpdate(BaseModel):
     username: str | None = Field(default=None, min_length=3, max_length=120)
     email: EmailStr | None = None
     phone: str | None = Field(default=None, max_length=40)
+    store_name: str | None = Field(default=None, min_length=1, max_length=160)
 
     @model_validator(mode="before")
     @classmethod
@@ -111,6 +112,15 @@ class UserUpdate(BaseModel):
             return normalize_iranian_mobile(value)
         except ValueError as error:
             raise PydanticCustomError("iranian_mobile", INVALID_MOBILE_MESSAGE) from error
+
+    @field_validator("store_name", mode="before")
+    @classmethod
+    def validate_store_name(cls, value: object) -> str | None:
+        if value is None:
+            return None
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError("STORE_NAME_REQUIRED")
+        return value.strip()
 
 
 class PasswordUpdate(BaseModel):
@@ -160,6 +170,7 @@ class UserOut(BaseModel):
     created_at: datetime
     industry: IndustrySimpleOut | None = None
     store_id: int | None = None
+    store_name: str | None = None
     membership_id: int | None = None
     store_role_id: int | None = None
     store_role_name: str | None = None

@@ -66,6 +66,7 @@ async function seedIncompleteOwner(page: Page) {
     is_system_admin: false,
     is_store_owner: true,
     store_id: 9201,
+    store_name: "فروشگاه اولیه",
     membership_id: 10201,
     store_operating_mode: "solo",
     store_policy_version: 1,
@@ -99,6 +100,8 @@ test("profile reminder survives viewing and resolves after successful owner comp
   await expect(page.getByText("اطلاع‌رسانی")).toBeVisible();
   await page.getByRole("link", { name: "تکمیل پروفایل" }).click();
   await expect(page).toHaveURL(/\/setting\/profile/);
+  await expect(page.getByText("تصویر پروفایل", { exact: true })).toHaveCount(0);
+  await expect(page.locator('input[name="store_name"]')).toHaveValue("فروشگاه اولیه");
 
   await page.goto("/dashboard");
   await notificationButton.click();
@@ -106,11 +109,13 @@ test("profile reminder survives viewing and resolves after successful owner comp
   await page.getByRole("link", { name: "تکمیل پروفایل" }).click();
 
   await page.locator('input[name="first_name"]').fill("Sara");
+  await page.locator('input[name="store_name"]').fill("فروشگاه سپهر");
   await page.locator('input[name="last_name"]').fill("Ahmadi");
   await page.locator('input[name="email"]').fill("sara@example.com");
   await page.locator('input[name="phone"]').fill("09120000000");
   await page.getByRole("button", { name: "ذخیره اطلاعات" }).click();
   await expect(page.getByText(/با موفقیت ذخیره شد/)).toBeVisible();
+  expect(currentUser.store_name).toBe("فروشگاه سپهر");
 
   await page.goto("/dashboard");
   await notificationButton.click();

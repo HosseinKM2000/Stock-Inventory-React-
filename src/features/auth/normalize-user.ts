@@ -4,12 +4,12 @@ type UserPayload = Partial<Pick<
   User,
   "plan" | "is_active" | "is_admin" | "role" | "is_system_admin" |
   "subscription_started_at" | "subscription_expires_at" | "industry_id"
-  | "store_id" | "membership_id" | "store_role_id" | "store_role_name"
+  | "store_id" | "store_name" | "membership_id" | "store_role_id" | "store_role_name"
   | "store_permissions" | "is_store_owner" | "temporary_password_required"
   | "credentials_notice_viewed" | "membership_authorization_checked_at"
 >> & Omit<User, "plan" | "is_active" | "is_admin" | "role" | "is_system_admin" |
   "subscription_started_at" | "subscription_expires_at" | "industry_id" |
-  "store_id" | "membership_id" | "store_role_id" | "store_role_name" |
+  "store_id" | "store_name" | "membership_id" | "store_role_id" | "store_role_name" |
   "store_permissions" | "is_store_owner" | "temporary_password_required" |
   "credentials_notice_viewed" | "membership_authorization_checked_at">;
 
@@ -26,6 +26,7 @@ export function normalizeUser(user: UserPayload): User {
     subscription_expires_at: user.subscription_expires_at ?? null,
     industry_id: user.industry_id ?? null,
     store_id: user.store_id ?? null,
+    store_name: user.store_name ?? user.username,
     membership_id: user.membership_id ?? null,
     store_role_id: user.store_role_id ?? null,
     store_role_name: user.store_role_name ?? null,

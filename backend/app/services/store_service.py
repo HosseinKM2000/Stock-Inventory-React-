@@ -142,6 +142,7 @@ def attach_store_context(db: Session, user: User) -> StoreContext | None:
         return None
     role = context.membership.role
     user.store_id = context.store.id
+    user.store_name = context.store.name
     user.membership_id = context.membership.id
     user.store_role_id = context.membership.role_id
     user.store_role_name = "مالک" if context.is_owner else (role.name if role else None)

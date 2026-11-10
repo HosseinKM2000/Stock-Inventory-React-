@@ -151,6 +151,9 @@ def test_personnel_capacity_temporary_password_gate_and_attribution(client: Test
     assert changed.status_code == 200
     allowed = client.get("/api/products", headers=person_headers)
     assert allowed.status_code == 200
+    denied_store_rename = client.patch("/api/auth/me", headers=person_headers, json={"store_name": "Forbidden rename"})
+    assert denied_store_rename.status_code == 403
+    assert denied_store_rename.json()["detail"] == "STORE_OWNER_REQUIRED"
 
     mode = client.get("/api/store/operating-mode", headers=owner_headers).json()
     team_headers = {**person_headers, "X-Client-Data-Schema": "2"}
