@@ -15,6 +15,7 @@ export type User = {
   subscription_expires_at: string | null;
   created_at: string;
   store_id?: number | null;
+  store_name?: string | null;
   membership_id?: number | null;
   store_role_id?: number | null;
   store_role_name?: string | null;
@@ -63,4 +64,5 @@ export type UpdateProfilePayload = {
   username?: string;
   email?: string | null;
   phone?: string | null;
+  store_name?: string;
 };

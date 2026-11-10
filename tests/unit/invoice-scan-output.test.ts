@@ -12,6 +12,7 @@ const user: User = {
   id: 607, first_name: "Invoice", last_name: "Owner", username: "invoice-output", email: null, phone: "09120000607",
   industry_id: 1, plan: "free", is_active: true, is_admin: false, is_store_owner: true, role: "USER", is_system_admin: false,
   store_id: 707, membership_id: 807, store_operating_mode: "solo", store_policy_version: 1,
+  store_name: "فروشگاه تنظیم",
   subscription_started_at: null, subscription_expires_at: null, created_at: "2026-01-01T00:00:00Z",
 };
 const policy: Entitlement = {
@@ -62,7 +63,7 @@ describe("invoice barcode selection and immutable output", () => {
 
   it("builds only from immutable snapshots, labels Solo pending, and refuses unknown or cross-account output", () => {
     const source = invoice(); const document = buildInvoiceDocument(source);
-    expect(document).toMatchObject({ title: "عنوان ذخیره‌شده", total: 1200, lines: [{ product: "نام ذخیره‌شده", unitPrice: 600 }] });
+    expect(document).toMatchObject({ storeName: "فروشگاه تنظیم", title: "عنوان ذخیره‌شده", total: 1200, lines: [{ product: "نام ذخیره‌شده", unitPrice: 600 }] });
     expect(buildInvoiceDocument(invoice("pending")).localOnly).toBe(true);
     expect(() => buildInvoiceDocument(invoice("conflict"))).toThrow("سند نهایی");
     expect(() => buildInvoiceDocument({ ...source, local_store_id: 999 })).toThrow("INVOICE_SCOPE_MISMATCH");

@@ -6,7 +6,7 @@ import { ActivityLogIcon, ArchiveIcon, BookmarkIcon, ClipboardIcon, CubeIcon, Da
 import type { ComponentType } from "react";
 
 export type NavigationGroup = "primary" | "settings" | "tools" | "management";
-export type NavigationRoute = "/dashboard" | "/inventory/list" | "/setting" | "/setting/sync" | "/setting/update" | "/setting/profile" | "/setting/security" | "/setting/appearance" | "/setting/backup" | "/setting/industry" | "/setting/subscription" | "/setting/personnel" | "/setting/roles" | "/tools" | "/tools/invoices" | "/tools/scanner" | "/tools/categories" | "/tools/export" | "/tools/catalog" | "/tools/recovery" | "/tools/import" | "/tools/labels" | "/tools/help" | "/tools/activity" | "/management" | "/management/subscriptions" | "/management/users" | "/management/catalogs" | "/management/industries";
+export type NavigationRoute = "/dashboard" | "/inventory/list" | "/setting" | "/setting/sync" | "/setting/update" | "/setting/profile" | "/setting/security" | "/setting/appearance" | "/setting/backup" | "/setting/industry" | "/setting/subscription" | "/setting/personnel" | "/setting/roles" | "/tools" | "/tools/invoices" | "/tools/counterparties" | "/tools/scanner" | "/tools/categories" | "/tools/export" | "/tools/catalog" | "/tools/recovery" | "/tools/import" | "/tools/labels" | "/tools/help" | "/tools/activity" | "/management" | "/management/subscriptions" | "/management/users" | "/management/catalogs" | "/management/industries";
 type NavigationIcon = ComponentType<{ width?: number | string; height?: number | string }>;
 
 export type NavigationItem = { id: string; label: string; description?: string; to: NavigationRoute; icon: NavigationIcon; group: NavigationGroup; adminOnly?: boolean; ownerOnly?: boolean; storePermission?: string; capabilities?: string[]; requiresOnline?: boolean; toolId?: DomainToolId };
@@ -19,7 +19,7 @@ const basePrimaryNavigationItems = [
 ] as const satisfies readonly NavigationItem[];
 
 export const settingsNavigationItems = [
-  { id: "profile", label: "پروفایل", description: "اطلاعات حساب و تصویر پروفایل", to: "/setting/profile", icon: PersonIcon, group: "settings", requiresOnline: true },
+  { id: "profile", label: "پروفایل", description: "اطلاعات حساب و نام مجموعه", to: "/setting/profile", icon: PersonIcon, group: "settings", requiresOnline: true },
   { id: "appearance", label: "ظاهر", description: "رنگ و حالت نمایش برنامه", to: "/setting/appearance", icon: MixerHorizontalIcon, group: "settings" },
   { id: "security", label: "امنیت", description: "تغییر رمز عبور و تنظیمات امنیتی", to: "/setting/security", icon: LockClosedIcon, group: "settings", requiresOnline: true },
   { id: "industry", label: "حوزه کاری", description: "انتخاب حوزه فعالیت حساب", to: "/setting/industry", icon: CubeIcon, group: "settings", requiresOnline: true },
@@ -33,6 +33,7 @@ export const settingsNavigationItems = [
 
 export const toolsNavigationItems = [
   { id: "invoices", storePermission: "invoices.view", capabilities: ["invoices.purchase", "invoices.sale"], label: "فاکتورها", description: "ثبت اتمیک خرید و فروش و تاریخچه غیرقابل‌ویرایش", to: "/tools/invoices", icon: FileTextIcon, group: "tools" },
+  { id: "counterparties", storePermission: "counterparties.view", capabilities: ["invoices.purchase", "invoices.sale"], label: "طرف‌حساب‌ها", description: "افراد و مجموعه‌های طرف معامله خرید و فروش", to: "/tools/counterparties", icon: PersonIcon, group: "tools", requiresOnline: true },
   { id: "scanner", toolId: "scanner", storePermission: "barcodes.lookup", label: "اسکنر", description: "جست‌وجو و عملیات امن موجودی با دوربین یا بارکدخوان", to: "/tools/scanner", icon: MagnifyingGlassIcon, group: "tools" },
   { id: "activity", label: "فعالیت مجموعه", description: "تغییرات تأییدشده و ردشده با نام انجام‌دهنده", to: "/tools/activity", icon: ActivityLogIcon, group: "tools", ownerOnly: true, requiresOnline: true },
   { id: "help", label: "راهنمای برنامه", description: "راهنمای کوتاه و مرحله‌به‌مرحله همه بخش‌های برنامه", to: "/tools/help", icon: QuestionMarkCircledIcon, group: "tools" },

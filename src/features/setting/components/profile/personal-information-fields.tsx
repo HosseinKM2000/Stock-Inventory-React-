@@ -23,6 +23,7 @@ import {
 } from "../../validators/profile.schema";
 
 const emptyValues: ProfileFormValues = {
+  store_name: "",
   first_name: "",
   last_name: "",
   username: "",
@@ -39,7 +40,8 @@ const PersonalInformationFields = () => {
     initialValues: emptyValues,
 
     onSubmit(values) {
-      updateProfile.mutate(values, {
+      const { store_name, ...personalValues } = values;
+      updateProfile.mutate(me?.is_store_owner ? { ...personalValues, store_name } : personalValues, {
         onError(error) {
           if (error instanceof ApiError && error.message === DUPLICATE_MOBILE_MESSAGE) {
             form.setFieldError("phone", DUPLICATE_MOBILE_MESSAGE);
@@ -54,6 +56,7 @@ const PersonalInformationFields = () => {
     if (!me) return;
 
     loadForm({
+      store_name: me.store_name ?? me.username,
       first_name: me.first_name ?? "",
       last_name: me.last_name ?? "",
       username: me.username,
@@ -95,6 +98,17 @@ const PersonalInformationFields = () => {
         )}
 
         <Grid columns={{ initial: "1", md: "3" }} gap="5" mt="5" className="w-full min-w-0">
+          <FormField label="نام مجموعه" id="store_name" error={form.errors.store_name}>
+            <TextInput
+              size="3"
+              name="store_name"
+              value={form.values.store_name}
+              onChange={form.handleChange}
+              disabled={!me?.is_store_owner}
+              autoComplete="organization"
+            />
+          </FormField>
+
           <FormField label="نام" id="first_name" error={form.errors.first_name}>
             <TextInput
               size="3"

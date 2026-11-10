@@ -21,6 +21,7 @@ export type Invoice = {
   id: number;
   invoice_type: "purchase" | "sale";
   title: string;
+  counterparty_id?: number | null;
   counterparty: string | null;
   status: InvoiceStatus;
   total_amount: number | null;

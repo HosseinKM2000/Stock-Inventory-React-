@@ -42,4 +42,6 @@ export const permissionOptions = [
   ["barcodes.lookup", "مشاهده و اسکن بارکد"], ["barcodes.manage", "مدیریت بارکد"], ["labels.print", "چاپ لیبل"],
   ["dashboard.view", "مشاهده داشبورد"], ["tools.import", "ورود اطلاعات"], ["tools.export", "خروجی"],
   ["tools.catalog", "کاتالوگ"], ["tools.backup", "پشتیبان‌گیری"], ["tools.restore", "بازیابی"],
+  ["invoices.view", "مشاهده فاکتورها"], ["invoices.post", "ثبت فاکتور"], ["invoices.cancel", "لغو فاکتور"],
+  ["counterparties.view", "مشاهده طرف‌حساب‌ها"], ["counterparties.manage", "مدیریت طرف‌حساب‌ها"],
 ] as const;

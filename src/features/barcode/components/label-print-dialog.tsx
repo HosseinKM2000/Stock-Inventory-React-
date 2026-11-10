@@ -22,6 +22,7 @@ export function LabelPrintDialog({ open, productIds, barcodeId = null, onOpenCha
   const [profileId, setProfileId] = useState(profiles[0]?.id ?? "");
   const [renderedPreview, setRenderedPreview] = useState<{ key: string; html: string; error: string | null } | null>(null);
   const profile = profiles.find((item) => item.id === profileId) ?? profiles[0];
+  const storeName = accessState.user()?.store_name?.trim() || accessState.user()?.username;
 
   useEffect(() => {
     if (!open) return;
@@ -53,18 +54,18 @@ export function LabelPrintDialog({ open, productIds, barcodeId = null, onOpenCha
     setProfiles(labelProfileStore.save(next));
   };
 
-  const previewKey = profile ? JSON.stringify({ profile, items: items.map((item) => [item.product.id, item.barcode.id, item.copies]) }) : "";
+  const previewKey = profile ? JSON.stringify({ profile, storeName, items: items.map((item) => [item.product.id, item.barcode.id, item.copies]) }) : "";
   const preview = renderedPreview?.key === previewKey ? renderedPreview : { html: "", error: null as string | null };
   useEffect(() => {
     if (!profile || items.length === 0) return;
     let active = true;
-    void renderLabelDocument(items, profile).then((html) => {
+    void renderLabelDocument(items, profile, storeName).then((html) => {
       if (active) setRenderedPreview({ key: previewKey, html, error: null });
     }).catch((reason) => {
       if (active) setRenderedPreview({ key: previewKey, html: "", error: reason instanceof Error ? reason.message : "ساخت پیش‌نمایش ناموفق بود" });
     });
     return () => { active = false; };
-  }, [items, previewKey, profile]);
+  }, [items, previewKey, profile, storeName]);
 
   const print = () => {
     accessState.requireCapability("label.print");

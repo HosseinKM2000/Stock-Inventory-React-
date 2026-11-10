@@ -7,7 +7,7 @@ from ..models import User
 from ..mobile import DUPLICATE_MOBILE_MESSAGE, normalize_iranian_mobile
 from ..schemas import LoginRequest, TokenResponse, UserOut, SignupRequest, UserUpdate
 from .plan_policy import can_add_device
-from .store_service import attach_store_context, create_owner_store
+from .store_service import attach_store_context, create_owner_store, owner_store_context
 
 from ..security import (
     create_access_token,
@@ -206,6 +206,13 @@ def update_user(
     data = payload.model_dump(
         exclude_unset=True,
     )
+    store_name_supplied = "store_name" in data
+    store_name = data.pop("store_name", None)
+
+    if store_name_supplied:
+        if not store_name:
+            raise HTTPException(status_code=422, detail="STORE_NAME_REQUIRED")
+        owner_store_context(db, user).store.name = store_name
 
     username = data.get("username")
 
@@ -231,6 +238,7 @@ def update_user(
         db.rollback()
         raise HTTPException(status_code=409, detail=_integrity_conflict_detail(error)) from error
     db.refresh(user)
+    attach_store_context(db, user)
 
     return user
 

@@ -23,20 +23,22 @@ function header(context: CanvasRenderingContext2D, document: InvoiceDocument, pa
   context.fillStyle = "#10212d";
   context.textAlign = "right";
   context.direction = "rtl";
+  context.font = "800 30px Vazirmatn";
+  context.fillText(document.storeName, 1140, 58);
   context.font = "700 44px Vazirmatn";
-  context.fillText(document.typeLabel, 1140, 92);
+  context.fillText(document.typeLabel, 1140, 112);
   context.font = "500 25px Vazirmatn";
   context.fillStyle = "#405261";
-  context.fillText(document.title, 1140, 140);
+  context.fillText(document.title, 1140, 158);
   context.textAlign = "left";
   context.direction = "ltr";
   context.fillText(`صفحه ${number(page)}`, 100, 92);
   context.direction = "rtl";
   context.fillText(`تاریخ: ${document.postedAt}`, 100, 135);
   context.textAlign = "right";
-  context.fillText(`شناسه: ${document.reference}`, 1140, 184);
-  if (document.counterparty) context.fillText(`طرف حساب: ${document.counterparty}`, 1140, 224);
-  if (document.localOnly) { context.fillStyle = "#9a5a00"; context.fillText("ذخیره‌شده روی این دستگاه", 1140, 264); }
+  context.fillText(`شناسه: ${document.reference}`, 1140, 202);
+  if (document.counterparty) context.fillText(`طرف حساب: ${document.counterparty}`, 1140, 242);
+  if (document.localOnly) { context.fillStyle = "#9a5a00"; context.fillText("ذخیره‌شده روی این دستگاه", 1140, 282); }
 }
 
 function tableHeader(context: CanvasRenderingContext2D, y: number) {
@@ -80,7 +82,9 @@ export async function renderInvoicePages(document: InvoiceDocument): Promise<HTM
 }
 
 async function documentFont() {
-  await window.document.fonts?.load("24px Vazirmatn");
+  // The app font is normally already cached. A rejected font fetch while the
+  // device is offline must not prevent creation of an otherwise local PDF.
+  await window.document.fonts?.load("24px Vazirmatn").catch(() => undefined);
 }
 
 function bytes(value: string) { return new TextEncoder().encode(value); }

@@ -7,7 +7,7 @@ import type { DomainToolId } from "@/shared/access/tools";
 const protectedTools: Record<string, DomainToolId> = {
   import: "import", labels: "labels", categories: "categories", export: "export", catalog: "catalog", recovery: "recovery", scanner: "scanner",
 };
-const toolPermissions: Record<string, string> = { import: "tools.import", labels: "labels.manage", categories: "categories.manage", export: "tools.export", catalog: "tools.catalog", scanner: "barcodes.lookup", invoices: "invoices.view" };
+const toolPermissions: Record<string, string> = { import: "tools.import", labels: "labels.manage", categories: "categories.manage", export: "tools.export", catalog: "tools.catalog", scanner: "barcodes.lookup", invoices: "invoices.view", counterparties: "counterparties.view" };
 
 export const Route = createFileRoute("/tools")({
   beforeLoad: ({ location }) => {
@@ -18,7 +18,7 @@ export const Route = createFileRoute("/tools")({
     // the domain policy or the subscription capability gate.
     if (tool && accessState.user() && !accessState.canUseTool(tool)) throw redirect({ to: "/tools" });
     const permission = toolPermissions[location.pathname.split("/").filter(Boolean).at(-1) ?? ""];
-    if (permission && !accessState.hasStorePermission(permission)) throw redirect({ to: "/tools" });
+    if (permission && accessState.user() && !accessState.hasStorePermission(permission)) throw redirect({ to: "/tools" });
   },
   component: SectionLayout,
 });

@@ -716,6 +716,25 @@ class InventoryMovement(Base):
     created_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now)
 
 
+class Counterparty(Base):
+    __tablename__ = "counterparties"
+    __table_args__ = (
+        UniqueConstraint("id", "store_id", name="uq_counterparties_id_store"),
+        CheckConstraint("kind IN ('person', 'organization')", name="ck_counterparties_kind"),
+        Index("ix_counterparties_store_name", "store_id", "name"),
+    )
+
+    id: Mapped[int] = mapped_column(ENTITY_ID, primary_key=True)
+    store_id: Mapped[int] = mapped_column(ForeignKey("stores.id", ondelete="CASCADE"), index=True)
+    created_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    kind: Mapped[str] = mapped_column(String(16), default="person")
+    name: Mapped[str] = mapped_column(String(160))
+    phone: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    address: Mapped[str | None] = mapped_column(String(300), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now)
+    updated_at: Mapped[datetime] = mapped_column(UTC_DATETIME, default=_now, onupdate=_now)
+
+
 class Invoice(Base):
     __tablename__ = "invoices"
     __table_args__ = (
@@ -734,6 +753,9 @@ class Invoice(Base):
     actor_membership_id: Mapped[int] = mapped_column(ForeignKey("store_memberships.id", ondelete="RESTRICT"))
     invoice_type: Mapped[str] = mapped_column(String(12), index=True)
     title: Mapped[str] = mapped_column(String(200))
+    counterparty_id: Mapped[int | None] = mapped_column(
+        ForeignKey("counterparties.id", ondelete="SET NULL"), nullable=True, index=True
+    )
     counterparty: Mapped[str | None] = mapped_column(String(200), nullable=True)
     status: Mapped[str] = mapped_column(String(12), default="posted", index=True)
     total_amount: Mapped[int] = mapped_column(BigInteger)

@@ -10,12 +10,13 @@ const barcode: ProductBarcode = { id: 1, product_id: 2, value: "TZ-0123456789AB"
 describe("label renderer", () => {
   it("renders exact millimetre dimensions, vector bars, Persian text and requested copies", async () => {
     const product = { ...createProductInitialValues(), id: 2, custom_label: "پیچ صنعتی", price: 125000 };
-    const html = await renderLabelDocument([{ product, barcode, copies: 2 }], profile);
+    const html = await renderLabelDocument([{ product, barcode, copies: 2 }], { ...profile, showStoreName: true }, "فروشگاه تنظیم");
     expect(html).toContain("width:50mm;height:30mm");
     expect(html).toContain("<svg");
     expect(html).toContain("پیچ صنعتی");
     expect(html).toContain("font-family:Vazirmatn");
     expect(html).toContain("Vazirmatn-Variable.woff2");
+    expect(html).toContain("فروشگاه تنظیم");
     expect(html.match(/<article/g)).toHaveLength(2);
   });
 

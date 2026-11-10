@@ -69,6 +69,7 @@ describe("navigation metadata", () => {
     ]);
     expect(toolsNavigationItems.map((item) => item.to)).toEqual([
       "/tools/invoices",
+      "/tools/counterparties",
       "/tools/scanner",
       "/tools/activity",
       "/tools/help",

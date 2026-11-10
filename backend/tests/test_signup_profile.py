@@ -52,6 +52,7 @@ def test_minimal_signup_atomically_provisions_solo_owner_without_grant(client: T
     assert body["user"]["last_name"] is None
     assert body["user"]["email"] is None
     assert body["user"]["phone"] == minimal_payload(username)["phone"]
+    assert body["user"]["store_name"] == username
     assert body["user"]["plan"] == "free"
 
     with SessionLocal() as db:
@@ -123,6 +124,7 @@ def test_signup_normalizes_equivalent_mobile_forms_and_profile_enforces_uniquene
         "X-Device-Fingerprint": f"device-{minimal_username}",
     }
     completed = client.patch("/api/auth/me", headers=headers, json={
+        "store_name": "Profile Store",
         "first_name": "Profile",
         "last_name": "Owner",
         "email": "profile@example.com",
@@ -132,6 +134,10 @@ def test_signup_normalizes_equivalent_mobile_forms_and_profile_enforces_uniquene
     assert completed.json()["first_name"] == "Profile"
     assert completed.json()["email"] == "profile@example.com"
     assert completed.json()["phone"] == "09911111111"
+    assert completed.json()["store_name"] == "Profile Store"
+    with SessionLocal() as db:
+        store = db.scalar(select(Store).where(Store.owner_user_id == minimal.json()["user"]["id"]))
+        assert store.name == "Profile Store"
 
     conflict = client.patch("/api/auth/me", headers=headers, json={"phone": "۰۹۱۲۳۴۵۶۷۸۹"})
     assert conflict.status_code == 409

@@ -22,7 +22,7 @@ def test_request_id_and_release_context_are_returned_on_success():
     assert response.status_code == 200
     assert response.headers["X-Request-ID"] == "client-request-123"
     assert response.headers["X-Tanzim-Build"]
-    assert response.headers["X-Tanzim-Schema"] == "20261106_0016"
+    assert response.headers["X-Tanzim-Schema"] == "20261110_0018"
 
 
 def test_unhandled_error_has_same_safe_request_id_in_response_and_log(monkeypatch, caplog):

@@ -43,7 +43,7 @@ def create_owner_store(db: Session, user: User) -> StoreContext:
     db.add(store)
     db.flush()
     templates = {
-        "سرپرست": ["products.view", "products.create", "products.edit", "products.quantity.change", "products.price.change", "categories.manage", "labels.manage", "products.bulk", "barcodes.lookup", "barcodes.manage", "labels.print", "dashboard.view", "tools.import", "tools.export", "tools.catalog"],
+        "سرپرست": ["products.view", "products.create", "products.edit", "products.quantity.change", "products.price.change", "categories.manage", "labels.manage", "products.bulk", "barcodes.lookup", "barcodes.manage", "labels.print", "dashboard.view", "tools.import", "tools.export", "tools.catalog", "invoices.view", "invoices.post", "invoices.cancel", "counterparties.view", "counterparties.manage"],
         "اپراتور موجودی": ["products.view", "products.create", "products.edit", "products.quantity.change", "categories.manage", "labels.manage", "barcodes.lookup", "dashboard.view"],
         "ویرایشگر قیمت": ["products.view", "products.price.change", "products.sale_price.view", "products.sale_price.change", "dashboard.view"],
         "مشاهده‌گر": ["products.view", "dashboard.view"],
@@ -142,6 +142,7 @@ def attach_store_context(db: Session, user: User) -> StoreContext | None:
         return None
     role = context.membership.role
     user.store_id = context.store.id
+    user.store_name = context.store.name
     user.membership_id = context.membership.id
     user.store_role_id = context.membership.role_id
     user.store_role_name = "مالک" if context.is_owner else (role.name if role else None)
