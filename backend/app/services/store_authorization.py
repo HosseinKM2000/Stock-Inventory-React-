@@ -36,6 +36,8 @@ class StorePermission(str, Enum):
     INVOICES_VIEW = "invoices.view"
     INVOICES_POST = "invoices.post"
     INVOICES_CANCEL = "invoices.cancel"
+    COUNTERPARTIES_VIEW = "counterparties.view"
+    COUNTERPARTIES_MANAGE = "counterparties.manage"
 
 
 ALL_STORE_PERMISSIONS = frozenset(item.value for item in StorePermission)
@@ -61,6 +63,8 @@ PERMISSION_DEPENDENCIES: dict[str, frozenset[str]] = {
     StorePermission.INVOICES_VIEW.value: frozenset({StorePermission.PRODUCTS_VIEW.value}),
     StorePermission.INVOICES_POST.value: frozenset({StorePermission.INVOICES_VIEW.value, StorePermission.QUANTITY_CHANGE.value}),
     StorePermission.INVOICES_CANCEL.value: frozenset({StorePermission.INVOICES_VIEW.value, StorePermission.QUANTITY_CHANGE.value}),
+    StorePermission.COUNTERPARTIES_VIEW.value: frozenset({StorePermission.PRODUCTS_VIEW.value}),
+    StorePermission.COUNTERPARTIES_MANAGE.value: frozenset({StorePermission.COUNTERPARTIES_VIEW.value}),
 }
 
 

@@ -56,7 +56,7 @@ EXPECTED_TABLES = {
     "store_mode_transitions",
     "store_plan_grants",
     "media_assets",
-    "invoices", "invoice_lines",
+    "invoices", "invoice_lines", "counterparties",
 }
 MIGRATION_EVIDENCE = {}
 
@@ -346,7 +346,7 @@ def test_migration_reaches_head_with_all_expected_tables(migrated_empty_database
     assert MIGRATION_EVIDENCE["mode_rollback"] == ("20261101_0009", True)
     assert EXPECTED_TABLES <= set(inspect(engine).get_table_names())
     with engine.connect() as connection:
-        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261107_0017"
+        assert connection.scalar(text("SELECT version_num FROM alembic_version")) == "20261110_0018"
         assert "MOBILE_PHONE_PREFLIGHT" in MIGRATION_EVIDENCE["mobile_preflight"]
         assert "malformed_count=1:user_ids=9401" in MIGRATION_EVIDENCE["mobile_preflight"]
         assert "duplicate_groups=1:user_ids=9101,9201" in MIGRATION_EVIDENCE["mobile_preflight"]

@@ -80,7 +80,9 @@ export async function renderInvoicePages(document: InvoiceDocument): Promise<HTM
 }
 
 async function documentFont() {
-  await window.document.fonts?.load("24px Vazirmatn");
+  // The app font is normally already cached. A rejected font fetch while the
+  // device is offline must not prevent creation of an otherwise local PDF.
+  await window.document.fonts?.load("24px Vazirmatn").catch(() => undefined);
 }
 
 function bytes(value: string) { return new TextEncoder().encode(value); }

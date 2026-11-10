@@ -12,6 +12,7 @@ from ..models import (
     InventoryTransaction,
     Invoice,
     InvoiceLine,
+    Counterparty,
     SyncChange,
     User,
 )
@@ -58,6 +59,7 @@ def _invoice_record(invoice: Invoice, *, include_purchase_prices: bool = True) -
         "id": invoice.id,
         "invoice_type": invoice.invoice_type,
         "title": invoice.title,
+        "counterparty_id": invoice.counterparty_id,
         "counterparty": invoice.counterparty,
         "status": invoice.status,
         "total_amount": invoice.total_amount if include_purchase_prices or invoice.invoice_type == "sale" else None,
@@ -176,7 +178,18 @@ def post_invoice(
     title = payload.get("title")
     if not isinstance(title, str) or not title.strip() or len(title.strip()) > 200:
         raise ValueError("INVOICE_TITLE_INVALID")
-    counterparty = payload.get("counterparty")
+    counterparty_id = payload.get("counterparty_id")
+    if counterparty_id is not None and (isinstance(counterparty_id, bool) or not isinstance(counterparty_id, int)):
+        raise ValueError("INVOICE_COUNTERPARTY_INVALID")
+    counterparty_record = None
+    if counterparty_id is not None:
+        counterparty_record = db.scalar(select(Counterparty).where(
+            Counterparty.id == counterparty_id,
+            Counterparty.store_id == actor.store_id,
+        ))
+        if counterparty_record is None:
+            raise ValueError("INVOICE_COUNTERPARTY_NOT_FOUND")
+    counterparty = counterparty_record.name if counterparty_record is not None else payload.get("counterparty")
     if counterparty is not None and (not isinstance(counterparty, str) or len(counterparty.strip()) > 200):
         raise ValueError("INVOICE_COUNTERPARTY_INVALID")
     lines = _validated_lines(payload)
@@ -196,6 +209,7 @@ def post_invoice(
         actor_membership_id=context.membership.id,
         invoice_type=invoice_type,
         title=title.strip(),
+        counterparty_id=counterparty_record.id if counterparty_record is not None else None,
         counterparty=counterparty.strip() if isinstance(counterparty, str) and counterparty.strip() else None,
         status="posted",
         total_amount=sum(int(line["quantity"]) * int(line["unit_price"]) for line in lines),

@@ -472,6 +472,48 @@ class InventoryListResponse(BaseModel):
 # =========================================================
 # TRANSACTIONS
 # =========================================================
+class CounterpartyBase(BaseModel):
+    kind: Literal["person", "organization"] = "person"
+    name: str = Field(min_length=1, max_length=160)
+    phone: str | None = Field(default=None, max_length=32)
+    address: str | None = Field(default=None, max_length=300)
+
+    @field_validator("name", "phone", "address", mode="before")
+    @classmethod
+    def trim_counterparty_text(cls, value: object) -> object:
+        if isinstance(value, str):
+            value = value.strip()
+            return value or None
+        return value
+
+
+class CounterpartyCreate(CounterpartyBase):
+    pass
+
+
+class CounterpartyUpdate(BaseModel):
+    kind: Literal["person", "organization"] | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=160)
+    phone: str | None = Field(default=None, max_length=32)
+    address: str | None = Field(default=None, max_length=300)
+
+    @field_validator("name", "phone", "address", mode="before")
+    @classmethod
+    def trim_counterparty_update_text(cls, value: object) -> object:
+        if isinstance(value, str):
+            value = value.strip()
+            return value or None
+        return value
+
+
+class CounterpartyOut(CounterpartyBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+
 class TransactionCreate(BaseModel):
     type: Literal["stock_in", "stock_out"]
     quantity: int = Field(gt=0, le=MAX_PRODUCT_QUANTITY)

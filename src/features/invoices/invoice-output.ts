@@ -1,5 +1,6 @@
 import { assertSyncAccountCurrent } from "@/shared/lib/infrastructure/sync/sync-account-context";
 import { buildInvoiceDocument, invoiceFileName } from "./invoice-document";
+import { createInvoicePdf } from "./invoice-pdf";
 import type { Invoice } from "./types";
 
 const escape = (value: string) => value.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[char]!);
@@ -7,7 +8,7 @@ const number = (value: number) => new Intl.NumberFormat("fa-IR").format(value);
 
 async function pdf(invoice: Invoice) {
   const document = buildInvoiceDocument(invoice);
-  const file = await import("./invoice-pdf").then((module) => module.createInvoicePdf(document));
+  const file = await createInvoicePdf(document);
   assertSyncAccountCurrent(document.account);
   return { document, file };
 }

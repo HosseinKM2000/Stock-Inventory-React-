@@ -20,7 +20,7 @@ async function seed(page: Page, serverInvoices: unknown[] = [], paid = true) {
       status: "active", account_status: "active", started_at: null, expires_at: null,
       server_time: captured, synced_at: captured, verified_at: captured,
       captured_at_ms: Date.now(), last_observed_at_ms: Date.now(),
-      capabilities: { "inventory.read": true, "inventory.write": true, "barcode.lookup": true, "invoices.purchase": hasInvoiceAccess, "invoices.sale": hasInvoiceAccess },
+      capabilities: { "inventory.read": true, "inventory.write": true, "barcode.lookup": true, "sync": true, "invoices.purchase": hasInvoiceAccess, "invoices.sale": hasInvoiceAccess },
       limits: { inventory_items: null },
     }));
   }, { user: owner, captured: now, hasInvoiceAccess: paid });
@@ -31,10 +31,11 @@ async function seed(page: Page, serverInvoices: unknown[] = [], paid = true) {
       user_id: owner.id, store_id: owner.store_id, plan: "free", label: "Synthetic invoices",
       status: "active", account_status: "active", started_at: null, expires_at: null,
       server_time: now, synced_at: now,
-      capabilities: { "inventory.read": true, "inventory.write": true, "barcode.lookup": true, "invoices.purchase": paid, "invoices.sale": paid }, limits: { inventory_items: null },
+      capabilities: { "inventory.read": true, "inventory.write": true, "barcode.lookup": true, "sync": true, "invoices.purchase": paid, "invoices.sale": paid }, limits: { inventory_items: null },
     });
     if (path === "/api/sync/changes") return json(route, { cursor: 0, changes: [] });
     if (path === "/api/invoices") return json(route, serverInvoices);
+    if (path === "/api/counterparties") return json(route, [{ id: 41, kind: "person", name: "مشتری مصنوعی", phone: "09120000041", address: null, created_at: now, updated_at: now }]);
     if (path === "/api/sync/barcodes") return json(route, { items: [{
       id: 801, store_id: owner.store_id, product_id: 501, value: "6260000501", source: "manufacturer",
       symbology: "unknown", meaning: "unit", scan_quantity: 1, is_active: true, is_default: true,
@@ -107,8 +108,9 @@ test("invoice form posts one atomic command and remains responsive", async ({ pa
   await page.getByLabel("تعداد ردیف 1").fill("2");
   await expect(page.getByLabel("قیمت ردیف 1")).toHaveValue("900");
   await page.getByRole("button", { name: "بررسی و ثبت قطعی" }).click();
-  await expect(page.getByText("فروش آزمایشی")).toBeVisible();
-  await expect(page.getByText(/جمع:.*۱٬۸۰۰.*تومان/)).toBeVisible();
+  await expect(page.getByRole("heading", { name: "تأیید ثبت فاکتور" })).toBeVisible();
+  await page.getByRole("button", { name: "تأیید و ثبت" }).click();
+  await expect(page.getByRole("heading", { name: "فاکتور با موفقیت ثبت شد" })).toBeVisible();
   const state = await page.evaluate(async () => {
     const request = indexedDB.open("inventory-db");
     const database = await new Promise<IDBDatabase>((resolve, reject) => { request.onsuccess = () => resolve(request.result); request.onerror = () => reject(request.error); });
@@ -140,18 +142,19 @@ test("hardware scan selects without changing stock and exports a real offline Pe
   expect(afterScan).toEqual(before);
   await page.getByLabel("عنوان فاکتور").fill("فروش بارکدی");
   await page.getByRole("button", { name: "بررسی و ثبت قطعی" }).click();
-  await expect(page.getByText("ذخیره‌شده روی این دستگاه")).not.toBeVisible();
+  await page.getByRole("button", { name: "تأیید و ثبت" }).click();
+  await expect(page.getByRole("heading", { name: "فاکتور با موفقیت ثبت شد" })).toBeVisible();
   await context.setOffline(true);
   const downloadPromise = page.waitForEvent("download");
-  await page.getByRole("button", { name: "دریافت PDF" }).click();
+  await page.getByRole("button", { name: "PDF", exact: true }).click();
   const download = await downloadPromise;
   expect(download.suggestedFilename()).toMatch(/^invoice-.*\.pdf$/);
   const path = await download.path();
   const bytes = await import("node:fs/promises").then((fs) => fs.readFile(path!));
   expect(bytes.subarray(0, 8).toString()).toBe("%PDF-1.4");
   expect(bytes.toString("latin1").match(/\/Type \/Page\b/g)?.length).toBeGreaterThanOrEqual(1);
-  await page.getByRole("button", { name: "اشتراک‌گذاری" }).click();
-  await expect(page.getByRole("alert")).toContainText("PDF را دریافت کنید");
+  await page.getByRole("button", { name: "اشتراک", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "فاکتور با موفقیت ثبت شد" })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
 });
 

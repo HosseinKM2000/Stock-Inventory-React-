@@ -25,6 +25,7 @@ import { Route as ToolsInvoicesRouteImport } from './routes/tools/invoices'
 import { Route as ToolsImportRouteImport } from './routes/tools/import'
 import { Route as ToolsHelpRouteImport } from './routes/tools/help'
 import { Route as ToolsExportRouteImport } from './routes/tools/export'
+import { Route as ToolsCounterpartiesRouteImport } from './routes/tools/counterparties'
 import { Route as ToolsCategoriesRouteImport } from './routes/tools/categories'
 import { Route as ToolsCatalogRouteImport } from './routes/tools/catalog'
 import { Route as ToolsActivityRouteImport } from './routes/tools/activity'
@@ -150,6 +151,11 @@ const ToolsHelpRoute = ToolsHelpRouteImport.update({
 const ToolsExportRoute = ToolsExportRouteImport.update({
   id: '/export',
   path: '/export',
+  getParentRoute: () => ToolsRouteRoute,
+} as any)
+const ToolsCounterpartiesRoute = ToolsCounterpartiesRouteImport.update({
+  id: '/counterparties',
+  path: '/counterparties',
   getParentRoute: () => ToolsRouteRoute,
 } as any)
 const ToolsCategoriesRoute = ToolsCategoriesRouteImport.update({
@@ -435,6 +441,7 @@ export interface FileRoutesByFullPath {
   '/tools/activity': typeof ToolsActivityRoute
   '/tools/catalog': typeof ToolsCatalogRoute
   '/tools/categories': typeof ToolsCategoriesRoute
+  '/tools/counterparties': typeof ToolsCounterpartiesRoute
   '/tools/export': typeof ToolsExportRoute
   '/tools/help': typeof ToolsHelpRoute
   '/tools/import': typeof ToolsImportRoute
@@ -494,6 +501,7 @@ export interface FileRoutesByTo {
   '/tools/activity': typeof ToolsActivityRoute
   '/tools/catalog': typeof ToolsCatalogRoute
   '/tools/categories': typeof ToolsCategoriesRoute
+  '/tools/counterparties': typeof ToolsCounterpartiesRoute
   '/tools/export': typeof ToolsExportRoute
   '/tools/help': typeof ToolsHelpRoute
   '/tools/import': typeof ToolsImportRoute
@@ -560,6 +568,7 @@ export interface FileRoutesById {
   '/tools/activity': typeof ToolsActivityRoute
   '/tools/catalog': typeof ToolsCatalogRoute
   '/tools/categories': typeof ToolsCategoriesRoute
+  '/tools/counterparties': typeof ToolsCounterpartiesRoute
   '/tools/export': typeof ToolsExportRoute
   '/tools/help': typeof ToolsHelpRoute
   '/tools/import': typeof ToolsImportRoute
@@ -626,6 +635,7 @@ export interface FileRouteTypes {
     | '/tools/activity'
     | '/tools/catalog'
     | '/tools/categories'
+    | '/tools/counterparties'
     | '/tools/export'
     | '/tools/help'
     | '/tools/import'
@@ -685,6 +695,7 @@ export interface FileRouteTypes {
     | '/tools/activity'
     | '/tools/catalog'
     | '/tools/categories'
+    | '/tools/counterparties'
     | '/tools/export'
     | '/tools/help'
     | '/tools/import'
@@ -750,6 +761,7 @@ export interface FileRouteTypes {
     | '/tools/activity'
     | '/tools/catalog'
     | '/tools/categories'
+    | '/tools/counterparties'
     | '/tools/export'
     | '/tools/help'
     | '/tools/import'
@@ -903,6 +915,13 @@ declare module '@tanstack/react-router' {
       path: '/export'
       fullPath: '/tools/export'
       preLoaderRoute: typeof ToolsExportRouteImport
+      parentRoute: typeof ToolsRouteRoute
+    }
+    '/tools/counterparties': {
+      id: '/tools/counterparties'
+      path: '/counterparties'
+      fullPath: '/tools/counterparties'
+      preLoaderRoute: typeof ToolsCounterpartiesRouteImport
       parentRoute: typeof ToolsRouteRoute
     }
     '/tools/categories': {
@@ -1412,6 +1431,7 @@ interface ToolsRouteRouteChildren {
   ToolsActivityRoute: typeof ToolsActivityRoute
   ToolsCatalogRoute: typeof ToolsCatalogRoute
   ToolsCategoriesRoute: typeof ToolsCategoriesRoute
+  ToolsCounterpartiesRoute: typeof ToolsCounterpartiesRoute
   ToolsExportRoute: typeof ToolsExportRoute
   ToolsHelpRoute: typeof ToolsHelpRoute
   ToolsImportRoute: typeof ToolsImportRoute
@@ -1426,6 +1446,7 @@ const ToolsRouteRouteChildren: ToolsRouteRouteChildren = {
   ToolsActivityRoute: ToolsActivityRoute,
   ToolsCatalogRoute: ToolsCatalogRoute,
   ToolsCategoriesRoute: ToolsCategoriesRoute,
+  ToolsCounterpartiesRoute: ToolsCounterpartiesRoute,
   ToolsExportRoute: ToolsExportRoute,
   ToolsHelpRoute: ToolsHelpRoute,
   ToolsImportRoute: ToolsImportRoute,

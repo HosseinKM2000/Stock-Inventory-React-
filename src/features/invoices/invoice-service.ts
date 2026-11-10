@@ -33,7 +33,7 @@ function validateLines(lines: InvoiceCommandLine[]) {
 }
 
 export const invoiceService = {
-  async post(input: { invoice_type: "purchase" | "sale"; title: string; counterparty?: string; lines: InvoiceCommandLine[] }) {
+  async post(input: { invoice_type: "purchase" | "sale"; title: string; counterparty_id?: number | null; counterparty?: string; lines: InvoiceCommandLine[] }) {
     const user = accessState.user();
     if (!user) throw new Error("برای ثبت فاکتور وارد حساب شوید.");
     accessState.requireCapability(`invoices.${input.invoice_type}`);
@@ -56,8 +56,8 @@ export const invoiceService = {
       assertProductQuantity(after);
       return { product, line: { product_id: product.id, product_name: product.custom_label || product.catalog_product?.name || `#${product.id}`, quantity: line.quantity, unit: line.unit === "pack" ? "بسته" as const : "عدد" as const, pack_size: line.pack_size, base_quantity: base, unit_price: line.unit_price, line_total: line.quantity * line.unit_price, before_quantity: product.quantity, after_quantity: after } };
     });
-    const invoice: Invoice = { id: invoiceId, invoice_type: input.invoice_type, title, counterparty: input.counterparty?.trim() || null, status: "pending", total_amount: snapshots.reduce((sum, item) => sum + item.line.line_total, 0), actor_user_id: user.id, actor_membership_id: user.membership_id ?? null, post_operation_id: operationId, posted_at: now, lines: snapshots.map((item) => item.line) };
-    const payload = { invoice_type: input.invoice_type, title, counterparty: invoice.counterparty, lines };
+    const invoice: Invoice = { id: invoiceId, invoice_type: input.invoice_type, title, counterparty_id: input.counterparty_id ?? null, counterparty: input.counterparty?.trim() || null, status: "pending", total_amount: snapshots.reduce((sum, item) => sum + item.line.line_total, 0), actor_user_id: user.id, actor_membership_id: user.membership_id ?? null, post_operation_id: operationId, posted_at: now, lines: snapshots.map((item) => item.line) };
+    const payload = { invoice_type: input.invoice_type, title, counterparty_id: invoice.counterparty_id, counterparty: invoice.counterparty, lines };
     if (isTeamMode()) {
       if (!navigator.locks) throw new Error("TEAM_LOCKING_UNAVAILABLE");
       if (networkService.isOffline()) throw new Error("TEAM_ONLINE_REQUIRED");
@@ -72,7 +72,7 @@ export const invoiceService = {
       await invoiceRepository.save(invoice);
       await queueService.enqueue(INVOICE_ENTITY, invoiceId, "CREATE", payload, { operationId, forceNew: true });
     });
-    return invoice;
+    return (await invoiceRepository.get(invoiceId)) ?? invoice;
   },
 
   async cancel(invoiceId: number) {

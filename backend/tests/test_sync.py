@@ -25,6 +25,7 @@ from app.database import Base, SessionLocal, engine
 from app.main import app
 from app.models import (
     CatalogProduct,
+    Counterparty,
     Industry,
     InventoryItem,
     InventoryMovement,
@@ -213,6 +214,77 @@ class SyncApiTest(unittest.TestCase):
             self.assertEqual(db.query(Invoice).filter_by(id=invoice_id).count(), 1)
             self.assertEqual(db.query(InvoiceLine).filter_by(invoice_id=invoice_id).count(), 1)
             self.assertEqual(db.get(InventoryItem, product_id).quantity, 5)
+
+    def test_counterparties_are_store_scoped_and_invoice_uses_server_snapshot(self) -> None:
+        created = self.client.post("/api/counterparties", headers=self.headers, json={
+            "kind": "organization",
+            "name": "Server trusted customer",
+            "phone": "09120001234",
+            "address": "Tehran",
+        })
+        self.assertEqual(created.status_code, 201, created.text)
+        counterparty_id = created.json()["id"]
+        rows = self.client.get("/api/counterparties", headers=self.headers).json()
+        self.assertTrue(any(row["id"] == counterparty_id and row["name"] == "Server trusted customer" for row in rows))
+
+        updated = self.client.patch(f"/api/counterparties/{counterparty_id}", headers=self.headers, json={"phone": "02112345678"})
+        self.assertEqual(updated.status_code, 200, updated.text)
+        self.assertEqual(updated.json()["phone"], "02112345678")
+
+        isolated = self.client.post("/api/auth/signup", json={
+            "username": "counterparty-isolated-owner",
+            "phone": _mobile("counterparty-isolated-owner"),
+            "password": "StrongPass123!",
+            "device_fingerprint": "counterparty-isolated-device",
+        })
+        self.assertEqual(isolated.status_code, 201, isolated.text)
+        isolated_headers = {
+            "Authorization": f"Bearer {isolated.json()['access_token']}",
+            "X-Device-Fingerprint": "counterparty-isolated-device",
+        }
+        self.assertEqual(self.client.get("/api/counterparties", headers=isolated_headers).json(), [])
+        self.assertEqual(self.client.patch(
+            f"/api/counterparties/{counterparty_id}",
+            headers=isolated_headers,
+            json={"name": "Cross-store overwrite"},
+        ).status_code, 404)
+
+        product_id = 1_700_000_095_101
+        invoice_id = 1_700_000_095_102
+        product = self.push([{
+            "operation_id": "counterparty-invoice-product",
+            "entity": "product",
+            "entity_id": product_id,
+            "operation": "CREATE",
+            "payload": {"quantity": 2, "sale_price": 500, "custom_label": "Counterparty item", "catalog_product": {"id": 0, "name": "Counterparty item"}},
+        }])
+        self.assertEqual(product.json()["results"][0]["status"], "applied", product.text)
+        posted = self.push([{
+            "operation_id": "counterparty-invoice-post",
+            "entity": "invoice",
+            "entity_id": invoice_id,
+            "operation": "CREATE",
+            "payload": {
+                "invoice_type": "sale",
+                "title": "Counterparty invoice",
+                "counterparty_id": counterparty_id,
+                "counterparty": "Spoofed client value",
+                "lines": [{"product_id": product_id, "quantity": 1, "unit": "unit", "pack_size": None, "unit_price": 500}],
+            },
+        }])
+        result = posted.json()["results"][0]
+        self.assertEqual(result["status"], "applied", posted.text)
+        self.assertEqual(result["record"]["invoice"]["counterparty"], "Server trusted customer")
+        self.assertEqual(result["record"]["invoice"]["counterparty_id"], counterparty_id)
+
+        deleted = self.client.delete(f"/api/counterparties/{counterparty_id}", headers=self.headers)
+        self.assertEqual(deleted.status_code, 204, deleted.text)
+        history = self.client.get(f"/api/invoices/{invoice_id}", headers=self.headers)
+        self.assertEqual(history.status_code, 200, history.text)
+        self.assertEqual(history.json()["counterparty"], "Server trusted customer")
+        self.assertIsNone(history.json()["counterparty_id"])
+        with SessionLocal() as db:
+            self.assertIsNone(db.get(Counterparty, counterparty_id))
 
     def test_invoice_failure_is_atomic_and_duplicate_rows_consolidate(self) -> None:
         product_id = 1_700_000_096_001

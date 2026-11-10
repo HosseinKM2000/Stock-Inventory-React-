@@ -67,6 +67,9 @@ def activate_team(client: TestClient, owner_headers: dict):
 
 def test_permission_dependencies_are_expanded_and_unknown_values_denied():
     assert normalize_permissions(["tools.import"]) == ["products.create", "products.view", "tools.import"]
+    assert normalize_permissions(["counterparties.manage"]) == [
+        "counterparties.manage", "counterparties.view", "products.view",
+    ]
     with pytest.raises(Exception, match="UNKNOWN_PERMISSION"):
         normalize_permissions(["products.typo"])
 
