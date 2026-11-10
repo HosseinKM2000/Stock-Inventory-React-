@@ -5,6 +5,7 @@ import { accessState } from "@/shared/access/access-state";
 import type { Product } from "../types";
 import { createProductInitialValues } from "../form/product-form.initial";
 import { inventoryService } from "./inventory-service";
+import { MAX_PRODUCT_QUANTITY, PRODUCT_QUANTITY_LIMIT_MESSAGE } from "../domain/inventory-quantity";
 
 export const IMPORT_HEADERS = ["نام محصول", "تعداد", "قیمت فروش", "قیمت خرید", "توضیحات", "یادداشت", "بارکد اصلی"] as const;
 const LEGACY_PRICE_HEADER = "قیمت";
@@ -22,6 +23,7 @@ function integer(value: unknown, field: string, errors: string[]) {
   if (value == null || value === "") return 0;
   const number = Number(normalizeDigits(String(value)).replace(/[,٬]/g, ""));
   if (!Number.isSafeInteger(number) || number < 0) errors.push(`${field} باید عدد صحیح و نامنفی باشد`);
+  else if (field === "تعداد" && number > MAX_PRODUCT_QUANTITY) errors.push(PRODUCT_QUANTITY_LIMIT_MESSAGE);
   return number;
 }
 

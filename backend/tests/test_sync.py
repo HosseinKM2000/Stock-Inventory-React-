@@ -373,6 +373,30 @@ class SyncApiTest(unittest.TestCase):
             self.assertEqual(db.query(InventoryMovement).filter_by(operation_id="movement-receive").count(), 1)
             self.assertEqual(db.get(ProductBarcode, barcode_id).store_id, db.get(InventoryItem, product_id).store_id)
 
+    def test_product_quantity_limit_is_enforced_during_sync_acceptance(self) -> None:
+        entity_id = 1_700_000_000_090
+        operation_id = "quantity-limit-product"
+        result = self.push([{
+            "operation_id": operation_id,
+            "entity": "product",
+            "entity_id": entity_id,
+            "operation": "CREATE",
+            "payload": {
+                "quantity": 1_000_000_001,
+                "price": 100,
+                "custom_label": "Impossible stock",
+                "catalog_product": {"id": 0, "name": "Impossible stock"},
+            },
+        }]).json()["results"][0]
+
+        self.assertEqual((result["status"], result["error"]), (
+            "fatal_error",
+            "PRODUCT_QUANTITY_LIMIT_EXCEEDED",
+        ))
+        with SessionLocal() as db:
+            self.assertIsNone(db.get(InventoryItem, entity_id))
+            self.assertEqual(db.query(SyncOperation).filter_by(operation_id=operation_id).count(), 1)
+
     def test_batch_is_idempotent_and_conflicts_are_explicit(self) -> None:
         entity_id = 1_700_000_000_001
         create = {

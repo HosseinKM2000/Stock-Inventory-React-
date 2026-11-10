@@ -9,7 +9,7 @@ os.environ.setdefault("ENVIRONMENT", "test")
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 
 from app.plans import PLAN_CATALOG, subscription_expired
-from app.schemas import CatalogProductCreate, InventoryCreate, PasswordUpdate, SyncBatchRequest
+from app.schemas import CatalogProductCreate, InventoryCreate, InventoryUpdate, PasswordUpdate, SyncBatchRequest
 from app.security import hash_password, verify_password
 from app.services.authorization_service import Permission, RoleId, has_permission, set_role
 from app.services import plan_policy
@@ -18,6 +18,7 @@ from app.demo_fixture import _assert_safe
 from app.services.jalali_date import format_jalali_datetime
 from app.services.store_authorization import StorePermission, normalize_permissions
 from app.routers.sync import _project_record
+from app.inventory_policy import PRODUCT_QUANTITY_LIMIT_ERROR, validate_product_quantity
 
 
 def test_bcrypt_hashes_and_verifies_without_storing_plaintext() -> None:
@@ -78,6 +79,18 @@ def test_catalog_packaging_contract_normalizes_or_rejects_invalid_metadata() -> 
 def test_inventory_payload_rejects_negative_values(field: str) -> None:
     with pytest.raises(ValidationError):
         InventoryCreate(**{field: -1})
+
+
+@pytest.mark.parametrize("schema", [InventoryCreate, InventoryUpdate])
+def test_inventory_payload_rejects_quantity_above_operational_ceiling(schema) -> None:
+    with pytest.raises(ValidationError):
+        schema(quantity=1_000_000_001)
+
+
+def test_quantity_policy_reports_a_specific_limit_error() -> None:
+    assert validate_product_quantity(1_000_000_000) == 1_000_000_000
+    with pytest.raises(ValueError, match=PRODUCT_QUANTITY_LIMIT_ERROR):
+        validate_product_quantity(1_000_000_001)
 
 
 def test_sync_batch_has_a_hard_operation_limit() -> None:

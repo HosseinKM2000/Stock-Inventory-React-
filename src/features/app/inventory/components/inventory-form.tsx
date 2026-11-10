@@ -30,6 +30,7 @@ import { accessState } from "@/shared/access/access-state";
 import { formatGroupedIntegerText, normalizeIntegerText } from "../services/localized-integer";
 import { BarcodeCaptureField } from "@/features/barcode/components/barcode-capture-field";
 import type { Label } from "@/features/setting/types";
+import { MAX_PRODUCT_QUANTITY } from "../domain/inventory-quantity";
 
 type ProductFormMode = "create" | "edit" | "view";
 export type PendingBarcodeInput = { value: string; source: BarcodeSource; meaning: BarcodeMeaning; scanQuantity: number };
@@ -318,6 +319,8 @@ export function ProductForm({
             <TextInput
               size="3"
               type="number"
+              min={0}
+              max={MAX_PRODUCT_QUANTITY}
               name="quantity"
               value={form.values.quantity}
               placeholder="۰"

@@ -15,6 +15,7 @@ import { labelStorage } from "@/shared/lib/infrastructure/storage/label-storage"
 import { isProductEligible } from "../domain/product-eligibility";
 import { barcodeLookupCandidates, inferSymbology } from "@/features/barcode/domain/barcode";
 import { barcodeRepository } from "@/features/barcode/services/barcode-repository";
+import { assertProductQuantity, productQuantityError } from "../domain/inventory-quantity";
 
 export type BulkProductIntent = {
   categoryId?: number | null;
@@ -49,7 +50,7 @@ function sanitize(product: Product): Product {
 
   const threshold = Number(product.low_stock_threshold);
 
-  const safeQuantity = Number.isFinite(quantity) ? Math.max(0, quantity) : 0;
+  const safeQuantity = productQuantityError(quantity) == null ? quantity : 0;
 
   const safeThreshold = Number.isFinite(threshold) ? Math.max(0, threshold) : 0;
   const packaged =
@@ -195,6 +196,7 @@ class InventoryService {
     accessState.requireStorePermission?.("products.create");
     if (product.purchase_price != null) accessState.requireStorePermission?.("products.purchase_price.change");
     accessState.requireInventoryCapacity((await inventoryRepository.getAll()).length);
+    assertProductQuantity(Number(product.quantity));
     const record = sanitize(product);
     const mediaJob = isLocalImage(record.image_url)
       ? await mediaTransferService.stage(record.image_url, record.id)
@@ -329,6 +331,7 @@ class InventoryService {
 
   async update(id: number, input: ProductInput): Promise<Product> {
     accessState.requireWrite();
+    if (input.quantity !== undefined) assertProductQuantity(Number(input.quantity));
     if (input.quantity !== undefined) accessState.requireStorePermission?.("products.quantity.change");
     if (input.price !== undefined || input.sale_price !== undefined) accessState.requireStorePermission?.("products.sale_price.change");
     if (input.purchase_price !== undefined) accessState.requireStorePermission?.("products.purchase_price.change");
@@ -419,9 +422,7 @@ class InventoryService {
 
     const quantity = currentQuantity + delta;
 
-    if (!Number.isSafeInteger(quantity) || quantity < 0) {
-      throw new Error("موجودی نهایی محصول معتبر نیست");
-    }
+    assertProductQuantity(quantity);
 
     // Apply the confirmed delta to the latest local record. This preserves a
     // newer local quantity instead of overwriting it with a stale preview.

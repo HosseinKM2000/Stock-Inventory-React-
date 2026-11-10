@@ -11,6 +11,7 @@ from ..services.inventory_service import (
 from ..deps import CurrentProductReader, CurrentWritableUser, DbSession
 from ..models import InventoryItem, InventoryTransaction
 from ..services.store_authorization import StorePermission, require_store_permission, project_inventory_item
+from ..inventory_policy import MAX_PRODUCT_QUANTITY, PRODUCT_QUANTITY_LIMIT_ERROR
 from ..schemas import (
     InventoryBulkSync,
     InventoryOut,
@@ -171,6 +172,11 @@ def create_transaction(
     before_quantity = item.quantity
 
     if payload.type == "stock_in":
+        if item.quantity + payload.quantity > MAX_PRODUCT_QUANTITY:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=PRODUCT_QUANTITY_LIMIT_ERROR,
+            )
         item.quantity += payload.quantity
 
     elif payload.type == "stock_out":

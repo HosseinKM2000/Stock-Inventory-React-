@@ -4,6 +4,7 @@ from sqlalchemy import select
 from ..deps import CurrentProductReader, CurrentQuantityWriter, DbSession
 from ..models import InventoryItem, InventoryTransaction
 from ..schemas import TransactionCreate, TransactionOut
+from ..inventory_policy import MAX_PRODUCT_QUANTITY, PRODUCT_QUANTITY_LIMIT_ERROR
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
@@ -43,6 +44,11 @@ def create_transaction(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="موجودی کافی نیست",
+        )
+    if payload.type == "stock_in" and product.quantity + payload.quantity > MAX_PRODUCT_QUANTITY:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=PRODUCT_QUANTITY_LIMIT_ERROR,
         )
 
     before_quantity = product.quantity

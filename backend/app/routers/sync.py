@@ -13,6 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload, selectinload
 
 from ..config import settings
+from ..inventory_policy import MAX_PRODUCT_QUANTITY, PRODUCT_QUANTITY_LIMIT_ERROR, validate_product_quantity
 from ..deps import CurrentProductReader, DbSession
 from ..models import (
     CatalogProduct,
@@ -398,6 +399,8 @@ def _apply_fields(
             value = payload[field]
             if isinstance(value, bool) or not isinstance(value, int) or value < 0:
                 raise ValueError(f"{field} must be a non-negative integer")
+            if field == "quantity":
+                validate_product_quantity(value)
             setattr(item, field, value)
 
     if "sale_price" in payload or "price" in payload:
@@ -720,6 +723,8 @@ def _apply_inventory_movement(db: DbSession, user: User, operation: SyncOperatio
         after = before + delta
     if after < 0:
         return SyncOperationResult(operation_id=operation.operation_id, status="conflict", entity_id=operation.entity_id, record={"product": _serialize(item)}, error="INSUFFICIENT_STOCK")
+    if after > MAX_PRODUCT_QUANTITY:
+        raise ValueError(PRODUCT_QUANTITY_LIMIT_ERROR)
 
     reverses = payload.get("reverses_operation_id")
     if kind == "reversal":
