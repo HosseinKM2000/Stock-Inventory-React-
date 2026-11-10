@@ -102,6 +102,24 @@ test("downgraded Free account keeps historical read-only evidence without paid a
 test("invoice form posts one atomic command and remains responsive", async ({ page }) => {
   await seed(page);
   await expect(page.getByRole("heading", { name: "فاکتورها", level: 1 })).toBeVisible();
+  const stepperGeometry = await page.getByRole("button", { name: "یک واحد بیشتر برای ردیف 1" }).evaluate((button) => {
+    const input = button.parentElement?.querySelector("input");
+    const icon = button.querySelector("svg");
+    const buttonBox = button.getBoundingClientRect();
+    const inputBox = input?.getBoundingClientRect();
+    const iconBox = icon?.getBoundingClientRect();
+    return {
+      buttonWidth: buttonBox.width,
+      buttonHeight: buttonBox.height,
+      inputHeight: inputBox?.height ?? 0,
+      iconOffsetX: iconBox ? Math.abs((iconBox.left + iconBox.width / 2) - (buttonBox.left + buttonBox.width / 2)) : 99,
+      iconOffsetY: iconBox ? Math.abs((iconBox.top + iconBox.height / 2) - (buttonBox.top + buttonBox.height / 2)) : 99,
+    };
+  });
+  expect(Math.abs(stepperGeometry.buttonWidth - stepperGeometry.buttonHeight)).toBeLessThanOrEqual(1);
+  expect(Math.abs(stepperGeometry.buttonHeight - stepperGeometry.inputHeight)).toBeLessThanOrEqual(1);
+  expect(stepperGeometry.iconOffsetX).toBeLessThanOrEqual(1);
+  expect(stepperGeometry.iconOffsetY).toBeLessThanOrEqual(1);
   await page.getByLabel("عنوان فاکتور").fill("فروش آزمایشی");
   await page.getByLabel("طرف حساب").fill("مشتری مصنوعی");
   await page.getByLabel("محصول ردیف 1").selectOption("501");
