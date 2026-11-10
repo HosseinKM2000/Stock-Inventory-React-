@@ -17,6 +17,7 @@ import {
   type QuantityOperationMode,
 } from "../domain/packaging";
 import { normalizeIntegerText } from "../services/localized-integer";
+import { MAX_PRODUCT_QUANTITY, productQuantityError } from "../domain/inventory-quantity";
 
 type Props = { product: Product };
 
@@ -76,6 +77,12 @@ export function QuickStockAdjustment({ product }: Props) {
   const commitDirectQuantity = () => {
     const normalized = normalizeIntegerText(quantityDraft);
     const nextQuantity = normalized === "" ? 0 : Number(normalized);
+    const quantityError = productQuantityError(nextQuantity);
+    if (quantityError) {
+      toast.error(quantityError);
+      setQuantityDraft(String(previewQuantity));
+      return;
+    }
     const nextDelta = nextQuantity - product.quantity;
     setEditingQuantity(false);
     setQuantityDraft(String(nextQuantity));
@@ -95,6 +102,12 @@ export function QuickStockAdjustment({ product }: Props) {
   const applyStep = (amount: -1 | 1) => {
     const unitDelta = amount * operationStep;
     const next = pendingDeltaRef.current + unitDelta;
+    if (product.quantity + next > MAX_PRODUCT_QUANTITY) {
+      toast.warning(`حداکثر موجودی هر محصول ${MAX_PRODUCT_QUANTITY.toLocaleString("fa-IR")} عدد است`, {
+        id: `max-stock-${product.id}`,
+      });
+      return;
+    }
     if (product.quantity + next < 0) {
       if (effectiveMode === "pack") {
         toast.warning("موجودی برای کم کردن یک بسته کامل کافی نیست", {
@@ -246,6 +259,7 @@ export function QuickStockAdjustment({ product }: Props) {
               autoFocus
               type="number"
               min="0"
+              max={MAX_PRODUCT_QUANTITY}
               inputMode="numeric"
               aria-label="موجودی جدید"
               className="quick-stock-count quick-stock-input"

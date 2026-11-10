@@ -16,7 +16,6 @@ const Header = () => {
       className="app-header grid min-h-14 grid-cols-[1fr_auto_1fr] items-center gap-2 border-b px-2 backdrop-blur-2xl sm:px-4"
     >
       <Flex align="center" justify="start" gap="2" className="app-header-left min-w-0">
-        <BackupShortcut />
         <ConnectionStatus />
       </Flex>
 
@@ -26,6 +25,7 @@ const Header = () => {
 
       <Flex align="center" justify="end" gap={{ initial: "2", sm: "4" }} className="app-header-right min-w-0">
         <NotificationPanel />
+        <BackupShortcut />
       </Flex>
     </header>
   );

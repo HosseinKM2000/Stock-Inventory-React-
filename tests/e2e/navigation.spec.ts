@@ -74,14 +74,16 @@ test("standard navigation separates Settings and Tools with contextual back beha
   const header = page.locator(".app-header");
   const leftControls = header.locator(".app-header-left");
   const rightControls = header.locator(".app-header-right");
-  const backupShortcut = leftControls.getByRole("button", { name: /فایل پشتیبان/ });
+  const backupShortcut = rightControls.getByRole("button", { name: /فایل پشتیبان/ });
   const notificationShortcut = rightControls.getByRole("button", { name: /اعلان‌ها|هشدار فعال/ });
   await expect(leftControls.getByRole("link", { name: "تنظیمات" })).toHaveCount(0);
   await expect(backupShortcut).toBeVisible();
   await expect(notificationShortcut).toBeVisible();
   await expect(leftControls.locator(".sync-status-badge")).toBeVisible();
+  await expect(leftControls.getByRole("button", { name: /فایل پشتیبان/ })).toHaveCount(0);
   await expect(leftControls.getByRole("button", { name: /اعلان‌ها|هشدار فعال/ })).toHaveCount(0);
   await expect(rightControls.locator(".sync-status-badge")).toHaveCount(0);
+  expect((await notificationShortcut.boundingBox())!.x).toBeLessThan((await backupShortcut.boundingBox())!.x);
   expect((await leftControls.boundingBox())!.x).toBeLessThan((await rightControls.boundingBox())!.x);
   await expect(page.getByRole("button", { name: "بازگشت" })).toHaveCount(0);
   await expect(page.getByRole("button", { name: /منو/ })).toHaveCount(0);
@@ -476,7 +478,7 @@ test("shared navigation inset keeps final form actions reachable in short viewpo
   ))).toBeLessThan(metrics.measured);
 });
 
-test("sync status links expose responsive details", async ({ page }) => {
+test("sync status control exposes responsive details without navigation", async ({ page }) => {
   await seedAuthenticatedUser(page, "USER");
   await page.goto("/setting/sync");
 
@@ -495,11 +497,26 @@ test("sync status links expose responsive details", async ({ page }) => {
   await expect(page.locator(".sync-detail-page")).toHaveAttribute("dir", "rtl");
 
   const header = page.locator(".app-header");
-  await expect(header.getByRole("link", { name: /مشاهده جزئیات همگام‌سازی/ })).toHaveAttribute("href", "/setting/sync");
-  await expect(header.locator(".sync-status-badge")).toHaveAttribute("href", "/setting/sync");
+  const currentUrl = page.url();
+  const statusBadge = header.locator(".sync-status-badge");
+  const statusControl = header.locator(".sync-status-control");
+  await expect(statusBadge).toHaveRole("button");
+  await expect(statusBadge).not.toHaveAttribute("href");
   await expect(header.locator("[aria-label='باز کردن جزئیات همگام‌سازی']")).toHaveCount(0);
 
-  await expect(header.locator(".sync-status-label")).toHaveCount(0);
+  await statusBadge.click();
+  await expect(page).toHaveURL(currentUrl);
+  await expect(statusControl).toHaveAttribute("data-revealed", "true");
+  const revealBox = await statusControl.locator(".sync-status-reveal").boundingBox();
+  const statusIconBox = await statusBadge.locator(".sync-status-icon").boundingBox();
+  const leftColumnBox = await header.locator(".app-header-left").boundingBox();
+  const titleBox = await header.locator(".app-header-title").boundingBox();
+  expect(revealBox!.x).toBeLessThanOrEqual(statusIconBox!.x + 1);
+  expect(revealBox!.x + revealBox!.width).toBeGreaterThan(statusIconBox!.x + statusIconBox!.width + 24);
+  expect(revealBox!.width).toBeLessThanOrEqual(124);
+  expect(leftColumnBox!.x + leftColumnBox!.width).toBeLessThanOrEqual(titleBox!.x + 1);
+  await expect(header.locator(".app-header-left")).toHaveCSS("overflow", "hidden");
+  await expect(header.locator(".sync-status-label")).toBeVisible();
 
   for (const viewport of [{ width: 320, height: 568 }, { width: 768, height: 800 }, { width: 1440, height: 900 }]) {
     await page.setViewportSize(viewport);

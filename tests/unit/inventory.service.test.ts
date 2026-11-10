@@ -164,6 +164,18 @@ describe("local-first inventory service", () => {
     await expect(inventoryService.adjustQuantity(1, 0)).rejects.toThrow();
   });
 
+  it("rejects product quantities above the operational ceiling", async () => {
+    const current = product({ id: 1, quantity: 1_000_000_000, version: 1 });
+    mocks.get.mockResolvedValue(current);
+
+    await expect(inventoryService.update(1, { quantity: 1_000_000_001 }))
+      .rejects.toThrow("موجودی هر محصول نمی‌تواند بیشتر از ۱٬۰۰۰٬۰۰۰٬۰۰۰ عدد باشد");
+    await expect(inventoryService.adjustQuantity(1, 1))
+      .rejects.toThrow("موجودی هر محصول نمی‌تواند بیشتر از ۱٬۰۰۰٬۰۰۰٬۰۰۰ عدد باشد");
+    expect(mocks.save).not.toHaveBeenCalled();
+    expect(mocks.enqueue).not.toHaveBeenCalled();
+  });
+
   it("searches associated label names locally without duplicating products", async () => {
     mocks.getAll.mockResolvedValue([
       product({ id: 1, custom_label: "چای", label_ids: [7, 8] }),

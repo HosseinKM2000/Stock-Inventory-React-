@@ -7,6 +7,7 @@ import { queueService } from "@/shared/lib/infrastructure/sync/queue.service";
 import { isTeamMode, teamCommandService } from "@/shared/lib/infrastructure/sync/team-command.service";
 import { invoiceRepository } from "./invoice-repository";
 import type { Invoice, InvoiceCommandLine } from "./types";
+import { assertProductQuantity } from "@/features/app/inventory/domain/inventory-quantity";
 
 export const INVOICE_ENTITY = "invoice";
 
@@ -52,6 +53,7 @@ export const invoiceService = {
       const base = line.quantity * (line.pack_size ?? 1);
       const after = product.quantity + (input.invoice_type === "purchase" ? base : -base);
       if (!Number.isSafeInteger(after) || after < 0) throw new Error("موجودی برای ثبت فروش کافی نیست.");
+      assertProductQuantity(after);
       return { product, line: { product_id: product.id, product_name: product.custom_label || product.catalog_product?.name || `#${product.id}`, quantity: line.quantity, unit: line.unit === "pack" ? "بسته" as const : "عدد" as const, pack_size: line.pack_size, base_quantity: base, unit_price: line.unit_price, line_total: line.quantity * line.unit_price, before_quantity: product.quantity, after_quantity: after } };
     });
     const invoice: Invoice = { id: invoiceId, invoice_type: input.invoice_type, title, counterparty: input.counterparty?.trim() || null, status: "pending", total_amount: snapshots.reduce((sum, item) => sum + item.line.line_total, 0), actor_user_id: user.id, actor_membership_id: user.membership_id ?? null, post_operation_id: operationId, posted_at: now, lines: snapshots.map((item) => item.line) };
@@ -87,6 +89,7 @@ export const invoiceService = {
       if (!product) throw new Error("محصول فاکتور در دسترس نیست.");
       const after = product.quantity + (invoice.invoice_type === "purchase" ? -line.base_quantity : line.base_quantity);
       if (after < 0) throw new Error("موجودی برای برگشت فاکتور خرید کافی نیست.");
+      assertProductQuantity(after);
       effects.push({ product, before: product.quantity, after });
     }
     const payload = { action: "cancel", effects: effects.map((value) => ({ product_id: value.product.id, before: value.before, after: value.after })) };

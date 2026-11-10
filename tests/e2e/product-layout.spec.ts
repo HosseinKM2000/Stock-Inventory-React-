@@ -195,13 +195,13 @@ test("compact virtual rows remain separated when the mobile keyboard changes the
   await expect(page.getByRole("spinbutton", { name: "موجودی جدید" })).toBeInViewport();
 });
 
-test("long stock quantities use a full-width mobile row and stay clear of desktop actions", async ({ page }) => {
+test("long stock quantities use full-width rows and stay clear of desktop actions", async ({ page }) => {
   await seedOfflineUser(page);
-  await seedProduct(page, { quantity: 22322222 });
+  await seedProduct(page, { quantity: 999_999_999, packaged: true });
   await page.setViewportSize({ width: 390, height: 700 });
   await page.goto("/inventory/list");
 
-  const assertMobileWideLayout = async (cardSelector: string) => {
+  const assertWideLayout = async (cardSelector: string) => {
     const control = page.locator(`${cardSelector} .quick-stock-control`);
     const quantity = control.locator(".quick-stock-quantity");
     const increase = control.locator('[data-stock-action="increase"]');
@@ -219,21 +219,46 @@ test("long stock quantities use a full-width mobile row and stay clear of deskto
   };
 
   await page.getByRole("button", { name: "نمای راحت", exact: true }).click();
-  await assertMobileWideLayout(".inventory-card--comfortable");
+  await assertWideLayout(".inventory-card--comfortable");
 
   await page.getByRole("button", { name: "نمای فشرده", exact: true }).click();
-  await assertMobileWideLayout(".inventory-card--compact");
+  await assertWideLayout(".inventory-card--compact");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 
   await page.setViewportSize({ width: 1440, height: 900 });
+  const desktopCompactCard = page.locator(".inventory-card--compact");
   const desktopControl = page.locator(".inventory-card--compact .quick-stock-control");
   const desktopQuantity = desktopControl.locator(".quick-stock-quantity");
+  const desktopModeBox = (await desktopCompactCard.locator(".quick-stock-mode").boundingBox())!;
+  const desktopControlBox = (await desktopControl.boundingBox())!;
   const desktopQuantityBox = (await desktopQuantity.boundingBox())!;
+  const desktopCountBox = (await desktopQuantity.locator(".quick-stock-count").boundingBox())!;
   const desktopButtonBoxes = await desktopControl.locator(".quick-stock-button").evaluateAll((buttons) =>
-    buttons.map((button) => button.getBoundingClientRect().y),
+    buttons.map((button) => {
+      const box = button.getBoundingClientRect();
+      return { x: box.x, y: box.y, width: box.width, height: box.height };
+    }),
   );
-  expect(desktopQuantityBox.width).toBeGreaterThanOrEqual(70);
-  expect(Math.abs(desktopButtonBoxes[0] - desktopButtonBoxes[1])).toBeLessThanOrEqual(1);
+  expect(desktopQuantityBox.width).toBeGreaterThan(72);
+  expect(desktopCountBox.x).toBeGreaterThanOrEqual(desktopQuantityBox.x);
+  expect(desktopCountBox.x + desktopCountBox.width).toBeLessThanOrEqual(desktopQuantityBox.x + desktopQuantityBox.width);
+  expect(Math.abs(desktopButtonBoxes[0].y - desktopButtonBoxes[1].y)).toBeLessThanOrEqual(1);
+  expect(boxesOverlap(desktopQuantityBox, desktopButtonBoxes[0])).toBe(false);
+  expect(boxesOverlap(desktopQuantityBox, desktopButtonBoxes[1])).toBe(false);
+  expect(boxesOverlap(desktopModeBox, desktopControlBox)).toBe(false);
+  await desktopQuantity.locator(".quick-stock-count").click();
+  const desktopCompactInput = desktopQuantity.locator(".quick-stock-input");
+  await expect(desktopCompactInput).toBeVisible();
+  const desktopInputBox = (await desktopCompactInput.boundingBox())!;
+  const editingQuantityBox = (await desktopQuantity.boundingBox())!;
+  expect(desktopInputBox.x).toBeGreaterThanOrEqual(editingQuantityBox.x);
+  expect(desktopInputBox.x + desktopInputBox.width).toBeLessThanOrEqual(editingQuantityBox.x + editingQuantityBox.width);
+  for (const buttonBox of desktopButtonBoxes) expect(boxesOverlap(desktopInputBox, buttonBox)).toBe(false);
+  await desktopCompactInput.press("Escape");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
+
+  await page.getByRole("button", { name: "شبکه فشرده", exact: true }).click();
+  await assertWideLayout(".inventory-card--grid");
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth)).toBe(true);
 
   await page.getByRole("button", { name: "نمای راحت", exact: true }).click();

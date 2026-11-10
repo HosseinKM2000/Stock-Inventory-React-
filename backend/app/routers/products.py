@@ -13,6 +13,7 @@ from sqlalchemy.orm import joinedload
 from ..schemas import InventoryOut, PaginatedInventory, InventoryStats, PaginationMeta
 from ..services.subscription_service import entitlement_for_user, locked_inventory_capacity
 from ..services.authorization_service import is_admin
+from ..inventory_policy import MAX_PRODUCT_QUANTITY
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -143,7 +144,7 @@ async def create_product(
     current_user: CurrentProductCreator,
     db: DbSession,
     name: Annotated[str, Form(min_length=1)],
-    quantity: Annotated[int, Form(ge=0)] = 0,
+    quantity: Annotated[int, Form(ge=0, le=MAX_PRODUCT_QUANTITY)] = 0,
     price: Annotated[int, Form(ge=0)] = 0,
     sale_price: Annotated[int | None, Form(ge=0)] = None,
     purchase_price: Annotated[int | None, Form(ge=0)] = None,
@@ -209,7 +210,7 @@ async def update_product(
     current_user: CurrentProductReader,
     db: DbSession,
     name: Annotated[str | None, Form()] = None,
-    quantity: Annotated[int | None, Form(ge=0)] = None,
+    quantity: Annotated[int | None, Form(ge=0, le=MAX_PRODUCT_QUANTITY)] = None,
     price: Annotated[int | None, Form(ge=0)] = None,
     sale_price: Annotated[int | None, Form(ge=0)] = None,
     purchase_price: Annotated[int | None, Form(ge=0)] = None,

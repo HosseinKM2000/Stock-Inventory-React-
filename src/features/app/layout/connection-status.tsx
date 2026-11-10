@@ -1,19 +1,55 @@
 import { notifySubscriptionRestriction } from "@/shared/access/subscription-limit";
+import { syncService } from "@/shared/lib/infrastructure/sync/sync-service";
 import type { SyncStatus } from "@/shared/lib/infrastructure/sync/sync-status";
 import {
   useOnline,
   useSyncStatus,
 } from "@/shared/lib/infrastructure/sync/use-sync-status";
-import { CheckIcon, ClockIcon, ExclamationTriangleIcon } from "@radix-ui/react-icons";
+import { ArchiveIcon, CheckIcon, ClockIcon, ExclamationTriangleIcon, MagnifyingGlassIcon, ReloadIcon } from "@radix-ui/react-icons";
 import { Tooltip } from "@radix-ui/themes";
 import { Link } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+const STATUS_REVEAL_DURATION_MS = 4_000;
 
 export type SyncIndicator = {
   kind: "idle" | "pending" | "syncing" | "success" | "error";
   label: string;
   tooltip: string;
 };
+
+export type SyncHeaderAction =
+  | { kind: "sync" | "retry"; label: "ارسال" | "تلاش" }
+  | { kind: "details" | "recovery"; label: "بررسی" | "بازیابی"; to: "/setting/sync" | "/setting/backup" };
+
+export function getCompactSyncLabel(status: SyncStatus, online: boolean) {
+  if (!online) return status.pending > 0 ? `${status.pending.toLocaleString("fa-IR")} صف` : "آفلاین";
+  if (status.state === "syncing") return "ارسال";
+  if (status.error === "SYNC_PAUSED_FOR_RESTORE") return "مکث";
+  if (status.state === "conflict") return "تعارض";
+  if (status.state === "failed") return "خطا";
+  if (status.pending > 0) return `${status.pending.toLocaleString("fa-IR")} صف`;
+  if (status.state === "synced") return "همگام";
+  return "آماده";
+}
+
+export function getSyncHeaderAction(status: SyncStatus, online: boolean): SyncHeaderAction | null {
+  if (!online || status.state === "syncing") return null;
+  if (status.error === "SYNC_PAUSED_FOR_RESTORE") {
+    return { kind: "recovery", label: "بازیابی", to: "/setting/backup" };
+  }
+  if (status.state === "conflict") {
+    return { kind: "details", label: "بررسی", to: "/setting/sync" };
+  }
+  if (status.state === "failed") {
+    const retryable = status.pending > 0 || /network|fetch|offline|timeout/i.test(status.error ?? "");
+    return retryable
+      ? { kind: "retry", label: "تلاش" }
+      : { kind: "details", label: "بررسی", to: "/setting/sync" };
+  }
+  if (status.pending > 0) return { kind: "sync", label: "ارسال" };
+  return null;
+}
 
 export function syncErrorMessage(error: string | null) {
   if (error?.startsWith("SYNC_OUTCOME_UNRESOLVED_ACCESS_DENIED:")) {
@@ -110,6 +146,33 @@ const ConnectionStatus = () => {
   const online = useOnline();
   const status = useSyncStatus();
   const indicator = getSyncIndicator(status, online);
+  const compactLabel = getCompactSyncLabel(status, online);
+  const action = getSyncHeaderAction(status, online);
+  const [revealed, setRevealed] = useState(false);
+  const [revealVersion, setRevealVersion] = useState(0);
+  const revealTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const statusSignature = `${online}:${status.state}:${status.pending}:${status.lastSyncedAt ?? ""}:${status.error ?? ""}`;
+  const previousStatusSignatureRef = useRef(statusSignature);
+
+  const revealStatus = useCallback(() => {
+    if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
+    setRevealed(true);
+    setRevealVersion((version) => version + 1);
+    revealTimerRef.current = setTimeout(() => {
+      setRevealed(false);
+      revealTimerRef.current = null;
+    }, STATUS_REVEAL_DURATION_MS);
+  }, []);
+
+  useEffect(() => {
+    if (previousStatusSignatureRef.current === statusSignature) return;
+    previousStatusSignatureRef.current = statusSignature;
+    revealStatus();
+  }, [revealStatus, statusSignature]);
+
+  useEffect(() => () => {
+    if (revealTimerRef.current) clearTimeout(revealTimerRef.current);
+  }, []);
 
   useEffect(() => {
     if (status.state === "failed" && status.error) {
@@ -117,19 +180,45 @@ const ConnectionStatus = () => {
     }
   }, [status.error, status.state]);
 
+  const runSync = () => {
+    if (!online || status.state === "syncing") return;
+    revealStatus();
+    void syncService.retry();
+  };
+
   return (
-    <Tooltip content={indicator.tooltip}>
-      <Link
-        to="/setting/sync"
-        className="sync-status-badge"
-        data-status={indicator.kind}
-        aria-label={`${indicator.label}؛ مشاهده جزئیات همگام‌سازی`}
-      >
-        <span className="sync-status-icon" aria-hidden="true">
-          <SyncStateIcon kind={indicator.kind} />
-        </span>
-      </Link>
-    </Tooltip>
+    <span className="sync-status-control" data-status={indicator.kind} data-revealed={revealed}>
+      <Tooltip content={indicator.tooltip}>
+        <button
+          type="button"
+          className="sync-status-badge"
+          data-status={indicator.kind}
+          aria-label={`${indicator.label}؛ نمایش وضعیت همگام‌سازی`}
+          aria-expanded={revealed}
+          onClick={revealStatus}
+        >
+          <span className="sync-status-icon" aria-hidden="true">
+            <SyncStateIcon kind={indicator.kind} />
+          </span>
+        </button>
+      </Tooltip>
+      <span className="sync-status-reveal" dir="rtl" aria-hidden={!revealed} aria-live="polite">
+        <strong key={revealVersion} className="sync-status-label">{compactLabel}</strong>
+        {revealed && action ? (
+          "to" in action ? (
+            <Link to={action.to} className="sync-status-action" onClick={() => setRevealed(false)} aria-label={action.kind === "recovery" ? "بررسی بازیابی" : "بررسی جزئیات همگام‌سازی"}>
+              {action.kind === "recovery" ? <ArchiveIcon aria-hidden="true" /> : <MagnifyingGlassIcon aria-hidden="true" />}
+              <span>{action.label}</span>
+            </Link>
+          ) : (
+            <button type="button" className="sync-status-action" onClick={runSync} aria-label={action.kind === "sync" ? "همگام‌سازی اکنون" : "تلاش دوباره"}>
+              <ReloadIcon aria-hidden="true" />
+              <span>{action.label}</span>
+            </button>
+          )
+        ) : null}
+      </span>
+    </span>
   );
 };
 

@@ -6,6 +6,7 @@ import { queueService } from "@/shared/lib/infrastructure/sync/queue.service";
 import { isTeamMode, teamCommandService } from "@/shared/lib/infrastructure/sync/team-command.service";
 import type { InventoryMovement, InventoryMovementKind, ProductBarcode, ScanInputSource } from "../types";
 import { movementRepository } from "./movement-repository";
+import { assertProductQuantity } from "@/features/app/inventory/domain/inventory-quantity";
 
 export const INVENTORY_MOVEMENT_ENTITY = "inventory_movement";
 
@@ -43,6 +44,7 @@ export const movementService = {
       ? input.finalQuantity
       : before + (input.kind === "receive" ? amount : -amount);
     if (after == null || !Number.isSafeInteger(after) || after < 0) throw new Error("موجودی نهایی نمی‌تواند منفی یا نامعتبر باشد");
+    assertProductQuantity(after);
     const delta = after - before;
     if (delta === 0) throw new Error("این عملیات موجودی را تغییر نمی‌دهد");
 
@@ -98,6 +100,7 @@ export const movementService = {
     if (!user || !current) throw new Error("محصول برای بازگردانی در دسترس نیست");
     const after = current.quantity - original.delta;
     if (after < 0) throw new Error("بازگردانی باعث موجودی منفی می‌شود");
+    assertProductQuantity(after);
     const now = new Date().toISOString();
     const reversalOperationId = crypto.randomUUID();
     const reversal: InventoryMovement = {

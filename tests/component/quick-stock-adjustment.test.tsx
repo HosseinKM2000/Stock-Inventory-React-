@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { Theme } from "@radix-ui/themes";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { toast } from "sonner";
 
 import { product } from "../helpers/product";
 
@@ -110,5 +111,27 @@ describe("QuickStockAdjustment confirmation", () => {
     });
 
     expect(control).toHaveAttribute("data-quantity-layout", "wide");
+  });
+
+  it("keeps direct quantity edits within the product stock ceiling", () => {
+    const errorToast = vi.spyOn(toast, "error").mockImplementation(() => "quantity-limit-toast");
+    render(
+      <Theme>
+        <QuickStockAdjustment product={product({ id: 41, quantity: 6 })} />
+      </Theme>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /ویرایش مستقیم موجودی/ }));
+    const input = screen.getByRole("spinbutton", { name: "موجودی جدید" });
+    expect(input).toHaveAttribute("max", "1000000000");
+    fireEvent.change(input, { target: { value: "1000000001" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
+    expect(input).toBeVisible();
+    expect(input).toHaveValue(6);
+    expect(errorToast).toHaveBeenCalledWith("موجودی هر محصول نمی‌تواند بیشتر از ۱٬۰۰۰٬۰۰۰٬۰۰۰ عدد باشد");
+    expect(mutate).not.toHaveBeenCalled();
+    errorToast.mockRestore();
   });
 });

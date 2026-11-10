@@ -16,6 +16,7 @@ from ..models import (
     User,
 )
 from ..schemas import InventoryOut
+from ..inventory_policy import validate_product_quantity
 from .store_service import active_store_context
 
 
@@ -217,6 +218,7 @@ def post_invoice(
         after = before + base_quantity if invoice_type == "purchase" else before - base_quantity
         if after < 0:
             raise ValueError("INSUFFICIENT_STOCK")
+        validate_product_quantity(after)
         line = InvoiceLine(
             invoice=invoice,
             store_id=context.store.id,
@@ -308,6 +310,7 @@ def cancel_invoice(
         before = item.quantity
         delta = -line.base_quantity if invoice.invoice_type == "purchase" else line.base_quantity
         after = before + delta
+        validate_product_quantity(after)
         original_id = _movement_operation(invoice.post_operation_id, item.id, "post")
         db.add(InventoryMovement(
             store_id=context.store.id,

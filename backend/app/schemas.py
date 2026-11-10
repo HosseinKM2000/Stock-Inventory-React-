@@ -6,6 +6,7 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field, StrictInt, field_va
 from pydantic_core import PydanticCustomError
 
 from .mobile import INVALID_MOBILE_MESSAGE, normalize_iranian_mobile
+from .inventory_policy import MAX_PRODUCT_QUANTITY
 
 
 # =========================================================
@@ -399,7 +400,7 @@ class CatalogProductOut(BaseModel):
 class InventoryCreate(BaseModel):
     custom_label: str | None = None
     note: str | None = None
-    quantity: int = Field(default=0, ge=0)
+    quantity: int = Field(default=0, ge=0, le=MAX_PRODUCT_QUANTITY)
     price: int = Field(default=0, ge=0)
     sale_price: int | None = Field(default=None, ge=0)
     purchase_price: int | None = Field(default=None, ge=0)
@@ -410,7 +411,7 @@ class InventoryCreate(BaseModel):
 class InventoryUpdate(BaseModel):
     custom_label: str | None = None
     note: str | None = None
-    quantity: int | None = Field(default=None, ge=0)
+    quantity: int | None = Field(default=None, ge=0, le=MAX_PRODUCT_QUANTITY)
     price: int | None = Field(default=None, ge=0)
     sale_price: int | None = Field(default=None, ge=0)
     purchase_price: int | None = Field(default=None, ge=0)
@@ -473,7 +474,7 @@ class InventoryListResponse(BaseModel):
 # =========================================================
 class TransactionCreate(BaseModel):
     type: Literal["stock_in", "stock_out"]
-    quantity: int = Field(gt=0)
+    quantity: int = Field(gt=0, le=MAX_PRODUCT_QUANTITY)
     note: str | None = None
 
 
@@ -497,7 +498,7 @@ class CustomProductCreate(BaseModel):
     name: str
     description: str | None = None
     image_url: str | None = None
-    quantity: int = Field(default=0, ge=0)
+    quantity: int = Field(default=0, ge=0, le=MAX_PRODUCT_QUANTITY)
     price: int = Field(default=0, ge=0)
     note: str | None = None
 
@@ -506,7 +507,7 @@ class CustomProductUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
     image_url: str | None = None
-    quantity: int | None = Field(default=None, ge=0)
+    quantity: int | None = Field(default=None, ge=0, le=MAX_PRODUCT_QUANTITY)
     price: int | None = Field(default=None, ge=0)
     note: str | None = None
 
@@ -576,7 +577,7 @@ class PaginatedCatalog(BaseModel):
 # =========================================================
 class InventorySyncItem(BaseModel):
     id: int
-    quantity: int
+    quantity: int = Field(ge=0, le=MAX_PRODUCT_QUANTITY)
     price: int
     custom_label: str | None = None
     note: str | None = None
