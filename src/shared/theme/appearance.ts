@@ -4,7 +4,7 @@ const KEY = "inventory-appearance";
 
 export function getAppearance(): Appearance {
   const value = localStorage.getItem(KEY);
-  return value === "light" || value === "dark" || value === "system" ? value : "system";
+  return value === "light" || value === "dark" || value === "system" ? value : "light";
 }
 
 export function setAppearance(value: Appearance) {

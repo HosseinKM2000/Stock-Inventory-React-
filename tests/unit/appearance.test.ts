@@ -3,10 +3,10 @@ import { getAppearance, setAppearance } from "@/shared/theme/appearance";
 import { getDisplaySize, setDisplaySize } from "@/shared/theme/display-size";
 
 describe("appearance persistence", () => {
-  it("defaults invalid or missing values to system", () => {
-    expect(getAppearance()).toBe("system");
+  it("defaults invalid or missing values to light", () => {
+    expect(getAppearance()).toBe("light");
     localStorage.setItem("inventory-appearance", "invalid");
-    expect(getAppearance()).toBe("system");
+    expect(getAppearance()).toBe("light");
   });
 
   it.each(["light", "dark", "system"] as const)("persists and broadcasts %s", (appearance) => {
