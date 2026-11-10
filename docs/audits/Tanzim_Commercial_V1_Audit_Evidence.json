@@ -1,0 +1,544 @@
+{
+  "schema_version": 1,
+  "audit": {
+    "task_id": "TZ-016",
+    "title": "Evidence-Based Current-State Audit of Tanzim Commercial V1",
+    "date": "2026-10-22",
+    "timezone": "Asia/Tehran",
+    "branch": "draft",
+    "commit": "e719c7f1de63b35b28ac7123704fcee70f10ba54",
+    "initial_worktree_status": "clean",
+    "dirty_state_scope": [
+      "docs/audits/Tanzim_Commercial_V1_Current_State_Audit.md",
+      "docs/audits/Tanzim_Commercial_V1_Audit_Evidence.json"
+    ],
+    "environment": {
+      "os": "Windows",
+      "shell": "PowerShell",
+      "node": "v24.12.0",
+      "npm": "10.8.1",
+      "python": "3.13.13",
+      "docker_cli": "29.2.0",
+      "docker_daemon": "unavailable: permission denied"
+    },
+    "inspected_areas": [
+      "AGENTS.md",
+      "docs/store-personnel-architecture.md",
+      "package.json and package-lock.json",
+      "src frontend application and local infrastructure",
+      "public/sw.js",
+      "backend/app models, routers, services, configuration and migrations",
+      "tests/unit",
+      "tests/component",
+      "tests/e2e",
+      "backend/tests",
+      "Docker and deployment-related repository files"
+    ],
+    "scope_note": "Inspection and reporting only. No application fixes, policy changes, migrations, database resets, deployment, merge, or business-data mutations were performed."
+  },
+  "status_vocabulary": [
+    "Implemented and runtime-verified",
+    "Implemented but not runtime-verified",
+    "Partially implemented",
+    "Documented/planned only",
+    "Not implemented",
+    "Contradictory or inconsistent",
+    "Not assessable with available evidence"
+  ],
+  "severity_vocabulary": [
+    "critical",
+    "high",
+    "medium",
+    "low",
+    "info"
+  ],
+  "findings": [
+    {
+      "id": "ARCH-001",
+      "title": "Active architecture is a local-first React SPA with a FastAPI server",
+      "status": "Implemented and runtime-verified",
+      "severity": "info",
+      "actual_behavior": "React/TanStack UI uses Dexie projections and a durable outbox, OPFS media, a service worker, and FastAPI/SQLAlchemy/PostgreSQL server APIs. The service worker can notify open clients but is not an independent closed-app sync worker.",
+      "expected_behavior": "Documentation describes an offline-capable browser client and authoritative server.",
+      "impact": "The product has a functional V1 architecture, but offline and server-confirmation semantics must be communicated precisely.",
+      "evidence": [
+        { "path": "package.json", "symbol": "dependencies/scripts" },
+        { "path": "src/shared/lib/infrastructure/storage/db.ts", "lines": "36-242", "symbol": "InventoryDatabase versions 1-10" },
+        { "path": "src/shared/lib/infrastructure/sync/sync-service.ts", "lines": "165-229", "symbol": "syncService" },
+        { "path": "public/sw.js", "symbol": "fetch/sync/message handlers" },
+        { "path": "backend/app/main.py", "symbol": "FastAPI application" }
+      ],
+      "test_evidence": ["265 frontend unit/component tests passed", "production build passed", "70 of 76 Playwright cases passed in the full run"],
+      "remaining_uncertainty": "No production deployment, service-worker lifecycle matrix, or real closed-browser background sync was verified."
+    },
+    {
+      "id": "OWN-001",
+      "title": "Store ownership is runtime-adapted over legacy user-owned rows",
+      "status": "Contradictory or inconsistent",
+      "severity": "critical",
+      "actual_behavior": "Authenticated membership resolves a store and APIs scope legacy tables through data_owner_id equal to Store.owner_user_id. Inventory, categories, labels, changes, operations and transactions still use user_id as an authoritative or unique key in important paths.",
+      "expected_behavior": "AGENTS.md and docs/store-personnel-architecture.md require the store to own business data and the user to be an actor.",
+      "impact": "The adapter works for one owner workspace but leaves ambiguous constraints and elevated migration/cross-store risk, especially for future multi-store use.",
+      "evidence": [
+        { "path": "backend/app/models.py", "lines": "131-189", "symbol": "Store and StoreMembership" },
+        { "path": "backend/app/models.py", "lines": "270-420", "symbol": "Category, Label and InventoryItem user_id constraints" },
+        { "path": "backend/app/models.py", "lines": "589-620", "symbol": "SyncOperation and SyncChange" },
+        { "path": "backend/app/services/store_service.py", "lines": "99-133", "symbol": "store_data_owner_id and attach_store_context" },
+        { "path": "backend/app/routers/products.py", "lines": "99-197", "symbol": "data_owner_id queries" }
+      ],
+      "test_evidence": ["backend store/personnel and sync tests passed on disposable SQLite"],
+      "remaining_uncertainty": "PostgreSQL constraint behavior and a real migrated production dataset were not inspected."
+    },
+    {
+      "id": "OWN-002",
+      "title": "There is no explicit authenticated active-store selection",
+      "status": "Partially implemented",
+      "severity": "high",
+      "actual_behavior": "The server selects the first membership ordered with owner membership first and then by id. Local state is partitioned by actor and store, but no store selector or session-bound active membership was found.",
+      "expected_behavior": "Store context must be resolved from an authenticated active membership and must not trust client store identifiers.",
+      "impact": "Current single-workspace behavior is deterministic, but multiple memberships cannot be selected safely or transparently.",
+      "evidence": [
+        { "path": "backend/app/services/store_service.py", "lines": "63-85", "symbol": "active_store_context" },
+        { "path": "src/shared/lib/infrastructure/storage/db.ts", "lines": "191-242", "symbol": "actor/store partition migration" },
+        { "path": "src/shared/lib/infrastructure/storage/inventory-storage.ts", "lines": "1-17", "symbol": "actor/store scoped inventory" }
+      ],
+      "test_evidence": ["account-transition unit test passed", "two isolated browser-profile Playwright cases passed"],
+      "remaining_uncertainty": "The application has no active multi-store user flow to exercise."
+    },
+    {
+      "id": "AUTH-001",
+      "title": "Authentication is custom JWT plus server-side device sessions, not Keycloak",
+      "status": "Implemented and runtime-verified",
+      "severity": "medium",
+      "actual_behavior": "Login issues an HS256 JWT and stores a UserSession with fingerprint, token and active status. Protected requests validate JWT subject, active user and the matching active session. Password changes revoke other sessions.",
+      "expected_behavior": "Authenticated identity and stable server-derived actor context are required.",
+      "impact": "Revocation and device controls are enforceable online; installed keycloak-js must not be mistaken for an active provider.",
+      "evidence": [
+        { "path": "backend/app/services/auth_service.py", "lines": "42-171", "symbol": "register/login/device admission" },
+        { "path": "backend/app/services/session_service.py", "lines": "12-116", "symbol": "session validation and revocation" },
+        { "path": "backend/app/models.py", "lines": "222-251", "symbol": "UserSession" },
+        { "path": "package.json", "symbol": "keycloak-js dependency with no active imports" }
+      ],
+      "test_evidence": ["backend authentication-dependent tests passed", "authentication Playwright journey skipped without opt-in backend"],
+      "remaining_uncertainty": "No live production identity integration or adversarial session testing was performed."
+    },
+    {
+      "id": "AUTH-002",
+      "title": "Personnel and role management is online-only and owner-only",
+      "status": "Implemented and runtime-verified",
+      "severity": "info",
+      "actual_behavior": "Personnel creation, state changes, role definitions and assignments use server APIs, enforce owner access, personnel capacity and known permission dependencies, and do not enter the operational outbox. Temporary credentials are returned once and first-login access is gated until password change.",
+      "expected_behavior": "Matches AGENTS.md and the architecture document.",
+      "impact": "Identity and authorization changes remain authoritative online operations.",
+      "evidence": [
+        { "path": "backend/app/routers/personnel.py", "symbol": "role/personnel/activity endpoints" },
+        { "path": "backend/app/services/store_authorization.py", "symbol": "owner and permission enforcement" },
+        { "path": "src/shared/access/access-boundary.tsx", "lines": "28-45", "symbol": "temporary password redirect" },
+        { "path": "src/features/personnel/api.ts", "symbol": "online personnel API" }
+      ],
+      "test_evidence": ["backend/tests/test_store_personnel.py passed", "personnel and roles component tests passed", "personnel and roles responsive Playwright tests passed"],
+      "remaining_uncertainty": "No live multi-device personnel revocation E2E test was run."
+    },
+    {
+      "id": "OFF-001",
+      "title": "Team members currently retain local-first mutation behavior",
+      "status": "Contradictory or inconsistent",
+      "severity": "high",
+      "actual_behavior": "Both team owners and personnel can commit local mutations when cached authorization permits. Personnel authorization remains valid offline for 24 hours; owners use cached entitlement without a personnel lease. Server authorization occurs later at sync acceptance.",
+      "expected_behavior": "The policy under consideration permits offline mutations only for single-person stores and requires online server acceptance for mutations in team stores, including owners.",
+      "impact": "The current product can show local success for a team mutation that is later rejected, and revoked access cannot be instantly enforced on a disconnected device.",
+      "evidence": [
+        { "path": "src/shared/access/access-state.ts", "lines": "47-228", "symbol": "PERSONNEL_AUTHORIZATION_VALIDITY_MS and offline access" },
+        { "path": "src/shared/lib/infrastructure/storage/local-mutation-storage.ts", "lines": "38-73", "symbol": "local-first writes" },
+        { "path": "backend/app/routers/sync.py", "lines": "680-879", "symbol": "authorization at acceptance" }
+      ],
+      "test_evidence": ["offline access-state and sync unit tests passed"],
+      "remaining_uncertainty": "A browser E2E scenario revoking permission while offline was not executed."
+    },
+    {
+      "id": "SYNC-001",
+      "title": "A newer edit can be lost after a server commit whose response was lost",
+      "status": "Contradictory or inconsistent",
+      "severity": "critical",
+      "actual_behavior": "The queue compacts a new edit into an existing pending or retryable_error item and reuses its operationId. If the server already committed that ID, retry returns the cached prior result; the client can treat the compacted newer payload as applied and remove it.",
+      "expected_behavior": "Unknown outcomes must remain durably tracked and idempotency identity must not acknowledge a different payload.",
+      "impact": "A valid later product or quantity edit may be silently lost, violating inventory integrity.",
+      "evidence": [
+        { "path": "src/shared/lib/infrastructure/sync/queue.service.ts", "lines": "77-132", "symbol": "enqueue compaction and operationId reuse" },
+        { "path": "backend/app/routers/sync.py", "lines": "688-706", "symbol": "SyncOperation deduplication" },
+        { "path": "src/features/app/inventory/services/product-sync.ts", "lines": "39-82", "symbol": "response reconciliation" }
+      ],
+      "test_evidence": ["No direct test for server-commit/lost-response followed by a new edit was found or run"],
+      "remaining_uncertainty": "A deterministic fault-injection runtime reproduction was not performed; the risk is derived from the complete active code path."
+    },
+    {
+      "id": "SYNC-002",
+      "title": "Local entity and outbox writes are atomic in IndexedDB",
+      "status": "Implemented and runtime-verified",
+      "severity": "info",
+      "actual_behavior": "Product, category, label, barcode and movement mutations write their local projection and queue entry in one Dexie transaction. Queue claim uses a transactional compare-and-set and expired in-flight work is recoverable.",
+      "expected_behavior": "Local commit must survive application interruption without an untracked mutation.",
+      "impact": "The main local durability boundary is sound, excluding OPFS media which cannot join IndexedDB transactions.",
+      "evidence": [
+        { "path": "src/shared/lib/infrastructure/storage/local-mutation-storage.ts", "lines": "38-73", "symbol": "Dexie transaction wrappers" },
+        { "path": "src/shared/lib/infrastructure/storage/queue-storage.ts", "lines": "53-78", "symbol": "claim" },
+        { "path": "src/shared/lib/infrastructure/sync/queue.service.ts", "lines": "140-190", "symbol": "recovery and retry states" }
+      ],
+      "test_evidence": ["queue policy, IndexedDB storage, inventory and sync unit tests passed", "persistent browser-profile restart Playwright tests passed"],
+      "remaining_uncertainty": "No forced process kill occurred between each individual storage instruction."
+    },
+    {
+      "id": "SYNC-003",
+      "title": "Quantity semantics vary by workflow",
+      "status": "Partially implemented",
+      "severity": "high",
+      "actual_behavior": "Forms, quick adjustment, bulk edits and imports ultimately sync absolute quantity with a base version. Barcode movement paths sync additive deltas and support correction/reversal. Concurrent absolute updates conflict rather than merge.",
+      "expected_behavior": "The audit requires each path to be classified and duplicate/lost effects to be identified.",
+      "impact": "Different concurrency semantics are valid but must be explicit; users must resolve absolute conflicts manually.",
+      "evidence": [
+        { "path": "src/features/app/inventory/services/inventory.service.ts", "symbol": "absolute product updates" },
+        { "path": "src/features/app/inventory/components/bulk-edit-dialog.tsx", "lines": "53-68", "symbol": "bulk update" },
+        { "path": "src/features/app/inventory/services/excel-import.service.ts", "symbol": "import quantity" },
+        { "path": "src/features/barcode/services/movement-service.ts", "lines": "43-116", "symbol": "additive movement and reversal" },
+        { "path": "backend/app/routers/sync.py", "lines": "493-611", "symbol": "movement transaction" }
+      ],
+      "test_evidence": ["quick-stock component, sync unit and backend sync tests passed"],
+      "remaining_uncertainty": "No real concurrent multi-device PostgreSQL run was available."
+    },
+    {
+      "id": "MED-001",
+      "title": "Data synchronization is not distinguished from media synchronization",
+      "status": "Partially implemented",
+      "severity": "high",
+      "actual_behavior": "The browser stores processed images in OPFS and attaches available files to sync. A missing or unreadable local file does not block record synchronization, and the queue has no independent media status. Server files are protected but are not rehydrated into OPFS on a clean device.",
+      "expected_behavior": "A completed product-data acknowledgement should not silently imply that associated media is synchronized.",
+      "impact": "Users may see a product as synchronized while its latest local media never reached the server; a clean offline device cannot recover all server-confirmed images.",
+      "evidence": [
+        { "path": "src/shared/lib/infrastructure/media/image.constants.ts", "lines": "1-18", "symbol": "processing limits" },
+        { "path": "src/features/app/inventory/api/sync.api.ts", "lines": "35-93", "symbol": "multipart construction and missing-media handling" },
+        { "path": "src/shared/lib/infrastructure/media/useImage.ts", "lines": "12-60", "symbol": "authenticated remote display without OPFS rehydration" },
+        { "path": "backend/app/routers/files.py", "lines": "15-38", "symbol": "protected file delivery" }
+      ],
+      "test_evidence": ["image storage, hook and upload unit/component tests passed"],
+      "remaining_uncertainty": "A real partial multipart network failure and fresh-device offline media recovery were not run."
+    },
+    {
+      "id": "MED-002",
+      "title": "Uploaded bytes are processed derivatives and server validation is incomplete",
+      "status": "Partially implemented",
+      "severity": "medium",
+      "actual_behavior": "Client images are generally resized/compressed before upload; exact originals are only possible for pass-through formats. Server validation checks declared MIME and a 10 MiB byte limit, but no decoded pixel/decompression limit was found.",
+      "expected_behavior": "Media policy should distinguish originals from derivatives and resist oversized decoded images.",
+      "impact": "Original-quality recovery is not guaranteed, and malicious image payloads may consume excessive decode resources in downstream tooling.",
+      "evidence": [
+        { "path": "src/shared/lib/infrastructure/media/image.constants.ts", "lines": "1-18", "symbol": "1280px processing policy" },
+        { "path": "src/shared/lib/infrastructure/media/image.service.ts", "symbol": "decode, resize and compression" },
+        { "path": "backend/app/routers/sync.py", "lines": "53-55,638-655", "symbol": "server upload validation" }
+      ],
+      "test_evidence": ["frontend image tests passed; no adversarial server image test was run"],
+      "remaining_uncertainty": "Reverse-proxy or external malware controls outside the repository are not assessable."
+    },
+    {
+      "id": "BAK-001",
+      "title": "Local external backup is functional and store-bound but unencrypted",
+      "status": "Implemented and runtime-verified",
+      "severity": "medium",
+      "actual_behavior": "Owner/admin backup captures scoped local records, queue metadata, preferences and locally available OPFS media. It uses versioned JSON, SHA-256 integrity, owner/store checks, File System Access when available and manual share/download fallback. It is not encrypted or authenticated.",
+      "expected_behavior": "Backups must not restore authority and must not cross account/store boundaries.",
+      "impact": "Local disaster recovery exists, but anyone who obtains the backup can read its business content and modify/re-hash it.",
+      "evidence": [
+        { "path": "src/features/backup/services/backup-format.ts", "lines": "29-141", "symbol": "envelope, SHA-256 and ownership validation" },
+        { "path": "src/features/backup/services/backup-service.ts", "symbol": "snapshot and scheduling" },
+        { "path": "src/features/backup/services/external-backup-adapter.ts", "symbol": "File System Access and fallbacks" },
+        { "path": "src/features/backup/types.ts", "lines": "45-65", "symbol": "backup envelope" }
+      ],
+      "test_evidence": ["backup format, repository, restore, scheduling and adapter unit tests passed", "backup shortcut Playwright tests passed"],
+      "remaining_uncertainty": "Actual permission persistence and file behavior across multiple browser vendors were not verified."
+    },
+    {
+      "id": "BAK-002",
+      "title": "Server backup and restore operations are not implemented",
+      "status": "Not implemented",
+      "severity": "high",
+      "actual_behavior": "The backend can expose a current inventory snapshot, but its restore endpoint returns 501. No repository runbook or automated PostgreSQL plus uploads backup/restore drill was found.",
+      "expected_behavior": "Commercial operational readiness requires independent historical backup of authoritative database and file storage.",
+      "impact": "Sync/current server storage is not a substitute for recoverable server history; a host or volume failure may be unrecoverable from server operations alone.",
+      "evidence": [
+        { "path": "backend/app/routers/backup.py", "symbol": "snapshot and unimplemented restore" },
+        { "path": "docker-compose.yml", "symbol": "PostgreSQL volume" }
+      ],
+      "test_evidence": ["No server restore test exists; PostgreSQL integration environment was unavailable"],
+      "remaining_uncertainty": "External infrastructure backups not represented in the repository cannot be assessed."
+    },
+    {
+      "id": "CAT-001",
+      "title": "Shared catalog reconciliation targets users rather than stores",
+      "status": "Contradictory or inconsistent",
+      "severity": "critical",
+      "actual_behavior": "Catalog reconciliation selects every User with the catalog industry and creates InventoryItem rows keyed to that user. Personnel users inherit the owner's industry in attached context, which can create a separate row outside the intended store-owned projection.",
+      "expected_behavior": "Shared catalog assignments should be store-owned, with users only acting through memberships.",
+      "impact": "Team catalog provisioning can diverge from the store ownership invariant and create duplicate or inaccessible records.",
+      "evidence": [
+        { "path": "backend/app/services/catalog_product_service.py", "lines": "42-75", "symbol": "_reconcile_catalog_assignments" },
+        { "path": "backend/app/services/store_service.py", "lines": "114-133", "symbol": "attach_store_context industry propagation" },
+        { "path": "backend/app/models.py", "lines": "398-420", "symbol": "InventoryItem uniqueness" }
+      ],
+      "test_evidence": ["Existing catalog/domain tests passed but no personnel catalog reconciliation regression was identified"],
+      "remaining_uncertainty": "A disposable PostgreSQL reproduction was unavailable."
+    },
+    {
+      "id": "FEAT-001",
+      "title": "The V1 operational feature set is broad but has several integration limitations",
+      "status": "Partially implemented",
+      "severity": "medium",
+      "actual_behavior": "Product CRUD, quick quantity, three card modes, search/sort/ANY-label filtering, bulk operations, category/label management, true XLSX import, CSV and Excel-compatible XLS export, browser-print PDF, clipboard, barcode camera/hardware input, label browser printing, navigation, help, notifications, appearance, Jalali formatting and responsive navigation are active. Physical peripherals and non-Chromium behavior were not verified.",
+      "expected_behavior": "Each advertised V1 capability should have accurate format, permission, offline and integration semantics.",
+      "impact": "Most daily inventory workflows are usable, but marketing or help text must not imply generated PDF files, native printer/scanner integration, AND label filtering or fully verified peripheral support.",
+      "evidence": [
+        { "path": "src/features/app/inventory", "symbol": "CRUD, cards, filters, bulk, import and clipboard" },
+        { "path": "src/features/setting/services/export.service.ts", "lines": "178-263", "symbol": "CSV, XLS-compatible HTML and browser print" },
+        { "path": "src/features/setting/components/export/file-format.tsx", "lines": "20-42", "symbol": "honest .xls label" },
+        { "path": "src/features/barcode/input/camera-scanner.ts", "symbol": "BarcodeDetector and fallback scanner" },
+        { "path": "src/features/barcode/labels/label-renderer.ts", "symbol": "print document" },
+        { "path": "src/shared/lib/navigation", "symbol": "navigation and scroll restoration" }
+      ],
+      "test_evidence": ["frontend unit/component suites passed", "most product-layout, navigation, responsive, personnel, roles, PWA and theme Playwright cases passed"],
+      "remaining_uncertainty": "Camera, hardware scanner, printer, browser PDF workflow, Safari/Firefox and real large imports were not exercised."
+    },
+    {
+      "id": "DASH-001",
+      "title": "Dashboard financial values are inventory potential, not realized sales or profit",
+      "status": "Contradictory or inconsistent",
+      "severity": "medium",
+      "actual_behavior": "The frontend computes local eligible inventory counts, purchase value, sale value, potential gross profit and margin. Today's Actions are current actionable conditions, not an event count. InventoryTransaction records stock changes only. The unused backend dashboard uses a different population.",
+      "expected_behavior": "Financial labels must not imply actual sales, revenue or realized profit without transaction-domain evidence.",
+      "impact": "Users can misinterpret valuation as commercial performance, and future consumers may get different totals from the backend endpoint.",
+      "evidence": [
+        { "path": "src/features/app/dashboard/services/dashboard-selectors.ts", "symbol": "eligible products and actions" },
+        { "path": "src/features/app/dashboard/services/financial-insights.ts", "symbol": "valuation formulas" },
+        { "path": "src/features/app/dashboard/services/dashboard.service.ts", "lines": "23-116", "symbol": "local dashboard source" },
+        { "path": "backend/app/routers/dashboard.py", "symbol": "different server summary" },
+        { "path": "backend/app/models.py", "symbol": "InventoryTransaction" }
+      ],
+      "test_evidence": ["dashboard and financial unit/component tests passed; dashboard scroll restoration Playwright case failed twice in both viewports"],
+      "remaining_uncertainty": "No product decision defines whether actual sales transactions are planned for V1."
+    },
+    {
+      "id": "SUB-001",
+      "title": "Subscription enforcement exists but commercial policy is incomplete and the admin editor is incomplete",
+      "status": "Partially implemented",
+      "severity": "high",
+      "actual_behavior": "Built-in plans enforce inventory, device and personnel limits and capabilities. Non-free prices are null, payment and renewal are inactive, and no media/storage/support/history policy exists. The admin plan UI omits effective personnel, barcode and printing keys and the active_personnel limit from editable options.",
+      "expected_behavior": "Admin configuration should expose all centrally enforced commercial capabilities and limits without hidden policy.",
+      "impact": "Operators cannot reliably configure or explain the effective plan, and paid offerings are not commercially executable end to end.",
+      "evidence": [
+        { "path": "backend/app/plans.py", "lines": "19-69", "symbol": "BUILTIN_PLANS" },
+        { "path": "backend/app/services/subscription_service.py", "lines": "84-171", "symbol": "entitlement resolution" },
+        { "path": "src/features/setting/components/subscription-management/plan-options.ts", "lines": "1-27", "symbol": "PLAN_FEATURE_OPTIONS and PLAN_LIMIT_OPTIONS" },
+        { "path": "src/features/setting/components/subscription-management/plan-dialog.tsx", "lines": "32-60", "symbol": "hidden-value preservation" }
+      ],
+      "test_evidence": ["subscription limit unit and backend plan-dependent tests passed"],
+      "remaining_uncertainty": "No external billing service was configured or tested."
+    },
+    {
+      "id": "SEC-001",
+      "title": "Authorization controls exist, but bearer-token and web-hardening gaps remain",
+      "status": "Partially implemented",
+      "severity": "high",
+      "actual_behavior": "Server authorization, protected files, CORS and baseline security headers are active. The bearer token is stored in browser localStorage and verbatim in UserSession. No Content-Security-Policy or rate limiter was found.",
+      "expected_behavior": "Commercial readiness should minimize reusable secret exposure and provide layered browser/API abuse controls.",
+      "impact": "An XSS or database disclosure can expose active bearer credentials; brute-force and abuse resistance are not evidenced.",
+      "evidence": [
+        { "path": "src/shared/lib/infrastructure/storage/keys.ts", "lines": "1-5", "symbol": "ACCESS_TOKEN localStorage key" },
+        { "path": "backend/app/models.py", "lines": "222-251", "symbol": "UserSession.access_token" },
+        { "path": "backend/app/services/session_service.py", "lines": "93-116", "symbol": "raw token comparison" },
+        { "path": "backend/app/main.py", "lines": "22-49", "symbol": "security headers and CORS" }
+      ],
+      "test_evidence": ["lint, typecheck and backend authorization tests passed; no penetration or rate-limit test was run"],
+      "remaining_uncertainty": "Controls supplied exclusively by an undeclared production proxy/WAF are not assessable."
+    },
+    {
+      "id": "OPS-001",
+      "title": "Production operations are not evidenced end to end",
+      "status": "Not assessable with available evidence",
+      "severity": "high",
+      "actual_behavior": "Health checks, Alembic migrations and Docker configuration exist. No repository CI workflow, monitoring/alerting integration, rollback automation, database replication or uploads durability procedure was found.",
+      "expected_behavior": "A commercial release needs a repeatable deploy, migration, rollback, monitoring and disaster-recovery process.",
+      "impact": "Release and incident risk cannot be bounded from repository evidence.",
+      "evidence": [
+        { "path": "backend/app/main.py", "symbol": "health endpoint" },
+        { "path": "backend/alembic", "symbol": "migration revisions" },
+        { "path": "docker-compose.yml", "symbol": "runtime configuration" },
+        { "path": ".github", "symbol": "directory absent" }
+      ],
+      "test_evidence": ["build and fast test suites passed; PostgreSQL integration and deployment were unavailable"],
+      "remaining_uncertainty": "External CI, monitoring and backup systems may exist outside this repository."
+    },
+    {
+      "id": "TEST-001",
+      "title": "Dashboard scroll restoration fails consistently; two other E2E failures were flaky",
+      "status": "Contradictory or inconsistent",
+      "severity": "medium",
+      "actual_behavior": "The full Playwright run failed dashboard scroll restoration on desktop and mobile, cold-offline PWA on desktop, and display preset scaling on desktop. A last-failed rerun passed the PWA and theme cases but failed dashboard restoration again in both projects with scrollTop equal to zero.",
+      "expected_behavior": "Browser back and in-app return should restore dashboard scroll; PWA/theme cases should be deterministic.",
+      "impact": "A reproducible navigation regression remains, and two tests or behaviors show timing instability.",
+      "evidence": [
+        { "path": "tests/e2e/dashboard.spec.ts", "lines": "50-65", "symbol": "dashboard restores scroll" },
+        { "path": "tests/e2e/pwa.spec.ts", "lines": "37-91", "symbol": "offline cold page" },
+        { "path": "tests/e2e/theme.spec.ts", "lines": "45-80", "symbol": "display preset scaling" }
+      ],
+      "test_evidence": ["full run: 70 passed, 4 failed, 2 skipped", "rerun: 2 passed, 2 failed"],
+      "remaining_uncertainty": "The PWA and theme first-run failures require repeated/stress execution to distinguish test flakiness from race conditions."
+    }
+  ],
+  "verification_results": [
+    {
+      "command": "npm.cmd test",
+      "result": "passed",
+      "details": "69 test files, 265 tests passed",
+      "scope": "Vitest unit and component projects"
+    },
+    {
+      "command": "npm.cmd run test:typecheck",
+      "result": "passed",
+      "details": "tsc --noEmit -p tsconfig.test.json",
+      "scope": "TypeScript test configuration"
+    },
+    {
+      "command": "npm.cmd run lint",
+      "result": "passed",
+      "details": "eslint .",
+      "scope": "Repository lint"
+    },
+    {
+      "command": "npm.cmd run build",
+      "result": "passed_with_warning",
+      "details": "Production build succeeded; Vite reported chunks over 500 kB",
+      "scope": "TypeScript project build and Vite production build"
+    },
+    {
+      "command": ".\\.venv\\Scripts\\python.exe -m pytest -c backend\\pytest.ini backend\\tests --ignore=backend\\tests\\test_postgresql.py",
+      "result": "passed",
+      "details": "42 tests passed in disposable SQLite-backed fixtures",
+      "scope": "Backend domain, store/personnel and sync tests excluding PostgreSQL integration"
+    },
+    {
+      "command": "$env:E2E_BASE_URL='http://127.0.0.1:4173'; $env:E2E_NO_VIDEO='1'; npm.cmd run test:e2e -- --workers=1",
+      "result": "failed",
+      "details": "76 total: 70 passed, 4 failed, 2 skipped. Failures: dashboard scroll desktop/mobile, PWA cold-offline desktop, theme scaling desktop.",
+      "scope": "Production preview in Chromium desktop and Pixel 7 projects"
+    },
+    {
+      "command": "$env:E2E_BASE_URL='http://127.0.0.1:4173'; $env:E2E_NO_VIDEO='1'; npx.cmd playwright test --last-failed --workers=1",
+      "result": "failed",
+      "details": "4 selected: PWA and theme passed; dashboard scroll restoration failed again on desktop and mobile.",
+      "scope": "One rerun to classify persistent versus transient failures"
+    },
+    {
+      "command": "docker info",
+      "result": "unavailable",
+      "details": "Docker client reported permission denied for the daemon named pipe.",
+      "scope": "PostgreSQL integration environment availability"
+    },
+    {
+      "command": "npm.cmd run test:backend:postgres",
+      "result": "not_run",
+      "details": "No reachable isolated PostgreSQL service; the Docker daemon was unavailable.",
+      "scope": "PostgreSQL-specific backend integration tests"
+    }
+  ],
+  "priority_scenario_coverage": [
+    {
+      "scenario": "Local commit followed by application termination",
+      "coverage": "partial",
+      "evidence": "Dexie transaction tests and persistent browser-profile restart passed; exact process-kill fault injection was not run."
+    },
+    {
+      "scenario": "Server commit followed by lost response",
+      "coverage": "not_verified",
+      "evidence": "Static flow inspection identified SYNC-001; no direct test exists."
+    },
+    {
+      "scenario": "Concurrent quantity changes",
+      "coverage": "partial",
+      "evidence": "Version conflict and additive movement tests exist; real multi-device PostgreSQL concurrency was not run."
+    },
+    {
+      "scenario": "Permission revocation before reconnect",
+      "coverage": "partial",
+      "evidence": "Server acceptance-time checks and offline lease are tested in isolation; no disconnected-browser E2E run."
+    },
+    {
+      "scenario": "Fresh-device data and media recovery",
+      "coverage": "partial",
+      "evidence": "Isolated profiles and remote image display paths were inspected; complete server-to-OPFS recovery is not implemented."
+    },
+    {
+      "scenario": "Old-backup restore and reconciliation",
+      "coverage": "partial",
+      "evidence": "Backup restore/quarantine unit tests passed; no server restore and no cross-browser filesystem matrix."
+    },
+    {
+      "scenario": "Account/store switching",
+      "coverage": "partial",
+      "evidence": "Account transition and actor/store partition tests exist; active multi-store switching is not implemented."
+    },
+    {
+      "scenario": "Partial image-transfer failure",
+      "coverage": "partial",
+      "evidence": "Missing-file behavior is implemented and media tests pass; real interrupted multipart transfer was not injected."
+    }
+  ],
+  "unverified_assumptions": [
+    "External production reverse proxies may provide TLS, HSTS, CSP, rate limiting or WAF controls not visible in the repository.",
+    "External CI/CD, monitoring, database backups or object-storage replication may exist outside the repository, but no evidence was available.",
+    "PostgreSQL-specific locking, constraints and migration behavior were not runtime-verified because no isolated PostgreSQL service was reachable.",
+    "Physical camera, hardware barcode scanner and printer behavior was not tested.",
+    "File System Access permission persistence and fallback behavior were not exercised across multiple browser engines.",
+    "No real customer dataset, production token, credential, signed URL or payment system was inspected."
+  ],
+  "open_policy_decisions": [
+    "Define the authoritative condition and activation date for a team store.",
+    "Decide whether a team owner can retain private offline drafts while shared mutations remain online-only.",
+    "Define lifecycle, UI and operator actions for unknown-outcome requests.",
+    "Choose the official conflict policy for concurrent absolute quantity edits.",
+    "Define independent data-sync and media-sync completion semantics.",
+    "Decide backup encryption, key ownership, RPO, RTO, retention and restore-drill policy.",
+    "Finalize paid prices, seat/device/media limits, downgrade/grace behavior, support levels, payment and renewal.",
+    "Decide whether V1 includes true sale/purchase transactions or only inventory valuation.",
+    "Confirm whether multi-store remains out of V1 while still requiring store-native schema constraints.",
+    "Assign production SLO, monitoring, incident response and rollback ownership."
+  ],
+  "proposed_policy_compatibility_gaps": [
+    {
+      "id": "POL-001",
+      "proposal": "Single-person stores can mutate locally and synchronize later.",
+      "compatibility": "mostly_compatible",
+      "required_change": "Fix unknown-outcome idempotency and make pending server acceptance explicit."
+    },
+    {
+      "id": "POL-002",
+      "proposal": "Team stores are offline-view-only and shared mutations require server authorization and acceptance.",
+      "compatibility": "incompatible",
+      "required_change": "Derive team mode on the server and require successful acceptance before changing the shared local projection for both owner and personnel."
+    },
+    {
+      "id": "POL-003",
+      "proposal": "Unknown outcomes remain durably tracked.",
+      "compatibility": "partial_with_integrity_risk",
+      "required_change": "Freeze the attempted payload/operation identity and issue a distinct operation for later edits."
+    },
+    {
+      "id": "POL-004",
+      "proposal": "Offline form drafts may be retained but are not mutations.",
+      "compatibility": "not_implemented",
+      "required_change": "Add store/actor-scoped draft storage separated from projections and outbox, with explicit conversion after server acceptance."
+    },
+    {
+      "id": "POL-005",
+      "proposal": "Team activation requires reconciliation of existing pending work.",
+      "compatibility": "not_implemented",
+      "required_change": "Introduce a server-coordinated transition that inventories and resolves pending, in-flight, conflict and terminal work before atomically enabling team mode."
+    }
+  ]
+}
