@@ -1,5 +1,12 @@
 import { expect, test } from "@playwright/test";
 
+test("missing appearance preference defaults to light", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.goto("/auth/login");
+  await expect(page.locator("html")).toHaveAttribute("data-appearance", "light");
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#e6e0ef");
+});
+
 test("saved dark appearance is applied before the application renders", async ({ page }) => {
   await page.addInitScript(() => localStorage.setItem("inventory-appearance", "dark"));
   await page.goto("/auth/login");
@@ -20,6 +27,18 @@ test("system appearance follows the browser color scheme", async ({ page }) => {
   await expect(page.locator("html")).toHaveAttribute("data-appearance", "light");
   await expect.poll(() => page.evaluate(() => getComputedStyle(document.body).backgroundColor))
     .toBe("rgb(230, 224, 239)");
+});
+
+test("authentication surfaces follow the selected appearance", async ({ page }) => {
+  const backgrounds: string[] = [];
+  for (const appearance of ["light", "dark"] as const) {
+    await page.goto("/auth/register");
+    await page.evaluate((value) => localStorage.setItem("inventory-appearance", value), appearance);
+    await page.reload();
+    await expect(page.locator("html")).toHaveAttribute("data-appearance", appearance);
+    backgrounds.push(await page.locator(".auth-card").evaluate((element) => getComputedStyle(element).backgroundImage));
+  }
+  expect(backgrounds[0]).not.toBe(backgrounds[1]);
 });
 
 test("all display sizes are applied before render in light and dark themes", async ({ page }) => {

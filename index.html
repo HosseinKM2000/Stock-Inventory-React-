@@ -10,7 +10,7 @@
     <link rel="apple-touch-icon" sizes="167x167" href="/apple-touch-icon-167.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#171326" />
+    <meta name="theme-color" content="#e6e0ef" />
     <meta name="application-name" content="Tanzim" />
     <meta name="apple-mobile-web-app-title" content="Tanzim" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -26,8 +26,9 @@
     <script>
       (() => {
         const saved = localStorage.getItem("inventory-appearance");
-        const dark = saved === "dark" ||
-          (saved !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+        const selected = ["light", "dark", "system"].includes(saved) ? saved : "light";
+        const dark = selected === "dark" ||
+          (selected === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
         const appearance = dark ? "dark" : "light";
         const savedSize = localStorage.getItem("inventory-display-size");
         const displaySize = ["compact", "normal", "large"].includes(savedSize)
@@ -36,7 +37,7 @@
         document.documentElement.dataset.appearance = appearance;
         document.documentElement.dataset.displaySize = displaySize;
         document.documentElement.style.colorScheme = appearance;
-        document.querySelector('meta[name="theme-color"]').content = dark ? "#171326" : "#ffffff";
+        document.querySelector('meta[name="theme-color"]').content = dark ? "#171326" : "#e6e0ef";
       })();
     </script>
     <script type="module" src="/src/main.tsx"></script>
