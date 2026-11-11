@@ -6058,9 +6058,13 @@ button.sync-action-tile { width: 100%; font: inherit; cursor: pointer; }
   .sync-action-tile > svg { width: 1.65rem; height: 1.65rem; }
   .sync-action-tile small { font-size: .72rem; }
   .sync-section-heading { align-items: center; }
-  .sync-filter-list { margin-inline: -.1rem; padding-bottom: .2rem; }
+  .sync-filter-list { flex-wrap: wrap; margin-inline: 0; padding-bottom: 0; overflow: visible; }
+  .sync-filter-list button { flex: 1 1 calc(50% - .4rem); justify-content: center; }
   .sync-queue-list > li { grid-template-columns: 2.3rem minmax(0, 1fr); }
   .sync-operation-status { grid-column: 2; justify-self: start; }
+  .sync-media-panel > .rt-Flex { display: grid; grid-template-columns: minmax(0, 1fr); align-items: stretch; }
+  .sync-media-copy { width: 100%; }
+  .sync-media-panel .rt-Button { width: 100%; justify-content: center; }
   .sync-detail-page .sync-flow { grid-template-columns: 1fr; }
   .sync-flow-icon { width: 3.25rem; height: 3.25rem; }
 }

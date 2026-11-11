@@ -533,6 +533,23 @@ test("sync status control exposes responsive details without navigation", async 
     const iconCenter = { x: iconBox!.x + iconBox!.width / 2, y: iconBox!.y + iconBox!.height / 2 };
     expect(Math.abs(badgeCenter.x - iconCenter.x), `${viewport.width}px horizontal center`).toBeLessThanOrEqual(1);
     expect(Math.abs(badgeCenter.y - iconCenter.y), `${viewport.width}px vertical center`).toBeLessThanOrEqual(1);
+
+    if (viewport.width === 320) {
+      const filterGroup = page.getByRole("group", { name: "فیلتر وضعیت عملیات" });
+      const filterBounds = await filterGroup.boundingBox();
+      for (const filter of await filterGroup.getByRole("button").all()) {
+        const filterButtonBounds = await filter.boundingBox();
+        expect(filterButtonBounds!.x, "mobile filter left edge").toBeGreaterThanOrEqual(filterBounds!.x - 1);
+        expect(filterButtonBounds!.x + filterButtonBounds!.width, "mobile filter right edge").toBeLessThanOrEqual(filterBounds!.x + filterBounds!.width + 1);
+      }
+
+      const mediaPanel = page.locator(".sync-media-panel");
+      const mediaPanelBounds = await mediaPanel.boundingBox();
+      const mediaCopyBounds = await mediaPanel.locator(".sync-media-copy").boundingBox();
+      const mediaButtonBounds = await mediaAction.boundingBox();
+      expect(mediaCopyBounds!.width, "mobile offline media copy width").toBeGreaterThanOrEqual(mediaPanelBounds!.width - 36);
+      expect(mediaButtonBounds!.width, "mobile offline media button width").toBeGreaterThanOrEqual(mediaPanelBounds!.width - 36);
+    }
   }
 });
 

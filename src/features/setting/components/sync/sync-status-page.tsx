@@ -374,7 +374,7 @@ export function SyncStatusPage() {
       <Grid columns={{ initial: "1", lg: "2" }} gap="5" mt="5">
       <section className="sync-detail-section sync-media-panel" aria-labelledby="offline-media-title">
         <Flex align="center" justify="between" gap="4" wrap="wrap">
-          <Box className="min-w-0 flex-1">
+          <Box className="sync-media-copy min-w-0 flex-1">
             <h2 id="offline-media-title" className="text-lg font-bold">تصاویر آفلاین</h2>
             <Text as="p" size="2" color="gray" mt="1">
               متادیتای محصول مستقل از فایل تصویر همگام می‌شود. برای استفاده بدون اینترنت، بایت‌های موجود سرور را روی همین دستگاه دریافت کنید.
