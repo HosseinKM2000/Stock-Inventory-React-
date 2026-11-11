@@ -28,6 +28,7 @@ import { useAvailablePlans } from "../../mutations/use-admin";
 import {
   FEATURE_LABELS,
   formatPlanPrice,
+  sortPlansByPrice,
 } from "../subscription-management/plan-options";
 import { formatJalaliDate } from "@/shared/lib/date/jalali";
 import { PageGuide } from "@/features/app/layout/page-guide";
@@ -74,6 +75,7 @@ export default function SubscriptionSettings() {
   const current = access.entitlement;
   const plans = useAvailablePlans();
   const plan = plans.data?.find((item) => item.id === current?.plan);
+  const sortedPlans = sortPlansByPrice(plans.data ?? []);
   const expired = access.status === "expired";
   const verifying = access.requiresOnlineVerification;
   const remaining = access.remainingMs == null
@@ -299,7 +301,7 @@ export default function SubscriptionSettings() {
         <Text as="div" size="5" weight="bold">مقایسه طرح‌ها</Text>
         <Text as="p" size="2" color="gray" mt="1">قابلیت‌های محلی پایه در طرح رایگان باقی می‌مانند؛ ارتقا برای ظرفیت، همگام‌سازی ابری و همکاری امن تیمی است.</Text>
         <Grid columns={{ initial: "1", sm: "2", lg: "4" }} gap="3" mt="4">
-          {plans.data?.map((candidate) => (
+          {sortedPlans.map((candidate) => (
             <Card key={candidate.id} size="2" style={candidate.id === "pro" ? { borderColor: "var(--violet-8)" } : undefined}>
               <Flex justify="between" align="center" gap="2">
                 <Text weight="bold">{candidate.name}</Text>

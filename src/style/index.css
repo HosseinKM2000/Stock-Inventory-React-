@@ -284,6 +284,10 @@ html { font-size: 16px; }
   overflow: hidden;
 }
 
+.app-header-title[data-contextual="true"] {
+  font-size: .875rem;
+}
+
 .app-header-right .notification-trigger {
   margin-right: 0;
 }
@@ -4060,6 +4064,10 @@ html[data-keyboard-open="true"] .app-bottom-navigation {
   .app-header-title {
     max-width: none;
     font-size: .9375rem;
+  }
+
+  .app-header-title[data-contextual="true"] {
+    font-size: .8125rem;
   }
 
   .app-header .rt-IconButton {

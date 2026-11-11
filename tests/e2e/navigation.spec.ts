@@ -133,8 +133,15 @@ test("standard navigation separates Settings and Tools with contextual back beha
 
   await page.goto("/setting/update");
   await expect(page.getByRole("heading", { name: "بروزرسانی برنامه" })).toBeVisible();
+  await expect(header.locator(".app-header-title")).toHaveText("تنظیمات · بروزرسانی");
   await expect(page.getByText("نسخه نصب‌شده")).toBeVisible();
   await expect(page.getByRole("button", { name: /بررسی دوباره/ })).toBeVisible();
+
+  await page.goto("/setting/subscription");
+  await expect(header.locator(".app-header-title")).toHaveText("تنظیمات · اشتراک من");
+
+  await page.goto("/tools/help");
+  await expect(header.locator(".app-header-title")).toHaveText("ابزارها · راهنما");
 
   await page.goto("/tools");
   await expect(page.getByRole("heading", { name: "ابزارها" })).toBeVisible();

@@ -54,3 +54,15 @@ export function formatPlanPrice(plan: { id: string; price_toman: number | null }
   if (plan.price_toman == null) return "قیمت طرح پولی تعیین نشده";
   return `${new Intl.NumberFormat("fa-IR").format(plan.price_toman)} تومان`;
 }
+
+export function sortPlansByPrice<T extends { id: string; price_toman: number | null }>(plans: readonly T[]): T[] {
+  const comparablePrice = (plan: T) => plan.id === "free" ? 0 : (plan.price_toman ?? Number.POSITIVE_INFINITY);
+  return plans.toSorted((first, second) => {
+    const firstPrice = comparablePrice(first);
+    const secondPrice = comparablePrice(second);
+    if (firstPrice !== secondPrice) return firstPrice < secondPrice ? -1 : 1;
+    if (first.id === "free") return -1;
+    if (second.id === "free") return 1;
+    return first.id.localeCompare(second.id, "fa");
+  });
+}

@@ -19,7 +19,7 @@ const Header = () => {
         <ConnectionStatus />
       </Flex>
 
-      <Text as="div" dir="rtl" size="3" weight="bold" aria-live="polite" className="app-header-title whitespace-nowrap text-center">
+      <Text as="div" dir="rtl" size="3" weight="bold" aria-live="polite" title={sectionTitle} data-contextual={sectionTitle.includes(" · ")} className="app-header-title whitespace-nowrap text-center">
         {sectionTitle}
       </Text>
 
