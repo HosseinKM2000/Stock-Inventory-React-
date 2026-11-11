@@ -22,6 +22,8 @@ function toFormData(input: ProductInput): FormData {
   appendField("unit", input.unit);
   appendField("quantity", input.quantity);
   appendField("price", input.price);
+  appendField("sale_price", input.sale_price);
+  appendField("purchase_price", input.purchase_price);
   appendField("low_stock_threshold", input.low_stock_threshold);
   if (input.low_stock_alert !== undefined)
     fd.append("low_stock_alert", String(input.low_stock_alert));

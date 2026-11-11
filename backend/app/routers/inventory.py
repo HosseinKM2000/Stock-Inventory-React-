@@ -8,8 +8,10 @@ from ..services.inventory_service import (
     update_inventory_item as apply_inventory_update,
 )
 
-from ..deps import CurrentUser, CurrentWritableUser, DbSession
+from ..deps import CurrentProductReader, CurrentWritableUser, DbSession
 from ..models import InventoryItem, InventoryTransaction
+from ..services.store_authorization import StorePermission, require_store_permission, project_inventory_item
+from ..inventory_policy import MAX_PRODUCT_QUANTITY, PRODUCT_QUANTITY_LIMIT_ERROR
 from ..schemas import (
     InventoryBulkSync,
     InventoryOut,
@@ -26,26 +28,26 @@ router = APIRouter(prefix="/inventory", tags=["inventory"])
 
 @router.get("/trash", response_model=list[InventoryOut])
 def trash_inventory(
-    current_user: CurrentUser,
+    current_user: CurrentProductReader,
     db: DbSession,
-) -> list[InventoryItem]:
+) -> list[dict]:
     stmt = (
         select(InventoryItem)
         .where(
-            InventoryItem.user_id == current_user.id,
+            InventoryItem.store_id == current_user.store_id,
             InventoryItem.deleted_at.is_not(None),
         )
         .order_by(InventoryItem.created_at.desc(), InventoryItem.id.desc())
     )
 
-    return list(db.scalars(stmt))
+    return [project_inventory_item(db, current_user, item) for item in db.scalars(stmt)]
 
 
 
 
 @router.get("", response_model=InventoryListResponse)
 def list_inventory(
-    current_user: CurrentUser,
+    current_user: CurrentProductReader,
     db: DbSession,
     page: int = Query(1, ge=1),
     limit: int = Query(50, ge=1, le=200),
@@ -53,7 +55,7 @@ def list_inventory(
     base_query = (
         select(InventoryItem)
         .where(
-            InventoryItem.user_id == current_user.id,
+            InventoryItem.store_id == current_user.store_id,
             InventoryItem.deleted_at.is_(None),
             InventoryItem.is_hidden.is_(False),
         )
@@ -77,7 +79,7 @@ def list_inventory(
     )
 
     return InventoryListResponse(
-        items=items,
+        items=[project_inventory_item(db, current_user, item) for item in items],
         meta=InventoryMeta(
             page=page,
             limit=limit,
@@ -88,14 +90,14 @@ def list_inventory(
 @router.get("/{item_id}", response_model=InventoryOut)
 def get_inventory_item(
     item_id: int,
-    current_user: CurrentUser,
+    current_user: CurrentProductReader,
     db: DbSession,
-) -> InventoryItem:
-    return get_inventory_item_or_404(
+) -> dict:
+    return project_inventory_item(db, current_user, get_inventory_item_or_404(
         db,
         item_id,
-        current_user.id,
-    )
+        current_user.store_id,
+    ))
 
 
 @router.patch("/{item_id}", response_model=InventoryOut)
@@ -105,10 +107,19 @@ def update_inventory_item(
     current_user: CurrentWritableUser,
     db: DbSession,
 ) -> InventoryItem:
+    fields = payload.model_fields_set
+    if fields & {"price", "sale_price"}:
+        require_store_permission(db, current_user, StorePermission.SALE_PRICE_CHANGE)
+    if "purchase_price" in fields:
+        require_store_permission(db, current_user, StorePermission.PURCHASE_PRICE_CHANGE)
+    if "quantity" in fields:
+        require_store_permission(db, current_user, StorePermission.QUANTITY_CHANGE)
+    if fields - {"price", "sale_price", "purchase_price", "quantity"}:
+        require_store_permission(db, current_user, StorePermission.PRODUCTS_EDIT)
     item = get_inventory_item_or_404(
         db,
         item_id,
-        current_user.id,
+        current_user.store_id,
     )
 
     apply_inventory_update(
@@ -119,7 +130,7 @@ def update_inventory_item(
     db.commit()
     db.refresh(item)
 
-    return item
+    return project_inventory_item(db, current_user, item)
 
 
 @router.delete("/{item_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -131,7 +142,7 @@ def delete_inventory_item(
     item = get_inventory_item_or_404(
         db,
         item_id,
-        current_user.id,
+        current_user.store_id,
     )
 
     if item.is_catalog_backed:
@@ -155,12 +166,17 @@ def create_transaction(
     item = get_inventory_item_or_404(
         db,
         item_id,
-        current_user.id,
+        current_user.store_id,
     )
 
     before_quantity = item.quantity
 
     if payload.type == "stock_in":
+        if item.quantity + payload.quantity > MAX_PRODUCT_QUANTITY:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=PRODUCT_QUANTITY_LIMIT_ERROR,
+            )
         item.quantity += payload.quantity
 
     elif payload.type == "stock_out":
@@ -175,7 +191,9 @@ def create_transaction(
     after_quantity = item.quantity
 
     transaction = InventoryTransaction(
-        user_id=current_user.id,
+        store_id=current_user.store_id,
+        actor_user_id=current_user.id,
+        user_id=current_user.data_owner_id,
         inventory_item_id=item.id,
         type=payload.type,
         quantity=payload.quantity,
@@ -194,13 +212,13 @@ def create_transaction(
 @router.get("/{item_id}/transactions", response_model=list[TransactionOut])
 def list_transactions(
     item_id: int,
-    current_user: CurrentUser,
+    current_user: CurrentProductReader,
     db: DbSession,
 ) -> list[InventoryTransaction]:
     get_inventory_item_or_404(
         db,
         item_id,
-        current_user.id,
+        current_user.store_id,
     )
 
     stmt = (
@@ -222,11 +240,11 @@ def hide_inventory_item(
     item_id: int,
     current_user: CurrentWritableUser,
     db: DbSession,
-) -> InventoryItem:
+) -> dict:
     item = get_inventory_item_or_404(
         db,
         item_id,
-        current_user.id,
+        current_user.store_id,
     )
 
     item.is_hidden = True
@@ -234,7 +252,7 @@ def hide_inventory_item(
     db.commit()
     db.refresh(item)
 
-    return item
+    return project_inventory_item(db, current_user, item)
 
 
 @router.patch("/{item_id}/restore", response_model=InventoryOut)
@@ -242,11 +260,11 @@ def restore_inventory_item(
     item_id: int,
     current_user: CurrentWritableUser,
     db: DbSession,
-) -> InventoryItem:
+) -> dict:
     item = get_inventory_item_or_404(
         db,
         item_id,
-        current_user.id,
+        current_user.store_id,
     )
 
     item.is_hidden = False
@@ -255,7 +273,7 @@ def restore_inventory_item(
     db.commit()
     db.refresh(item)
 
-    return item
+    return project_inventory_item(db, current_user, item)
 
 
 @router.delete("/{item_id}/force", response_model=MessageResponse)
@@ -267,7 +285,7 @@ def force_delete_inventory_item(
     item = get_inventory_item_or_404(
         db,
         item_id,
-        current_user.id,
+        current_user.store_id,
     )
 
     if item.is_catalog_backed:
@@ -296,7 +314,7 @@ def bulk_sync_inventory(
         if item is None:
             continue
 
-        if item.user_id != current_user.id:
+        if item.store_id != current_user.store_id:
             continue
 
         if item.deleted_at is not None:
@@ -304,6 +322,7 @@ def bulk_sync_inventory(
 
         item.quantity = sync_item.quantity
         item.price = sync_item.price
+        item.sale_price = sync_item.price
         item.custom_label = sync_item.custom_label
         item.note = sync_item.note
 

@@ -19,6 +19,7 @@ import type { AuthResponse } from "../types";
 import { authKeys } from "../query/query-keys";
 import { accessState } from "@/shared/access/access-state";
 import { entitlementService } from "@/shared/access/entitlement-service";
+import { transitionToAccount } from "@/shared/auth/account-transition";
 
 
 
@@ -38,9 +39,16 @@ export function useLogin() {
   return useMutation({
     mutationFn: login,
 
-    onSuccess: async (data: AuthResponse) => {
-      setToken(data.access_token);
-      accessState.saveUser(data.user);
+    onSuccess: async (data: AuthResponse, variables) => {
+      setToken(data.access_token, variables.remember ?? true);
+      transitionToAccount(queryClient, data.user);
+
+      if (data.user.temporary_password_required) {
+        queryClient.setQueryData(authKeys.me, data.user);
+        toast.warning("برای ادامه رمز عبور موقت را تغییر دهید");
+        await navigate({ to: "/setting/security" });
+        return;
+      }
 
       await entitlementService.verify();
 
@@ -74,7 +82,7 @@ export function useRegister() {
 
     onSuccess: async (data: AuthResponse) => {
       setToken(data.access_token);
-      accessState.saveUser(data.user);
+      transitionToAccount(queryClient, data.user);
 
       await entitlementService.verify();
 
@@ -115,10 +123,14 @@ export function useUpdateProfile() {
 }
 
 export function useUpdatePassword() {
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: updatePassword,
 
-    onSuccess: () => {
+    onSuccess: async () => {
+      const user = await getMe();
+      accessState.saveUser(user);
+      queryClient.setQueryData(authKeys.me, user);
       toast.success("رمز عبور تغییر کرد");
     },
   });

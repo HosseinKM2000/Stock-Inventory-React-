@@ -14,9 +14,17 @@ export function createProductInitialValues(initial?: Product) {
 
     category_id: initial?.category_id ?? null,
 
+    label_ids: initial?.label_ids ?? [],
+
     quantity: initial?.quantity ?? 0,
 
     price: initial?.price ?? 0,
+
+    sale_price: initial?.sale_price ?? (initial?.price_missing ? null : initial?.price ?? null),
+
+    purchase_price: initial?.purchase_price ?? null,
+
+    price_missing: initial?.price_missing ?? false,
 
     custom_label: initial?.custom_label ?? "",
 
@@ -42,6 +50,8 @@ export function createProductInitialValues(initial?: Product) {
       id: initial?.catalog_product?.id ?? 0,
 
       industry_id: initial?.catalog_product?.industry_id ?? 0,
+
+      is_active: initial?.catalog_product?.is_active ?? true,
 
       name: initial?.catalog_product?.name ?? "",
 

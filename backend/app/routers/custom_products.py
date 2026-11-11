@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
-from ..deps import CurrentUser, CurrentWritableUser, DbSession
+from ..deps import CurrentProductReader, CurrentWritableUser, DbSession
 from ..models import CustomProduct
 from ..schemas import (
     CustomProductCreate,
@@ -18,11 +18,11 @@ router = APIRouter(
 def _get_custom_product(
     db: DbSession,
     product_id: int,
-    user_id: int,
+    store_id: int,
 ) -> CustomProduct:
     product = db.get(CustomProduct, product_id)
 
-    if product is None or product.user_id != user_id:
+    if product is None or product.store_id != store_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="محصول یافت نشد"
@@ -33,12 +33,12 @@ def _get_custom_product(
 
 @router.get("", response_model=list[CustomProductOut])
 def list_custom_products(
-    current_user: CurrentUser,
+    current_user: CurrentProductReader,
     db: DbSession,
 ) -> list[CustomProduct]:
     stmt = (
         select(CustomProduct)
-        .where(CustomProduct.user_id == current_user.id)
+        .where(CustomProduct.store_id == current_user.store_id)
         .order_by(CustomProduct.created_at.desc(), CustomProduct.id.desc())
     )
 
@@ -48,13 +48,13 @@ def list_custom_products(
 @router.get("/{product_id}", response_model=CustomProductOut)
 def get_custom_product(
     product_id: int,
-    current_user: CurrentUser,
+    current_user: CurrentProductReader,
     db: DbSession,
 ) -> CustomProduct:
     return _get_custom_product(
         db,
         product_id,
-        current_user.id,
+        current_user.store_id,
     )
 
 
@@ -69,7 +69,8 @@ def create_custom_product(
     db: DbSession,
 ) -> CustomProduct:
     product = CustomProduct(
-        user_id=current_user.id,
+        store_id=current_user.store_id,
+        user_id=current_user.data_owner_id,
         name=payload.name,
         description=payload.description,
         image_url=payload.image_url,
@@ -95,7 +96,7 @@ def update_custom_product(
     product = _get_custom_product(
         db,
         product_id,
-        current_user.id,
+        current_user.store_id,
     )
 
     for field, value in payload.model_dump(exclude_unset=True).items():
@@ -116,7 +117,7 @@ def delete_custom_product(
     product = _get_custom_product(
         db,
         product_id,
-        current_user.id,
+        current_user.store_id,
     )
 
     db.delete(product)

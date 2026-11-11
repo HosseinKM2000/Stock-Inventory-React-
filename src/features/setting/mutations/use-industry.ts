@@ -50,6 +50,7 @@ export function useUpdateIndustry() {
     mutationFn: updateIndustry,
 
     onSuccess() {
+      toast.success("تنظیمات حوزه کاری ذخیره شد.");
       qc.invalidateQueries({
         queryKey: industryKeys.all,
       });

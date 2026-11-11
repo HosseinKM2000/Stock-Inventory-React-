@@ -2,6 +2,7 @@ import { ApiError } from "./api-error";
 import { clearToken, getToken } from "./token-store";
 import { getDeviceFingerprint } from "@/shared/lib/device/fingerprint";
 import { accessState } from "@/shared/access/access-state";
+import { recordDiagnostic } from "@/shared/lib/diagnostics/diagnostic-buffer";
 
 const API_BASE_URL =
   import.meta.env.VITE_API_URL ?? "http://localhost:8000/api";
@@ -44,6 +45,8 @@ export async function apiFetch<T>(
   } = options;
 
   const headers: Record<string, string> = {
+    "X-Client-Data-Schema": "3",
+    "X-Request-ID": crypto.randomUUID(),
     ...customHeaders,
   };
 
@@ -63,12 +66,16 @@ export async function apiFetch<T>(
     body = JSON.stringify(json);
   }
 
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method,
-    headers,
-    body,
-    signal,
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${API_BASE_URL}${path}`, { method, headers, body, signal });
+  } catch (error) {
+    recordDiagnostic({ kind: "network_error", summary: "NETWORK_UNAVAILABLE", requestId: headers["X-Request-ID"], path });
+    throw error;
+  }
+  const requestId = response.headers.get("X-Request-ID") ?? headers["X-Request-ID"];
+  const serverBuild = response.headers.get("X-Tanzim-Build") ?? undefined;
+  const serverSchema = response.headers.get("X-Tanzim-Schema") ?? undefined;
 
   if (response.status === 204) {
     return undefined as T;
@@ -90,6 +97,14 @@ export async function apiFetch<T>(
 
   if (!response.ok) {
     const message = extractMessage(data) ?? response.statusText;
+    recordDiagnostic({
+      kind: "api_error",
+      summary: /^[A-Z][A-Z0-9_.:-]+$/.test(message) ? message : `HTTP_${response.status}`,
+      requestId,
+      httpStatus: response.status,
+      path,
+      details: { server_build: serverBuild, server_schema: serverSchema },
+    });
 
     const shouldLogout =
       response.status === 401 ||
@@ -109,7 +124,7 @@ export async function apiFetch<T>(
       }
     }
 
-    throw new ApiError(response.status, message, data);
+    throw new ApiError(response.status, message, data, { requestId, serverBuild, serverSchema });
   }
 
   return data as T;

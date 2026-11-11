@@ -15,7 +15,10 @@ coverage/
 playwright-report/
 test-results/
 backend/downloaded_files/
+artifacts/codex-*/
+.tanstack/tmp/
 backend/.coverage
+backend/.pytest_cache/
 backend/htmlcov/
 backend/coverage/
 

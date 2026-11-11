@@ -3,9 +3,11 @@ import { normalizeUser } from "@/features/auth/normalize-user";
 import { storage } from "@/shared/lib/infrastructure/storage/local-storage";
 import { isAdmin } from "./authorization";
 import { SubscriptionRestrictionError } from "./subscription-limit";
+import type { DomainToolId } from "./tools";
 
 export type Entitlement = {
   user_id: number;
+  store_id?: number | null;
   plan: string;
   label: string;
   status: "active" | "expired";
@@ -16,6 +18,12 @@ export type Entitlement = {
   synced_at: string;
   capabilities: Record<string, boolean>;
   limits: Record<string, number | null>;
+  tools?: Record<string, boolean>;
+  base_plan?: string;
+  entitlement_source?: "subscription" | "grant" | "administrator";
+  grant_id?: number | null;
+  grant_expires_at?: string | null;
+  policy_revision?: number;
 };
 
 export type LocalEntitlement = Entitlement & {
@@ -44,6 +52,12 @@ const LEGACY_ENTITLEMENT_KEY = "inventory-entitlement";
 const ENTITLEMENT_PREFIX = "inventory-entitlement-v2:";
 const EXPIRING_WINDOW_MS = 3 * 24 * 60 * 60 * 1000;
 const EXPIRED_CAPABILITIES = new Set(["inventory.read"]);
+const EXPLICIT_STORE_CONTEXT_PERMISSIONS = new Set([
+  "products.purchase_price.view",
+  "products.purchase_price.change",
+  "finance.view",
+]);
+export const PERSONNEL_AUTHORIZATION_VALIDITY_MS = 24 * 60 * 60 * 1000;
 const listeners = new Set<() => void>();
 
 let revision = 0;
@@ -51,8 +65,8 @@ let verificationRequired =
   typeof navigator !== "undefined" && navigator.onLine;
 let runtimeAnchor: { userId: number; serverMs: number; monotonicMs: number } | null = null;
 
-function entitlementKey(userId: number) {
-  return `${ENTITLEMENT_PREFIX}${userId}`;
+function entitlementKey(userId: number, storeId?: number | null) {
+  return `${ENTITLEMENT_PREFIX}${userId}:${storeId ?? "none"}`;
 }
 
 function emit() {
@@ -65,24 +79,33 @@ function readUser(): User | null {
   return user ? normalizeUser(user) : null;
 }
 
-function readEntitlement(userId: number): LocalEntitlement | null {
-  const current = storage.get<LocalEntitlement>(entitlementKey(userId));
-  if (current?.user_id === userId) return current;
+function readEntitlement(user: User): LocalEntitlement | null {
+  const current = storage.get<LocalEntitlement>(entitlementKey(user.id, user.store_id));
+  if (current?.user_id === user.id && (current.store_id ?? null) === (user.store_id ?? null)) return current;
 
   const legacy = storage.get<Partial<Entitlement>>(LEGACY_ENTITLEMENT_KEY);
-  if (legacy?.user_id === userId && legacy.plan) {
+  const priorUserOnly = storage.get<LocalEntitlement>(`${ENTITLEMENT_PREFIX}${user.id}`);
+  const candidate = priorUserOnly ?? legacy;
+  if (candidate?.user_id === user.id && candidate.plan) {
     const now = Date.now();
-    const serverTime = legacy.server_time ?? legacy.synced_at ?? new Date(now).toISOString();
+    const serverTime = candidate.server_time ?? candidate.synced_at ?? new Date(now).toISOString();
     const migrated: LocalEntitlement = {
-      ...(legacy as Entitlement),
-      user_id: userId,
+      ...(candidate as Entitlement),
+      user_id: user.id,
+      store_id: user.store_id ?? null,
       account_status: "active",
+      base_plan: candidate.base_plan ?? candidate.plan,
+      entitlement_source: candidate.entitlement_source ?? "subscription",
+      grant_id: candidate.grant_id ?? null,
+      grant_expires_at: candidate.grant_expires_at ?? null,
+      policy_revision: candidate.policy_revision ?? 0,
       server_time: serverTime,
       verified_at: serverTime,
       captured_at_ms: now,
       last_observed_at_ms: now,
     };
-    storage.set(entitlementKey(userId), migrated);
+    storage.set(entitlementKey(user.id, user.store_id), migrated);
+    storage.remove(`${ENTITLEMENT_PREFIX}${user.id}`);
     storage.remove(LEGACY_ENTITLEMENT_KEY);
     return migrated;
   }
@@ -118,7 +141,7 @@ function evaluate(): EntitlementEvaluation {
     return { entitlement: null, status: "disabled", remainingMs: null, requiresOnlineVerification: false };
   }
 
-  const entitlement = user ? readEntitlement(user.id) : null;
+  const entitlement = user ? readEntitlement(user) : null;
   if (!entitlement) {
     return {
       entitlement: null,
@@ -129,6 +152,12 @@ function evaluate(): EntitlementEvaluation {
   }
 
   const now = trustedNow(entitlement);
+  if (!user?.is_store_owner && user?.membership_authorization_checked_at) {
+    const checkedAt = new Date(user.membership_authorization_checked_at).getTime();
+    if (!Number.isFinite(checkedAt) || now - checkedAt > PERSONNEL_AUTHORIZATION_VALIDITY_MS) {
+      return { entitlement, status: "requires_online_verification", remainingMs: null, requiresOnlineVerification: true };
+    }
+  }
   const expiresAt = entitlement.expires_at ? new Date(entitlement.expires_at).getTime() : null;
   const remainingMs = expiresAt == null || !Number.isFinite(expiresAt)
     ? null
@@ -158,7 +187,7 @@ export const accessState = {
   user: readUser,
   entitlement() {
     const user = readUser();
-    return user ? readEntitlement(user.id) : null;
+    return user ? readEntitlement(user) : null;
   },
   evaluate,
   subscribe(listener: () => void) {
@@ -174,6 +203,7 @@ export const accessState = {
     const state = evaluate();
     if (!state.entitlement || state.status === "disabled" || state.status === "missing") return false;
     if (state.status === "requires_online_verification") {
+      if (!user?.is_store_owner) return false;
       return capability === "inventory.read" && state.entitlement.capabilities[capability] === true;
     }
     if (state.status === "expired") {
@@ -183,6 +213,65 @@ export const accessState = {
   },
   canWrite() {
     return this.canUse("inventory.write");
+  },
+  hasStorePermission(permission: string) {
+    const user = this.user();
+    if (!user) return false;
+    if (isAdmin(user)) return user.is_active !== false;
+    if (
+      EXPLICIT_STORE_CONTEXT_PERMISSIONS.has(permission)
+      && user.membership_id == null
+      && !user.store_permissions?.includes(permission)
+    ) {
+      return false;
+    }
+    if (user.is_store_owner || user.store_permissions?.includes(permission)) return true;
+    if (permission === "products.sale_price.view" && user.store_permissions?.includes("products.view")) return true;
+    if (permission === "products.sale_price.change" && user.store_permissions?.includes("products.price.change")) return true;
+    return false;
+  },
+  requireStorePermission(permission: string) {
+    if (!this.hasStorePermission(permission)) throw new Error(`PERMISSION_REQUIRED:${permission}`);
+  },
+  isDomainToolEnabled(tool: DomainToolId) {
+    const user = this.user();
+    if (isAdmin(user)) return user?.is_active !== false;
+    const state = evaluate();
+    if (state.status === "disabled") return false;
+    // Older/offline snapshots contain no domain policy. Treat that as the
+    // migration default (all tools enabled) until an authoritative snapshot arrives.
+    if (!state.entitlement) return user?.is_active === true;
+    return state.entitlement.tools?.[tool] !== false;
+  },
+  canUseTool(tool: DomainToolId) {
+    if (!this.isDomainToolEnabled(tool)) return false;
+    if (tool === "import") return this.canUse("import.xlsx");
+    if (tool === "labels") return this.canUse("labels.write");
+    if (tool === "categories") return this.canUse("categories.write");
+    if (tool === "export") return this.canUse("export.local") || this.canUse("export.server");
+    if (tool === "scanner") return this.canUse("barcode.lookup");
+    if (tool === "catalog") {
+      const capabilities = this.entitlement()?.capabilities;
+      // Pre-02A cached snapshots had no dedicated catalog key; preserve their
+      // prior read-only behavior until the next authoritative refresh.
+      return capabilities && "catalog.use" in capabilities
+        ? this.canUse("catalog.use")
+        : this.canUse("inventory.read");
+    }
+    return this.canUse("inventory.read");
+  },
+  requireTool(tool: DomainToolId) {
+    if (!this.canAccess()) throw new Error("حساب کاربری غیرفعال است");
+    if (!this.isDomainToolEnabled(tool)) {
+      throw new Error("این ابزار برای حوزه کاری شما غیرفعال است");
+    }
+    if (!this.canUseTool(tool)) {
+      const entitlement = this.entitlement();
+      throw new SubscriptionRestrictionError(
+        { code: "capability", plan: entitlement?.label ?? entitlement?.plan ?? "فعلی", capability: `tool.${tool}` },
+        `TOOL_CAPABILITY_REQUIRED:${tool}`,
+      );
+    }
   },
   canAccess() {
     return this.user()?.is_active === true;
@@ -226,6 +315,18 @@ export const accessState = {
     const now = Date.now();
     const serverMs = new Date(value.server_time).getTime();
     const user = this.user();
+    if (!Number.isFinite(serverMs)) throw new Error("ENTITLEMENT_SERVER_TIME_INVALID");
+    const current = user ? readEntitlement(user) : null;
+    const currentServerMs = current ? new Date(current.server_time).getTime() : Number.NEGATIVE_INFINITY;
+    if (
+      current
+      && current.user_id === value.user_id
+      && (current.store_id ?? null) === (value.store_id ?? null)
+      && Number.isFinite(currentServerMs)
+      && serverMs < currentServerMs
+    ) {
+      return false;
+    }
     if (user?.id === value.user_id) {
       storage.set(USER_KEY, normalizeUser({
         ...user,
@@ -241,17 +342,21 @@ export const accessState = {
       captured_at_ms: now,
       last_observed_at_ms: Math.max(now, serverMs),
     };
-    storage.set(entitlementKey(value.user_id), snapshot);
+    if ((value.store_id ?? null) !== (user?.store_id ?? null)) {
+      throw new Error("ENTITLEMENT_STORE_MISMATCH");
+    }
+    storage.set(entitlementKey(value.user_id, value.store_id), snapshot);
     runtimeAnchor = { userId: value.user_id, serverMs, monotonicMs: performance.now() };
     verificationRequired = false;
     emit();
+    return true;
   },
   checkpointTime() {
     const snapshot = this.entitlement();
     if (!snapshot) return emit();
     const observed = trustedNow(snapshot);
     if (observed > snapshot.last_observed_at_ms) {
-      storage.set(entitlementKey(snapshot.user_id), { ...snapshot, last_observed_at_ms: observed });
+      storage.set(entitlementKey(snapshot.user_id, snapshot.store_id), { ...snapshot, last_observed_at_ms: observed });
     }
     emit();
   },
@@ -275,7 +380,7 @@ export const accessState = {
   clear() {
     const user = this.user();
     storage.remove(USER_KEY);
-    if (user) storage.remove(entitlementKey(user.id));
+    if (user) storage.remove(entitlementKey(user.id, user.store_id));
     storage.remove(LEGACY_ENTITLEMENT_KEY);
     runtimeAnchor = null;
     verificationRequired = typeof navigator !== "undefined" && navigator.onLine;

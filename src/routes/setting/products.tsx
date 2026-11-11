@@ -1,6 +1,5 @@
-import ProductSettings from "@/features/setting/components/products";
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/setting/products")({
-  component: ProductSettings,
+  beforeLoad: () => { throw redirect({ to: "/tools/recovery", replace: true }); },
 });

@@ -8,13 +8,13 @@ import { useAdminPlans, useDeletePlan } from "../../mutations/use-admin";
 import type { SubscriptionPlan } from "../../types";
 import { adminErrorMessage } from "../admin-error";
 import PlanDialog from "./plan-dialog";
-import { FEATURE_LABELS, formatToman } from "./plan-options";
+import { FEATURE_LABELS, formatPlanPrice } from "./plan-options";
 import SubscribersDialog from "./subscribers-dialog";
 
-const builtInPlans = new Set(["free", "starter", "pro", "vip"]);
+const builtInPlans = new Set(["free", "starter", "personal", "pro", "vip"]);
 const durationLabels = { day: "روز", month: "ماه", year: "سال" } as const;
 
-export default function SubscriptionManagement() {
+export default function SubscriptionManagement({ hideHeading = false }: { hideHeading?: boolean }) {
   const plans = useAdminPlans();
   const remove = useDeletePlan();
   const [deleteTarget, setDeleteTarget] = useState<SubscriptionPlan | null>(null);
@@ -35,7 +35,7 @@ export default function SubscriptionManagement() {
   return (
     <Box>
       <Flex justify="between" align="center" gap="3" wrap="wrap">
-        <Box><Text size="6" weight="bold">مدیریت اشتراک‌ها</Text><Text as="div" size="2" color="gray" mt="1">قیمت‌ها به تومان نمایش داده می‌شوند و تغییر قابلیت‌ها فوراً در مجوزهای سرور اعمال می‌شود.</Text></Box>
+        {!hideHeading ? <Box><Text size="6" weight="bold">مدیریت اشتراک‌ها</Text><Text as="div" size="2" color="gray" mt="1">قیمت‌ها به تومان نمایش داده می‌شوند و تغییر قابلیت‌ها فوراً در مجوزهای سرور اعمال می‌شود.</Text></Box> : <span />}
         <PlanDialog trigger={<Button><PlusIcon />طرح جدید</Button>} />
       </Flex>
       <Grid columns={{ initial: "1", md: "2", xl: "3" }} gap="4" mt="5">
@@ -48,9 +48,12 @@ export default function SubscriptionManagement() {
                 <Box className="min-w-0"><Text size="5" weight="bold">{plan.name}</Text><Text as="div" size="1" color="gray">{plan.id}</Text></Box>
               </Flex>
               <Badge color={plan.is_active ? "green" : "gray"}>{plan.is_active ? "فعال" : "غیرفعال"}</Badge>
+              {plan.commercial_status === "legacy_only" ? <Badge color="amber">فقط سازگاری تاریخی</Badge> : <Badge color="gray">تخصیص‌های تأییدنشده</Badge>}
             </Flex>
             <Text as="div" color="gray" size="2" mt="3" className="min-h-10">{plan.description || "بدون توضیحات"}</Text>
-            <Flex align="center" gap="2" mt="4"><Text size="5" weight="bold" color="violet">{formatToman(plan.price_minor)}</Text></Flex>
+            <Text as="div" color="gray" size="1">بازبینی سیاست: {plan.policy_revision}</Text>
+            {plan.configuration_errors.length > 0 ? <Callout.Root color="red" mt="2"><Callout.Text>{plan.configuration_errors.join("، ")}</Callout.Text></Callout.Root> : null}
+            <Flex align="center" gap="2" mt="4"><Text size="5" weight="bold" color="violet">{formatPlanPrice(plan)}</Text>{plan.is_offer_available ? <Badge color="green">پیشنهاد فعال</Badge> : <Badge color="gray">پیشنهاد غیرفعال</Badge>}</Flex>
             <Flex align="center" gap="2" mt="2"><ClockIcon /><Text size="2">{plan.duration == null || plan.duration_unit == null ? "بدون انقضا" : `${plan.duration} ${durationLabels[plan.duration_unit]}`}</Text></Flex>
             <Separator size="4" my="4" />
             <Text size="2" weight="bold">قابلیت‌های فعال ({enabled.length})</Text>

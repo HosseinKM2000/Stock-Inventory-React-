@@ -3,7 +3,7 @@ import json
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select, func
 
-from ..deps import CurrentCategoryWriter, CurrentUser, DbSession
+from ..deps import CurrentCategoryWriter, CurrentCategoryUser, DbSession
 from ..models import Category, InventoryItem, SyncChange
 from ..schemas import (
     CategoryCreate,
@@ -19,11 +19,11 @@ router = APIRouter(prefix="/categories", tags=["categories"])
 def _get_owned_category(
     db: DbSession,
     category_id: int,
-    user_id: int,
+    store_id: int,
 ) -> Category:
     category = db.get(Category, category_id)
 
-    if category is None or category.user_id != user_id:
+    if category is None or category.store_id != store_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="دسته بندی یافت نشد",
@@ -35,12 +35,12 @@ def _get_owned_category(
 def _category_exists(
     db: DbSession,
     name: str,
-    user_id: int,
+    store_id: int,
     exclude_id: int | None = None,
 ) -> bool:
     stmt = select(Category).where(
         Category.name == name,
-        Category.user_id == user_id,
+        Category.store_id == store_id,
     )
 
     if exclude_id is not None:
@@ -51,12 +51,12 @@ def _category_exists(
 
 @router.get("", response_model=list[CategoryOut])
 def list_categories(
-    current_user: CurrentUser,
+    current_user: CurrentCategoryUser,
     db: DbSession,
 ) -> list[Category]:
     stmt = (
         select(Category)
-        .where(Category.user_id == current_user.id)
+        .where(Category.store_id == current_user.store_id)
         .order_by(Category.created_at.desc(), Category.id.desc())
     )
 
@@ -76,21 +76,22 @@ def create_category(
     if payload.id is not None:
         existing = db.get(Category, payload.id)
         if existing is not None:
-            if existing.user_id == current_user.id:
+            if existing.store_id == current_user.store_id:
                 return existing
             raise HTTPException(status_code=409, detail="CATEGORY_ID_CONFLICT")
 
-    if _category_exists(db, payload.name, current_user.id):
+    if _category_exists(db, payload.name, current_user.store_id):
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
             detail="این دسته بندی قبلا ثبت شده است",
         )
 
     category = Category(
+        store_id=current_user.store_id,
         id=payload.id,
         name=payload.name,
         description=payload.description,
-        user_id=current_user.id,
+        user_id=current_user.data_owner_id,
     )
 
     db.add(category)
@@ -110,13 +111,13 @@ def update_category(
     category = _get_owned_category(
         db,
         category_id,
-        current_user.id,
+        current_user.store_id,
     )
 
     if payload.name and _category_exists(
         db,
         payload.name,
-        current_user.id,
+        current_user.store_id,
         exclude_id=category.id,
     ):
         raise HTTPException(
@@ -146,14 +147,14 @@ def delete_category(
     if category is None:
         # DELETE is idempotent for a resource that no longer exists.
         return
-    if category.user_id != current_user.id:
+    if category.store_id != current_user.store_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="دسته بندی یافت نشد",
         )
 
     affected_items = list(db.scalars(select(InventoryItem).where(
-        InventoryItem.user_id == current_user.id,
+        InventoryItem.store_id == current_user.store_id,
         InventoryItem.category_id == category.id,
     )))
     for item in affected_items:
@@ -162,7 +163,9 @@ def delete_category(
     db.flush()
     for item in affected_items:
         db.add(SyncChange(
-            user_id=current_user.id,
+            store_id=current_user.store_id,
+            actor_user_id=current_user.id,
+            user_id=current_user.data_owner_id,
             entity="product",
             entity_id=item.id,
             operation="UPSERT",
@@ -177,7 +180,7 @@ def delete_category(
 
 @router.get("/stats", response_model=list[CategoryWithStats])
 def category_stats(
-    current_user: CurrentUser,
+    current_user: CurrentCategoryUser,
     db: DbSession,
 ) -> list[CategoryWithStats]:
     rows = db.execute(
@@ -190,7 +193,7 @@ def category_stats(
             ).label("total_quantity"),
         )
         .outerjoin(InventoryItem, InventoryItem.category_id == Category.id)
-        .where(Category.user_id == current_user.id)
+        .where(Category.store_id == current_user.store_id)
         .group_by(Category.id)
         .order_by(Category.created_at.desc(), Category.id.desc())
     ).all()

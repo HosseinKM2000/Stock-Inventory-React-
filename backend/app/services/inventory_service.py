@@ -8,7 +8,7 @@ from ..models import InventoryItem
 def get_inventory_item_or_404(
     db: Session,
     item_id: int,
-    user_id: int,
+    store_id: int,
 ) -> InventoryItem:
 
     stmt = (
@@ -18,7 +18,7 @@ def get_inventory_item_or_404(
         )
         .where(
             InventoryItem.id == item_id,
-            InventoryItem.user_id == user_id,
+            InventoryItem.store_id == store_id,
         )
     )
 
@@ -39,3 +39,7 @@ def update_inventory_item(
 ):
     for field, value in data.items():
         setattr(item, field, value)
+    if "sale_price" in data:
+        item.price = data["sale_price"] or 0
+    elif "price" in data:
+        item.sale_price = data["price"]

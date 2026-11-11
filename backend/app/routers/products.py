@@ -6,12 +6,14 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import func, select
 
 from ..config import settings
-from ..deps import CurrentUser, CurrentWritableUser, DbSession
+from ..deps import CurrentProductCreator, CurrentProductDeleter, CurrentProductReader, DbSession, require_capability
+from ..services.store_authorization import StorePermission, require_store_permission, project_inventory_item
 from ..models import CatalogProduct, Category, InventoryItem
 from sqlalchemy.orm import joinedload
 from ..schemas import InventoryOut, PaginatedInventory, InventoryStats, PaginationMeta
-from ..services.subscription_service import entitlement_for_user
+from ..services.subscription_service import entitlement_for_user, locked_inventory_capacity
 from ..services.authorization_service import is_admin
+from ..inventory_policy import MAX_PRODUCT_QUANTITY
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -28,20 +30,20 @@ MAX_FILE_SIZE = 5 * 1024 * 1024
 SortOption = Literal["newest", "price_desc", "price_asc", "name"]
 
 
-def _get_owned_product(db: DbSession, product_id: int, user_id: int) -> InventoryItem:
+def _get_owned_product(db: DbSession, product_id: int, store_id: int) -> InventoryItem:
     product = db.get(InventoryItem, product_id)
-    if product is None or product.user_id != user_id:
+    if product is None or product.store_id != store_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="محصول یافت نشد"
         )
     return product
 
 
-def _validate_category(db: DbSession, category_id: int | None, user_id: int) -> None:
+def _validate_category(db: DbSession, category_id: int | None, store_id: int) -> None:
     if category_id is None:
         return
     category = db.get(Category, category_id)
-    if category is None or category.user_id != user_id:
+    if category is None or category.store_id != store_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="دسته بندی نامعتبر است"
         )
@@ -86,7 +88,7 @@ def _validated_packaging(
 
 @router.get("", response_model=PaginatedInventory)
 def list_products(
-    current_user: CurrentUser,
+    current_user: CurrentProductReader,
     db: DbSession,
     search: str | None = None,
     sort: SortOption = "newest",
@@ -95,7 +97,7 @@ def list_products(
     page: int = 1,
     limit: int = 10,
 ) -> PaginatedInventory:
-    stmt = select(InventoryItem).options(joinedload(InventoryItem.catalog_product)).where(InventoryItem.user_id == current_user.id)
+    stmt = select(InventoryItem).options(joinedload(InventoryItem.catalog_product)).where(InventoryItem.store_id == current_user.store_id)
 
     if search:
         stmt = stmt.join(CatalogProduct).where(
@@ -128,7 +130,7 @@ def list_products(
     paginated = products[start:end]
 
     return PaginatedInventory(
-    items=paginated,
+    items=[project_inventory_item(db, current_user, item) for item in paginated],
     meta=PaginationMeta(
         total=total,
         page=page,
@@ -139,11 +141,13 @@ def list_products(
 
 @router.post("", response_model=InventoryOut, status_code=status.HTTP_201_CREATED)
 async def create_product(
-    current_user: CurrentWritableUser,
+    current_user: CurrentProductCreator,
     db: DbSession,
     name: Annotated[str, Form(min_length=1)],
-    quantity: Annotated[int, Form(ge=0)] = 0,
+    quantity: Annotated[int, Form(ge=0, le=MAX_PRODUCT_QUANTITY)] = 0,
     price: Annotated[int, Form(ge=0)] = 0,
+    sale_price: Annotated[int | None, Form(ge=0)] = None,
+    purchase_price: Annotated[int | None, Form(ge=0)] = None,
     description: Annotated[str | None, Form()] = None,
     unit: Annotated[str | None, Form()] = None,
     category_id: Annotated[int | None, Form()] = None,
@@ -153,11 +157,14 @@ async def create_product(
     pack_size: Annotated[int | None, Form(ge=1)] = None,
     image: Annotated[UploadFile | None, File()] = None,
 ) -> InventoryItem:
-    _validate_category(db, category_id, current_user.id)
+    require_capability(db, current_user, "inventory.write")
+    if purchase_price is not None:
+        require_store_permission(db, current_user, StorePermission.PURCHASE_PRICE_CHANGE)
+    _validate_category(db, category_id, current_user.store_id)
     is_packaged, pack_size = _validated_packaging(is_packaged, pack_size)
 
-    limit = None if is_admin(current_user) else entitlement_for_user(db, current_user)["limits"]["inventory_items"]
-    count = db.scalar(select(func.count(InventoryItem.id)).where(InventoryItem.user_id == current_user.id)) or 0
+    limit = None if is_admin(current_user) else locked_inventory_capacity(db, current_user)
+    count = db.scalar(select(func.count(InventoryItem.id)).where(InventoryItem.store_id == current_user.store_id)) or 0
     if limit is not None and count >= limit:
         raise HTTPException(status_code=403, detail="INVENTORY_LIMIT_REACHED")
 
@@ -176,32 +183,37 @@ async def create_product(
     db.add(catalog)
     db.flush()
     product = InventoryItem(
+        store_id=current_user.store_id,
         catalog_product_id=catalog.id,
         custom_label=name,
         note=description,
         quantity=quantity,
-        price=price,
+        price=sale_price if sale_price is not None else price,
+        sale_price=sale_price if sale_price is not None else price,
+        purchase_price=purchase_price,
         low_stock_threshold=low_stock_threshold,
         low_stock_alert=low_stock_alert,
         category_id=category_id,
         image_url=image_url,
-        user_id=current_user.id,
+        user_id=current_user.data_owner_id,
         is_catalog_backed=False,
     )
     db.add(product)
     db.commit()
     db.refresh(product)
-    return product
+    return project_inventory_item(db, current_user, product)
 
 
 @router.patch("/{product_id}", response_model=InventoryOut)
 async def update_product(
     product_id: int,
-    current_user: CurrentWritableUser,
+    current_user: CurrentProductReader,
     db: DbSession,
     name: Annotated[str | None, Form()] = None,
-    quantity: Annotated[int | None, Form(ge=0)] = None,
+    quantity: Annotated[int | None, Form(ge=0, le=MAX_PRODUCT_QUANTITY)] = None,
     price: Annotated[int | None, Form(ge=0)] = None,
+    sale_price: Annotated[int | None, Form(ge=0)] = None,
+    purchase_price: Annotated[int | None, Form(ge=0)] = None,
     description: Annotated[str | None, Form()] = None,
     unit: Annotated[str | None, Form()] = None,
     category_id: Annotated[int | None, Form()] = None,
@@ -212,7 +224,19 @@ async def update_product(
     image: Annotated[UploadFile | None, File()] = None,
     remove_image: Annotated[bool, Form()] = False,
 ) -> InventoryItem:
-    product = _get_owned_product(db, product_id, current_user.id)
+    from ..services.store_mode_policy import require_direct_mutation_allowed
+    require_direct_mutation_allowed(db, current_user)
+    require_capability(db, current_user, "inventory.write")
+    detail_fields = (name, description, unit, category_id, low_stock_threshold, low_stock_alert, is_packaged, pack_size, image)
+    if remove_image or any(value is not None for value in detail_fields):
+        require_store_permission(db, current_user, StorePermission.PRODUCTS_EDIT)
+    if quantity is not None:
+        require_store_permission(db, current_user, StorePermission.QUANTITY_CHANGE)
+    if price is not None or sale_price is not None:
+        require_store_permission(db, current_user, StorePermission.SALE_PRICE_CHANGE)
+    if purchase_price is not None:
+        require_store_permission(db, current_user, StorePermission.PURCHASE_PRICE_CHANGE)
+    product = _get_owned_product(db, product_id, current_user.store_id)
 
     if is_packaged is not None or pack_size is not None:
         if product.catalog_product.is_shared:
@@ -231,7 +255,7 @@ async def update_product(
         product.catalog_product.pack_size = effective_pack_size
 
     if category_id is not None:
-        _validate_category(db, category_id, current_user.id)
+        _validate_category(db, category_id, current_user.store_id)
 
     updates = {
         "custom_label": name,
@@ -245,6 +269,12 @@ async def update_product(
     for field, value in updates.items():
         if value is not None:
             setattr(product, field, value)
+    effective_sale_price = sale_price if sale_price is not None else price
+    if effective_sale_price is not None:
+        product.sale_price = effective_sale_price
+        product.price = effective_sale_price
+    if purchase_price is not None:
+        product.purchase_price = purchase_price
 
     if image is not None:
         _delete_image(product.image_url)
@@ -255,14 +285,14 @@ async def update_product(
 
     db.commit()
     db.refresh(product)
-    return product
+    return project_inventory_item(db, current_user, product)
 
 
 @router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_product(
-    product_id: int, current_user: CurrentWritableUser, db: DbSession
+    product_id: int, current_user: CurrentProductDeleter, db: DbSession
 ) -> None:
-    product = _get_owned_product(db, product_id, current_user.id)
+    product = _get_owned_product(db, product_id, current_user.store_id)
     if product.is_catalog_backed:
         raise HTTPException(
             status_code=status.HTTP_409_CONFLICT,
@@ -281,12 +311,12 @@ def delete_product(
 
 @router.get("/stats", response_model=InventoryStats)
 def product_stats(
-    current_user: CurrentUser,
+    current_user: CurrentProductReader,
     db: DbSession,
 ) -> InventoryStats:
     products = list(
         db.scalars(
-            select(InventoryItem).where(InventoryItem.user_id == current_user.id)
+            select(InventoryItem).where(InventoryItem.store_id == current_user.store_id)
         )
     )
 
@@ -312,12 +342,12 @@ def product_stats(
 
 @router.get("/alerts/low-stock", response_model=list[InventoryOut])
 def low_stock_alerts(
-    current_user: CurrentUser,
+    current_user: CurrentProductReader,
     db: DbSession,
 ) -> list[InventoryItem]:
     products = list(
         db.scalars(
-            select(InventoryItem).where(InventoryItem.user_id == current_user.id)
+            select(InventoryItem).where(InventoryItem.store_id == current_user.store_id)
         )
     )
 
@@ -329,17 +359,17 @@ def low_stock_alerts(
         and p.quantity <= p.low_stock_threshold
     ]
 
-    return alerts
+    return [project_inventory_item(db, current_user, item) for item in alerts]
 
 
 @router.get("/alerts/count")
 def alerts_count(
-    current_user: CurrentUser,
+    current_user: CurrentProductReader,
     db: DbSession,
 ):
     products = list(
         db.scalars(
-            select(InventoryItem).where(InventoryItem.user_id == current_user.id)
+            select(InventoryItem).where(InventoryItem.store_id == current_user.store_id)
         )
     )
 
@@ -356,7 +386,6 @@ def alerts_count(
 
 @router.get("/{product_id}", response_model=InventoryOut)
 def get_product(
-    product_id: int, current_user: CurrentUser, db: DbSession
-) -> InventoryItem:
-    return _get_owned_product(db, product_id, current_user.id)
-
+    product_id: int, current_user: CurrentProductReader, db: DbSession
+) -> dict:
+    return project_inventory_item(db, current_user, _get_owned_product(db, product_id, current_user.store_id))

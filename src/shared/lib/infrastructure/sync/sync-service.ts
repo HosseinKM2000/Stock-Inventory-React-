@@ -3,10 +3,18 @@ import { isAuthenticated } from "@/shared/api/token-store";
 
 import { networkService } from "../network/network-service";
 import type { SyncQueueItem } from "../storage/types";
-import { queueService } from "./queue.service";
+import { isAccessDeniedOutcomeUnresolved, queueService } from "./queue.service";
 import { syncStatusStore } from "./sync-status";
 import { accessState } from "@/shared/access/access-state";
 import { entitlementService } from "@/shared/access/entitlement-service";
+import {
+  assertSyncAccountCurrent,
+  captureSyncAccountContext,
+  isSyncAccountCurrent,
+} from "./sync-account-context";
+import { mediaOperationBlocked, mediaTransferService } from "../media/media-transfer.service";
+import { recordDiagnostic } from "@/shared/lib/diagnostics/diagnostic-buffer";
+import { fetchRecordedOperationResult } from "./sync-operation-resolution";
 
 export type SyncHandlerResult = {
   itemId: string;
@@ -22,6 +30,8 @@ export type InboundSyncHandler = () => Promise<void>;
 
 const handlers = new Map<string, SyncHandler>();
 const inboundHandlers = new Map<string, InboundSyncHandler>();
+const BATCH_SIZE = 100;
+const ENTITY_ORDER = ["label", "category", "product", "barcode", "inventory_movement", "invoice"];
 
 let running: Promise<void> | null = null;
 let onSettled: (() => void) | null = null;
@@ -49,47 +59,80 @@ function isFatalRequest(error: unknown) {
     error.status !== 423 &&
     error.status !== 408 &&
     error.status !== 409 &&
-    error.status !== 429 &&
-    error.message !== "SUBSCRIPTION_EXPIRED"
+    error.status !== 429
   );
 }
 
 async function processGroup(entity: string, items: SyncQueueItem[]) {
   const handler = handlers.get(entity);
   if (!handler) return { changed: false, error: null as string | null };
+  const account = captureSyncAccountContext();
 
   const active: SyncQueueItem[] = [];
+  const possiblePriorAttempts = new Set<string>();
   for (const item of items) {
-    if (await queueService.markInFlight(item)) active.push(item);
+    if (item.attemptState !== "never") possiblePriorAttempts.add(item.id);
+    assertSyncAccountCurrent(account);
+    const claimed = await queueService.markInFlight(item);
+    assertSyncAccountCurrent(account);
+    if (claimed) active.push(claimed);
   }
   if (active.length === 0) return { changed: false, error: null };
 
   try {
     const results = await handler(active);
+    assertSyncAccountCurrent(account);
     const byId = new Map(results.map((result) => [result.itemId, result]));
     let lastError: string | null = null;
 
     for (const item of active) {
+      assertSyncAccountCurrent(account);
       const result = byId.get(item.id);
 
       if (!result) {
         const error = new Error("Sync server omitted an operation result");
         await queueService.markFailed(item, error);
         lastError = error.message;
-      } else if (result.status === "applied" || result.status === "conflict") {
+        recordDiagnostic({ kind: "sync_failure", summary: "SYNC_RESULT_MISSING", operationId: item.operationId });
+      } else if (result.status === "applied") {
         await queueService.removeIfUnchanged(item);
-        if (result.status === "conflict") lastError = result.error ?? "Sync conflict";
+      } else if (result.status === "conflict") {
+        const error = result.error ?? "Sync conflict";
+        await queueService.markConflict(item, error);
+        lastError = error;
+        recordDiagnostic({ kind: "sync_failure", summary: /^[A-Z][A-Z0-9_.:-]+$/.test(error) ? error : "SYNC_CONFLICT", operationId: item.operationId });
       } else {
         const error = new Error(result.error ?? "Server rejected the operation");
         await queueService.markFailed(item, error, true);
         lastError = error.message;
+        recordDiagnostic({ kind: "sync_failure", summary: /^[A-Z][A-Z0-9_.:-]+$/.test(error.message) ? error.message : "SYNC_REJECTED", operationId: item.operationId });
       }
     }
 
     return { changed: true, error: lastError };
   } catch (error) {
+    if (!isSyncAccountCurrent(account)) {
+      return { changed: false, error: "SYNC_ACCOUNT_CHANGED" };
+    }
     for (const item of active) {
-      await queueService.markFailed(item, error, isFatalRequest(error));
+      if (error instanceof ApiError && error.status === 401) {
+        await queueService.releaseAfterAuthFailure(item, error);
+      } else if (
+        error instanceof ApiError &&
+        error.status === 403 &&
+        possiblePriorAttempts.has(item.id)
+      ) {
+        await queueService.markAccessDeniedUnresolved(item, error);
+      } else {
+        await queueService.markFailed(item, error, isFatalRequest(error));
+      }
+      recordDiagnostic({
+        kind: "sync_failure",
+        summary: error instanceof ApiError && /^[A-Z][A-Z0-9_.:-]+$/.test(error.message) ? error.message : "SYNC_REQUEST_FAILED",
+        requestId: error instanceof ApiError ? error.requestId : undefined,
+        operationId: item.operationId,
+        httpStatus: error instanceof ApiError ? error.status : undefined,
+      });
     }
 
     return {
@@ -100,6 +143,10 @@ async function processGroup(entity: string, items: SyncQueueItem[]) {
 }
 
 async function runSync() {
+  if (syncService.isPaused()) {
+    syncStatusStore.set({ state: "idle", pending: await queueService.count(), error: "SYNC_PAUSED_FOR_RESTORE" });
+    return;
+  }
   if (networkService.isOffline() || !isAuthenticated()) {
     syncStatusStore.set({ state: "idle", pending: await queueService.count() });
     return;
@@ -125,24 +172,53 @@ async function runSync() {
     return;
   }
 
-  const writeAllowed = accessState.canWrite();
-  const items = writeAllowed ? await queueService.getDue() : [];
-
-  syncStatusStore.set({ state: "syncing", pending: items.length, error: null });
-
-  let changed = false;
-  let lastError: string | null = writeAllowed ? null : "SUBSCRIPTION_EXPIRED";
-
-  const groups = new Map<string, SyncQueueItem[]>();
-  for (const item of items) {
-    groups.set(item.entity, [...(groups.get(item.entity) ?? []), item]);
+  // Free/local plans keep the durable outbox as upgrade-safe local history,
+  // but never send operational data to the server.
+  if (!accessState.canUse("sync")) {
+    syncStatusStore.set({ state: "idle", pending: await queueService.count(), error: null });
+    return;
   }
 
-  for (const [entity, group] of groups) {
-    const result = await processGroup(entity, group);
-    changed ||= result.changed;
-    lastError = result.error ?? lastError;
-    if (networkService.isOffline()) break;
+  syncStatusStore.set({ state: "syncing", pending: await queueService.count(), error: null });
+
+  let changed = false;
+  let lastError: string | null = null;
+
+  const attemptedThisRun = new Set<string>();
+  // Durable work predates the freshly verified entitlement snapshot. Submit it
+  // under its original identity so the server can either resolve a committed
+  // replay or persist a terminal current-policy rejection. Holding it locally
+  // until a later renewal would silently replay stale intent under a new
+  // commercial state.
+  while (networkService.isOnline()) {
+    // Binary transfer has its own retry lifecycle. Its failure never prevents
+    // unrelated operational records from draining.
+    await mediaTransferService.processDue().catch(() => undefined);
+    const items = (await queueService.getDue()).filter(
+      (item) => !attemptedThisRun.has(item.operationId),
+    );
+    if (items.length === 0) break;
+    items.forEach((item) => attemptedThisRun.add(item.operationId));
+
+    const groups = new Map<string, SyncQueueItem[]>();
+    for (const item of items) {
+      if (mediaOperationBlocked(item)) continue;
+      groups.set(item.entity, [...(groups.get(item.entity) ?? []), item]);
+    }
+
+    const orderedGroups = [...groups.entries()].sort(
+      ([a], [b]) => (ENTITY_ORDER.indexOf(a) < 0 ? 99 : ENTITY_ORDER.indexOf(a)) -
+        (ENTITY_ORDER.indexOf(b) < 0 ? 99 : ENTITY_ORDER.indexOf(b)),
+    );
+    for (const [entity, group] of orderedGroups) {
+      for (let offset = 0; offset < group.length; offset += BATCH_SIZE) {
+        const result = await processGroup(entity, group.slice(offset, offset + BATCH_SIZE));
+        changed ||= result.changed;
+        lastError = result.error ?? lastError;
+        if (networkService.isOffline()) break;
+      }
+      if (networkService.isOffline()) break;
+    }
   }
 
   if (networkService.isOnline()) {
@@ -161,38 +237,104 @@ async function runSync() {
   const terminal = queued.find(
     (item) => item.status === "fatal_error" || item.status === "dead_letter",
   );
+  const conflict = queued.find((item) => item.status === "conflict");
 
   syncStatusStore.set({
-    state: lastError || terminal ? "failed" : "synced",
+    state: conflict ? "conflict" : lastError || terminal ? "failed" : "synced",
     pending: queued.length,
-    error: lastError ?? terminal?.lastError ?? null,
+    error: conflict?.lastError ?? lastError ?? terminal?.lastError ?? null,
     lastSyncedAt: lastError ? syncStatusStore.get().lastSyncedAt : Date.now(),
   });
 
   if (changed) onSettled?.();
 }
 
-export const syncService = {
-  async sync() {
-    if (running) return running;
-
-    running = runSync()
-      .catch((error) => {
-        syncStatusStore.set({
-          state: "failed",
-          error: error instanceof Error ? error.message : String(error),
-        });
-      })
-      .finally(() => {
-        running = null;
+function startSync(run: () => Promise<void>) {
+  if (running) return running;
+  running = run()
+    .catch((error) => {
+      syncStatusStore.set({
+        state: "failed",
+        error: error instanceof Error ? error.message : String(error),
       });
+    })
+    .finally(() => {
+      running = null;
+    });
+  return running;
+}
 
-    return running;
+export const syncService = {
+  pause(reason = "manual", accountId?: number) {
+    const userId = accountId ?? accessState.user?.()?.id;
+    if (!userId) return;
+    localStorage.setItem(`tanzim:${userId}:sync-paused`, reason);
+  },
+
+  resume(accountId?: number) {
+    const userId = accountId ?? accessState.user?.()?.id;
+    if (!userId) return;
+    localStorage.removeItem(`tanzim:${userId}:sync-paused`);
+    syncStatusStore.set({ error: null });
+  },
+
+  isPaused(accountId?: number) {
+    const userId = accountId ?? accessState.user?.()?.id;
+    if (!userId) return false;
+    return localStorage.getItem(`tanzim:${userId}:sync-paused`) != null;
+  },
+
+  async sync() {
+    const coordinatedRun = async () => {
+      if (!navigator.locks) return runSync();
+      await navigator.locks.request(
+        "tanzim-outbox-sync",
+        { ifAvailable: true },
+        async (lock) => { if (lock) await runSync(); },
+      );
+    };
+    return startSync(coordinatedRun);
+  },
+
+  /** Runs only when the caller already owns the global outbox Web Lock. */
+  async syncWithinOutboxLock() {
+    return startSync(runSync);
+  },
+
+  schedule() {
+    window.setTimeout(() => { void this.sync(); }, 150);
   },
 
   async retry() {
     await queueService.resetFailures();
     return this.sync();
+  },
+
+  async resolveAccessDeniedOutcome(item: SyncQueueItem) {
+    if (!isAccessDeniedOutcomeUnresolved(item)) {
+      throw new Error("SYNC_OPERATION_RESOLUTION_NOT_ALLOWED");
+    }
+    const account = captureSyncAccountContext();
+    try {
+      const result = await fetchRecordedOperationResult(item.operationId);
+      assertSyncAccountCurrent(account);
+      if (result.status === "applied") {
+        await queueService.removeIfUnchanged(item);
+      } else if (result.status === "conflict") {
+        await queueService.markConflict(item, result.error ?? "SYNC_CONFLICT");
+      } else {
+        await queueService.markFailed(item, new Error(result.error ?? "SYNC_REJECTED"), true);
+      }
+      await this.sync();
+      return result.status;
+    } catch (error) {
+      assertSyncAccountCurrent(account);
+      if (error instanceof ApiError && error.status === 404) {
+        await queueService.markFailed(item, new Error("SYNC_OPERATION_NOT_RECORDED"), true);
+        return "not_recorded" as const;
+      }
+      throw error;
+    }
   },
 
   async refreshPending() {

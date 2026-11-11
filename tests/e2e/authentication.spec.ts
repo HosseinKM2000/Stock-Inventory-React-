@@ -5,7 +5,6 @@ const password = process.env.E2E_PASSWORD;
 
 test.describe("authenticated browser journey", () => {
   test.skip(!username || !password, "E2E_USERNAME and E2E_PASSWORD must identify an isolated test user");
-  test.skip(({ isMobile }) => Boolean(isMobile), "logout control is in the desktop settings navigation");
 
   test("login grants protected access and logout revokes it", async ({ page }) => {
     await page.goto("/auth/login");
@@ -15,7 +14,7 @@ test.describe("authenticated browser journey", () => {
     await expect(page).toHaveURL(/\/(dashboard|industry|inventory)/);
     await expect(page.locator("main")).toBeVisible();
 
-    await page.goto("/setting/appearance");
+    await page.goto("/setting");
     await page.getByRole("button", { name: /خروج|ط®ط±ظˆط¬/ }).click();
     await expect(page).toHaveURL(/\/auth\/login/);
     await page.goto("/inventory/list");

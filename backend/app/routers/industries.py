@@ -11,8 +11,10 @@ from ..services.industry_service import (
     create_industry,
     delete_industry,
     get_industries,
+    industry_payload,
     update_industry,
 )
+from ..services.audit_service import record_admin_action
 
 router = APIRouter(
     prefix="/industries",
@@ -28,7 +30,7 @@ def list_industries(
     _: CurrentUser,
     db: DbSession,
 ):
-    return get_industries(db)
+    return [industry_payload(industry) for industry in get_industries(db)]
 
 
 @router.post(
@@ -37,10 +39,13 @@ def list_industries(
 )
 def create(
     payload: IndustryCreate,
-    _: CurrentIndustryManager,
+    actor: CurrentIndustryManager,
     db: DbSession,
 ):
-    return create_industry(db, payload)
+    result = create_industry(db, payload)
+    record_admin_action(db, actor, "industry.created", metadata={"industry_id": result["id"], "tools": result["tools"]})
+    db.commit()
+    return result
 
 
 @router.patch(
@@ -50,7 +55,7 @@ def create(
 def update(
     industry_id: int,
     payload: IndustryUpdate,
-    _: CurrentIndustryManager,
+    actor: CurrentIndustryManager,
     db: DbSession,
 ):
     industry = db.get(Industry, industry_id)
@@ -58,11 +63,14 @@ def update(
     if not industry:
         raise HTTPException(404)
 
-    return update_industry(
+    result = update_industry(
         db,
         industry,
         payload,
     )
+    record_admin_action(db, actor, "industry.updated", metadata={"industry_id": industry_id, "tools": result["tools"]})
+    db.commit()
+    return result
 
 
 @router.delete("/{industry_id}")

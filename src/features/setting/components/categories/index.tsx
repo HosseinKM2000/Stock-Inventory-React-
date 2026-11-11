@@ -12,6 +12,7 @@ import { ReloadIcon } from "@radix-ui/react-icons";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/shared/ui/dialog/confirm-dialog";
+import { PageGuide } from "@/features/app/layout/page-guide";
 
 const CategoriesCards = () => {
   const { data: categories = [], isLoading, isError, error } = useCategories();
@@ -36,9 +37,7 @@ const CategoriesCards = () => {
   return (
     <Box className="space-y-6">
       <Flex justify="between" align="center" gap="3" wrap="wrap">
-        <Text size="6" weight="bold">
-          دسته بندی ها
-        </Text>
+        <div className="min-w-0 flex-1"><PageGuide section="ابزارها" sectionTo="/tools" title="دسته‌بندی‌ها" description="ساختار اصلی محصولات را با دسته‌های روشن و ماندگار مرتب کنید و در صورت نیاز آخرین اطلاعات تأییدشده مجموعه را بگیرید." icon={LayersIcon} helpTopic="classification" /></div>
 
         <Flex gap="2" wrap="wrap" className="w-full sm:w-auto">
           <Button
@@ -148,9 +147,9 @@ const CategoriesCards = () => {
       <ConfirmDialog
         open={refreshOpen}
         onOpenChange={setRefreshOpen}
-        title="تازه‌سازی دسته‌بندی‌ها از سرور"
-        description="ابتدا تغییرات محلی همگام می‌شوند؛ سپس نسخه معتبر دسته‌بندی‌های سرور به‌صورت یکجا جایگزین نسخه محلی می‌شود."
-        confirmLabel="تازه‌سازی از سرور"
+        title="دسته‌بندی‌ها تازه‌سازی شوند؟"
+        description="نسخهٔ سرور جایگزین دسته‌بندی‌های فعلی می‌شود."
+        confirmLabel="تازه‌سازی"
         variant="warning"
         loading={refreshMutation.isPending}
         onConfirm={() => { void refresh(); }}

@@ -8,6 +8,20 @@ export type SubscriptionRestriction = {
   capability?: string;
 };
 
+export type InventoryCapacityNotice = {
+  level: "approaching" | "near" | "critical" | "full";
+  used: number;
+  limit: number;
+  remaining: number;
+};
+
+export function inventoryCapacityNotice(used: number, limit: number | null | undefined): InventoryCapacityNotice | null {
+  if (limit == null || limit <= 0 || used < Math.ceil(limit * 0.7)) return null;
+  const ratio = used / limit;
+  const level = ratio >= 1 ? "full" : ratio >= 0.95 ? "critical" : ratio >= 0.85 ? "near" : "approaching";
+  return { level, used, limit, remaining: Math.max(0, limit - used) };
+}
+
 export class SubscriptionRestrictionError extends Error {
   readonly restriction: SubscriptionRestriction;
 

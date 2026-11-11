@@ -7,15 +7,17 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session, joinedload
 
 from ..config import settings
-from ..models import CatalogProduct, Industry, InventoryItem, SyncChange, User
+from ..models import CatalogProduct, Industry, InventoryItem, Store, SyncChange, User
 from ..repositories import catalog_products as repository
 from ..schemas import CatalogProductCreate, CatalogProductUpdate, InventoryOut
 from .audit_service import record_admin_action
+from .subscription_service import entitlement_for_store
 
 
 def _record_inventory_change(db: Session, item: InventoryItem) -> None:
     db.add(
         SyncChange(
+            store_id=item.store_id,
             user_id=item.user_id,
             entity="product",
             entity_id=item.id,
@@ -30,6 +32,7 @@ def _record_inventory_change(db: Session, item: InventoryItem) -> None:
 def _record_inventory_delete(db: Session, item: InventoryItem) -> None:
     db.add(
         SyncChange(
+            store_id=item.store_id,
             user_id=item.user_id,
             entity="product",
             entity_id=item.id,
@@ -40,6 +43,13 @@ def _record_inventory_delete(db: Session, item: InventoryItem) -> None:
 
 
 def _reconcile_catalog_assignments(db: Session, product: CatalogProduct) -> None:
+    # Serialize assignment reconciliation for this definition. The store-level
+    # unique constraint remains the final concurrency guard.
+    db.execute(
+        select(CatalogProduct.id)
+        .where(CatalogProduct.id == product.id)
+        .with_for_update()
+    )
     items = list(
         db.scalars(
             select(InventoryItem)
@@ -47,31 +57,47 @@ def _reconcile_catalog_assignments(db: Session, product: CatalogProduct) -> None
                 joinedload(InventoryItem.catalog_product).joinedload(
                     CatalogProduct.industry
                 ),
-                joinedload(InventoryItem.owner),
             )
             .where(InventoryItem.catalog_product_id == product.id)
         )
     )
-    by_user = {item.user_id: item for item in items}
+    by_store = {item.store_id: item for item in items}
     changed: list[InventoryItem] = []
 
     for item in items:
-        if item.owner.industry_id != product.industry_id and not item.is_hidden:
+        store = db.get(Store, item.store_id)
+        if (store is None or store.industry_id != product.industry_id) and not item.is_hidden:
             item.is_hidden = True
+            item.version = (item.version or 1) + 1
         item.is_catalog_backed = True
         changed.append(item)
 
-    users = list(
-        db.scalars(select(User).where(User.industry_id == product.industry_id))
+    stores = list(
+        db.scalars(
+            select(Store)
+            .where(Store.industry_id == product.industry_id)
+            .order_by(Store.id)
+            .with_for_update()
+        )
     )
-    for user in users:
-        if user.id in by_user:
+    for store in stores:
+        if store.id in by_store:
+            continue
+        limits = entitlement_for_store(db, store)["limits"]
+        inventory_count = db.scalar(select(func.count(InventoryItem.id)).where(InventoryItem.store_id == store.id)) or 0
+        catalog_count = db.scalar(select(func.count(InventoryItem.id)).where(
+            InventoryItem.store_id == store.id,
+            InventoryItem.is_catalog_backed.is_(True),
+        )) or 0
+        if limits["inventory_items"] is not None and inventory_count >= limits["inventory_items"]:
+            continue
+        if limits["catalog_items"] is not None and catalog_count >= limits["catalog_items"]:
             continue
         item = InventoryItem(
-            user_id=user.id,
+            store_id=store.id,
+            user_id=store.owner_user_id,
             catalog_product_id=product.id,
             catalog_product=product,
-            owner=user,
             is_catalog_backed=True,
         )
         db.add(item)
@@ -237,7 +263,22 @@ def archive_catalog_product(
         return product
 
     try:
+        affected_items = list(
+            db.scalars(
+                select(InventoryItem)
+                .options(
+                    joinedload(InventoryItem.catalog_product).joinedload(
+                        CatalogProduct.industry
+                    )
+                )
+                .where(InventoryItem.catalog_product_id == product.id)
+            )
+        )
         repository.archive_catalog_product(db, product)
+        # The inventory row remains intact, but every user's local snapshot
+        # must learn that its shared catalog source is no longer eligible.
+        for item in affected_items:
+            _record_inventory_change(db, item)
         record_admin_action(
             db,
             actor,

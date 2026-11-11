@@ -1,6 +1,12 @@
 const ROOT = "inventory-images";
 
 async function getRoot() {
+  if (!navigator.storage?.getDirectory) {
+    throw new Error(
+      "این مرورگر از ذخیره محلی تصویر پشتیبانی نمی‌کند. محصول را بدون تصویر ذخیره کنید.",
+    );
+  }
+
   const root = await navigator.storage.getDirectory();
 
   return root.getDirectoryHandle(ROOT, {
@@ -46,6 +52,25 @@ export const imageRepository = {
     const file = await handle.getFile();
 
     return file;
+  },
+
+  async restore(path: string, file: Blob) {
+    if (!path.startsWith("local://")) throw new Error("BACKUP_IMAGE_PATH_INVALID");
+    const name = path.slice("local://".length);
+    if (!name || name.includes("/") || name.includes("\\") || name.includes("..")) {
+      throw new Error("BACKUP_IMAGE_PATH_INVALID");
+    }
+    const dir = await getRoot();
+    const handle = await dir.getFileHandle(name, { create: true });
+    const writable = await handle.createWritable();
+    try {
+      await writable.write(file);
+      await writable.close();
+    } catch (error) {
+      await writable.abort().catch(() => undefined);
+      throw error;
+    }
+    return path;
   },
 
   async remove(path: string) {

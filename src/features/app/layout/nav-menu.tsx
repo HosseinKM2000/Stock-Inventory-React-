@@ -1,18 +1,57 @@
-import { Box, Flex, Text } from "@radix-ui/themes";
+import { Box, Text } from "@radix-ui/themes";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { primaryNavigationItems } from "./navigation-items";
-import { isPathActive } from "@/shared/lib/navigation/is-path-active";
+import { isPathActive, isPrimaryNavigationActive } from "@/shared/lib/navigation/is-path-active";
+import { useAuth } from "@/shared/auth/use-auth";
+import { PersonIcon, PlusIcon } from "@radix-ui/react-icons";
+import { accessState } from "@/shared/access/access-state";
+import { isAdmin } from "@/shared/access/authorization";
+import { useEntitlementAccess } from "@/shared/access/use-entitlement";
+import type { NavigationItem } from "./navigation-items";
+import { useNavigationLayout } from "./use-navigation-layout";
+import { useDraggableAdminShortcut } from "./use-draggable-admin-shortcut";
 
 type Props = {
   hidden?: boolean;
 };
 
+function NavigationLink({ item, active }: { item: NavigationItem; active: boolean }) {
+  const Icon = item.icon;
+  return (
+    <Link
+      to={item.to}
+      data-active={active}
+      className="app-bottom-navigation-item relative flex min-w-0 flex-col items-center justify-center px-2 py-2 transition-all duration-200 ease-out active:scale-95"
+    >
+      <Box className={`absolute -top-2 left-1/2 -translate-x-1/2 transition-all duration-300 ${active ? "opacity-100" : "opacity-0"}`}>
+        <Box className="app-navigation-indicator h-[3px] w-12 rounded-full" />
+      </Box>
+      <Box className={`app-navigation-icon transition-all duration-200 ${active ? "scale-105" : ""}`}>
+        <Icon width={20} height={20} />
+      </Box>
+      <Text size="1" className="app-bottom-navigation-label mt-1 whitespace-nowrap transition-all duration-200">
+        {item.label}
+      </Text>
+    </Link>
+  );
+}
+
 const NavMenu = ({ hidden = false }: Props) => {
+  const { navigationRef, keyboardOpen } = useNavigationLayout();
+  useEntitlementAccess();
   const pathname = useRouterState({
     select: (state) => state.location.pathname,
   });
+  const { user } = useAuth();
+  const administrator = isAdmin(user);
+  const adminShortcut = useDraggableAdminShortcut(navigationRef, administrator);
+  const items = primaryNavigationItems(user);
+  const canAddProduct = accessState.canWrite() && (accessState.hasStorePermission?.("products.create") ?? true);
+  const beforeAction = items.slice(0, 2);
+  const afterAction = items.slice(2);
   return (
-    <Box
+    <nav
+      ref={navigationRef}
       dir="rtl"
       className="
         app-bottom-navigation
@@ -21,14 +60,33 @@ const NavMenu = ({ hidden = false }: Props) => {
         w-full
         bottom-0
         block!
-        overflow-hidden
+        overflow-visible
       "
-      data-hidden={hidden}
-      aria-hidden={hidden}
+      data-hidden={hidden || keyboardOpen}
+      data-has-primary-action={canAddProduct}
+      aria-hidden={hidden || keyboardOpen}
+      aria-label="ناوبری اصلی"
     >
-      <Flex
-        align="center"
-        justify="center"
+      {administrator && (
+        <Link
+          to="/management"
+          aria-label="مدیریت"
+          aria-current={isPathActive(pathname, "/management") ? "page" : undefined}
+          data-active={isPathActive(pathname, "/management")}
+          className="app-admin-shortcut"
+          style={adminShortcut.style}
+          title="برای جابه‌جایی بکشید"
+          draggable={false}
+          onClick={adminShortcut.onClick}
+          onPointerDown={adminShortcut.onPointerDown}
+          onPointerMove={adminShortcut.onPointerMove}
+          onPointerUp={adminShortcut.onPointerUp}
+          onPointerCancel={adminShortcut.onPointerCancel}
+        >
+          <PersonIcon width="22" height="22" aria-hidden="true" />
+        </Link>
+      )}
+      <Box
         className="
           app-bottom-navigation-surface
           relative
@@ -41,110 +99,25 @@ const NavMenu = ({ hidden = false }: Props) => {
           backdrop-blur-2xl
         "
       >
-        {primaryNavigationItems.map((item) => {
-          const Icon = item.icon;
-
-          const active = isPathActive(pathname, item.to);
-              
-          return (
-            <Link
-              key={item.to}
-              to={item.to}
-              data-active={active}
-              className="
-                app-bottom-navigation-item
-                flex
-                px-3
-                py-2
-                w-[25%]
-                md:w-70
-                relative
-                flex-col
-                ease-out
-                rounded-2xl
-                items-center
-                duration-200
-                justify-center
-                transition-all
-                active:scale-95
-              "
-            >
-              {/* Lamp Indicator */}
-
-              <Box
-                className={`
-                  absolute
-                  -top-2
-                  left-1/2
-                  -translate-x-1/2
-
-                  transition-all
-                  duration-300
-
-                  ${active ? "opacity-100" : "opacity-0"}
-                `}
-              >
-                {/* Main Line */}
-
-                <Box
-                  className="app-navigation-indicator h-[3px] w-15 rounded-full"
-                />
-
-                {/* Glow */}
-
-                <Box
-                  className="
-                    app-navigation-glow
-                    absolute
-                    left-1/2
-                    top-0
-
-                    h-5
-                    w-16
-
-                    -translate-x-1/2
-                    -translate-y-1/2
-
-                    rounded-full
-
-                    blur-xl
-                  "
-                />
-              </Box>
-
-              {/* Icon */}
-
-              <Box
-                className={`
-                  app-navigation-icon
-                  transition-all
-                  duration-200
-
-                  ${active ? "scale-105" : ""}
-                `}
-              >
-                <Icon width={20} height={20} />
-              </Box>
-
-              {/* Label */}
-
-              <Text
-                size="1"
-                className="
-                  app-bottom-navigation-label
-                  mt-1
-
-                  transition-all
-                  duration-200
-                "
-              >
-                {item.label}
-              </Text>
-            </Link>
-          );
-        })}
-      </Flex>
-    </Box>
+        {beforeAction.map((item) => (
+          <NavigationLink key={item.to} item={item} active={isPrimaryNavigationActive(pathname, item.to)} />
+        ))}
+        {canAddProduct && (
+          <Link
+            to="/inventory/add"
+            className="app-bottom-navigation-add relative min-w-0"
+            aria-label="افزودن محصول"
+          >
+            <span className="app-bottom-navigation-add-button" aria-hidden="true">
+              <PlusIcon width="32" height="32" />
+            </span>
+          </Link>
+        )}
+        {afterAction.map((item) => (
+          <NavigationLink key={item.to} item={item} active={isPrimaryNavigationActive(pathname, item.to)} />
+        ))}
+      </Box>
+    </nav>
   );
 };
 

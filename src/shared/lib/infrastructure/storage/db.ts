@@ -2,17 +2,38 @@ import Dexie, { type EntityTable } from "dexie";
 
 import type {
   SyncMetadataItem,
+  MediaTransferItem,
   SyncQueueItem,
 } from "./types";
+import { syncResourceKey } from "./types";
 import type { LocalInventoryItem } from "@/features/app/inventory/storage/types";
 import type { Category } from "@/features/setting/types";
+import type { Label } from "@/features/setting/types";
+import type { BackupSettings, RecoveryReviewItem, RecoverySession } from "@/features/backup/types";
+import type { InventoryMovement, ProductBarcode } from "@/features/barcode/types";
+import type { Invoice } from "@/features/invoices/types";
+
+export function migrateLegacyProductPricing(item: LocalInventoryItem) {
+  if (item.sale_price === undefined) item.sale_price = item.price_missing ? null : item.price;
+  item.purchase_price ??= null;
+  item.price = item.sale_price ?? 0;
+  item.price_missing = item.sale_price == null;
+  return item;
+}
+
+export function migrateLegacyQueuedPricing(item: SyncQueueItem) {
+  if (item.entity !== "product" || !item.payload || typeof item.payload !== "object") return item;
+  const payload = item.payload as Record<string, unknown>;
+  if (!("sale_price" in payload) && "price" in payload) payload.sale_price = payload.price_missing === true ? null : payload.price;
+  return item;
+}
 
 
-class AppDatabase extends Dexie {
+export class AppDatabase extends Dexie {
 
   inventoryItems!: EntityTable<
     LocalInventoryItem,
-    "id"
+    "local_key"
   >;
 
   syncQueue!: EntityTable<
@@ -22,12 +43,21 @@ class AppDatabase extends Dexie {
 
   syncMetadata!: EntityTable<SyncMetadataItem, "key">;
 
-  categories!: EntityTable<Category, "id">;
+  categories!: EntityTable<Category, "local_key">;
+  labels!: EntityTable<Label, "local_key">;
+
+  backupSettings!: EntityTable<BackupSettings, "userId">;
+  barcodes!: EntityTable<ProductBarcode, "local_key">;
+  inventoryMovements!: EntityTable<InventoryMovement, "local_key">;
+  recoverySessions!: EntityTable<RecoverySession, "id">;
+  recoveryItems!: EntityTable<RecoveryReviewItem, "id">;
+  mediaTransfers!: EntityTable<MediaTransferItem, "id">;
+  invoices!: EntityTable<Invoice, "local_key">;
 
 
-  constructor() {
+  constructor(name = "inventory-db") {
 
-    super("inventory-db");
+    super(name);
 
 
     this.version(1).stores({
@@ -145,6 +175,147 @@ class AppDatabase extends Dexie {
             item.local_user_id ??= lastUserId;
           });
       });
+
+    this.version(6).stores({
+      inventoryItems: "id, local_user_id, catalog_product_id, category_id, updated_at",
+      syncQueue: "id, ownerUserId, operationId, entity, entityId, status, nextAttemptAt, createdAt, updatedAt",
+      syncMetadata: "key, updatedAt",
+      categories: "id, local_user_id, name, updated_at",
+      labels: "id, local_user_id, normalized_name, updated_at",
+    });
+
+    this.version(7).stores({
+      inventoryItems: "id, local_user_id, catalog_product_id, category_id, updated_at",
+      syncQueue: "id, ownerUserId, operationId, entity, entityId, status, nextAttemptAt, createdAt, updatedAt",
+      syncMetadata: "key, updatedAt",
+      categories: "id, local_user_id, name, updated_at",
+      labels: "id, local_user_id, normalized_name, updated_at",
+      backupSettings: "userId, mode, nextAttemptAt",
+    });
+
+    this.version(8).stores({
+      inventoryItems: "local_key, id, [local_user_id+local_store_id], catalog_product_id, category_id, updated_at",
+      syncQueue: "id, ownerUserId, storeId, operationId, entity, entityId, status, nextAttemptAt, createdAt, updatedAt",
+      syncMetadata: "key, updatedAt",
+      categories: "local_key, id, [local_user_id+local_store_id], name, updated_at",
+      labels: "local_key, id, [local_user_id+local_store_id], normalized_name, updated_at",
+      backupSettings: "userId, mode, nextAttemptAt",
+    }).upgrade(async (transaction) => {
+      let cached: { id?: number; store_id?: number } | null = null;
+      try { cached = JSON.parse(localStorage.getItem("inventory-last-user") ?? "null"); } catch { cached = null; }
+      for (const tableName of ["inventoryItems", "categories", "labels"]) {
+        await transaction.table(tableName).toCollection().modify((item) => {
+          const actor = item.local_user_id ?? cached?.id;
+          const store = item.local_store_id ?? (actor === cached?.id ? cached?.store_id : undefined);
+          item.local_user_id = actor;
+          item.local_store_id = store;
+          item.local_key = `${actor ?? "legacy"}:${store ?? "legacy"}:${item.id}`;
+        });
+      }
+      await transaction.table<SyncQueueItem>("syncQueue").toCollection().modify((item) => {
+        if (item.ownerUserId === cached?.id) item.storeId ??= cached?.store_id;
+      });
+    });
+
+    this.version(9).stores({
+      inventoryItems: "local_key, id, [local_user_id+local_store_id], catalog_product_id, category_id, updated_at",
+      syncQueue: "id, ownerUserId, storeId, operationId, entity, entityId, status, nextAttemptAt, createdAt, updatedAt",
+      syncMetadata: "key, updatedAt",
+      categories: "local_key, id, [local_user_id+local_store_id], name, updated_at",
+      labels: "local_key, id, [local_user_id+local_store_id], normalized_name, updated_at",
+      backupSettings: "userId, mode, nextAttemptAt",
+      barcodes: "local_key, id, [local_user_id+local_store_id], [local_user_id+local_store_id+value], product_id, value, updated_at",
+      inventoryMovements: "local_key, id, [local_user_id+local_store_id], operation_id, product_id, reverses_operation_id, created_at",
+    });
+
+    this.version(10).stores({
+      inventoryItems: "local_key, id, [local_user_id+local_store_id], catalog_product_id, category_id, updated_at",
+      syncQueue: "id, ownerUserId, storeId, operationId, entity, entityId, status, nextAttemptAt, createdAt, updatedAt",
+      syncMetadata: "key, updatedAt",
+      categories: "local_key, id, [local_user_id+local_store_id], name, updated_at",
+      labels: "local_key, id, [local_user_id+local_store_id], normalized_name, updated_at",
+      backupSettings: "userId, mode, nextAttemptAt",
+      barcodes: "local_key, id, [local_user_id+local_store_id], [local_user_id+local_store_id+value], product_id, value, updated_at",
+      inventoryMovements: "local_key, id, [local_user_id+local_store_id], operation_id, product_id, reverses_operation_id, created_at",
+    }).upgrade(async (transaction) => {
+      await transaction.table<LocalInventoryItem>("inventoryItems").toCollection().modify((item) => {
+        migrateLegacyProductPricing(item);
+      });
+      await transaction.table<SyncQueueItem>("syncQueue").toCollection().modify((item) => {
+        migrateLegacyQueuedPricing(item);
+      });
+    });
+
+    this.version(11).stores({
+      inventoryItems: "local_key, id, [local_user_id+local_store_id], catalog_product_id, category_id, updated_at",
+      syncQueue: "id, ownerUserId, storeId, operationId, resourceKey, attemptState, entity, entityId, status, nextAttemptAt, createdAt, updatedAt",
+      syncMetadata: "key, updatedAt",
+      categories: "local_key, id, [local_user_id+local_store_id], name, updated_at",
+      labels: "local_key, id, [local_user_id+local_store_id], normalized_name, updated_at",
+      backupSettings: "userId, mode, nextAttemptAt",
+      barcodes: "local_key, id, [local_user_id+local_store_id], [local_user_id+local_store_id+value], product_id, value, updated_at",
+      inventoryMovements: "local_key, id, [local_user_id+local_store_id], operation_id, product_id, reverses_operation_id, created_at",
+    }).upgrade(async (transaction) => {
+      await transaction.table<SyncQueueItem>("syncQueue").toCollection().modify((item) => {
+        item.attemptState ??= "uncertain";
+        item.resourceKey ??= syncResourceKey(item);
+      });
+    });
+
+    this.version(12).stores({
+      inventoryItems: "local_key, id, [local_user_id+local_store_id], catalog_product_id, category_id, updated_at",
+      syncQueue: "id, ownerUserId, storeId, operationId, resourceKey, attemptState, entity, entityId, status, nextAttemptAt, createdAt, updatedAt",
+      syncMetadata: "key, updatedAt",
+      categories: "local_key, id, [local_user_id+local_store_id], name, updated_at",
+      labels: "local_key, id, [local_user_id+local_store_id], normalized_name, updated_at",
+      backupSettings: "userId, mode, nextAttemptAt",
+      barcodes: "local_key, id, [local_user_id+local_store_id], [local_user_id+local_store_id+value], product_id, value, updated_at",
+      inventoryMovements: "local_key, id, [local_user_id+local_store_id], operation_id, product_id, reverses_operation_id, created_at",
+      recoverySessions: "id, ownerUserId, storeId, status, updatedAt",
+      recoveryItems: "id, sessionId, [ownerUserId+storeId], classification, decision, entity, entityId, updatedAt",
+    });
+
+    this.version(13).stores({
+      inventoryItems: "local_key, id, [local_user_id+local_store_id], catalog_product_id, category_id, updated_at",
+      syncQueue: "id, ownerUserId, storeId, operationId, resourceKey, attemptState, entity, entityId, status, nextAttemptAt, createdAt, updatedAt",
+      syncMetadata: "key, updatedAt",
+      categories: "local_key, id, [local_user_id+local_store_id], name, updated_at",
+      labels: "local_key, id, [local_user_id+local_store_id], normalized_name, updated_at",
+      backupSettings: "userId, mode, nextAttemptAt",
+      barcodes: "local_key, id, [local_user_id+local_store_id], [local_user_id+local_store_id+value], product_id, value, updated_at",
+      inventoryMovements: "local_key, id, [local_user_id+local_store_id], operation_id, product_id, reverses_operation_id, created_at",
+      recoverySessions: "id, ownerUserId, storeId, status, updatedAt",
+      recoveryItems: "id, sessionId, [ownerUserId+storeId], classification, decision, entity, entityId, updatedAt",
+      mediaTransfers: "id, transferId, [ownerUserId+storeId], productId, localPath, status, nextAttemptAt, updatedAt",
+    });
+
+    this.version(14).stores({
+      inventoryItems: "local_key, id, [local_user_id+local_store_id], catalog_product_id, category_id, updated_at",
+      syncQueue: "id, ownerUserId, storeId, operationId, resourceKey, attemptState, entity, entityId, status, nextAttemptAt, createdAt, updatedAt",
+      syncMetadata: "key, updatedAt",
+      categories: "local_key, id, [local_user_id+local_store_id], name, updated_at",
+      labels: "local_key, id, [local_user_id+local_store_id], normalized_name, updated_at",
+      backupSettings: "userId, mode, nextAttemptAt",
+      barcodes: "local_key, id, [local_user_id+local_store_id], [local_user_id+local_store_id+value], product_id, value, updated_at",
+      inventoryMovements: "local_key, id, [local_user_id+local_store_id], operation_id, product_id, reverses_operation_id, created_at",
+      recoverySessions: "id, ownerUserId, storeId, status, updatedAt",
+      recoveryItems: "id, sessionId, [ownerUserId+storeId], classification, decision, entity, entityId, updatedAt",
+      mediaTransfers: "id, transferId, [ownerUserId+storeId], productId, localPath, status, nextAttemptAt, updatedAt",
+      invoices: "local_key, id, [local_user_id+local_store_id], status, posted_at",
+    });
+
+    const ensureLocalKey = (_primaryKey: unknown, item: { id: number; local_user_id?: number; local_store_id?: number; local_key?: string }) => {
+      const actor = item.local_user_id;
+      const store = item.local_store_id ?? actor;
+      item.local_store_id ??= store;
+      item.local_key ??= `${actor ?? "legacy"}:${store ?? "legacy"}:${item.id}`;
+    };
+    this.inventoryItems.hook("creating", ensureLocalKey);
+    this.categories.hook("creating", ensureLocalKey);
+    this.labels.hook("creating", ensureLocalKey);
+    this.barcodes.hook("creating", ensureLocalKey);
+    this.inventoryMovements.hook("creating", ensureLocalKey);
+    this.invoices.hook("creating", ensureLocalKey);
   }
 }
 

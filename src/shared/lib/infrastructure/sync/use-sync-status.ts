@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 
 import { networkService } from "../network/network-service";
-import { syncStatusStore, type SyncStatus } from "./sync-status";
+import { syncStatusStore, type SyncEvent, type SyncStatus } from "./sync-status";
 
 export function useOnline() {
   return useSyncExternalStore(
@@ -16,5 +16,13 @@ export function useSyncStatus(): SyncStatus {
     (listener) => syncStatusStore.subscribe(listener),
     () => syncStatusStore.get(),
     () => syncStatusStore.get(),
+  );
+}
+
+export function useSyncEvents(): readonly SyncEvent[] {
+  return useSyncExternalStore(
+    (listener) => syncStatusStore.subscribe(listener),
+    () => syncStatusStore.getEvents(),
+    () => syncStatusStore.getEvents(),
   );
 }

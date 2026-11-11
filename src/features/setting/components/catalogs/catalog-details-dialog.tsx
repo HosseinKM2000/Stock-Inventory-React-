@@ -18,17 +18,13 @@ import {
 import { useState, type ReactNode } from "react";
 
 import { useCatalogProduct } from "../../mutations/use-catalog";
+import { formatJalaliDateTime } from "@/shared/lib/date/jalali";
 
 type Props = {
   catalogId: number;
   fallbackIndustryName?: string;
   trigger?: ReactNode;
 };
-
-const dateFormatter = new Intl.DateTimeFormat("fa-IR", {
-  dateStyle: "medium",
-  timeStyle: "short",
-});
 
 export default function CatalogDetailsDialog({
   catalogId,
@@ -43,7 +39,7 @@ export default function CatalogDetailsDialog({
 
   const imageUrl = resolveAssetUrl(product?.image_url);
   const createdAt = product
-    ? dateFormatter.format(new Date(product.created_at))
+    ? formatJalaliDateTime(product.created_at)
     : "—";
   const industryName =
     product?.industry?.name ?? fallbackIndustryName ?? "حوزه نامشخص";

@@ -42,4 +42,15 @@ describe("PWA install promotion", () => {
     fireEvent(window, installableEvent());
     expect(screen.queryByRole("button", { name: "نصب برنامه" })).not.toBeInTheDocument();
   });
+
+  it("offers an accessible close action for the responsive promotion", async () => {
+    render(<PwaInstallPromotion />);
+    fireEvent(window, installableEvent());
+
+    const close = await screen.findByRole("button", { name: "بستن پیشنهاد نصب" });
+    expect(close).toHaveClass("pwa-install-promotion-close");
+    fireEvent.click(close);
+
+    expect(screen.queryByRole("button", { name: "نصب برنامه" })).not.toBeInTheDocument();
+  });
 });

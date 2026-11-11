@@ -5,6 +5,7 @@ import { categoryService } from "../services/category.service";
 import { syncService } from "@/shared/lib/infrastructure/sync/sync-service";
 import { categoryRefreshService } from "../services/category-refresh.service";
 import { notifySubscriptionRestriction } from "@/shared/access/subscription-limit";
+import { dashboardKeys } from "@/features/app/dashboard/query/dashboard-query-keys";
 
 export function useCategories() {
   return useQuery({
@@ -19,6 +20,7 @@ export function useCreateCategory() {
     mutationFn: categoryService.create,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: categoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
       void syncService.sync();
     },
     onError: notifySubscriptionRestriction,
@@ -32,6 +34,7 @@ export function useUpdateCategory() {
       categoryService.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: categoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
       void syncService.sync();
     },
     onError: notifySubscriptionRestriction,
@@ -44,6 +47,7 @@ export function useDeleteCategory() {
     mutationFn: categoryService.remove,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: categoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: dashboardKeys.all });
       void syncService.sync();
     },
   });

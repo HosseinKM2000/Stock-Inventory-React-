@@ -5,15 +5,20 @@ import { useIndustries } from "../../mutations/use-industry";
 import DeleteIndustryDialog from "./delete-industry-dialog";
 import IndustryFormDialog from "./industry-form-dialog";
 
-const Industries = () => {
+const Industries = ({ hideHeading = false }: { hideHeading?: boolean }) => {
   const { data: industries = [], isLoading, isError, error } = useIndustries();
 
   return (
     <Box className="space-y-6">
       <Flex justify="between" align="center" gap="3" wrap="wrap">
-        <Text size="6" weight="bold">
-          حوزه‌های کاری
-        </Text>
+        {!hideHeading ? <Box>
+          <Text as="div" size="6" weight="bold">
+            حوزه‌های کاری
+          </Text>
+          <Text as="div" size="2" color="gray" mt="1">
+            حوزه‌های قابل انتخاب کاربران را ایجاد، ویرایش یا غیرفعال کنید؛ تغییرات روی سرور ذخیره می‌شوند.
+          </Text>
+        </Box> : <span />}
         <IndustryFormDialog
           mode="create"
           trigger={
@@ -89,6 +94,9 @@ const Industries = () => {
 
                   <Text mt="3" size="2" color="gray" className="line-clamp-3">
                     {industry.description ?? "بدون توضیحات"}
+                  </Text>
+                  <Text as="div" mt="3" size="1" color="gray">
+                    ابزارهای فعال: {Object.values(industry.tools ?? {}).filter(Boolean).length.toLocaleString("fa-IR")} از ۶
                   </Text>
                 </Box>
 

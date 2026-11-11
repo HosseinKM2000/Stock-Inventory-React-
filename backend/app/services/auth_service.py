@@ -1,10 +1,13 @@
 from fastapi import HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..models import User
+from ..mobile import DUPLICATE_MOBILE_MESSAGE, normalize_iranian_mobile
 from ..schemas import LoginRequest, TokenResponse, UserOut, SignupRequest, UserUpdate
 from .plan_policy import can_add_device
+from .store_service import attach_store_context, create_owner_store, owner_store_context
 
 from ..security import (
     create_access_token,
@@ -33,6 +36,15 @@ def username_taken(
     return db.scalar(stmt) is not None
 
 
+def _integrity_conflict_detail(error: IntegrityError) -> str:
+    constraint_name = getattr(getattr(error, "orig", None), "diag", None)
+    constraint_name = getattr(constraint_name, "constraint_name", None)
+    message = str(getattr(error, "orig", error)).lower()
+    if constraint_name == "uq_users_phone_canonical" or "users.phone" in message:
+        return DUPLICATE_MOBILE_MESSAGE
+    return "Username already exists"
+
+
 def signup(
     db: Session,
     payload: SignupRequest,
@@ -58,7 +70,12 @@ def signup(
     )
 
     db.add(user)
-    db.flush()
+    try:
+        db.flush()
+    except IntegrityError as error:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=_integrity_conflict_detail(error)) from error
+    create_owner_store(db, user)
 
     token = create_access_token(user.id)
 
@@ -69,9 +86,14 @@ def signup(
         token,
     )
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as error:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=_integrity_conflict_detail(error)) from error
     db.refresh(user)
 
+    attach_store_context(db, user)
     return TokenResponse(
     access_token=token,
     token_type="bearer",
@@ -87,11 +109,20 @@ def login(
     # ----------------------------------------------------
     # Authenticate User
     # ----------------------------------------------------
-    user = db.scalar(
-        select(User).where(
-            User.username == payload.username
-        )
-    )
+    identifier = payload.username
+    try:
+        canonical_mobile = normalize_iranian_mobile(identifier)
+    except ValueError:
+        canonical_mobile = None
+
+    user = None
+    if canonical_mobile:
+        user = db.scalar(select(User).where(User.phone == canonical_mobile))
+
+    # Keep exact username lookup as a fallback for existing accounts whose
+    # username resembles a phone number.
+    if user is None:
+        user = db.scalar(select(User).where(User.username == identifier))
 
     if (
         user is None
@@ -131,6 +162,9 @@ def login(
 
     else:
 
+        # Serialize new-device admission for this account. PostgreSQL row locks
+        # prevent concurrent logins from both observing the same free slot.
+        db.execute(select(User).where(User.id == user.id).with_for_update())
         active_sessions = get_active_sessions(
             db,
             user.id,
@@ -155,6 +189,7 @@ def login(
 
     db.commit()
     db.refresh(user)
+    attach_store_context(db, user)
 
     return TokenResponse(
         access_token=token,
@@ -171,6 +206,13 @@ def update_user(
     data = payload.model_dump(
         exclude_unset=True,
     )
+    store_name_supplied = "store_name" in data
+    store_name = data.pop("store_name", None)
+
+    if store_name_supplied:
+        if not store_name:
+            raise HTTPException(status_code=422, detail="STORE_NAME_REQUIRED")
+        owner_store_context(db, user).store.name = store_name
 
     username = data.get("username")
 
@@ -190,8 +232,13 @@ def update_user(
     for k, v in data.items():
         setattr(user, k, v)
 
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as error:
+        db.rollback()
+        raise HTTPException(status_code=409, detail=_integrity_conflict_detail(error)) from error
     db.refresh(user)
+    attach_store_context(db, user)
 
     return user
 
@@ -209,6 +256,10 @@ def update_password(
         raise HTTPException(status_code=400, detail="NEW_PASSWORD_MUST_DIFFER")
 
     user.hashed_password = hash_password(new_password)
+
+    context = attach_store_context(db, user)
+    if context and context.membership.temporary_password_required:
+        context.membership.temporary_password_required = False
 
     # A credential change invalidates every other device while preserving the
     # verified session that performed the change.

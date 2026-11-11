@@ -1,104 +1,66 @@
-import { Box, Callout, Flex, Link, Text } from "@radix-ui/themes";
-import { Link as RouterLink } from "@tanstack/react-router";
-
-
-import { preventEventHandler } from "@/shared/lib/prevent-event";
-import { Button } from "@/shared/ui/button/button";
-import { FormField } from "@/shared/ui/form/field/form-field";
-import { Form } from "@/shared/ui/form/form";
-import { TextInput } from "@/shared/ui/form/input/text-input";
+import { LockClosedIcon, PersonIcon } from "@radix-ui/react-icons";
+import { Callout } from "@radix-ui/themes";
+import { useState } from "react";
 
 import { useAppForm } from "@/shared/lib/form/use-app-form";
+import { preventEventHandler } from "@/shared/lib/prevent-event";
+import { Button } from "@/shared/ui/button/button";
+import { Form } from "@/shared/ui/form/form";
 import { PasswordInput } from "@/shared/ui/form/input/password-input";
+import { TextInput } from "@/shared/ui/form/input/text-input";
+
+import { authErrorMessage } from "../auth-error";
 import { useLogin } from "../mutations/use-register";
 import { loginSchema } from "../validators/login.schema";
-import { authErrorMessage } from "../auth-error";
+import { AuthPageShell } from "./AuthPageShell";
 
 function LoginComponent() {
   const loginMutation = useLogin();
-
+  const [showRecoveryNotice, setShowRecoveryNotice] = useState(false);
   const form = useAppForm({
     schema: loginSchema,
-    initialValues: {
-      username: "",
-      password: "",
-    },
-    onSubmit(values) {
-      loginMutation.mutate({
-        username: values.username,
-        password: values.password,
-      });
-    },
+    initialValues: { username: "", password: "", remember: false },
+    onSubmit(values) { loginMutation.mutate(values); },
   });
-
-  const serverError =
-    loginMutation.isError
-      ? authErrorMessage(loginMutation.error, "ورود ناموفق بود. دوباره تلاش کنید.")
-      : null;
+  const serverError = loginMutation.isError
+    ? authErrorMessage(loginMutation.error, "ورود ناموفق بود. اتصال اینترنت را بررسی و دوباره تلاش کنید.")
+    : null;
 
   return (
-    <Form
-      className="h-dvh w-full"
-      isSubmitting={loginMutation.isPending}
-      onSubmit={preventEventHandler(form.submit)}
+    <AuthPageShell
+      title="ورود به تنظیم"
+      description="با نام کاربری یا شماره موبایل وارد شوید و مدیریت موجودی، فروش و ابزارها را ادامه دهید."
+      badge="ورود امن و سریع به حساب کاربری"
+      badgeIcon={<LockClosedIcon />}
+      switchText="هنوز حساب ندارید؟"
+      switchLabel="ساخت حساب"
+      switchTo="/auth/register"
+      trustText="اطلاعات شما به‌صورت امن نگهداری می‌شود."
     >
-      <Flex
-        height="100%"
-        direction="column"
-        align="center"
-        justify="center"
-        gapY="4"
-      >
-        <Text size="6" weight="bold">
-          ورود
-        </Text>
+      <section className="auth-card" aria-label="فرم ورود">
+        {serverError ? <Callout.Root color="red" dir="rtl" className="auth-server-error" role="alert"><Callout.Text>{serverError}</Callout.Text></Callout.Root> : null}
+        <Form isDirty={form.isDirty} isSubmitting={loginMutation.isPending} onSubmit={preventEventHandler(form.submit)} className="auth-form" noValidate>
+          <div className="auth-field">
+            <label className="auth-field-label" htmlFor="login-identifier"><PersonIcon /> نام کاربری یا شماره موبایل</label>
+            <TextInput id="login-identifier" className="auth-input" name="username" size="3" autoComplete="username" dir="auto" placeholder="مثلاً HosseinKM2000 یا ۰۹۱۲۳۴۵۶۷۸۹" value={form.values.username} onChange={form.handleChange} aria-invalid={Boolean(form.errors.username)} aria-describedby="login-identifier-help" />
+            <p id="login-identifier-help" className={form.errors.username ? "auth-field-error" : "auth-field-description"}>{form.errors.username ?? "با نام کاربری ثبت‌شده یا شماره موبایل خود وارد شوید."}</p>
+          </div>
 
-        {serverError && (
-          <Callout.Root color="red" dir="rtl" className="w-[90%] sm:w-90">
-            <Callout.Text>{serverError}</Callout.Text>
-          </Callout.Root>
-        )}
+          <div className="auth-field">
+            <label className="auth-field-label" htmlFor="login-password"><LockClosedIcon /> رمز عبور</label>
+            <PasswordInput id="login-password" className="auth-input" name="password" size="3" eyeSide="left" autoComplete="current-password" placeholder="رمز عبور خود را وارد کنید" value={form.values.password} onChange={form.handleChange} aria-invalid={Boolean(form.errors.password)} aria-describedby={form.errors.password ? "login-password-error" : undefined} />
+            {form.errors.password ? <p id="login-password-error" className="auth-field-error">{form.errors.password}</p> : null}
+          </div>
 
-        <Box className="w-[90%] sm:w-90">
-          <FormField id="username" error={form.errors.username}>
-            <TextInput
-              name="username"
-              size="3"
-              placeholder="نام کاربری"
-              value={form.values.username}
-              onChange={form.handleChange}
-            />
-          </FormField>
-        </Box>
-
-        <Box className="w-[90%] sm:w-90">
-          <FormField id="password" error={form.errors.password}>
-            <PasswordInput
-              name="password"
-              type="password"
-              size="3"
-              placeholder="رمز عبور"
-              value={form.values.password}
-              onChange={form.handleChange}
-            />
-          </FormField>
-        </Box>
-
-        <Box className="w-[90%] sm:w-90">
-          <Button
-            type="submit"
-            style={{ width: "100%" }}
-            loading={loginMutation.isPending}
-          >
-            ورود
-          </Button>
-        </Box>
-
-        <Link asChild size="2" color="indigo">
-          <RouterLink to="/auth/register">هنوز حسابی ندارید؟</RouterLink>
-        </Link>
-      </Flex>
-    </Form>
+          <div className="auth-login-options">
+            <label className="auth-remember"><input type="checkbox" name="remember" checked={form.values.remember} onChange={(event) => form.setValue("remember", event.target.checked)} /> مرا به خاطر بسپار</label>
+            <button className="auth-recovery" type="button" onClick={() => setShowRecoveryNotice((value) => !value)}>رمز عبور را فراموش کرده‌اید؟</button>
+          </div>
+          {showRecoveryNotice ? <p className="auth-inline-notice" role="status">برای بازیابی امن رمز عبور با مدیر مجموعه یا پشتیبانی تنظیم تماس بگیرید.</p> : null}
+          <Button type="submit" className="auth-submit" loading={loginMutation.isPending}>ورود</Button>
+        </Form>
+      </section>
+    </AuthPageShell>
   );
 }
 

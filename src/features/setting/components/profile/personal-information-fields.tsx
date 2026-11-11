@@ -16,12 +16,14 @@ import {
 } from "@/features/auth/mutations/use-register";
 
 import { Box, Callout, Grid, Text } from "@radix-ui/themes";
+import { DUPLICATE_MOBILE_MESSAGE } from "@/features/auth/mobile";
 import {
   profileSchema,
   type ProfileFormValues,
 } from "../../validators/profile.schema";
 
 const emptyValues: ProfileFormValues = {
+  store_name: "",
   first_name: "",
   last_name: "",
   username: "",
@@ -38,7 +40,14 @@ const PersonalInformationFields = () => {
     initialValues: emptyValues,
 
     onSubmit(values) {
-      updateProfile.mutate(values);
+      const { store_name, ...personalValues } = values;
+      updateProfile.mutate(me?.is_store_owner ? { ...personalValues, store_name } : personalValues, {
+        onError(error) {
+          if (error instanceof ApiError && error.message === DUPLICATE_MOBILE_MESSAGE) {
+            form.setFieldError("phone", DUPLICATE_MOBILE_MESSAGE);
+          }
+        },
+      });
     },
   });
   const loadForm = form.load;
@@ -47,8 +56,9 @@ const PersonalInformationFields = () => {
     if (!me) return;
 
     loadForm({
-      first_name: me.first_name,
-      last_name: me.last_name,
+      store_name: me.store_name ?? me.username,
+      first_name: me.first_name ?? "",
+      last_name: me.last_name ?? "",
       username: me.username,
       email: me.email ?? "",
       phone: me.phone ?? "",
@@ -56,20 +66,24 @@ const PersonalInformationFields = () => {
   }, [me, loadForm]);
 
   const errorMessage =
-    updateProfile.error instanceof ApiError
+    updateProfile.error instanceof ApiError && updateProfile.error.message !== DUPLICATE_MOBILE_MESSAGE
       ? updateProfile.error.message
       : null;
 
   return (
     <Form
+      isDirty={form.isDirty}
       onSubmit={preventEventHandler(form.submit)}
       isSubmitting={updateProfile.isPending}
     >
       <Box
         mt="6"
-        className="bg-foreground/5 p-5 rounded-2xl border border-foreground/20"
+        className="settings-form-panel"
       >
-        <Text className="text-xl font-medium">اطلاعات کاربری</Text>
+        <Box className="settings-panel-heading">
+          <Text as="div" size="5" weight="bold">اطلاعات کاربری</Text>
+          <Text as="p" size="2" color="gray">مشخصات پایه‌ای که برای شناسایی حساب شما استفاده می‌شود.</Text>
+        </Box>
 
         {errorMessage && (
           <Callout.Root color="red" dir="rtl" mt="4">
@@ -84,6 +98,17 @@ const PersonalInformationFields = () => {
         )}
 
         <Grid columns={{ initial: "1", md: "3" }} gap="5" mt="5" className="w-full min-w-0">
+          <FormField label="نام مجموعه" id="store_name" error={form.errors.store_name}>
+            <TextInput
+              size="3"
+              name="store_name"
+              value={form.values.store_name}
+              onChange={form.handleChange}
+              disabled={!me?.is_store_owner}
+              autoComplete="organization"
+            />
+          </FormField>
+
           <FormField label="نام" id="first_name" error={form.errors.first_name}>
             <TextInput
               size="3"
@@ -128,10 +153,13 @@ const PersonalInformationFields = () => {
             />
           </FormField>
 
-          <FormField label="شماره تماس" id="phone" error={form.errors.phone}>
+          <FormField label="شماره موبایل" id="phone" error={form.errors.phone}>
             <TextInput
               size="3"
               name="phone"
+              inputMode="tel"
+              autoComplete="tel"
+              dir="ltr"
               value={form.values.phone}
               onChange={form.handleChange}
             />
@@ -140,7 +168,7 @@ const PersonalInformationFields = () => {
 
         <Grid mt="6">
           <Button type="submit" loading={updateProfile.isPending}>
-            ویرایش
+            ذخیره اطلاعات
           </Button>
         </Grid>
       </Box>

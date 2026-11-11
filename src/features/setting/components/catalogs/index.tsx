@@ -24,10 +24,10 @@ import CatalogDetailsDialog from "./catalog-details-dialog";
 import CatalogFormDialog from "./catalog-form-dialog";
 import DeleteCatalogDialog from "./delete-catalog-dialog";
 import RestoreCatalogDialog from "./restore-catalog-dialog";
+import { formatJalaliDate } from "@/shared/lib/date/jalali";
 
-const dateFormatter = new Intl.DateTimeFormat("fa-IR", { dateStyle: "medium" });
 
-const Catalogs = () => {
+const Catalogs = ({ hideHeading = false }: { hideHeading?: boolean }) => {
   const [industryId, setIndustryId] = useState<number | undefined>();
   const [search, setSearch] = useState("");
   const [catalogState, setCatalogState] = useState<"active" | "archived">("active");
@@ -69,10 +69,10 @@ const Catalogs = () => {
   return (
     <Box className="space-y-6">
       <Flex justify="between" align="center" gap="3" wrap="wrap">
-        <Box>
+        {!hideHeading ? <Box>
           <Text as="div" size="6" weight="bold">کاتالوگ محصولات</Text>
           <Text as="div" size="2" color="gray" mt="1">مدیریت محصولات مشترک حوزه‌های کاری</Text>
-        </Box>
+        </Box> : <span />}
 
         <CatalogFormDialog
           mode="create"
@@ -193,7 +193,7 @@ const Catalogs = () => {
                     {product.brand && <Text as="div" mt="2" size="2">برند: {product.brand}</Text>}
                     <Flex align="center" gap="1" mt={{ initial: "3", lg: "2" }}>
                       <CalendarIcon />
-                      <Text size="1" color="gray">{dateFormatter.format(new Date(product.created_at))}</Text>
+                      <Text size="1" color="gray">{formatJalaliDate(product.created_at)}</Text>
                     </Flex>
                   </Box>
 

@@ -5,6 +5,9 @@ export type CatalogProduct = {
 
   industry_id: number;
 
+  /** Missing on legacy snapshots; only an explicit false makes it ineligible. */
+  is_active?: boolean;
+
   name: string;
 
   description: string | null;
@@ -24,6 +27,8 @@ export type Product = {
   id: number;
 
   local_user_id?: number;
+  local_store_id?: number;
+  local_key?: string;
 
   catalog_product_id: number;
 
@@ -31,11 +36,22 @@ export type Product = {
 
   category_id: number | null;
 
+  label_ids?: number[];
+
   version?: number;
 
   quantity: number;
 
   price: number;
+
+  /** Canonical optional sale price. `price` remains its legacy wire alias. */
+  sale_price?: number | null;
+
+  /** Optional acquisition cost in integer toman. */
+  purchase_price?: number | null;
+
+  /** Distinguishes absent/corrupt legacy prices from a valid zero price. */
+  price_missing?: boolean;
 
   custom_label: string | null;
 
@@ -50,6 +66,12 @@ export type Product = {
   image_url: string | null;
 
   server_image_url?: string | null;
+  media_asset_id?: string | null;
+  media_version?: number | null;
+  media_content_sha256?: string | null;
+  media_byte_size?: number | null;
+  media_preview_url?: string | null;
+  media_detail_url?: string | null;
 
   deleted_at: string | null;
 
@@ -86,6 +108,7 @@ export type ProductListParams = {
   search?: string;
   sort?: ProductSort;
   category_id?: number;
+  label_ids?: number[];
   include_hidden?: boolean;
   hide_catalog_products?: boolean;
 };
@@ -93,6 +116,8 @@ export type ProductListParams = {
 export type ProductInput = {
   name?: string;
   price?: number;
+  sale_price?: number | null;
+  purchase_price?: number | null;
   quantity?: number;
   image?: File | null;
   unit?: string | null;
@@ -100,9 +125,15 @@ export type ProductInput = {
   low_stock_alert?: boolean;
   description?: string | null;
   category_id?: number | null;
+  label_ids?: number[];
   low_stock_threshold?: number;
   is_packaged?: boolean;
   pack_size?: number | null;
+  custom_label?: string | null;
+  note?: string | null;
+  image_url?: string | null;
+  is_hidden?: boolean;
+  catalog_product?: CatalogProduct;
 };
 
 export const PRODUCT_UNITS = [

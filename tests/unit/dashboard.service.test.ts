@@ -25,7 +25,7 @@ describe("local dashboard calculations", () => {
   it("counts product types, value, statuses, and data-quality risks", async () => {
     getAll.mockResolvedValue([
       product({ id: 1, quantity: 10, price: 100, status: "in_stock", image_url: "local://one.webp" }),
-      product({ id: 2, quantity: 3, price: 0, status: "low_stock", low_stock_threshold: 3 }),
+      product({ id: 2, quantity: 3, price: 0, price_missing: true, status: "low_stock", low_stock_threshold: 3 }),
       product({ id: 3, quantity: 0, price: 500, status: "out_of_stock", low_stock_threshold: 0 }),
       product({ id: 4, quantity: 50, price: 2, is_hidden: true }),
     ]);
@@ -55,6 +55,9 @@ describe("local dashboard calculations", () => {
       noPriceCount: 0,
       urgentPurchaseCount: 0,
       addedTodayCount: 0,
+      missingClassificationCount: 0,
+      valuedProductsCount: 0,
+      todayActionCount: 0,
     });
   });
 

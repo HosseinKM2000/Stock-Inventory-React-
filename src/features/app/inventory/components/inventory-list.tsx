@@ -1,32 +1,40 @@
-import { useEffect, useRef, useState } from "react";
-import { Box, Callout, Flex, Select, Spinner, Text } from "@radix-ui/themes";
-import { EyeNoneIcon, EyeOpenIcon } from "@radix-ui/react-icons";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Box, Callout, Flex, Spinner, Text } from "@radix-ui/themes";
+import { Cross2Icon } from "@radix-ui/react-icons";
 import { toast } from "sonner";
 
 import { Button } from "@/shared/ui/button/button";
 import { ConfirmDialog } from "@/shared/ui/dialog/confirm-dialog";
 import { useCategories } from "@/features/setting/mutations/use-categories";
-import AddButton from "./add-button";
 import FilterPanel from "./filter-panel";
 import { ProductCard } from "./inventory-card";
-import { ProductPreviewDialog } from "./product-preview-dialog";
+import { BulkEditDialog } from "./bulk-edit-dialog";
+import { BulkSelectionActions } from "./bulk-selection-actions";
+import { LabelPrintDialog } from "@/features/barcode/components/label-print-dialog";
 import type { Product, ProductSort } from "../types";
 import { useInventoryVirtual } from "../mutations/useInventoryVirtual";
-import { useDeleteProduct, useProducts } from "../mutations/use-products";
+import {
+  useBulkDeleteProducts,
+  useDeleteProduct,
+  useProducts,
+} from "../mutations/use-products";
 import { catalogVisibilityService } from "../services/catalog-visibility.service";
+import { inventoryService } from "../services/inventory-service";
+import { useProductSelection } from "../hooks/use-product-selection";
+import { useProductLabelFilter } from "../hooks/use-product-label-filter";
+import { useLabels } from "@/features/setting/mutations/use-labels";
 import {
   inventoryListPreferences,
   type ProductViewMode,
 } from "../services/inventory-list-preferences";
+import { barcodeService } from "@/features/barcode/services/barcode-service";
+import { barcodeRepository } from "@/features/barcode/services/barcode-repository";
+import type { ProductBarcode } from "@/features/barcode/types";
+import { accessState } from "@/shared/access/access-state";
+import { inventoryCapacityNotice } from "@/shared/access/subscription-limit";
 
 const QUICK_STOCK_HINT_KEY = "inventory-quick-stock-hint-v3";
 const EMPTY_PRODUCTS: Product[] = [];
-const VIEW_MODES: Array<{ value: ProductViewMode; label: string }> = [
-  { value: "comfortable", label: "نمای راحت" },
-  { value: "compact", label: "نمای فشرده" },
-  { value: "grid", label: "شبکه فشرده" },
-];
-
 const InventoryList = () => {
   const initial = inventoryListPreferences.read();
   const [search, setSearch] = useState(initial.search);
@@ -34,26 +42,122 @@ const InventoryList = () => {
   const [categoryId, setCategoryId] = useState<number | null>(initial.categoryId);
   const [viewMode, setViewMode] = useState<ProductViewMode>(initial.viewMode);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
-  const [previewProduct, setPreviewProduct] = useState<Product | null>(null);
   const [catalogProductsHidden, setCatalogProductsHidden] = useState(() => catalogVisibilityService.isHidden());
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [labelPrintOpen, setLabelPrintOpen] = useState(false);
+  const [barcodeMatchResult, setBarcodeMatchResult] = useState<{ key: string; hidden: boolean } | null>(null);
+  const [inventoryCount, setInventoryCount] = useState<number | null>(null);
+  const closeBulkOnAccountChange = useCallback(() => {
+    setBulkOpen(false);
+    setBulkDeleteOpen(false);
+    setLabelPrintOpen(false);
+  }, []);
+  const selection = useProductSelection(closeBulkOnAccountChange);
+  const {
+    selectedLabelIds,
+    toggle: toggleLabel,
+    remove: removeLabel,
+    clear: clearLabels,
+    retainAvailable: retainAvailableLabels,
+  } = useProductLabelFilter();
+  const { selectedIds, selectionMode, retainAvailable } = selection;
   const { data: categories = [] } = useCategories();
+  const { data: labels = [] } = useLabels();
+  const [barcodeSnapshot, setBarcodeSnapshot] = useState<{
+    scopeKey: string;
+    items: ProductBarcode[];
+  }>({ scopeKey: "", items: [] });
   const { data, isLoading, isError } = useProducts({
     search: search || undefined,
     sort,
     category_id: categoryId ?? undefined,
+    label_ids: selectedLabelIds.length ? selectedLabelIds : undefined,
     hide_catalog_products: catalogProductsHidden,
   });
   const products = data ?? EMPTY_PRODUCTS;
+  const currentActor = accessState.user();
+  const actorId = currentActor?.id ?? null;
+  const storeId = currentActor?.store_id ?? currentActor?.id ?? null;
+  const canViewBarcodes = accessState.canUse("barcode.lookup") && accessState.hasStorePermission("barcodes.lookup");
+  const barcodeScopeKey = canViewBarcodes && actorId != null && storeId != null
+    ? `${actorId}:${storeId}`
+    : "";
+  const categoryNames = useMemo(() => new Map(categories.map((category) => [category.id, category.name])), [categories]);
+  const barcodeByProduct = useMemo(() => {
+    const resolved = new Map<number, ProductBarcode>();
+    if (barcodeSnapshot.scopeKey !== barcodeScopeKey) return resolved;
+    for (const barcode of barcodeSnapshot.items) {
+      if (!barcode.is_active) continue;
+      const current = resolved.get(barcode.product_id);
+      if (!current || barcode.is_default) resolved.set(barcode.product_id, barcode);
+    }
+    return resolved;
+  }, [barcodeScopeKey, barcodeSnapshot]);
+  const barcodeFilterKey = `${search}|${categoryId ?? ""}|${selectedLabelIds.join(",")}|${catalogProductsHidden}`;
+  const barcodeMatchHidden = barcodeMatchResult?.key === barcodeFilterKey && barcodeMatchResult.hidden;
+  const canPrintLabels = accessState.canUse("label.print") && accessState.hasStorePermission("labels.print");
+  const inventoryNotice = inventoryCount == null
+    ? null
+    : inventoryCapacityNotice(inventoryCount, accessState.entitlement()?.limits.inventory_items);
   const { parentRef, virtualizer } = useInventoryVirtual(
     viewMode === "grid" ? 0 : products.length,
     viewMode === "compact" ? 86 : 250,
+    viewMode === "compact" ? 8 : 16,
   );
   const deleteProduct = useDeleteProduct();
+  const bulkDeleteProducts = useBulkDeleteProducts();
   const restored = useRef(false);
+  useEffect(() => {
+    retainAvailableLabels(new Set(labels.map((label) => label.id)));
+  }, [retainAvailableLabels, labels]);
+
+  useEffect(() => {
+    let active = true;
+    if (!barcodeScopeKey) return () => { active = false; };
+    void barcodeRepository.getAll().then((items) => {
+      if (active) setBarcodeSnapshot({ scopeKey: barcodeScopeKey, items });
+    }).catch(() => {
+      if (active) setBarcodeSnapshot({ scopeKey: barcodeScopeKey, items: [] });
+    });
+    return () => { active = false; };
+  }, [barcodeScopeKey]);
+
+  useEffect(() => {
+    if (!selectionMode) return;
+    let cancelled = false;
+    void inventoryService.getAll({ include_hidden: true })
+      .then((all) => {
+        if (cancelled) return;
+        const available = new Set(all.map((product) => product.id));
+        retainAvailable(available);
+      })
+      .catch(() => { /* Keep selection when local availability cannot be verified. */ });
+    return () => { cancelled = true; };
+  }, [products, selectionMode, retainAvailable]);
 
   useEffect(() => {
     inventoryListPreferences.update({ search, sort, categoryId, viewMode });
   }, [search, sort, categoryId, viewMode]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void inventoryService.getAll({ include_hidden: true })
+      .then((all) => { if (!cancelled) setInventoryCount(all.length); })
+      .catch(() => { if (!cancelled) setInventoryCount(null); });
+    return () => { cancelled = true; };
+  }, [data]);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!search || (!categoryId && selectedLabelIds.length === 0 && !catalogProductsHidden)) {
+      return;
+    }
+    void barcodeService.resolve(search).then((resolution) => {
+      if (!cancelled) setBarcodeMatchResult({ key: barcodeFilterKey, hidden: resolution.status === "found" && !products.some((product) => product.id === resolution.productId) });
+    }).catch(() => { if (!cancelled) setBarcodeMatchResult({ key: barcodeFilterKey, hidden: false }); });
+    return () => { cancelled = true; };
+  }, [barcodeFilterKey, catalogProductsHidden, categoryId, products, search, selectedLabelIds]);
 
   useEffect(() => {
     if (restored.current || isLoading || products.length === 0) return;
@@ -101,81 +205,97 @@ const InventoryList = () => {
     });
   };
 
+  const confirmBulkDelete = () => {
+    const ids = [...selectedIds];
+    if (ids.length === 0 || bulkDeleteProducts.isPending) return;
+
+    bulkDeleteProducts.mutate(ids, {
+      onSuccess: (deletedIds) => {
+        setBulkDeleteOpen(false);
+        selection.remove(deletedIds);
+        toast.success(`${deletedIds.length.toLocaleString("fa-IR")} محصول حذف شد.`);
+      },
+      onError: (error) => {
+        toast.error(error instanceof Error ? error.message : "حذف گروهی محصولات ناموفق بود");
+      },
+    });
+  };
+
+  const updateCatalogVisibility = (hidden: boolean) => {
+    catalogVisibilityService.setHidden(hidden);
+    setCatalogProductsHidden(hidden);
+    parentRef.current?.scrollTo({ top: 0 });
+    toast.success(hidden ? "محصولات کاتالوگی مخفی شدند." : "محصولات کاتالوگی نمایش داده می‌شوند.");
+  };
+
   const productCard = (product: Product) => (
     <ProductCard
       key={product.id}
       product={product}
+      categoryName={product.category_id == null ? null : categoryNames.get(product.category_id) ?? null}
+      barcode={barcodeByProduct.get(product.id)?.value ?? null}
       viewMode={viewMode}
-      onPreview={setPreviewProduct}
       onEdit={rememberEdit}
       onDelete={() => setProductToDelete(product)}
       deleting={deleteProduct.isPending && deleteProduct.variables === product.id}
+      selectionMode={selectionMode}
+      selected={selectedIds.has(product.id)}
+      onEnterSelection={(item) => selection.enter(item.id)}
+      onToggleSelection={(item) => selection.toggle(item.id)}
     />
   );
 
   return (
     <Flex direction="column" className="inventory-list-shell h-full min-h-0 overflow-hidden p-4 gap-4">
-      <Flex align="center" gap="2" wrap="wrap" className="inventory-toolbar min-w-0">
-        <Button
-          type="button"
-          size="2"
-          variant="soft"
-          color={catalogProductsHidden ? "gray" : "violet"}
-          className="inventory-visibility-button"
-          aria-pressed={catalogProductsHidden}
-          onClick={() => {
-            const next = !catalogProductsHidden;
-            catalogVisibilityService.setHidden(next);
-            setCatalogProductsHidden(next);
-            parentRef.current?.scrollTo({ top: 0 });
-            toast.success(next ? "محصولات کاتالوگی مخفی شدند." : "محصولات کاتالوگی نمایش داده می‌شوند.");
-          }}
-        >
-          {catalogProductsHidden ? <EyeOpenIcon /> : <EyeNoneIcon />}
-          <span>{catalogProductsHidden ? "نمایش کاتالوگ" : "مخفی کردن کاتالوگ"}</span>
-        </Button>
+      {selectionMode ? <Flex align="center" gap="2" wrap="wrap" className="inventory-toolbar min-w-0">
+        <Flex align="center" gap="2" role="status" aria-live="polite">
+          <Text weight="bold">{selectedIds.size.toLocaleString("fa-IR")} انتخاب</Text>
+          <Button type="button" size="2" variant="soft" color="gray" aria-label="خروج از حالت انتخاب" onClick={selection.clear}><Cross2Icon /> پاک‌کردن</Button>
+        </Flex>
+      </Flex> : null}
 
-        <Select.Root value={categoryId == null ? "all" : String(categoryId)} onValueChange={(value) => {
-          setCategoryId(value === "all" ? null : Number(value));
-          parentRef.current?.scrollTo({ top: 0 });
-        }}>
-          <Select.Trigger aria-label="فیلتر دسته‌بندی" className="inventory-category-filter min-w-0" />
-          <Select.Content>
-            <Select.Item value="all">همه دسته‌بندی‌ها</Select.Item>
-            {categories.map((category) => <Select.Item key={category.id} value={String(category.id)}>{category.name}</Select.Item>)}
-          </Select.Content>
-        </Select.Root>
-
-        <Select.Root
-          value={viewMode}
-          onValueChange={(value) => {
-            setViewMode(value as ProductViewMode);
+      <div className="inventory-list-workspace flex-1 min-h-0">
+        <aside className="inventory-filter-sidebar min-h-0" aria-label="فیلترهای محصولات">
+        <FilterPanel
+          search={search}
+          setSearch={(value) => { setSearch(value); parentRef.current?.scrollTo({ top: 0 }); }}
+          sort={sort}
+          setSort={(value) => { setSort(value); parentRef.current?.scrollTo({ top: 0 }); }}
+          categories={categories}
+          categoryId={categoryId}
+          setCategoryId={(value) => { setCategoryId(value); parentRef.current?.scrollTo({ top: 0 }); }}
+          labels={labels}
+          selectedLabelIds={selectedLabelIds}
+          onToggleLabel={toggleLabel}
+          onRemoveLabel={removeLabel}
+          onClearLabels={clearLabels}
+          catalogProductsHidden={catalogProductsHidden}
+          onCatalogVisibilityChange={updateCatalogVisibility}
+          viewMode={viewMode}
+          onViewModeChange={(value) => {
+            setViewMode(value);
             parentRef.current?.scrollTo({ top: 0 });
           }}
-        >
-          <Select.Trigger
-            aria-label="نحوه نمایش محصولات"
-            className="inventory-view-mode-select ms-auto min-w-0"
-          />
-          <Select.Content>
-            {VIEW_MODES.map(({ value, label }) => (
-              <Select.Item key={value} value={value}>{label}</Select.Item>
-            ))}
-          </Select.Content>
-        </Select.Root>
-      </Flex>
-
-      <Box className="lg:hidden! w-full"><FilterPanel search={search} setSearch={(value) => { setSearch(value); parentRef.current?.scrollTo({ top: 0 }); }} sort={sort} setSort={(value) => { setSort(value); parentRef.current?.scrollTo({ top: 0 }); }} /></Box>
-      <Flex className="flex-1 overflow-hidden gap-5">
-        <Box className="hidden! lg:block! w-80 shrink-0"><div className="sticky top-5"><FilterPanel search={search} setSearch={(value) => { setSearch(value); parentRef.current?.scrollTo({ top: 0 }); }} sort={sort} setSort={(value) => { setSort(value); parentRef.current?.scrollTo({ top: 0 }); }} /></div></Box>
-        <Box className="flex-1 min-w-0">
+        />
+        </aside>
+        <Box className="inventory-list-results min-h-0 min-w-0">
+          {inventoryNotice ? (
+            <Callout.Root color={inventoryNotice.level === "approaching" ? "blue" : inventoryNotice.level === "near" ? "amber" : "red"} mb="3">
+              <Callout.Text>
+                {inventoryNotice.level === "full"
+                  ? `ظرفیت ${inventoryNotice.limit.toLocaleString("fa-IR")} کالای طرح شما تکمیل شده است؛ برای افزودن کالای جدید، طرح را ارتقا دهید.`
+                  : `${inventoryNotice.used.toLocaleString("fa-IR")} از ${inventoryNotice.limit.toLocaleString("fa-IR")} ظرفیت کالا استفاده شده و ${inventoryNotice.remaining.toLocaleString("fa-IR")} جای خالی مانده است.`}
+              </Callout.Text>
+            </Callout.Root>
+          ) : null}
+          {barcodeMatchHidden ? <Callout.Root color="amber" mb="3"><Callout.Text>بارکد دقیق پیدا شد، اما فیلترهای فعال محصول را پنهان کرده‌اند. برای نمایش، فیلتر دسته/برچسب یا محصولات کاتالوگی را پاک کنید.</Callout.Text></Callout.Root> : null}
           {isLoading && <Flex justify="center" align="center" className="h-full"><Spinner /></Flex>}
           {isError && <Callout.Root color="red"><Callout.Text>خطا در دریافت محصولات</Callout.Text></Callout.Root>}
           {!isLoading && !isError && products.length === 0 && <Flex justify="center" align="center" className="h-full"><Text color="gray">محصولی یافت نشد</Text></Flex>}
           {products.length > 0 && (
             <div ref={parentRef} className="h-full overflow-y-auto overscroll-contain scrollbar-thin">
               {viewMode === "grid" ? (
-                <div className="inventory-compact-grid grid grid-cols-1 gap-3 pb-4 sm:grid-cols-2 xl:grid-cols-3">
+                <div className="inventory-compact-grid grid grid-cols-3 gap-2 pb-4 sm:gap-3">
                   {products.map(productCard)}
                 </div>
               ) : (
@@ -187,7 +307,6 @@ const InventoryList = () => {
                         key={product.id}
                         data-index={virtualRow.index}
                         ref={virtualizer.measureElement}
-                        className={viewMode === "compact" ? "pb-2" : "pb-4"}
                         style={{ position: "absolute", top: 0, left: 0, width: "100%", transform: `translateY(${virtualRow.start}px)` }}
                       >
                         {productCard(product)}
@@ -199,15 +318,41 @@ const InventoryList = () => {
             </div>
           )}
         </Box>
-      </Flex>
+      </div>
 
-      <AddButton />
-      <ProductPreviewDialog product={previewProduct} onOpenChange={(open) => { if (!open) setPreviewProduct(null); }} />
+      {selectionMode && <BulkSelectionActions
+        selectedCount={selectedIds.size}
+        deleting={bulkDeleteProducts.isPending}
+        onEdit={() => setBulkOpen(true)}
+        onDelete={() => setBulkDeleteOpen(true)}
+        {...(canPrintLabels ? { onPrint: () => setLabelPrintOpen(true) } : {})}
+      />}
+      <LabelPrintDialog open={labelPrintOpen} productIds={[...selectedIds]} onOpenChange={setLabelPrintOpen} />
+      <BulkEditDialog
+        open={bulkOpen}
+        selectedIds={[...selectedIds]}
+        onOpenChange={setBulkOpen}
+        onComplete={(updated) => {
+          const updatedSet = new Set(updated);
+          selection.remove(updatedSet);
+        }}
+      />
+      <ConfirmDialog
+        open={bulkDeleteOpen}
+        onOpenChange={setBulkDeleteOpen}
+        title="محصولات انتخاب‌شده حذف شوند؟"
+        description={`${selectedIds.size.toLocaleString("fa-IR")} محصول انتخاب‌شده از موجودی حذف می‌شود.`}
+        confirmLabel={`حذف ${selectedIds.size.toLocaleString("fa-IR")} محصول`}
+        cancelLabel="لغو"
+        variant="danger"
+        loading={bulkDeleteProducts.isPending}
+        onConfirm={confirmBulkDelete}
+      />
       <ConfirmDialog
         open={productToDelete !== null}
         onOpenChange={(open) => { if (!open) setProductToDelete(null); }}
         title="محصول حذف شود؟"
-        description={productToDelete ? `آیا از حذف «${productToDelete.custom_label ?? productToDelete.catalog_product?.name ?? "این محصول"}» مطمئن هستید؟` : ""}
+        description={productToDelete ? `«${productToDelete.custom_label ?? productToDelete.catalog_product?.name ?? "این محصول"}» از موجودی حذف می‌شود.` : ""}
         confirmLabel="حذف محصول"
         cancelLabel="لغو"
         variant="danger"

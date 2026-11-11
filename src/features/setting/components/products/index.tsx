@@ -5,6 +5,7 @@ import { ReloadIcon } from "@radix-ui/react-icons";
 import { Box, Callout, Card, Flex, Text } from "@radix-ui/themes";
 import { useState } from "react";
 import { ConfirmDialog } from "@/shared/ui/dialog/confirm-dialog";
+import { PageGuide } from "@/features/app/layout/page-guide";
 
 export default function ProductSettings() {
   const online = useOnline();
@@ -13,12 +14,7 @@ export default function ProductSettings() {
 
   return (
     <Box className="space-y-5" dir="rtl">
-      <Box>
-        <Text as="div" size="6" weight="bold">محصولات</Text>
-        <Text as="div" size="2" color="gray" mt="1">
-          نگهداری و بازیابی نسخه محلی محصولات
-        </Text>
-      </Box>
+      <PageGuide section="ابزارها" sectionTo="/tools" title="بازیابی" description="کارهای در انتظار را بررسی کنید و تازه‌ترین اطلاعات تأییدشده مجموعه را دوباره دریافت کنید." icon={ReloadIcon} helpTopic="recovery" />
 
       {!online && (
         <Callout.Root color="amber">
@@ -38,8 +34,7 @@ export default function ProductSettings() {
           <Box>
             <Text as="div" size="4" weight="bold">به‌روزرسانی محصولات از سرور</Text>
             <Text as="div" size="2" color="gray" mt="2">
-              ابتدا تغییرات محلی همگام می‌شوند و سپس نسخه معتبر محصولات و اطلاعات
-              کاتالوگ از سرور با IndexedDB تطبیق داده می‌شود.
+              ابتدا کارهای در انتظار بررسی می‌شوند و سپس تازه‌ترین اطلاعات تأییدشده مجموعه دریافت می‌شود. تا پایان این کار صفحه را نبندید.
             </Text>
           </Box>
           <Button
@@ -49,16 +44,16 @@ export default function ProductSettings() {
             onClick={() => setConfirmOpen(true)}
           >
             <ReloadIcon />
-            دریافت از سرور
+            تازه‌سازی اطلاعات
           </Button>
         </Flex>
       </Card>
       <ConfirmDialog
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
-        title="دریافت محصولات از سرور"
-        description="ابتدا تغییرات محلی ارسال می‌شوند و سپس نسخه معتبر محصولات و کاتالوگ سرور با داده محلی تطبیق داده می‌شود. این عملیات فقط در حالت آنلاین انجام می‌شود."
-        confirmLabel="دریافت از سرور"
+        title="محصولات تازه‌سازی شوند؟"
+        description="کارهای در انتظار بررسی می‌شوند و تازه‌ترین اطلاعات تأییدشده مجموعه دریافت می‌شود. تا پایان این کار صفحه را نبندید."
+        confirmLabel="تازه‌سازی"
         variant="warning"
         loading={refresh.isPending}
         onConfirm={() =>

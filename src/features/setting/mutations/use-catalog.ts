@@ -143,7 +143,12 @@ export function useArchiveCatalog() {
     onSuccess: async (product) => {
       toast.success("محصول بایگانی شد؛ محصولات موجود کاربران حفظ شده‌اند.");
       queryClient.removeQueries({ queryKey: catalogProductKeys.detail(product.id) });
-      await queryClient.invalidateQueries({ queryKey: catalogProductKeys.lists() });
+      await syncService.sync();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: catalogProductKeys.lists() }),
+        queryClient.invalidateQueries({ queryKey: productKeys.all }),
+        queryClient.invalidateQueries({ queryKey: dashboardKeys.all }),
+      ]);
     },
     onError: () => toast.error("بایگانی محصول کاتالوگ ناموفق بود."),
   });

@@ -4,15 +4,15 @@ import { BarChartIcon, InfoCircledIcon, LightningBoltIcon } from "@radix-ui/reac
 import { Box, Card, Checkbox, Dialog, Flex, Grid, Select, Switch, Text, TextArea, TextField } from "@radix-ui/themes";
 import { useMemo, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { useCreatePlan, useUpdatePlan } from "../../mutations/use-admin";
+import { useCreatePlan, useEntitlementRegistry, useUpdatePlan } from "../../mutations/use-admin";
 import type { SubscriptionPlan, SubscriptionPlanInput } from "../../types";
 import { adminErrorMessage } from "../admin-error";
-import { PLAN_FEATURE_OPTIONS, PLAN_LIMIT_OPTIONS, priceMinorToToman, tomanToPriceMinor } from "./plan-options";
+import { formatGroupedIntegerText, normalizeOptionalInteger } from "@/features/app/inventory/services/localized-integer";
 
 type Props = { plan?: SubscriptionPlan; trigger: ReactNode };
 type DurationUnit = "day" | "month" | "year";
 
-const groups = ["آفلاین و موجودی", "داده و خروجی"] as const;
+const groups = ["implemented", "planned"] as const;
 
 export default function PlanDialog({ plan, trigger }: Props) {
   const [open, setOpen] = useState(false);
@@ -21,41 +21,49 @@ export default function PlanDialog({ plan, trigger }: Props) {
   const [id, setId] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [reason, setReason] = useState("");
   const [price, setPrice] = useState("");
   const [duration, setDuration] = useState("");
-  const [unit, setUnit] = useState<DurationUnit>("day");
+  const [unit, setUnit] = useState<DurationUnit | "">("");
+  const [offerAvailable, setOfferAvailable] = useState(false);
   const [active, setActive] = useState(true);
   const [features, setFeatures] = useState<Record<string, boolean>>({});
   const [limits, setLimits] = useState<Record<string, string>>({});
   const create = useCreatePlan();
   const update = useUpdatePlan();
+  const registry = useEntitlementRegistry();
   const pending = create.isPending || update.isPending;
 
   const featureOptions = useMemo(() => {
-    const known = new Set(PLAN_FEATURE_OPTIONS.map((option) => option.key));
-    return [
-      ...PLAN_FEATURE_OPTIONS,
-      ...Object.keys(features).filter((key) => !known.has(key)).map((key) => ({
-        key, label: key, description: "قابلیت سفارشی موجود در این طرح", group: "داده و خروجی" as const,
-      })),
-    ];
-  }, [features]);
+    return (registry.data?.capabilities ?? []).map((option) => ({
+      key: option.key,
+      label: option.label_fa,
+      description: option.dependencies.length > 0
+        ? `وابسته به: ${option.dependencies.join("، ")}`
+        : option.status === "planned" ? "برنامه‌ریزی‌شده و در این نسخه قابل فعال‌سازی نیست" : "قابلیت پیاده‌سازی‌شده",
+      group: option.status,
+      disabled: option.status === "planned" || option.key === "invoices.purchase" || option.key === "invoices.sale",
+    }));
+  }, [registry.data]);
+  const limitOptions = registry.data?.capacities ?? [];
 
   function resetForm() {
+    const planPrice = plan?.price_toman ?? null;
     setId(plan?.id ?? "");
     setName(plan?.name ?? "");
     setDescription(plan?.description ?? "");
-    setPrice(plan?.price_minor == null ? "" : String(priceMinorToToman(plan.price_minor)));
+    setReason("");
+    setPrice(planPrice == null ? "" : formatGroupedIntegerText(planPrice));
     setDuration(plan?.duration == null ? "" : String(plan.duration));
-    setUnit(plan?.duration_unit ?? "day");
+    setUnit(plan?.duration_unit ?? "");
+    setOfferAvailable(plan?.is_offer_available ?? false);
     setActive(plan?.is_active ?? true);
     setFeatures({
-      ...Object.fromEntries(PLAN_FEATURE_OPTIONS.map((option) => [option.key, false])),
+      ...Object.fromEntries((registry.data?.capabilities ?? []).map((option) => [option.key, false])),
       ...(plan?.features ?? {}),
     });
     setLimits(Object.fromEntries([
-      ...PLAN_LIMIT_OPTIONS.map((option) => [option.key, plan?.limits[option.key] == null ? "" : String(plan.limits[option.key])]),
-      ...Object.entries(plan?.limits ?? {}).filter(([key]) => !PLAN_LIMIT_OPTIONS.some((option) => option.key === key)).map(([key, value]) => [key, value == null ? "" : String(value)]),
+      ...limitOptions.map((option) => [option.key, plan?.limits[option.key] == null ? "" : String(plan.limits[option.key])]),
     ]));
   }
 
@@ -65,24 +73,32 @@ export default function PlanDialog({ plan, trigger }: Props) {
   }
 
   function review() {
-    if (!id.trim() || !name.trim()) {
-      toast.error("شناسه و نام طرح الزامی هستند");
+    if (!id.trim() || !name.trim() || reason.trim().length < 3) {
+      toast.error("شناسه، نام و دلیل تغییر الزامی هستند");
       return;
     }
-    const parsedPrice = price === "" ? null : Number(price);
+    const parsedPrice = normalizeOptionalInteger(price) ?? null;
     const parsedDuration = duration === "" ? null : Number(duration);
     const parsedLimits = Object.fromEntries(Object.entries(limits).map(([key, value]) => [key, value === "" ? null : Number(value)]));
-    if ((parsedPrice !== null && (!Number.isInteger(parsedPrice) || parsedPrice < 0)) ||
+    if ((parsedPrice !== null && (!Number.isSafeInteger(parsedPrice) || parsedPrice < 0 || parsedPrice > 10_000_000_000)) ||
         (parsedDuration !== null && (!Number.isInteger(parsedDuration) || parsedDuration < 1)) ||
-        Object.values(parsedLimits).some((value) => value !== null && (!Number.isInteger(value) || value < 1))) {
-      toast.error("قیمت باید نامنفی و مدت و محدودیت‌ها باید عدد صحیح مثبت باشند");
+        Object.entries(parsedLimits).some(([key, value]) => {
+          const definition = limitOptions.find((item) => item.key === key);
+          return !definition || (value === null ? !definition.supports_unlimited : !Number.isInteger(value) || value < definition.minimum || value > definition.maximum);
+        })) {
+      toast.error("مقدار ظرفیت یا حالت نامحدود با تعریف مرکزی سازگار نیست");
+      return;
+    }
+    if (offerAvailable && (parsedPrice === null || parsedPrice <= 0 || parsedDuration === null || unit === "")) {
+      toast.error("برای فعال‌کردن پیشنهاد خرید، قیمت مثبت و دورهٔ صورتحساب را کامل کنید");
       return;
     }
     setDraft({
       id: id.trim(), name: name.trim(), description: description.trim() || null,
-      price_minor: tomanToPriceMinor(parsedPrice), currency: "IRR", duration: parsedDuration,
-      duration_unit: parsedDuration === null ? null : unit, is_active: active,
-      features, limits: parsedLimits,
+      price_toman: parsedPrice, duration: parsedDuration,
+      duration_unit: parsedDuration === null ? null : unit || null,
+      is_offer_available: offerAvailable, is_active: active,
+      features, limits: parsedLimits, reason: reason.trim(), expected_revision: plan?.policy_revision,
     });
     setConfirmOpen(true);
   }
@@ -113,13 +129,16 @@ export default function PlanDialog({ plan, trigger }: Props) {
               <label><Text size="2">شناسه پایدار</Text><TextField.Root value={id} disabled={Boolean(plan)} onChange={(event) => setId(event.target.value)} /></label>
               <label><Text size="2">نام طرح</Text><TextField.Root value={name} onChange={(event) => setName(event.target.value)} /></label>
               <label className="sm:col-span-2"><Text size="2">توضیحات</Text><TextArea value={description} onChange={(event) => setDescription(event.target.value)} /></label>
-              <label><Text size="2">قیمت (تومان)</Text><TextField.Root type="number" min="0" inputMode="numeric" value={price} onChange={(event) => setPrice(event.target.value)} /></label>
+              <label className="sm:col-span-2"><Text size="2">دلیل تغییر</Text><TextArea value={reason} onChange={(event) => setReason(event.target.value)} placeholder="برای سابقه ممیزی، دلیل روشن بنویسید" /></label>
+              <label><Text size="2">قیمت (تومان)</Text><TextField.Root type="text" inputMode="numeric" value={price} onChange={(event) => setPrice(formatGroupedIntegerText(event.target.value))} /></label>
               <Grid columns="2" gap="2">
                 <label><Text size="2">مدت</Text><TextField.Root type="number" min="1" inputMode="numeric" value={duration} onChange={(event) => setDuration(event.target.value)} /></label>
-                <label><Text size="2">واحد</Text><Select.Root value={unit} onValueChange={(value) => setUnit(value as DurationUnit)} disabled={!duration}><Select.Trigger /><Select.Content><Select.Item value="day">روز</Select.Item><Select.Item value="month">ماه</Select.Item><Select.Item value="year">سال</Select.Item></Select.Content></Select.Root></label>
+                <label><Text size="2">واحد</Text><Select.Root value={unit || undefined} onValueChange={(value) => setUnit(value as DurationUnit)} disabled={!duration}><Select.Trigger placeholder="انتخاب کنید" /><Select.Content><Select.Item value="day">روز</Select.Item><Select.Item value="month">ماه</Select.Item><Select.Item value="year">سال</Select.Item></Select.Content></Select.Root></label>
               </Grid>
             </Grid>
             <Flex align="center" gap="2" mt="4"><Switch checked={active} onCheckedChange={setActive} /><Text>طرح برای تخصیص به کاربران فعال باشد</Text></Flex>
+            <label><Flex align="center" gap="2" mt="3"><Switch checked={offerAvailable} onCheckedChange={setOfferAvailable} disabled={!(["personal", "pro", "vip"].includes(id))} /><Text>پیشنهاد خرید این طرح نمایش داده شود</Text></Flex></label>
+            <Text as="div" size="1" color="gray" mt="2">درگاه پرداخت هنوز متصل نیست؛ فعال‌بودن پیشنهاد فقط قیمت و دورهٔ معتبر را منتشر می‌کند و خرید را آغاز نمی‌کند.</Text>
           </Card>
 
           <Card>
@@ -127,10 +146,10 @@ export default function PlanDialog({ plan, trigger }: Props) {
             <Text as="div" size="2" color="gray" mb="4">قابلیت‌های فعال توسط سرور به مجوزهای حساب تبدیل می‌شوند.</Text>
             <Flex direction="column" gap="5">
               {groups.map((group) => <Box key={group}>
-                <Text as="div" size="2" weight="bold" mb="2">{group}</Text>
+                <Text as="div" size="2" weight="bold" mb="2">{group === "implemented" ? "پیاده‌سازی‌شده" : "برنامه‌ریزی‌شده"}</Text>
                 <Grid columns={{ initial: "1", sm: "2" }} gap="2">
                   {featureOptions.filter((option) => option.group === group).map((option) => <label key={option.key} className="flex cursor-pointer items-start gap-3 rounded-lg border border-foreground/10 p-3 hover:bg-foreground/5">
-                    <Checkbox mt="1" checked={Boolean(features[option.key])} onCheckedChange={(checked) => setFeatures((current) => ({ ...current, [option.key]: checked === true }))} />
+                    <Checkbox mt="1" disabled={option.disabled} checked={Boolean(features[option.key])} onCheckedChange={(checked) => setFeatures((current) => ({ ...current, [option.key]: checked === true }))} />
                     <span><Text as="div" size="2" weight="medium">{option.label}</Text><Text as="div" size="1" color="gray">{option.description}</Text></span>
                   </label>)}
                 </Grid>
@@ -141,11 +160,11 @@ export default function PlanDialog({ plan, trigger }: Props) {
           <Card>
             <Flex align="center" gap="3" mb="3"><Box className="card-title-icon" aria-hidden="true"><BarChartIcon width="20" height="20" /></Box><Text as="div" weight="bold">محدودیت‌های استفاده</Text></Flex>
             <Grid columns={{ initial: "1", sm: "2" }} gap="3">
-              {PLAN_LIMIT_OPTIONS.map((option) => <label key={option.key}><Text size="2">{option.label}</Text><TextField.Root type="number" min="1" inputMode="numeric" placeholder={option.description} value={limits[option.key] ?? ""} onChange={(event) => setLimits((current) => ({ ...current, [option.key]: event.target.value }))} /></label>)}
+              {limitOptions.map((option) => <label key={option.key}><Text size="2">{option.label_fa}</Text><TextField.Root type="number" min={option.minimum} max={option.maximum} inputMode="numeric" placeholder={option.supports_unlimited ? "خالی = نامحدود" : "مقدار صریح الزامی است"} value={limits[option.key] ?? ""} onChange={(event) => setLimits((current) => ({ ...current, [option.key]: event.target.value }))} /></label>)}
             </Grid>
           </Card>
         </Flex>
-        <Flex justify="end" gap="2" mt="5" wrap="wrap-reverse"><Dialog.Close><Button variant="soft" color="gray">انصراف</Button></Dialog.Close><Button loading={pending} onClick={review}>{plan ? "بررسی تغییرات" : "بررسی و ایجاد"}</Button></Flex>
+        <Flex justify="end" gap="2" mt="5" wrap="wrap-reverse"><Dialog.Close><Button variant="soft" color="gray">انصراف</Button></Dialog.Close><Button intent="positive" loading={pending} onClick={review}>{plan ? "بررسی تغییرات" : "بررسی و ایجاد"}</Button></Flex>
       </Dialog.Content>
     </Dialog.Root>
     <ConfirmDialog

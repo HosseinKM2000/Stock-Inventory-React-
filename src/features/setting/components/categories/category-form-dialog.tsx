@@ -15,6 +15,8 @@ import {
 
 import { useAppForm } from "@/shared/lib/form/use-app-form";
 import { categorySchema } from "../../validators/category.schema";
+import { toast } from "sonner";
+import { userErrorMessage } from "@/shared/lib/presentation/user-error";
 
 type Props = {
   mode: "create" | "edit";
@@ -51,6 +53,10 @@ const CategoryFormDialog = ({ mode, category, trigger }: Props) => {
           onSuccess() {
             setOpen(false);
             form.reset();
+            toast.success("دسته‌بندی ایجاد شد");
+          },
+          onError(error) {
+            toast.error(userErrorMessage(error, "ایجاد دسته‌بندی انجام نشد."));
           },
         });
 
@@ -68,6 +74,10 @@ const CategoryFormDialog = ({ mode, category, trigger }: Props) => {
           onSuccess() {
             setOpen(false);
             form.reset();
+            toast.success("دسته‌بندی ویرایش شد");
+          },
+          onError(error) {
+            toast.error(userErrorMessage(error, "ویرایش دسته‌بندی انجام نشد."));
           },
         },
       );
@@ -96,7 +106,7 @@ const CategoryFormDialog = ({ mode, category, trigger }: Props) => {
   }
 
   const errorMessage =
-    mutation.error instanceof ApiError ? mutation.error.message : null;
+    mutation.error instanceof ApiError ? userErrorMessage(mutation.error, "ذخیره دسته‌بندی انجام نشد.") : null;
 
   const accent = mode === "create" ? "violet" : "amber";
 
@@ -151,6 +161,7 @@ const CategoryFormDialog = ({ mode, category, trigger }: Props) => {
 
           <Button
             color={accent}
+            intent="positive"
             variant="surface"
             loading={mutation.isPending}
             onClick={form.submit}

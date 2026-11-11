@@ -25,9 +25,11 @@ import {
 } from "../../mutations/use-admin";
 import { adminErrorMessage } from "../admin-error";
 import { UserDetailsDialog } from "./user-details-dialog";
+import { GrantDialog } from "./grant-dialog";
+import { formatJalaliDate } from "@/shared/lib/date/jalali";
 
 const date = (value: string | null) =>
-  value ? new Intl.DateTimeFormat("fa-IR").format(new Date(value)) : "—";
+  value ? formatJalaliDate(value) : "—";
 
 type PendingAction =
   | { kind: "subscription"; user: AdminUser; plan: string; planName: string }
@@ -81,7 +83,7 @@ function actionCopy(action: PendingAction | null) {
   };
 }
 
-export default function UsersSettings() {
+export default function UsersSettings({ hideHeading = false }: { hideHeading?: boolean }) {
   const { user: current } = useAuth();
   const users = useAdminUsers();
   const plans = useAdminPlans();
@@ -139,18 +141,21 @@ export default function UsersSettings() {
     );
 
   return (
-    <Box>
-      <Text size="6" weight="bold">
-        کاربران
-      </Text>
-      <Flex direction="column" gap="3" mt="5">
+    <Box className="admin-users-workspace">
+      {!hideHeading ? <>
+        <Text size="6" weight="bold">کاربران</Text>
+        <Text as="div" size="2" color="gray" mt="1">
+          حساب‌ها، نقش مدیریتی، وضعیت دسترسی و اشتراک کاربران را مدیریت کنید. این عملیات مستقیماً روی سرور اعمال می‌شود.
+        </Text>
+      </> : null}
+      <Flex direction="column" gap="3" mt={hideHeading ? "0" : "5"} className="admin-users-list">
         {(users.data ?? []).map((user) => {
           const immutable = user.is_system_admin;
           const self = user.id === current?.id;
           return (
-            <Card key={user.id}>
+            <Card key={user.id} className="admin-user-card">
               <Flex justify="between" align="start" gap="4" wrap="wrap">
-                <Box className="min-w-0 flex-1">
+                <Box className="admin-user-summary min-w-0 flex-1">
                   <Flex align="center" gap="2" wrap="wrap">
                     <Flex
                       align="center"
@@ -196,7 +201,7 @@ export default function UsersSettings() {
                     <Text>آخرین فعالیت: {date(user.last_activity_at)}</Text>
                   </Box>
                 </Box>
-                <Flex direction="column" gap="2" className="w-full sm:w-60">
+                <Flex direction="column" gap="2" className="admin-user-controls w-full sm:w-60">
                   <Select.Root
                     value={user.plan}
                     disabled={loading}
@@ -219,7 +224,7 @@ export default function UsersSettings() {
                     <Select.Content>
                       {(plans.data ?? [])
                         .filter(
-                          (plan) => plan.is_active || plan.id === user.plan,
+                          (plan) => (plan.is_active && plan.commercial_status !== "legacy_only") || plan.id === user.plan,
                         )
                         .map((plan) => (
                           <Select.Item key={plan.id} value={plan.id}>
@@ -230,6 +235,7 @@ export default function UsersSettings() {
                   </Select.Root>
                   <Flex gap="2" wrap="wrap">
                     <UserDetailsDialog user={user} />
+                    {!immutable && user.is_store_owner ? <GrantDialog user={user} /> : null}
                     <Button
                       size="2"
                       variant="soft"

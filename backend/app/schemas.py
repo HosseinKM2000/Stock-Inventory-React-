@@ -1,36 +1,89 @@
 from datetime import datetime
+import re
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, StrictInt, field_validator, model_validator
+from pydantic_core import PydanticCustomError
+
+from .mobile import INVALID_MOBILE_MESSAGE, normalize_iranian_mobile
+from .inventory_policy import MAX_PRODUCT_QUANTITY
 
 
 # =========================================================
 # AUTH / USER
 # =========================================================
+USERNAME_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9._-]*$")
+
+
 class UserBase(BaseModel):
-    first_name: str = Field(min_length=1, max_length=120)
-    last_name: str = Field(min_length=1, max_length=120)
-    username: str = Field(min_length=3, max_length=120)
+    first_name: str | None = Field(default=None, min_length=1, max_length=120)
+    last_name: str | None = Field(default=None, min_length=1, max_length=120)
+    username: str = Field(min_length=3, max_length=30)
+
+    @field_validator("username", mode="before")
+    @classmethod
+    def validate_username(cls, value: object) -> str:
+        if not isinstance(value, str):
+            raise ValueError("USERNAME_INVALID")
+        username = value.strip()
+        if not USERNAME_PATTERN.fullmatch(username):
+            raise ValueError("USERNAME_INVALID")
+        return username
 
 
 class SignupRequest(UserBase):
     email: EmailStr | None = None
-    phone: str | None = Field(default=None, max_length=40)
+    phone: str = Field(max_length=40)
     device_fingerprint: str
     password: str = Field(min_length=8, max_length=128)
+
+    @model_validator(mode="before")
+    @classmethod
+    def require_phone(cls, value: Any) -> Any:
+        if not isinstance(value, dict) or "phone" not in value or value.get("phone") is None:
+            raise PydanticCustomError("iranian_mobile", INVALID_MOBILE_MESSAGE)
+        return value
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def validate_phone(cls, value: object) -> str:
+        if not isinstance(value, str):
+            raise PydanticCustomError("iranian_mobile", INVALID_MOBILE_MESSAGE)
+        try:
+            return normalize_iranian_mobile(value)
+        except ValueError as error:
+            raise PydanticCustomError("iranian_mobile", INVALID_MOBILE_MESSAGE) from error
 
     @field_validator("password")
     @classmethod
     def validate_password_bytes(cls, value: str) -> str:
         if len(value.encode("utf-8")) > 72:
             raise ValueError("PASSWORD_TOO_LONG")
+        if not any(character.isupper() for character in value):
+            raise ValueError("PASSWORD_UPPERCASE_REQUIRED")
+        if not any(character.islower() for character in value):
+            raise ValueError("PASSWORD_LOWERCASE_REQUIRED")
+        if not any(character.isdigit() for character in value):
+            raise ValueError("PASSWORD_NUMBER_REQUIRED")
         return value
 
 
 class LoginRequest(BaseModel):
-    username: str
-    password: str
-    device_fingerprint: str
+    username: str = Field(min_length=1, max_length=120)
+    password: str = Field(min_length=1, max_length=128)
+    device_fingerprint: str = Field(min_length=1, max_length=255)
+
+    @field_validator("username")
+    @classmethod
+    def normalize_identifier(cls, value: str) -> str:
+        return value.strip()
+
+    @field_validator("password")
+    @classmethod
+    def validate_login_password_bytes(cls, value: str) -> str:
+        if len(value.encode("utf-8")) > 72:
+            raise ValueError("PASSWORD_TOO_LONG")
+        return value
 
 
 class UserUpdate(BaseModel):
@@ -39,6 +92,35 @@ class UserUpdate(BaseModel):
     username: str | None = Field(default=None, min_length=3, max_length=120)
     email: EmailStr | None = None
     phone: str | None = Field(default=None, max_length=40)
+    store_name: str | None = Field(default=None, min_length=1, max_length=160)
+
+    @model_validator(mode="before")
+    @classmethod
+    def reject_explicit_empty_phone(cls, value: Any) -> Any:
+        if isinstance(value, dict) and "phone" in value and value.get("phone") is None:
+            raise PydanticCustomError("iranian_mobile", INVALID_MOBILE_MESSAGE)
+        return value
+
+    @field_validator("phone", mode="before")
+    @classmethod
+    def validate_phone(cls, value: object) -> str | None:
+        if value is None:
+            return None
+        if not isinstance(value, str):
+            raise PydanticCustomError("iranian_mobile", INVALID_MOBILE_MESSAGE)
+        try:
+            return normalize_iranian_mobile(value)
+        except ValueError as error:
+            raise PydanticCustomError("iranian_mobile", INVALID_MOBILE_MESSAGE) from error
+
+    @field_validator("store_name", mode="before")
+    @classmethod
+    def validate_store_name(cls, value: object) -> str | None:
+        if value is None:
+            return None
+        if not isinstance(value, str) or not value.strip():
+            raise ValueError("STORE_NAME_REQUIRED")
+        return value.strip()
 
 
 class PasswordUpdate(BaseModel):
@@ -72,8 +154,8 @@ class IndustrySimpleOut(BaseModel):
 
 class UserOut(BaseModel):
     id: int
-    first_name: str
-    last_name: str
+    first_name: str | None
+    last_name: str | None
     username: str
     email: str | None = None
     phone: str | None = None
@@ -87,6 +169,19 @@ class UserOut(BaseModel):
     industry_id: int | None = None
     created_at: datetime
     industry: IndustrySimpleOut | None = None
+    store_id: int | None = None
+    store_name: str | None = None
+    membership_id: int | None = None
+    store_role_id: int | None = None
+    store_role_name: str | None = None
+    store_permissions: list[str] = Field(default_factory=list)
+    is_store_owner: bool = False
+    temporary_password_required: bool = False
+    credentials_notice_viewed: bool = True
+    membership_authorization_checked_at: datetime | None = None
+    store_operating_mode: Literal["solo", "team"] | None = None
+    store_policy_version: int | None = None
+    store_policy_changed_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -94,6 +189,85 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserOut
+
+
+class StoreRoleCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=100)
+    permissions: list[str] = Field(default_factory=list)
+
+
+class StoreRoleUpdate(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=100)
+    permissions: list[str] | None = None
+
+
+class StoreRoleOut(BaseModel):
+    id: int
+    name: str
+    permissions: list[str]
+    assigned_count: int = 0
+
+
+class PersonnelCreate(BaseModel):
+    first_name: str = Field(min_length=1, max_length=120)
+    last_name: str = Field(min_length=1, max_length=120)
+    username: str | None = Field(default=None, min_length=3, max_length=120)
+    role_id: int
+
+
+class PersonnelUpdate(BaseModel):
+    role_id: int | None = None
+    active: bool | None = None
+
+
+class PersonnelOut(BaseModel):
+    membership_id: int
+    user_id: int
+    first_name: str
+    last_name: str
+    username: str
+    role_id: int
+    role_name: str
+    active: bool
+    temporary_password_required: bool
+    credentials_notice_viewed: bool
+    created_at: datetime
+    last_activity_at: datetime | None = None
+
+
+class PersonnelCreated(PersonnelOut):
+    temporary_password: str
+
+
+class PersonnelCapacityOut(BaseModel):
+    enabled: bool
+    used: int
+    limit: int | None
+    available: int | None
+
+
+class ActivityOut(BaseModel):
+    id: int
+    actor_user_id: int
+    actor_membership_id: int
+    actor_display_name: str
+    actor_role_name: str
+    operation_id: str
+    target_entity: str
+    target_id: str | None
+    action: str
+    before: dict[str, Any] | None
+    after: dict[str, Any] | None
+    outcome: str
+    client_occurred_at: datetime | None
+    accepted_at: datetime
+
+
+class ActivityPage(BaseModel):
+    items: list[ActivityOut]
+    total: int
+    page: int
+    page_size: int
 
 
 # =========================================================
@@ -126,6 +300,16 @@ class CategoryOut(BaseModel):
 class CategoryWithStats(CategoryOut):
     product_count: int
     total_quantity: int
+
+
+class LabelOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    name: str
+    normalized_name: str
+    version: int = 1
+    created_at: datetime
+    updated_at: datetime
 
 
 # =========================================================
@@ -227,8 +411,10 @@ class CatalogProductOut(BaseModel):
 class InventoryCreate(BaseModel):
     custom_label: str | None = None
     note: str | None = None
-    quantity: int = Field(default=0, ge=0)
+    quantity: int = Field(default=0, ge=0, le=MAX_PRODUCT_QUANTITY)
     price: int = Field(default=0, ge=0)
+    sale_price: int | None = Field(default=None, ge=0)
+    purchase_price: int | None = Field(default=None, ge=0)
     low_stock_threshold: int = Field(default=0, ge=0)
     low_stock_alert: bool = False
 
@@ -236,8 +422,10 @@ class InventoryCreate(BaseModel):
 class InventoryUpdate(BaseModel):
     custom_label: str | None = None
     note: str | None = None
-    quantity: int | None = Field(default=None, ge=0)
+    quantity: int | None = Field(default=None, ge=0, le=MAX_PRODUCT_QUANTITY)
     price: int | None = Field(default=None, ge=0)
+    sale_price: int | None = Field(default=None, ge=0)
+    purchase_price: int | None = Field(default=None, ge=0)
     low_stock_threshold: int | None = Field(default=None, ge=0)
     low_stock_alert: bool | None = None
 
@@ -249,10 +437,20 @@ class InventoryOut(BaseModel):
     catalog_product_id: int
     is_catalog_backed: bool = False
     category_id: int | None = None
+    label_ids: list[int] = []
     quantity: int
     price: int
+    sale_price: int | None = None
+    purchase_price: int | None = None
+    price_missing: bool = False
 
     image_url: str | None = None
+    media_asset_id: str | None = None
+    media_version: int | None = None
+    media_content_sha256: str | None = None
+    media_byte_size: int | None = None
+    media_preview_url: str | None = None
+    media_detail_url: str | None = None
     version: int = 1
 
     custom_label: str | None = None
@@ -285,9 +483,51 @@ class InventoryListResponse(BaseModel):
 # =========================================================
 # TRANSACTIONS
 # =========================================================
+class CounterpartyBase(BaseModel):
+    kind: Literal["person", "organization"] = "person"
+    name: str = Field(min_length=1, max_length=160)
+    phone: str | None = Field(default=None, max_length=32)
+    address: str | None = Field(default=None, max_length=300)
+
+    @field_validator("name", "phone", "address", mode="before")
+    @classmethod
+    def trim_counterparty_text(cls, value: object) -> object:
+        if isinstance(value, str):
+            value = value.strip()
+            return value or None
+        return value
+
+
+class CounterpartyCreate(CounterpartyBase):
+    pass
+
+
+class CounterpartyUpdate(BaseModel):
+    kind: Literal["person", "organization"] | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=160)
+    phone: str | None = Field(default=None, max_length=32)
+    address: str | None = Field(default=None, max_length=300)
+
+    @field_validator("name", "phone", "address", mode="before")
+    @classmethod
+    def trim_counterparty_update_text(cls, value: object) -> object:
+        if isinstance(value, str):
+            value = value.strip()
+            return value or None
+        return value
+
+
+class CounterpartyOut(CounterpartyBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    created_at: datetime
+    updated_at: datetime
+
+
 class TransactionCreate(BaseModel):
     type: Literal["stock_in", "stock_out"]
-    quantity: int = Field(gt=0)
+    quantity: int = Field(gt=0, le=MAX_PRODUCT_QUANTITY)
     note: str | None = None
 
 
@@ -311,7 +551,7 @@ class CustomProductCreate(BaseModel):
     name: str
     description: str | None = None
     image_url: str | None = None
-    quantity: int = Field(default=0, ge=0)
+    quantity: int = Field(default=0, ge=0, le=MAX_PRODUCT_QUANTITY)
     price: int = Field(default=0, ge=0)
     note: str | None = None
 
@@ -320,7 +560,7 @@ class CustomProductUpdate(BaseModel):
     name: str | None = None
     description: str | None = None
     image_url: str | None = None
-    quantity: int | None = Field(default=None, ge=0)
+    quantity: int | None = Field(default=None, ge=0, le=MAX_PRODUCT_QUANTITY)
     price: int | None = Field(default=None, ge=0)
     note: str | None = None
 
@@ -390,7 +630,7 @@ class PaginatedCatalog(BaseModel):
 # =========================================================
 class InventorySyncItem(BaseModel):
     id: int
-    quantity: int
+    quantity: int = Field(ge=0, le=MAX_PRODUCT_QUANTITY)
     price: int
     custom_label: str | None = None
     note: str | None = None
@@ -400,13 +640,74 @@ class InventoryBulkSync(BaseModel):
     items: list[InventorySyncItem]
 
 
+class BarcodeOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    store_id: int
+    product_id: int
+    value: str
+    source: Literal["manufacturer", "tanzim"]
+    symbology: Literal["code128", "ean13", "ean8", "upca", "upce", "unknown"]
+    meaning: Literal["unit", "package"]
+    scan_quantity: int
+    is_active: bool
+    is_default: bool
+    version: int
+    created_at: datetime
+    updated_at: datetime
+
+
+class BarcodeSnapshot(BaseModel):
+    items: list[BarcodeOut]
+
+
+class InventoryMovementOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    operation_id: str
+    product_id: int
+    actor_user_id: int
+    actor_membership_id: int
+    kind: Literal["receive", "issue", "correction", "reversal"]
+    delta: int
+    correction_quantity: int | None
+    scan_source: Literal["manual", "hardware", "camera"]
+    barcode_id: int | None
+    barcode_value: str | None
+    scan_quantity: int
+    before_quantity: int
+    after_quantity: int
+    reverses_operation_id: str | None
+    invoice_id: int | None = None
+    invoice_line_id: int | None = None
+    created_at: datetime
+
+
 class SyncOperationIn(BaseModel):
     operation_id: str = Field(min_length=1, max_length=64)
-    entity: Literal["product"]
+    entity: Literal["product", "category", "label", "barcode", "inventory_movement", "invoice"]
     entity_id: int
     operation: Literal["CREATE", "UPDATE", "DELETE"]
     payload: dict[str, Any] | None = None
     base_version: int | None = Field(default=None, ge=1)
+    client_occurred_at: datetime | None = None
+    execution_mode: Literal["solo", "team"] | None = None
+    policy_version: int | None = Field(default=None, ge=1)
+
+
+class StoreOperatingModeOut(BaseModel):
+    operating_mode: Literal["solo", "team"]
+    policy_version: int
+    changed_at: datetime
+    changed_by_user_id: int | None
+    team_eligible: bool
+
+
+class TeamActivationRequest(BaseModel):
+    transition_id: str = Field(min_length=1, max_length=64)
+    expected_policy_version: int = Field(ge=1)
 
 
 class SyncBatchRequest(BaseModel):
@@ -417,7 +718,7 @@ class SyncOperationResult(BaseModel):
     operation_id: str
     status: Literal["applied", "conflict", "fatal_error"]
     entity_id: int
-    record: InventoryOut | None = None
+    record: dict[str, Any] | InventoryOut | None = None
     error: str | None = None
 
 
@@ -471,6 +772,13 @@ class EntitlementOut(BaseModel):
     synced_at: datetime
     capabilities: dict[str, bool]
     limits: dict[str, int | None]
+    tools: dict[str, bool]
+    store_id: int | None = None
+    base_plan: str
+    entitlement_source: Literal["subscription", "grant", "administrator"]
+    grant_id: int | None = None
+    grant_expires_at: datetime | None = None
+    policy_revision: int
 
 
 class PlanDefinitionOut(BaseModel):
@@ -478,40 +786,94 @@ class PlanDefinitionOut(BaseModel):
     name: str
     description: str | None = None
     price_minor: int | None = None
+    price_toman: int | None = None
     currency: str
     duration: int | None = None
     duration_unit: Literal["day", "month", "year"] | None = None
+    is_offer_available: bool = False
     is_active: bool
     features: dict[str, bool]
     limits: dict[str, int | None]
+    policy_revision: int
+    commercial_status: Literal["legacy_unapproved", "legacy_only"]
+    configuration_errors: list[str] = Field(default_factory=list)
     created_at: datetime
 
     updated_at: datetime
 
 
 class PlanCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     id: str = Field(pattern=r"^[a-z0-9_-]+$", min_length=2, max_length=40)
     name: str = Field(min_length=1, max_length=120)
     description: str | None = None
-    price_minor: int | None = Field(default=None, ge=0)
-    currency: str = Field(default="IRR", min_length=3, max_length=10)
+    price_toman: StrictInt | None = Field(default=None, ge=0, le=10_000_000_000)
     duration: int | None = Field(default=None, gt=0)
     duration_unit: Literal["day", "month", "year"] | None = None
+    is_offer_available: bool = False
     is_active: bool = True
     features: dict[str, bool]
     limits: dict[str, int | None]
+    reason: str = Field(min_length=3, max_length=1000)
 
 
 class PlanPatch(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    expected_revision: int = Field(ge=1)
+    reason: str = Field(min_length=3, max_length=1000)
     name: str | None = Field(default=None, min_length=1, max_length=120)
     description: str | None = None
-    price_minor: int | None = Field(default=None, ge=0)
-    currency: str | None = Field(default=None, min_length=3, max_length=10)
+    price_toman: StrictInt | None = Field(default=None, ge=0, le=10_000_000_000)
     duration: int | None = Field(default=None, gt=0)
     duration_unit: Literal["day", "month", "year"] | None = None
+    is_offer_available: bool | None = None
     is_active: bool | None = None
     features: dict[str, bool] | None = None
     limits: dict[str, int | None] | None = None
+
+
+class PlanOfferOut(BaseModel):
+    offer_id: str
+    plan_id: str
+    plan_revision: int
+    amount_toman: int
+    currency: Literal["TOMAN"]
+    term_count: int
+    term_unit: Literal["day", "month", "year"]
+    captured_at: datetime
+    checkout_available: Literal[False] = False
+    checkout_status: Literal["PAYMENT_PROVIDER_NOT_CONFIGURED"] = "PAYMENT_PROVIDER_NOT_CONFIGURED"
+
+
+
+class StorePlanGrantCreate(BaseModel):
+    request_id: str = Field(pattern=r"^[A-Za-z0-9_-]+$", min_length=8, max_length=64)
+    store_id: int = Field(gt=0)
+    plan_id: Literal["personal", "pro", "vip"]
+    source: Literal["early_user_gift", "support", "promotion", "manual"]
+    reason: str = Field(min_length=3, max_length=2000)
+    starts_at: datetime
+    ends_at: datetime
+
+
+class StorePlanGrantRevoke(BaseModel):
+    reason: str = Field(min_length=3, max_length=2000)
+
+
+class StorePlanGrantOut(BaseModel):
+    id: int
+    request_id: str
+    store_id: int
+    plan_id: str
+    source: str
+    reason: str
+    starts_at: datetime
+    ends_at: datetime
+    granted_by_user_id: int
+    revoked_at: datetime | None = None
+    revoked_by_user_id: int | None = None
+    revocation_reason: str | None = None
+    created_at: datetime
 
 
 class AdminUserStateUpdate(BaseModel):
@@ -532,6 +894,22 @@ class AdminUserOut(UserOut):
     subscription_status: Literal["active", "expired"]
     last_activity_at: datetime | None = None
     remaining_days: int | None = None
+    device_limit_mode: Literal["inherit", "unlimited", "limited"]
+    device_limit_override: int | None = None
+    effective_device_limit: int | None = None
+    device_limit_source: Literal["plan", "user"]
+    active_session_count: int = 0
+
+
+class AdminDevicePolicyUpdate(BaseModel):
+    mode: Literal["inherit", "unlimited", "limited"]
+    limit: int | None = Field(default=None, gt=0)
+
+    @model_validator(mode="after")
+    def validate_policy(self):
+        if (self.mode == "limited") != (self.limit is not None):
+            raise ValueError("DEVICE_POLICY_INVALID")
+        return self
     
 
 class DeviceInfo(BaseModel):
@@ -552,13 +930,28 @@ class IndustryBase(BaseModel):
 
 class IndustryCreate(IndustryBase):
     is_active: bool = True
-    pass
+    tools: dict[str, bool] | None = None
+
+    @field_validator("tools")
+    @classmethod
+    def validate_tools(cls, value):
+        if value is not None and set(value) - {"import", "labels", "categories", "export", "catalog", "recovery"}:
+            raise ValueError("UNKNOWN_TOOL_ID")
+        return value
 
 
 class IndustryUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
     is_active: bool | None = None
     description: str | None = Field(default=None, max_length=5000)
+    tools: dict[str, bool] | None = None
+
+    @field_validator("tools")
+    @classmethod
+    def validate_tools(cls, value):
+        if value is not None and set(value) - {"import", "labels", "categories", "export", "catalog", "recovery"}:
+            raise ValueError("UNKNOWN_TOOL_ID")
+        return value
 
     @field_validator("name")
     @classmethod
@@ -574,6 +967,7 @@ class IndustryUpdate(BaseModel):
 class IndustryOut(IndustryBase):
     id: int
     is_active: bool
+    tools: dict[str, bool]
 
     model_config = ConfigDict(from_attributes=True)
 

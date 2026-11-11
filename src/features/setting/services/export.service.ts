@@ -3,6 +3,8 @@ import type { Product } from "@/features/app/inventory/types";
 import { apiFetch } from "@/shared/api/client";
 import { accessState } from "@/shared/access/access-state";
 import { networkService } from "@/shared/lib/infrastructure/network/network-service";
+import { formatJalaliDateTime } from "@/shared/lib/date/jalali";
+import { barcodeRepository } from "@/features/barcode/services/barcode-repository";
 
 export type ExportFormat = "xlsx" | "csv" | "pdf";
 
@@ -17,8 +19,11 @@ export type ExportOptions = {
   selectedIds?: number[];
 };
 
-const COLUMNS: { key: string; label: string; value(product: Product): string }[] =
-  [
+type ExportColumn = { key: string; label: string; value(product: Product, primaryBarcodes: ReadonlyMap<number, string>): string };
+
+function columns(): ExportColumn[] {
+  const output: ExportColumn[] = [
+    { key: "primary_barcode", label: "بارکد اصلی", value: (product, barcodes) => barcodes.get(product.id) ?? "" },
     { key: "id", label: "شناسه", value: (p) => String(p.id) },
     {
       key: "name",
@@ -28,21 +33,27 @@ const COLUMNS: { key: string; label: string; value(product: Product): string }[]
     { key: "quantity", label: "تعداد", value: (p) => String(p.quantity) },
     { key: "is_packaged", label: "بسته‌بندی", value: (p) => p.catalog_product?.is_packaged ? "بله" : "خیر" },
     { key: "pack_size", label: "تعداد در هر بسته", value: (p) => p.catalog_product?.pack_size == null ? "" : String(p.catalog_product.pack_size) },
-    { key: "price", label: "قیمت", value: (p) => String(p.price) },
+    { key: "sale_price", label: "قیمت فروش", value: (p) => p.sale_price == null ? "" : String(p.sale_price) },
     { key: "status", label: "وضعیت", value: (p) => p.status },
     { key: "note", label: "یادداشت", value: (p) => p.note ?? "" },
-    { key: "updated_at", label: "بروزرسانی", value: (p) => p.updated_at },
+    { key: "updated_at", label: "بروزرسانی", value: (p) => formatJalaliDateTime(p.updated_at) },
   ];
+  if (typeof accessState.hasStorePermission === "function" && accessState.hasStorePermission("products.purchase_price.view")) {
+    output.splice(7, 0, { key: "purchase_price", label: "قیمت خرید", value: (p) => p.purchase_price == null ? "" : String(p.purchase_price) });
+  }
+  return output;
+}
 
 function escapeCsv(value: string) {
   return /[",\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value;
 }
 
-function toCsv(products: Product[]) {
-  const header = COLUMNS.map((column) => column.label).join(",");
+function toCsv(products: Product[], primaryBarcodes: ReadonlyMap<number, string>) {
+  const selectedColumns = columns();
+  const header = selectedColumns.map((column) => column.label).join(",");
 
   const rows = products.map((product) =>
-    COLUMNS.map((column) => escapeCsv(column.value(product))).join(","),
+    selectedColumns.map((column) => escapeCsv(column.value(product, primaryBarcodes))).join(","),
   );
 
   // BOM keeps Excel from mangling the Persian labels.
@@ -56,22 +67,27 @@ function escapeHtml(value: string) {
     .replace(/>/g, "&gt;");
 }
 
-function toHtmlTable(products: Product[], title: string) {
-  const header = COLUMNS.map((column) => `<th>${column.label}</th>`).join("");
+function toHtmlTable(products: Product[], title: string, primaryBarcodes: ReadonlyMap<number, string>) {
+  const selectedColumns = columns();
+  const header = selectedColumns.map((column) => `<th>${column.label}</th>`).join("");
 
   const rows = products
     .map(
       (product) =>
-        `<tr>${COLUMNS.map(
-          (column) => `<td>${escapeHtml(column.value(product))}</td>`,
+        `<tr>${selectedColumns.map(
+          (column) => `<td>${escapeHtml(column.value(product, primaryBarcodes))}</td>`,
         ).join("")}</tr>`,
     )
     .join("");
 
+  const fontUrl = window.location.origin && window.location.origin !== "null"
+    ? `${window.location.origin}/fonts/vazirmatn/Vazirmatn-Variable.woff2`
+    : "/fonts/vazirmatn/Vazirmatn-Variable.woff2";
   return `<!doctype html><html dir="rtl" lang="fa"><head><meta charset="utf-8" />
 <title>${title}</title>
 <style>
-body{font-family:sans-serif;padding:16px}
+@font-face{font-family:Vazirmatn;src:url('${fontUrl}') format('woff2-variations');font-style:normal;font-weight:100 900;font-display:block}
+body{font-family:Vazirmatn,Tahoma,Arial,sans-serif;padding:16px}
 table{border-collapse:collapse;width:100%}
 th,td{border:1px solid #999;padding:6px;text-align:right;font-size:12px}
 th{background:#eee}
@@ -118,8 +134,10 @@ function printAsPdf(blob: Blob) {
     }
 
     printWindow.addEventListener("afterprint", cleanup, { once: true });
-    printWindow.focus();
-    printWindow.print();
+    void printWindow.document.fonts.ready.then(() => {
+      printWindow.focus();
+      printWindow.print();
+    });
 
     // Some browsers do not emit afterprint when the dialog is cancelled.
     window.setTimeout(cleanup, 60_000);
@@ -154,11 +172,20 @@ function applyScope(products: Product[], options: ExportOptions) {
   return products;
 }
 
-function buildFile(products: Product[], options: ExportOptions, title: string) {
+async function primaryBarcodeMap() {
+  const barcodes = await barcodeRepository.getAll();
+  const output = new Map<number, string>();
+  for (const barcode of barcodes.filter((item) => item.is_active).sort((left, right) => Number(right.is_default) - Number(left.is_default))) {
+    if (!output.has(barcode.product_id)) output.set(barcode.product_id, barcode.value);
+  }
+  return output;
+}
+
+function buildFile(products: Product[], options: ExportOptions, title: string, primaryBarcodes: ReadonlyMap<number, string>) {
   switch (options.format) {
     case "csv":
       return {
-        blob: new Blob([toCsv(products)], {
+        blob: new Blob([toCsv(products, primaryBarcodes)], {
           type: "text/csv;charset=utf-8",
         }),
         extension: "csv",
@@ -168,7 +195,7 @@ function buildFile(products: Product[], options: ExportOptions, title: string) {
       // Excel-compatible HTML table. The UI labels this honestly as .xls;
       // generating OOXML would require a spreadsheet dependency.
       return {
-        blob: new Blob([toHtmlTable(products, title)], {
+        blob: new Blob([toHtmlTable(products, title, primaryBarcodes)], {
           type: "application/vnd.ms-excel;charset=utf-8",
         }),
         extension: "xls",
@@ -176,7 +203,7 @@ function buildFile(products: Product[], options: ExportOptions, title: string) {
 
     case "pdf":
       return {
-        blob: new Blob([toHtmlTable(products, title)], {
+        blob: new Blob([toHtmlTable(products, title, primaryBarcodes)], {
           type: "text/html;charset=utf-8",
         }),
         extension: "html",
@@ -193,12 +220,12 @@ export class ServerExportUnavailableError extends Error {
 export const exportService = {
   /** Exports the current offline state, straight from IndexedDB. */
   async exportLocal(options: ExportOptions) {
-    accessState.requireCapability("export.local");
+    accessState.requireTool("export");
     const products = applyScope(await inventoryService.getAll(), options);
 
     const title = "خروجی داده های محلی";
 
-    const file = buildFile(products, options, title);
+    const file = buildFile(products, options, title, await primaryBarcodeMap());
 
     const stamp = new Date().toISOString().slice(0, 10);
 
@@ -213,6 +240,7 @@ export const exportService = {
 
   /** Exports the server dataset, which may differ while changes are pending. */
   async exportServer(options: ExportOptions) {
+    accessState.requireTool("export");
     accessState.requireCapability("export.server");
     if (networkService.isOffline()) {
       throw new ServerExportUnavailableError();
@@ -239,7 +267,7 @@ export const exportService = {
 
     const title = "خروجی داده های سرور";
 
-    const file = buildFile(products, options, title);
+    const file = buildFile(products, options, title, await primaryBarcodeMap());
 
     if (options.format === "pdf") {
       printAsPdf(file.blob);

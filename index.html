@@ -2,18 +2,44 @@
 <html lang="fa" dir="rtl">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png?v=2" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16.png?v=2" />
+    <link rel="shortcut icon" type="image/png" href="/favicon-48.png?v=2" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/apple-touch-icon-120.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/apple-touch-icon-152.png" />
+    <link rel="apple-touch-icon" sizes="167x167" href="/apple-touch-icon-167.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon-180.png" />
     <link rel="manifest" href="/manifest.webmanifest" />
-    <meta name="theme-color" content="#111113" />
+    <meta name="theme-color" content="#e6e0ef" />
     <meta name="application-name" content="Tanzim" />
     <meta name="apple-mobile-web-app-title" content="Tanzim" />
-    <meta name="description" content="Tanzim — offline-first inventory management" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="msapplication-TileColor" content="#ffffff" />
+    <meta name="msapplication-TileImage" content="/pwa-icon-144.png" />
+    <meta name="description" content="Tanzim — مدیریت موجودی آفلاین‌محور" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Tanzim</title>
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      (() => {
+        const saved = localStorage.getItem("inventory-appearance");
+        const selected = ["light", "dark", "system"].includes(saved) ? saved : "light";
+        const dark = selected === "dark" ||
+          (selected === "system" && matchMedia("(prefers-color-scheme: dark)").matches);
+        const appearance = dark ? "dark" : "light";
+        const savedSize = localStorage.getItem("inventory-display-size");
+        const displaySize = ["compact", "normal", "large"].includes(savedSize)
+          ? savedSize
+          : "normal";
+        document.documentElement.dataset.appearance = appearance;
+        document.documentElement.dataset.displaySize = displaySize;
+        document.documentElement.style.colorScheme = appearance;
+        document.querySelector('meta[name="theme-color"]').content = dark ? "#171326" : "#e6e0ef";
+      })();
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

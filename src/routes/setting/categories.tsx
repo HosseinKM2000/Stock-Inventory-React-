@@ -1,11 +1,5 @@
-import CategoriesCards from "@/features/setting/components/categories";
-import { createFileRoute } from "@tanstack/react-router";
-import { CapabilityGuard } from "@/shared/access/capability-guard";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
 export const Route = createFileRoute("/setting/categories")({
-  component: RouteComponent,
+  beforeLoad: () => { throw redirect({ to: "/tools/categories", replace: true }); },
 });
-
-function RouteComponent() {
-  return <CapabilityGuard capability="categories.write"><CategoriesCards /></CapabilityGuard>;
-}

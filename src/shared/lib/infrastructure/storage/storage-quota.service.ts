@@ -17,7 +17,14 @@ export const storageQuotaService = {
       return null;
     }
 
-    const estimate = await navigator.storage.estimate();
+    let estimate: StorageEstimate;
+    try {
+      estimate = await navigator.storage.estimate();
+    } catch {
+      // Estimation is advisory. The real write remains authoritative and its
+      // error is surfaced to the caller.
+      return null;
+    }
     const used = estimate.usage ?? 0;
     const quota = estimate.quota ?? 0;
 

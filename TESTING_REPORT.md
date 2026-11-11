@@ -90,3 +90,22 @@ business logic and UI behavior were not changed.
 **PASS WITH KNOWN RISKS — Core unit, API, PostgreSQL migration/constraint, local
 storage, sync-policy, and PWA contract suites pass. The unexecuted credentialed
 and multi-system E2E journeys remain explicitly listed release risks.**
+
+## TZ-012 verification — 2026-10-15
+
+| Check | Result | Evidence / note |
+| --- | --- | --- |
+| Frontend unit + component | PASS | 51 files, 203 tests |
+| Frontend test typecheck | PASS | `tsc --noEmit -p tsconfig.test.json` |
+| Frontend lint | PASS | `eslint .` |
+| Backend fast/domain/API | PASS | 37 tests, including store personnel and sync authorization |
+| Python compilation | PASS | `compileall` for application and Alembic modules |
+| Production bundle | PASS | Vite transformed 847 modules and built to a clean temporary output directory |
+| Default `dist` output | ENVIRONMENT BLOCKED | Vite could not empty the pre-existing `dist/.vite` directory because Windows returned `EPERM`; the clean-output build passed |
+| PostgreSQL/Alembic integration | NOT RUN | `TEST_DATABASE_URL` is not configured in this workspace |
+| Playwright browser journeys | NOT RUN | The configured Playwright Chromium executable is not installed |
+
+TZ-012 adds focused coverage for permission normalization and unknown-permission
+denial, personnel capacity/overrides, temporary-credential gating, activity
+attribution, the platform-admin isolated-workspace bypass, the 24-hour offline authorization lease,
+store/actor IndexedDB isolation, backup schema v2, and owner-only navigation.

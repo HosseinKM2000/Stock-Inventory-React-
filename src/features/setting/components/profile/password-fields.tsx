@@ -70,15 +70,19 @@ const PasswordFields = () => {
 
   return (
     <Form
+      isDirty={form.isDirty}
       onSubmit={preventEventHandler(form.submit)}
       isSubmitting={updatePassword.isPending}
     >
       <Box
         mt="6"
         mb={{ initial: "9", md: "0" }}
-        className="bg-foreground/5 p-5 rounded-2xl border border-foreground/20"
+        className="settings-form-panel"
       >
-        <Text className="text-xl font-medium">امنیت</Text>
+        <Box className="settings-panel-heading">
+          <Text as="div" size="5" weight="bold">تغییر رمز عبور</Text>
+          <Text as="p" size="2" color="gray">برای حفظ امنیت حساب، رمزی متفاوت و غیرقابل حدس انتخاب کنید.</Text>
+        </Box>
 
         {errorMessage && (
           <Callout.Root color="red" dir="rtl" mt="4">

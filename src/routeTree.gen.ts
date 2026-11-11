@@ -9,20 +9,46 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ToolsRouteRouteImport } from './routes/tools/route'
 import { Route as SettingRouteRouteImport } from './routes/setting/route'
+import { Route as ManagementRouteRouteImport } from './routes/management/route'
 import { Route as AuthRouteRouteImport } from './routes/auth/route'
 import { Route as appRouteRouteImport } from './routes/(app)/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ToolsIndexRouteImport } from './routes/tools/index'
+import { Route as SettingIndexRouteImport } from './routes/setting/index'
+import { Route as ManagementIndexRouteImport } from './routes/management/index'
+import { Route as ToolsScannerRouteImport } from './routes/tools/scanner'
+import { Route as ToolsRecoveryRouteImport } from './routes/tools/recovery'
+import { Route as ToolsLabelsRouteImport } from './routes/tools/labels'
+import { Route as ToolsInvoicesRouteImport } from './routes/tools/invoices'
+import { Route as ToolsImportRouteImport } from './routes/tools/import'
+import { Route as ToolsHelpRouteImport } from './routes/tools/help'
+import { Route as ToolsExportRouteImport } from './routes/tools/export'
+import { Route as ToolsCounterpartiesRouteImport } from './routes/tools/counterparties'
+import { Route as ToolsCategoriesRouteImport } from './routes/tools/categories'
+import { Route as ToolsCatalogRouteImport } from './routes/tools/catalog'
+import { Route as ToolsActivityRouteImport } from './routes/tools/activity'
 import { Route as SettingUsersRouteImport } from './routes/setting/users'
+import { Route as SettingUpdateRouteImport } from './routes/setting/update'
+import { Route as SettingSyncRouteImport } from './routes/setting/sync'
 import { Route as SettingSubscriptionManagementRouteImport } from './routes/setting/subscription-management'
 import { Route as SettingSubscriptionRouteImport } from './routes/setting/subscription'
+import { Route as SettingSecurityRouteImport } from './routes/setting/security'
+import { Route as SettingRolesRouteImport } from './routes/setting/roles'
 import { Route as SettingProfileRouteImport } from './routes/setting/profile'
 import { Route as SettingProductsRouteImport } from './routes/setting/products'
+import { Route as SettingPersonnelRouteImport } from './routes/setting/personnel'
 import { Route as SettingIndustryRouteImport } from './routes/setting/industry'
 import { Route as SettingExportRouteImport } from './routes/setting/export'
 import { Route as SettingCategoriesRouteImport } from './routes/setting/categories'
 import { Route as SettingCatalogsRouteImport } from './routes/setting/catalogs'
+import { Route as SettingBackupRouteImport } from './routes/setting/backup'
 import { Route as SettingAppearanceRouteImport } from './routes/setting/appearance'
+import { Route as ManagementUsersRouteImport } from './routes/management/users'
+import { Route as ManagementSubscriptionsRouteImport } from './routes/management/subscriptions'
+import { Route as ManagementIndustriesRouteImport } from './routes/management/industries'
+import { Route as ManagementCatalogsRouteImport } from './routes/management/catalogs'
 import { Route as AuthRegisterRouteImport } from './routes/auth/register'
 import { Route as AuthLoginRouteImport } from './routes/auth/login'
 import { Route as appIndustryRouteRouteImport } from './routes/(app)/industry/route'
@@ -32,20 +58,35 @@ import { Route as appDashboardIndexRouteImport } from './routes/(app)/dashboard/
 import { Route as appInventoryListRouteImport } from './routes/(app)/inventory/list'
 import { Route as appInventoryEditRouteImport } from './routes/(app)/inventory/edit'
 import { Route as appInventoryAddRouteImport } from './routes/(app)/inventory/add'
+import { Route as appDashboardReportsRouteImport } from './routes/(app)/dashboard/reports'
+import { Route as appDashboardFinancialRouteImport } from './routes/(app)/dashboard/financial'
 import { Route as appDashboardProductsRouteRouteImport } from './routes/(app)/dashboard/products/route'
 import { Route as appDashboardProductsUrgentPurchaseIndexRouteImport } from './routes/(app)/dashboard/products/urgent-purchase/index'
+import { Route as appDashboardProductsUnclassifiedIndexRouteImport } from './routes/(app)/dashboard/products/unclassified/index'
 import { Route as appDashboardProductsTodayIndexRouteImport } from './routes/(app)/dashboard/products/today/index'
 import { Route as appDashboardProductsOutOfStockIndexRouteImport } from './routes/(app)/dashboard/products/out-of-stock/index'
 import { Route as appDashboardProductsNoPriceIndexRouteImport } from './routes/(app)/dashboard/products/no-price/index'
 import { Route as appDashboardProductsNoImageIndexRouteImport } from './routes/(app)/dashboard/products/no-image/index'
 import { Route as appDashboardProductsLowStockIndexRouteImport } from './routes/(app)/dashboard/products/low-stock/index'
 import { Route as appDashboardProductsInventoryValueIndexRouteImport } from './routes/(app)/dashboard/products/inventory-value/index'
+import { Route as appDashboardProductsHighestValueIndexRouteImport } from './routes/(app)/dashboard/products/highest-value/index'
 import { Route as appDashboardProductsHiddenIndexRouteImport } from './routes/(app)/dashboard/products/hidden/index'
 import { Route as appDashboardProductsAllIndexRouteImport } from './routes/(app)/dashboard/products/all/index'
+import { Route as appDashboardProductsActionsIndexRouteImport } from './routes/(app)/dashboard/products/actions/index'
 
+const ToolsRouteRoute = ToolsRouteRouteImport.update({
+  id: '/tools',
+  path: '/tools',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingRouteRoute = SettingRouteRouteImport.update({
   id: '/setting',
   path: '/setting',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ManagementRouteRoute = ManagementRouteRouteImport.update({
+  id: '/management',
+  path: '/management',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthRouteRoute = AuthRouteRouteImport.update({
@@ -62,9 +103,89 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ToolsIndexRoute = ToolsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ToolsRouteRoute,
+} as any)
+const SettingIndexRoute = SettingIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SettingRouteRoute,
+} as any)
+const ManagementIndexRoute = ManagementIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ManagementRouteRoute,
+} as any)
+const ToolsScannerRoute = ToolsScannerRouteImport.update({
+  id: '/scanner',
+  path: '/scanner',
+  getParentRoute: () => ToolsRouteRoute,
+} as any)
+const ToolsRecoveryRoute = ToolsRecoveryRouteImport.update({
+  id: '/recovery',
+  path: '/recovery',
+  getParentRoute: () => ToolsRouteRoute,
+} as any)
+const ToolsLabelsRoute = ToolsLabelsRouteImport.update({
+  id: '/labels',
+  path: '/labels',
+  getParentRoute: () => ToolsRouteRoute,
+} as any)
+const ToolsInvoicesRoute = ToolsInvoicesRouteImport.update({
+  id: '/invoices',
+  path: '/invoices',
+  getParentRoute: () => ToolsRouteRoute,
+} as any)
+const ToolsImportRoute = ToolsImportRouteImport.update({
+  id: '/import',
+  path: '/import',
+  getParentRoute: () => ToolsRouteRoute,
+} as any)
+const ToolsHelpRoute = ToolsHelpRouteImport.update({
+  id: '/help',
+  path: '/help',
+  getParentRoute: () => ToolsRouteRoute,
+} as any)
+const ToolsExportRoute = ToolsExportRouteImport.update({
+  id: '/export',
+  path: '/export',
+  getParentRoute: () => ToolsRouteRoute,
+} as any)
+const ToolsCounterpartiesRoute = ToolsCounterpartiesRouteImport.update({
+  id: '/counterparties',
+  path: '/counterparties',
+  getParentRoute: () => ToolsRouteRoute,
+} as any)
+const ToolsCategoriesRoute = ToolsCategoriesRouteImport.update({
+  id: '/categories',
+  path: '/categories',
+  getParentRoute: () => ToolsRouteRoute,
+} as any)
+const ToolsCatalogRoute = ToolsCatalogRouteImport.update({
+  id: '/catalog',
+  path: '/catalog',
+  getParentRoute: () => ToolsRouteRoute,
+} as any)
+const ToolsActivityRoute = ToolsActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => ToolsRouteRoute,
+} as any)
 const SettingUsersRoute = SettingUsersRouteImport.update({
   id: '/users',
   path: '/users',
+  getParentRoute: () => SettingRouteRoute,
+} as any)
+const SettingUpdateRoute = SettingUpdateRouteImport.update({
+  id: '/update',
+  path: '/update',
+  getParentRoute: () => SettingRouteRoute,
+} as any)
+const SettingSyncRoute = SettingSyncRouteImport.update({
+  id: '/sync',
+  path: '/sync',
   getParentRoute: () => SettingRouteRoute,
 } as any)
 const SettingSubscriptionManagementRoute =
@@ -78,6 +199,16 @@ const SettingSubscriptionRoute = SettingSubscriptionRouteImport.update({
   path: '/subscription',
   getParentRoute: () => SettingRouteRoute,
 } as any)
+const SettingSecurityRoute = SettingSecurityRouteImport.update({
+  id: '/security',
+  path: '/security',
+  getParentRoute: () => SettingRouteRoute,
+} as any)
+const SettingRolesRoute = SettingRolesRouteImport.update({
+  id: '/roles',
+  path: '/roles',
+  getParentRoute: () => SettingRouteRoute,
+} as any)
 const SettingProfileRoute = SettingProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
@@ -86,6 +217,11 @@ const SettingProfileRoute = SettingProfileRouteImport.update({
 const SettingProductsRoute = SettingProductsRouteImport.update({
   id: '/products',
   path: '/products',
+  getParentRoute: () => SettingRouteRoute,
+} as any)
+const SettingPersonnelRoute = SettingPersonnelRouteImport.update({
+  id: '/personnel',
+  path: '/personnel',
   getParentRoute: () => SettingRouteRoute,
 } as any)
 const SettingIndustryRoute = SettingIndustryRouteImport.update({
@@ -108,10 +244,35 @@ const SettingCatalogsRoute = SettingCatalogsRouteImport.update({
   path: '/catalogs',
   getParentRoute: () => SettingRouteRoute,
 } as any)
+const SettingBackupRoute = SettingBackupRouteImport.update({
+  id: '/backup',
+  path: '/backup',
+  getParentRoute: () => SettingRouteRoute,
+} as any)
 const SettingAppearanceRoute = SettingAppearanceRouteImport.update({
   id: '/appearance',
   path: '/appearance',
   getParentRoute: () => SettingRouteRoute,
+} as any)
+const ManagementUsersRoute = ManagementUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => ManagementRouteRoute,
+} as any)
+const ManagementSubscriptionsRoute = ManagementSubscriptionsRouteImport.update({
+  id: '/subscriptions',
+  path: '/subscriptions',
+  getParentRoute: () => ManagementRouteRoute,
+} as any)
+const ManagementIndustriesRoute = ManagementIndustriesRouteImport.update({
+  id: '/industries',
+  path: '/industries',
+  getParentRoute: () => ManagementRouteRoute,
+} as any)
+const ManagementCatalogsRoute = ManagementCatalogsRouteImport.update({
+  id: '/catalogs',
+  path: '/catalogs',
+  getParentRoute: () => ManagementRouteRoute,
 } as any)
 const AuthRegisterRoute = AuthRegisterRouteImport.update({
   id: '/register',
@@ -158,6 +319,16 @@ const appInventoryAddRoute = appInventoryAddRouteImport.update({
   path: '/inventory/add',
   getParentRoute: () => appRouteRoute,
 } as any)
+const appDashboardReportsRoute = appDashboardReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => appDashboardRouteRoute,
+} as any)
+const appDashboardFinancialRoute = appDashboardFinancialRouteImport.update({
+  id: '/financial',
+  path: '/financial',
+  getParentRoute: () => appDashboardRouteRoute,
+} as any)
 const appDashboardProductsRouteRoute =
   appDashboardProductsRouteRouteImport.update({
     id: '/products',
@@ -168,6 +339,12 @@ const appDashboardProductsUrgentPurchaseIndexRoute =
   appDashboardProductsUrgentPurchaseIndexRouteImport.update({
     id: '/urgent-purchase/',
     path: '/urgent-purchase/',
+    getParentRoute: () => appDashboardProductsRouteRoute,
+  } as any)
+const appDashboardProductsUnclassifiedIndexRoute =
+  appDashboardProductsUnclassifiedIndexRouteImport.update({
+    id: '/unclassified/',
+    path: '/unclassified/',
     getParentRoute: () => appDashboardProductsRouteRoute,
   } as any)
 const appDashboardProductsTodayIndexRoute =
@@ -206,6 +383,12 @@ const appDashboardProductsInventoryValueIndexRoute =
     path: '/inventory-value/',
     getParentRoute: () => appDashboardProductsRouteRoute,
   } as any)
+const appDashboardProductsHighestValueIndexRoute =
+  appDashboardProductsHighestValueIndexRouteImport.update({
+    id: '/highest-value/',
+    path: '/highest-value/',
+    getParentRoute: () => appDashboardProductsRouteRoute,
+  } as any)
 const appDashboardProductsHiddenIndexRoute =
   appDashboardProductsHiddenIndexRouteImport.update({
     id: '/hidden/',
@@ -218,71 +401,136 @@ const appDashboardProductsAllIndexRoute =
     path: '/all/',
     getParentRoute: () => appDashboardProductsRouteRoute,
   } as any)
+const appDashboardProductsActionsIndexRoute =
+  appDashboardProductsActionsIndexRouteImport.update({
+    id: '/actions/',
+    path: '/actions/',
+    getParentRoute: () => appDashboardProductsRouteRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteRouteWithChildren
+  '/management': typeof ManagementRouteRouteWithChildren
   '/setting': typeof SettingRouteRouteWithChildren
+  '/tools': typeof ToolsRouteRouteWithChildren
   '/dashboard': typeof appDashboardRouteRouteWithChildren
   '/industry': typeof appIndustryRouteRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/management/catalogs': typeof ManagementCatalogsRoute
+  '/management/industries': typeof ManagementIndustriesRoute
+  '/management/subscriptions': typeof ManagementSubscriptionsRoute
+  '/management/users': typeof ManagementUsersRoute
   '/setting/appearance': typeof SettingAppearanceRoute
+  '/setting/backup': typeof SettingBackupRoute
   '/setting/catalogs': typeof SettingCatalogsRoute
   '/setting/categories': typeof SettingCategoriesRoute
   '/setting/export': typeof SettingExportRoute
   '/setting/industry': typeof SettingIndustryRoute
+  '/setting/personnel': typeof SettingPersonnelRoute
   '/setting/products': typeof SettingProductsRoute
   '/setting/profile': typeof SettingProfileRoute
+  '/setting/roles': typeof SettingRolesRoute
+  '/setting/security': typeof SettingSecurityRoute
   '/setting/subscription': typeof SettingSubscriptionRoute
   '/setting/subscription-management': typeof SettingSubscriptionManagementRoute
+  '/setting/sync': typeof SettingSyncRoute
+  '/setting/update': typeof SettingUpdateRoute
   '/setting/users': typeof SettingUsersRoute
+  '/tools/activity': typeof ToolsActivityRoute
+  '/tools/catalog': typeof ToolsCatalogRoute
+  '/tools/categories': typeof ToolsCategoriesRoute
+  '/tools/counterparties': typeof ToolsCounterpartiesRoute
+  '/tools/export': typeof ToolsExportRoute
+  '/tools/help': typeof ToolsHelpRoute
+  '/tools/import': typeof ToolsImportRoute
+  '/tools/invoices': typeof ToolsInvoicesRoute
+  '/tools/labels': typeof ToolsLabelsRoute
+  '/tools/recovery': typeof ToolsRecoveryRoute
+  '/tools/scanner': typeof ToolsScannerRoute
+  '/management/': typeof ManagementIndexRoute
+  '/setting/': typeof SettingIndexRoute
+  '/tools/': typeof ToolsIndexRoute
   '/dashboard/products': typeof appDashboardProductsRouteRouteWithChildren
+  '/dashboard/financial': typeof appDashboardFinancialRoute
+  '/dashboard/reports': typeof appDashboardReportsRoute
   '/inventory/add': typeof appInventoryAddRoute
   '/inventory/edit': typeof appInventoryEditRoute
   '/inventory/list': typeof appInventoryListRoute
   '/dashboard/': typeof appDashboardIndexRoute
   '/industry/': typeof appIndustryIndexRoute
+  '/dashboard/products/actions/': typeof appDashboardProductsActionsIndexRoute
   '/dashboard/products/all/': typeof appDashboardProductsAllIndexRoute
   '/dashboard/products/hidden/': typeof appDashboardProductsHiddenIndexRoute
+  '/dashboard/products/highest-value/': typeof appDashboardProductsHighestValueIndexRoute
   '/dashboard/products/inventory-value/': typeof appDashboardProductsInventoryValueIndexRoute
   '/dashboard/products/low-stock/': typeof appDashboardProductsLowStockIndexRoute
   '/dashboard/products/no-image/': typeof appDashboardProductsNoImageIndexRoute
   '/dashboard/products/no-price/': typeof appDashboardProductsNoPriceIndexRoute
   '/dashboard/products/out-of-stock/': typeof appDashboardProductsOutOfStockIndexRoute
   '/dashboard/products/today/': typeof appDashboardProductsTodayIndexRoute
+  '/dashboard/products/unclassified/': typeof appDashboardProductsUnclassifiedIndexRoute
   '/dashboard/products/urgent-purchase/': typeof appDashboardProductsUrgentPurchaseIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRouteRouteWithChildren
-  '/setting': typeof SettingRouteRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/management/catalogs': typeof ManagementCatalogsRoute
+  '/management/industries': typeof ManagementIndustriesRoute
+  '/management/subscriptions': typeof ManagementSubscriptionsRoute
+  '/management/users': typeof ManagementUsersRoute
   '/setting/appearance': typeof SettingAppearanceRoute
+  '/setting/backup': typeof SettingBackupRoute
   '/setting/catalogs': typeof SettingCatalogsRoute
   '/setting/categories': typeof SettingCategoriesRoute
   '/setting/export': typeof SettingExportRoute
   '/setting/industry': typeof SettingIndustryRoute
+  '/setting/personnel': typeof SettingPersonnelRoute
   '/setting/products': typeof SettingProductsRoute
   '/setting/profile': typeof SettingProfileRoute
+  '/setting/roles': typeof SettingRolesRoute
+  '/setting/security': typeof SettingSecurityRoute
   '/setting/subscription': typeof SettingSubscriptionRoute
   '/setting/subscription-management': typeof SettingSubscriptionManagementRoute
+  '/setting/sync': typeof SettingSyncRoute
+  '/setting/update': typeof SettingUpdateRoute
   '/setting/users': typeof SettingUsersRoute
+  '/tools/activity': typeof ToolsActivityRoute
+  '/tools/catalog': typeof ToolsCatalogRoute
+  '/tools/categories': typeof ToolsCategoriesRoute
+  '/tools/counterparties': typeof ToolsCounterpartiesRoute
+  '/tools/export': typeof ToolsExportRoute
+  '/tools/help': typeof ToolsHelpRoute
+  '/tools/import': typeof ToolsImportRoute
+  '/tools/invoices': typeof ToolsInvoicesRoute
+  '/tools/labels': typeof ToolsLabelsRoute
+  '/tools/recovery': typeof ToolsRecoveryRoute
+  '/tools/scanner': typeof ToolsScannerRoute
+  '/management': typeof ManagementIndexRoute
+  '/setting': typeof SettingIndexRoute
+  '/tools': typeof ToolsIndexRoute
   '/dashboard/products': typeof appDashboardProductsRouteRouteWithChildren
+  '/dashboard/financial': typeof appDashboardFinancialRoute
+  '/dashboard/reports': typeof appDashboardReportsRoute
   '/inventory/add': typeof appInventoryAddRoute
   '/inventory/edit': typeof appInventoryEditRoute
   '/inventory/list': typeof appInventoryListRoute
   '/dashboard': typeof appDashboardIndexRoute
   '/industry': typeof appIndustryIndexRoute
+  '/dashboard/products/actions': typeof appDashboardProductsActionsIndexRoute
   '/dashboard/products/all': typeof appDashboardProductsAllIndexRoute
   '/dashboard/products/hidden': typeof appDashboardProductsHiddenIndexRoute
+  '/dashboard/products/highest-value': typeof appDashboardProductsHighestValueIndexRoute
   '/dashboard/products/inventory-value': typeof appDashboardProductsInventoryValueIndexRoute
   '/dashboard/products/low-stock': typeof appDashboardProductsLowStockIndexRoute
   '/dashboard/products/no-image': typeof appDashboardProductsNoImageIndexRoute
   '/dashboard/products/no-price': typeof appDashboardProductsNoPriceIndexRoute
   '/dashboard/products/out-of-stock': typeof appDashboardProductsOutOfStockIndexRoute
   '/dashboard/products/today': typeof appDashboardProductsTodayIndexRoute
+  '/dashboard/products/unclassified': typeof appDashboardProductsUnclassifiedIndexRoute
   '/dashboard/products/urgent-purchase': typeof appDashboardProductsUrgentPurchaseIndexRoute
 }
 export interface FileRoutesById {
@@ -290,35 +538,66 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/(app)': typeof appRouteRouteWithChildren
   '/auth': typeof AuthRouteRouteWithChildren
+  '/management': typeof ManagementRouteRouteWithChildren
   '/setting': typeof SettingRouteRouteWithChildren
+  '/tools': typeof ToolsRouteRouteWithChildren
   '/(app)/dashboard': typeof appDashboardRouteRouteWithChildren
   '/(app)/industry': typeof appIndustryRouteRouteWithChildren
   '/auth/login': typeof AuthLoginRoute
   '/auth/register': typeof AuthRegisterRoute
+  '/management/catalogs': typeof ManagementCatalogsRoute
+  '/management/industries': typeof ManagementIndustriesRoute
+  '/management/subscriptions': typeof ManagementSubscriptionsRoute
+  '/management/users': typeof ManagementUsersRoute
   '/setting/appearance': typeof SettingAppearanceRoute
+  '/setting/backup': typeof SettingBackupRoute
   '/setting/catalogs': typeof SettingCatalogsRoute
   '/setting/categories': typeof SettingCategoriesRoute
   '/setting/export': typeof SettingExportRoute
   '/setting/industry': typeof SettingIndustryRoute
+  '/setting/personnel': typeof SettingPersonnelRoute
   '/setting/products': typeof SettingProductsRoute
   '/setting/profile': typeof SettingProfileRoute
+  '/setting/roles': typeof SettingRolesRoute
+  '/setting/security': typeof SettingSecurityRoute
   '/setting/subscription': typeof SettingSubscriptionRoute
   '/setting/subscription-management': typeof SettingSubscriptionManagementRoute
+  '/setting/sync': typeof SettingSyncRoute
+  '/setting/update': typeof SettingUpdateRoute
   '/setting/users': typeof SettingUsersRoute
+  '/tools/activity': typeof ToolsActivityRoute
+  '/tools/catalog': typeof ToolsCatalogRoute
+  '/tools/categories': typeof ToolsCategoriesRoute
+  '/tools/counterparties': typeof ToolsCounterpartiesRoute
+  '/tools/export': typeof ToolsExportRoute
+  '/tools/help': typeof ToolsHelpRoute
+  '/tools/import': typeof ToolsImportRoute
+  '/tools/invoices': typeof ToolsInvoicesRoute
+  '/tools/labels': typeof ToolsLabelsRoute
+  '/tools/recovery': typeof ToolsRecoveryRoute
+  '/tools/scanner': typeof ToolsScannerRoute
+  '/management/': typeof ManagementIndexRoute
+  '/setting/': typeof SettingIndexRoute
+  '/tools/': typeof ToolsIndexRoute
   '/(app)/dashboard/products': typeof appDashboardProductsRouteRouteWithChildren
+  '/(app)/dashboard/financial': typeof appDashboardFinancialRoute
+  '/(app)/dashboard/reports': typeof appDashboardReportsRoute
   '/(app)/inventory/add': typeof appInventoryAddRoute
   '/(app)/inventory/edit': typeof appInventoryEditRoute
   '/(app)/inventory/list': typeof appInventoryListRoute
   '/(app)/dashboard/': typeof appDashboardIndexRoute
   '/(app)/industry/': typeof appIndustryIndexRoute
+  '/(app)/dashboard/products/actions/': typeof appDashboardProductsActionsIndexRoute
   '/(app)/dashboard/products/all/': typeof appDashboardProductsAllIndexRoute
   '/(app)/dashboard/products/hidden/': typeof appDashboardProductsHiddenIndexRoute
+  '/(app)/dashboard/products/highest-value/': typeof appDashboardProductsHighestValueIndexRoute
   '/(app)/dashboard/products/inventory-value/': typeof appDashboardProductsInventoryValueIndexRoute
   '/(app)/dashboard/products/low-stock/': typeof appDashboardProductsLowStockIndexRoute
   '/(app)/dashboard/products/no-image/': typeof appDashboardProductsNoImageIndexRoute
   '/(app)/dashboard/products/no-price/': typeof appDashboardProductsNoPriceIndexRoute
   '/(app)/dashboard/products/out-of-stock/': typeof appDashboardProductsOutOfStockIndexRoute
   '/(app)/dashboard/products/today/': typeof appDashboardProductsTodayIndexRoute
+  '/(app)/dashboard/products/unclassified/': typeof appDashboardProductsUnclassifiedIndexRoute
   '/(app)/dashboard/products/urgent-purchase/': typeof appDashboardProductsUrgentPurchaseIndexRoute
 }
 export interface FileRouteTypes {
@@ -326,102 +605,192 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/management'
     | '/setting'
+    | '/tools'
     | '/dashboard'
     | '/industry'
     | '/auth/login'
     | '/auth/register'
+    | '/management/catalogs'
+    | '/management/industries'
+    | '/management/subscriptions'
+    | '/management/users'
     | '/setting/appearance'
+    | '/setting/backup'
     | '/setting/catalogs'
     | '/setting/categories'
     | '/setting/export'
     | '/setting/industry'
+    | '/setting/personnel'
     | '/setting/products'
     | '/setting/profile'
+    | '/setting/roles'
+    | '/setting/security'
     | '/setting/subscription'
     | '/setting/subscription-management'
+    | '/setting/sync'
+    | '/setting/update'
     | '/setting/users'
+    | '/tools/activity'
+    | '/tools/catalog'
+    | '/tools/categories'
+    | '/tools/counterparties'
+    | '/tools/export'
+    | '/tools/help'
+    | '/tools/import'
+    | '/tools/invoices'
+    | '/tools/labels'
+    | '/tools/recovery'
+    | '/tools/scanner'
+    | '/management/'
+    | '/setting/'
+    | '/tools/'
     | '/dashboard/products'
+    | '/dashboard/financial'
+    | '/dashboard/reports'
     | '/inventory/add'
     | '/inventory/edit'
     | '/inventory/list'
     | '/dashboard/'
     | '/industry/'
+    | '/dashboard/products/actions/'
     | '/dashboard/products/all/'
     | '/dashboard/products/hidden/'
+    | '/dashboard/products/highest-value/'
     | '/dashboard/products/inventory-value/'
     | '/dashboard/products/low-stock/'
     | '/dashboard/products/no-image/'
     | '/dashboard/products/no-price/'
     | '/dashboard/products/out-of-stock/'
     | '/dashboard/products/today/'
+    | '/dashboard/products/unclassified/'
     | '/dashboard/products/urgent-purchase/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
-    | '/setting'
     | '/auth/login'
     | '/auth/register'
+    | '/management/catalogs'
+    | '/management/industries'
+    | '/management/subscriptions'
+    | '/management/users'
     | '/setting/appearance'
+    | '/setting/backup'
     | '/setting/catalogs'
     | '/setting/categories'
     | '/setting/export'
     | '/setting/industry'
+    | '/setting/personnel'
     | '/setting/products'
     | '/setting/profile'
+    | '/setting/roles'
+    | '/setting/security'
     | '/setting/subscription'
     | '/setting/subscription-management'
+    | '/setting/sync'
+    | '/setting/update'
     | '/setting/users'
+    | '/tools/activity'
+    | '/tools/catalog'
+    | '/tools/categories'
+    | '/tools/counterparties'
+    | '/tools/export'
+    | '/tools/help'
+    | '/tools/import'
+    | '/tools/invoices'
+    | '/tools/labels'
+    | '/tools/recovery'
+    | '/tools/scanner'
+    | '/management'
+    | '/setting'
+    | '/tools'
     | '/dashboard/products'
+    | '/dashboard/financial'
+    | '/dashboard/reports'
     | '/inventory/add'
     | '/inventory/edit'
     | '/inventory/list'
     | '/dashboard'
     | '/industry'
+    | '/dashboard/products/actions'
     | '/dashboard/products/all'
     | '/dashboard/products/hidden'
+    | '/dashboard/products/highest-value'
     | '/dashboard/products/inventory-value'
     | '/dashboard/products/low-stock'
     | '/dashboard/products/no-image'
     | '/dashboard/products/no-price'
     | '/dashboard/products/out-of-stock'
     | '/dashboard/products/today'
+    | '/dashboard/products/unclassified'
     | '/dashboard/products/urgent-purchase'
   id:
     | '__root__'
     | '/'
     | '/(app)'
     | '/auth'
+    | '/management'
     | '/setting'
+    | '/tools'
     | '/(app)/dashboard'
     | '/(app)/industry'
     | '/auth/login'
     | '/auth/register'
+    | '/management/catalogs'
+    | '/management/industries'
+    | '/management/subscriptions'
+    | '/management/users'
     | '/setting/appearance'
+    | '/setting/backup'
     | '/setting/catalogs'
     | '/setting/categories'
     | '/setting/export'
     | '/setting/industry'
+    | '/setting/personnel'
     | '/setting/products'
     | '/setting/profile'
+    | '/setting/roles'
+    | '/setting/security'
     | '/setting/subscription'
     | '/setting/subscription-management'
+    | '/setting/sync'
+    | '/setting/update'
     | '/setting/users'
+    | '/tools/activity'
+    | '/tools/catalog'
+    | '/tools/categories'
+    | '/tools/counterparties'
+    | '/tools/export'
+    | '/tools/help'
+    | '/tools/import'
+    | '/tools/invoices'
+    | '/tools/labels'
+    | '/tools/recovery'
+    | '/tools/scanner'
+    | '/management/'
+    | '/setting/'
+    | '/tools/'
     | '/(app)/dashboard/products'
+    | '/(app)/dashboard/financial'
+    | '/(app)/dashboard/reports'
     | '/(app)/inventory/add'
     | '/(app)/inventory/edit'
     | '/(app)/inventory/list'
     | '/(app)/dashboard/'
     | '/(app)/industry/'
+    | '/(app)/dashboard/products/actions/'
     | '/(app)/dashboard/products/all/'
     | '/(app)/dashboard/products/hidden/'
+    | '/(app)/dashboard/products/highest-value/'
     | '/(app)/dashboard/products/inventory-value/'
     | '/(app)/dashboard/products/low-stock/'
     | '/(app)/dashboard/products/no-image/'
     | '/(app)/dashboard/products/no-price/'
     | '/(app)/dashboard/products/out-of-stock/'
     | '/(app)/dashboard/products/today/'
+    | '/(app)/dashboard/products/unclassified/'
     | '/(app)/dashboard/products/urgent-purchase/'
   fileRoutesById: FileRoutesById
 }
@@ -429,16 +798,32 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   appRouteRoute: typeof appRouteRouteWithChildren
   AuthRouteRoute: typeof AuthRouteRouteWithChildren
+  ManagementRouteRoute: typeof ManagementRouteRouteWithChildren
   SettingRouteRoute: typeof SettingRouteRouteWithChildren
+  ToolsRouteRoute: typeof ToolsRouteRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/tools': {
+      id: '/tools'
+      path: '/tools'
+      fullPath: '/tools'
+      preLoaderRoute: typeof ToolsRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/setting': {
       id: '/setting'
       path: '/setting'
       fullPath: '/setting'
       preLoaderRoute: typeof SettingRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/management': {
+      id: '/management'
+      path: '/management'
+      fullPath: '/management'
+      preLoaderRoute: typeof ManagementRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/auth': {
@@ -462,11 +847,123 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tools/': {
+      id: '/tools/'
+      path: '/'
+      fullPath: '/tools/'
+      preLoaderRoute: typeof ToolsIndexRouteImport
+      parentRoute: typeof ToolsRouteRoute
+    }
+    '/setting/': {
+      id: '/setting/'
+      path: '/'
+      fullPath: '/setting/'
+      preLoaderRoute: typeof SettingIndexRouteImport
+      parentRoute: typeof SettingRouteRoute
+    }
+    '/management/': {
+      id: '/management/'
+      path: '/'
+      fullPath: '/management/'
+      preLoaderRoute: typeof ManagementIndexRouteImport
+      parentRoute: typeof ManagementRouteRoute
+    }
+    '/tools/scanner': {
+      id: '/tools/scanner'
+      path: '/scanner'
+      fullPath: '/tools/scanner'
+      preLoaderRoute: typeof ToolsScannerRouteImport
+      parentRoute: typeof ToolsRouteRoute
+    }
+    '/tools/recovery': {
+      id: '/tools/recovery'
+      path: '/recovery'
+      fullPath: '/tools/recovery'
+      preLoaderRoute: typeof ToolsRecoveryRouteImport
+      parentRoute: typeof ToolsRouteRoute
+    }
+    '/tools/labels': {
+      id: '/tools/labels'
+      path: '/labels'
+      fullPath: '/tools/labels'
+      preLoaderRoute: typeof ToolsLabelsRouteImport
+      parentRoute: typeof ToolsRouteRoute
+    }
+    '/tools/invoices': {
+      id: '/tools/invoices'
+      path: '/invoices'
+      fullPath: '/tools/invoices'
+      preLoaderRoute: typeof ToolsInvoicesRouteImport
+      parentRoute: typeof ToolsRouteRoute
+    }
+    '/tools/import': {
+      id: '/tools/import'
+      path: '/import'
+      fullPath: '/tools/import'
+      preLoaderRoute: typeof ToolsImportRouteImport
+      parentRoute: typeof ToolsRouteRoute
+    }
+    '/tools/help': {
+      id: '/tools/help'
+      path: '/help'
+      fullPath: '/tools/help'
+      preLoaderRoute: typeof ToolsHelpRouteImport
+      parentRoute: typeof ToolsRouteRoute
+    }
+    '/tools/export': {
+      id: '/tools/export'
+      path: '/export'
+      fullPath: '/tools/export'
+      preLoaderRoute: typeof ToolsExportRouteImport
+      parentRoute: typeof ToolsRouteRoute
+    }
+    '/tools/counterparties': {
+      id: '/tools/counterparties'
+      path: '/counterparties'
+      fullPath: '/tools/counterparties'
+      preLoaderRoute: typeof ToolsCounterpartiesRouteImport
+      parentRoute: typeof ToolsRouteRoute
+    }
+    '/tools/categories': {
+      id: '/tools/categories'
+      path: '/categories'
+      fullPath: '/tools/categories'
+      preLoaderRoute: typeof ToolsCategoriesRouteImport
+      parentRoute: typeof ToolsRouteRoute
+    }
+    '/tools/catalog': {
+      id: '/tools/catalog'
+      path: '/catalog'
+      fullPath: '/tools/catalog'
+      preLoaderRoute: typeof ToolsCatalogRouteImport
+      parentRoute: typeof ToolsRouteRoute
+    }
+    '/tools/activity': {
+      id: '/tools/activity'
+      path: '/activity'
+      fullPath: '/tools/activity'
+      preLoaderRoute: typeof ToolsActivityRouteImport
+      parentRoute: typeof ToolsRouteRoute
+    }
     '/setting/users': {
       id: '/setting/users'
       path: '/users'
       fullPath: '/setting/users'
       preLoaderRoute: typeof SettingUsersRouteImport
+      parentRoute: typeof SettingRouteRoute
+    }
+    '/setting/update': {
+      id: '/setting/update'
+      path: '/update'
+      fullPath: '/setting/update'
+      preLoaderRoute: typeof SettingUpdateRouteImport
+      parentRoute: typeof SettingRouteRoute
+    }
+    '/setting/sync': {
+      id: '/setting/sync'
+      path: '/sync'
+      fullPath: '/setting/sync'
+      preLoaderRoute: typeof SettingSyncRouteImport
       parentRoute: typeof SettingRouteRoute
     }
     '/setting/subscription-management': {
@@ -483,6 +980,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingSubscriptionRouteImport
       parentRoute: typeof SettingRouteRoute
     }
+    '/setting/security': {
+      id: '/setting/security'
+      path: '/security'
+      fullPath: '/setting/security'
+      preLoaderRoute: typeof SettingSecurityRouteImport
+      parentRoute: typeof SettingRouteRoute
+    }
+    '/setting/roles': {
+      id: '/setting/roles'
+      path: '/roles'
+      fullPath: '/setting/roles'
+      preLoaderRoute: typeof SettingRolesRouteImport
+      parentRoute: typeof SettingRouteRoute
+    }
     '/setting/profile': {
       id: '/setting/profile'
       path: '/profile'
@@ -495,6 +1006,13 @@ declare module '@tanstack/react-router' {
       path: '/products'
       fullPath: '/setting/products'
       preLoaderRoute: typeof SettingProductsRouteImport
+      parentRoute: typeof SettingRouteRoute
+    }
+    '/setting/personnel': {
+      id: '/setting/personnel'
+      path: '/personnel'
+      fullPath: '/setting/personnel'
+      preLoaderRoute: typeof SettingPersonnelRouteImport
       parentRoute: typeof SettingRouteRoute
     }
     '/setting/industry': {
@@ -525,12 +1043,47 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingCatalogsRouteImport
       parentRoute: typeof SettingRouteRoute
     }
+    '/setting/backup': {
+      id: '/setting/backup'
+      path: '/backup'
+      fullPath: '/setting/backup'
+      preLoaderRoute: typeof SettingBackupRouteImport
+      parentRoute: typeof SettingRouteRoute
+    }
     '/setting/appearance': {
       id: '/setting/appearance'
       path: '/appearance'
       fullPath: '/setting/appearance'
       preLoaderRoute: typeof SettingAppearanceRouteImport
       parentRoute: typeof SettingRouteRoute
+    }
+    '/management/users': {
+      id: '/management/users'
+      path: '/users'
+      fullPath: '/management/users'
+      preLoaderRoute: typeof ManagementUsersRouteImport
+      parentRoute: typeof ManagementRouteRoute
+    }
+    '/management/subscriptions': {
+      id: '/management/subscriptions'
+      path: '/subscriptions'
+      fullPath: '/management/subscriptions'
+      preLoaderRoute: typeof ManagementSubscriptionsRouteImport
+      parentRoute: typeof ManagementRouteRoute
+    }
+    '/management/industries': {
+      id: '/management/industries'
+      path: '/industries'
+      fullPath: '/management/industries'
+      preLoaderRoute: typeof ManagementIndustriesRouteImport
+      parentRoute: typeof ManagementRouteRoute
+    }
+    '/management/catalogs': {
+      id: '/management/catalogs'
+      path: '/catalogs'
+      fullPath: '/management/catalogs'
+      preLoaderRoute: typeof ManagementCatalogsRouteImport
+      parentRoute: typeof ManagementRouteRoute
     }
     '/auth/register': {
       id: '/auth/register'
@@ -595,6 +1148,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appInventoryAddRouteImport
       parentRoute: typeof appRouteRoute
     }
+    '/(app)/dashboard/reports': {
+      id: '/(app)/dashboard/reports'
+      path: '/reports'
+      fullPath: '/dashboard/reports'
+      preLoaderRoute: typeof appDashboardReportsRouteImport
+      parentRoute: typeof appDashboardRouteRoute
+    }
+    '/(app)/dashboard/financial': {
+      id: '/(app)/dashboard/financial'
+      path: '/financial'
+      fullPath: '/dashboard/financial'
+      preLoaderRoute: typeof appDashboardFinancialRouteImport
+      parentRoute: typeof appDashboardRouteRoute
+    }
     '/(app)/dashboard/products': {
       id: '/(app)/dashboard/products'
       path: '/products'
@@ -607,6 +1174,13 @@ declare module '@tanstack/react-router' {
       path: '/urgent-purchase'
       fullPath: '/dashboard/products/urgent-purchase/'
       preLoaderRoute: typeof appDashboardProductsUrgentPurchaseIndexRouteImport
+      parentRoute: typeof appDashboardProductsRouteRoute
+    }
+    '/(app)/dashboard/products/unclassified/': {
+      id: '/(app)/dashboard/products/unclassified/'
+      path: '/unclassified'
+      fullPath: '/dashboard/products/unclassified/'
+      preLoaderRoute: typeof appDashboardProductsUnclassifiedIndexRouteImport
       parentRoute: typeof appDashboardProductsRouteRoute
     }
     '/(app)/dashboard/products/today/': {
@@ -651,6 +1225,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appDashboardProductsInventoryValueIndexRouteImport
       parentRoute: typeof appDashboardProductsRouteRoute
     }
+    '/(app)/dashboard/products/highest-value/': {
+      id: '/(app)/dashboard/products/highest-value/'
+      path: '/highest-value'
+      fullPath: '/dashboard/products/highest-value/'
+      preLoaderRoute: typeof appDashboardProductsHighestValueIndexRouteImport
+      parentRoute: typeof appDashboardProductsRouteRoute
+    }
     '/(app)/dashboard/products/hidden/': {
       id: '/(app)/dashboard/products/hidden/'
       path: '/hidden'
@@ -665,25 +1246,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof appDashboardProductsAllIndexRouteImport
       parentRoute: typeof appDashboardProductsRouteRoute
     }
+    '/(app)/dashboard/products/actions/': {
+      id: '/(app)/dashboard/products/actions/'
+      path: '/actions'
+      fullPath: '/dashboard/products/actions/'
+      preLoaderRoute: typeof appDashboardProductsActionsIndexRouteImport
+      parentRoute: typeof appDashboardProductsRouteRoute
+    }
   }
 }
 
 interface appDashboardProductsRouteRouteChildren {
+  appDashboardProductsActionsIndexRoute: typeof appDashboardProductsActionsIndexRoute
   appDashboardProductsAllIndexRoute: typeof appDashboardProductsAllIndexRoute
   appDashboardProductsHiddenIndexRoute: typeof appDashboardProductsHiddenIndexRoute
+  appDashboardProductsHighestValueIndexRoute: typeof appDashboardProductsHighestValueIndexRoute
   appDashboardProductsInventoryValueIndexRoute: typeof appDashboardProductsInventoryValueIndexRoute
   appDashboardProductsLowStockIndexRoute: typeof appDashboardProductsLowStockIndexRoute
   appDashboardProductsNoImageIndexRoute: typeof appDashboardProductsNoImageIndexRoute
   appDashboardProductsNoPriceIndexRoute: typeof appDashboardProductsNoPriceIndexRoute
   appDashboardProductsOutOfStockIndexRoute: typeof appDashboardProductsOutOfStockIndexRoute
   appDashboardProductsTodayIndexRoute: typeof appDashboardProductsTodayIndexRoute
+  appDashboardProductsUnclassifiedIndexRoute: typeof appDashboardProductsUnclassifiedIndexRoute
   appDashboardProductsUrgentPurchaseIndexRoute: typeof appDashboardProductsUrgentPurchaseIndexRoute
 }
 
 const appDashboardProductsRouteRouteChildren: appDashboardProductsRouteRouteChildren =
   {
+    appDashboardProductsActionsIndexRoute:
+      appDashboardProductsActionsIndexRoute,
     appDashboardProductsAllIndexRoute: appDashboardProductsAllIndexRoute,
     appDashboardProductsHiddenIndexRoute: appDashboardProductsHiddenIndexRoute,
+    appDashboardProductsHighestValueIndexRoute:
+      appDashboardProductsHighestValueIndexRoute,
     appDashboardProductsInventoryValueIndexRoute:
       appDashboardProductsInventoryValueIndexRoute,
     appDashboardProductsLowStockIndexRoute:
@@ -695,6 +1290,8 @@ const appDashboardProductsRouteRouteChildren: appDashboardProductsRouteRouteChil
     appDashboardProductsOutOfStockIndexRoute:
       appDashboardProductsOutOfStockIndexRoute,
     appDashboardProductsTodayIndexRoute: appDashboardProductsTodayIndexRoute,
+    appDashboardProductsUnclassifiedIndexRoute:
+      appDashboardProductsUnclassifiedIndexRoute,
     appDashboardProductsUrgentPurchaseIndexRoute:
       appDashboardProductsUrgentPurchaseIndexRoute,
   }
@@ -706,11 +1303,15 @@ const appDashboardProductsRouteRouteWithChildren =
 
 interface appDashboardRouteRouteChildren {
   appDashboardProductsRouteRoute: typeof appDashboardProductsRouteRouteWithChildren
+  appDashboardFinancialRoute: typeof appDashboardFinancialRoute
+  appDashboardReportsRoute: typeof appDashboardReportsRoute
   appDashboardIndexRoute: typeof appDashboardIndexRoute
 }
 
 const appDashboardRouteRouteChildren: appDashboardRouteRouteChildren = {
   appDashboardProductsRouteRoute: appDashboardProductsRouteRouteWithChildren,
+  appDashboardFinancialRoute: appDashboardFinancialRoute,
+  appDashboardReportsRoute: appDashboardReportsRoute,
   appDashboardIndexRoute: appDashboardIndexRoute,
 }
 
@@ -762,41 +1363,111 @@ const AuthRouteRouteWithChildren = AuthRouteRoute._addFileChildren(
   AuthRouteRouteChildren,
 )
 
+interface ManagementRouteRouteChildren {
+  ManagementCatalogsRoute: typeof ManagementCatalogsRoute
+  ManagementIndustriesRoute: typeof ManagementIndustriesRoute
+  ManagementSubscriptionsRoute: typeof ManagementSubscriptionsRoute
+  ManagementUsersRoute: typeof ManagementUsersRoute
+  ManagementIndexRoute: typeof ManagementIndexRoute
+}
+
+const ManagementRouteRouteChildren: ManagementRouteRouteChildren = {
+  ManagementCatalogsRoute: ManagementCatalogsRoute,
+  ManagementIndustriesRoute: ManagementIndustriesRoute,
+  ManagementSubscriptionsRoute: ManagementSubscriptionsRoute,
+  ManagementUsersRoute: ManagementUsersRoute,
+  ManagementIndexRoute: ManagementIndexRoute,
+}
+
+const ManagementRouteRouteWithChildren = ManagementRouteRoute._addFileChildren(
+  ManagementRouteRouteChildren,
+)
+
 interface SettingRouteRouteChildren {
   SettingAppearanceRoute: typeof SettingAppearanceRoute
+  SettingBackupRoute: typeof SettingBackupRoute
   SettingCatalogsRoute: typeof SettingCatalogsRoute
   SettingCategoriesRoute: typeof SettingCategoriesRoute
   SettingExportRoute: typeof SettingExportRoute
   SettingIndustryRoute: typeof SettingIndustryRoute
+  SettingPersonnelRoute: typeof SettingPersonnelRoute
   SettingProductsRoute: typeof SettingProductsRoute
   SettingProfileRoute: typeof SettingProfileRoute
+  SettingRolesRoute: typeof SettingRolesRoute
+  SettingSecurityRoute: typeof SettingSecurityRoute
   SettingSubscriptionRoute: typeof SettingSubscriptionRoute
   SettingSubscriptionManagementRoute: typeof SettingSubscriptionManagementRoute
+  SettingSyncRoute: typeof SettingSyncRoute
+  SettingUpdateRoute: typeof SettingUpdateRoute
   SettingUsersRoute: typeof SettingUsersRoute
+  SettingIndexRoute: typeof SettingIndexRoute
 }
 
 const SettingRouteRouteChildren: SettingRouteRouteChildren = {
   SettingAppearanceRoute: SettingAppearanceRoute,
+  SettingBackupRoute: SettingBackupRoute,
   SettingCatalogsRoute: SettingCatalogsRoute,
   SettingCategoriesRoute: SettingCategoriesRoute,
   SettingExportRoute: SettingExportRoute,
   SettingIndustryRoute: SettingIndustryRoute,
+  SettingPersonnelRoute: SettingPersonnelRoute,
   SettingProductsRoute: SettingProductsRoute,
   SettingProfileRoute: SettingProfileRoute,
+  SettingRolesRoute: SettingRolesRoute,
+  SettingSecurityRoute: SettingSecurityRoute,
   SettingSubscriptionRoute: SettingSubscriptionRoute,
   SettingSubscriptionManagementRoute: SettingSubscriptionManagementRoute,
+  SettingSyncRoute: SettingSyncRoute,
+  SettingUpdateRoute: SettingUpdateRoute,
   SettingUsersRoute: SettingUsersRoute,
+  SettingIndexRoute: SettingIndexRoute,
 }
 
 const SettingRouteRouteWithChildren = SettingRouteRoute._addFileChildren(
   SettingRouteRouteChildren,
 )
 
+interface ToolsRouteRouteChildren {
+  ToolsActivityRoute: typeof ToolsActivityRoute
+  ToolsCatalogRoute: typeof ToolsCatalogRoute
+  ToolsCategoriesRoute: typeof ToolsCategoriesRoute
+  ToolsCounterpartiesRoute: typeof ToolsCounterpartiesRoute
+  ToolsExportRoute: typeof ToolsExportRoute
+  ToolsHelpRoute: typeof ToolsHelpRoute
+  ToolsImportRoute: typeof ToolsImportRoute
+  ToolsInvoicesRoute: typeof ToolsInvoicesRoute
+  ToolsLabelsRoute: typeof ToolsLabelsRoute
+  ToolsRecoveryRoute: typeof ToolsRecoveryRoute
+  ToolsScannerRoute: typeof ToolsScannerRoute
+  ToolsIndexRoute: typeof ToolsIndexRoute
+}
+
+const ToolsRouteRouteChildren: ToolsRouteRouteChildren = {
+  ToolsActivityRoute: ToolsActivityRoute,
+  ToolsCatalogRoute: ToolsCatalogRoute,
+  ToolsCategoriesRoute: ToolsCategoriesRoute,
+  ToolsCounterpartiesRoute: ToolsCounterpartiesRoute,
+  ToolsExportRoute: ToolsExportRoute,
+  ToolsHelpRoute: ToolsHelpRoute,
+  ToolsImportRoute: ToolsImportRoute,
+  ToolsInvoicesRoute: ToolsInvoicesRoute,
+  ToolsLabelsRoute: ToolsLabelsRoute,
+  ToolsRecoveryRoute: ToolsRecoveryRoute,
+  ToolsScannerRoute: ToolsScannerRoute,
+  ToolsIndexRoute: ToolsIndexRoute,
+}
+
+const ToolsRouteRouteWithChildren = ToolsRouteRoute._addFileChildren(
+  ToolsRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   appRouteRoute: appRouteRouteWithChildren,
   AuthRouteRoute: AuthRouteRouteWithChildren,
+  ManagementRouteRoute: ManagementRouteRouteWithChildren,
   SettingRouteRoute: SettingRouteRouteWithChildren,
+  ToolsRouteRoute: ToolsRouteRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -40,8 +40,10 @@ describe("durable outbox consolidation", () => {
   });
 
   it("uses bounded exponential backoff", () => {
-    expect(backoffDelay(0)).toBe(5_000);
-    expect(backoffDelay(1)).toBe(10_000);
-    expect(backoffDelay(MAX_RETRIES + 20)).toBe(300_000);
+    expect(backoffDelay(0)).toBeGreaterThanOrEqual(3_750);
+    expect(backoffDelay(0)).toBeLessThanOrEqual(6_250);
+    expect(backoffDelay(1)).toBeGreaterThanOrEqual(7_500);
+    expect(backoffDelay(1)).toBeLessThanOrEqual(12_500);
+    expect(backoffDelay(MAX_RETRIES + 20)).toBeLessThanOrEqual(375_000);
   });
 });

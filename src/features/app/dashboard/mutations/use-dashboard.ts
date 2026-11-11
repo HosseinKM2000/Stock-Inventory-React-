@@ -20,3 +20,11 @@ export function useDashboardProducts(filter: DashboardFilter) {
     enabled: !!filter,
   });
 }
+
+export function useDashboardAnalysis() {
+  return useQuery({
+    queryKey: dashboardKeys.analysis(),
+    queryFn: () => dashboardService.getAnalysis(),
+    staleTime: 0,
+  });
+}

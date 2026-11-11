@@ -2,8 +2,10 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
 from ..deps import CurrentUser, DbSession, require_backup_access
+from ..services.store_service import owner_store_context
 from ..models import InventoryItem
 from ..schemas import InventoryOut
+from ..services.store_authorization import project_inventory_item
 
 router = APIRouter(prefix="/backup", tags=["backup"])
 
@@ -14,17 +16,18 @@ def get_backup(
     db: DbSession,
 ):
     require_backup_access(db, current_user)
+    owner_store_context(db, current_user)
 
     stmt = (
         select(InventoryItem)
         .where(
-            InventoryItem.user_id == current_user.id,
+            InventoryItem.store_id == current_user.store_id,
             InventoryItem.deleted_at.is_(None),
         )
         .order_by(InventoryItem.created_at.desc(), InventoryItem.id.desc())
     )
 
-    return list(db.scalars(stmt))
+    return [project_inventory_item(db, current_user, item) for item in db.scalars(stmt)]
 
 
 @router.post("/restore")
@@ -33,6 +36,7 @@ def restore_backup(
     db: DbSession,
 ):
     require_backup_access(db, current_user)
+    owner_store_context(db, current_user)
 
     # This endpoint has no snapshot/version input and therefore cannot perform
     # a safe restore. Return an intentional response instead of claiming that

@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { MAX_PRODUCT_QUANTITY, PRODUCT_QUANTITY_LIMIT_MESSAGE } from "../domain/inventory-quantity";
 
 const catalogProductSchema = z.object({
   id: z.number(),
@@ -37,9 +38,18 @@ export const productSchema = z.object({
 
   category_id: z.number().nullable(),
 
-  quantity: z.coerce.number().min(0, "تعداد نامعتبر است"),
+  label_ids: z.array(z.number().int()),
+
+  quantity: z.coerce.number()
+    .int("موجودی محصول باید یک عدد صحیح باشد")
+    .min(0, "موجودی محصول نمی‌تواند منفی باشد")
+    .max(MAX_PRODUCT_QUANTITY, PRODUCT_QUANTITY_LIMIT_MESSAGE),
 
   price: z.coerce.number().min(0, "قیمت نامعتبر است"),
+
+  sale_price: z.number().int().min(0, "قیمت فروش نامعتبر است").nullable(),
+
+  purchase_price: z.number().int().min(0, "قیمت خرید نامعتبر است").nullable(),
 
   custom_label: z.string().nullable(),
 

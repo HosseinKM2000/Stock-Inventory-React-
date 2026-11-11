@@ -4,6 +4,12 @@ export type CategoryBreakdown = {
 };
 
 import type { Product } from "../inventory/types";
+import type {
+  ClassificationResult,
+  RankedCategoryValue,
+  RankedProductValue,
+  TodayActions,
+} from "./services/dashboard-selectors";
 
 export const DashboardFilters = {
   ALL: "all",
@@ -38,10 +44,26 @@ export type DashboardStats = {
   urgentPurchaseCount: number;
 
   addedTodayCount: number;
+
+  missingClassificationCount: number;
+
+  valuedProductsCount: number;
+
+  todayActionCount: number;
 };
 
 export type DashboardProductList = {
   title: string;
 
   products: Product[];
+};
+
+export type DashboardAnalysis = {
+  products: Product[];
+  productValues: RankedProductValue[];
+  categoryValues: RankedCategoryValue[];
+  excludedUncategorizedValue: number;
+  missingPriceCount: number;
+  classification: ClassificationResult;
+  actions: TodayActions;
 };

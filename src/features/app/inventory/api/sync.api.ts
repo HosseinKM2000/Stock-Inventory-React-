@@ -10,7 +10,7 @@ export type SyncResult = {
   operation_id: string;
   status: "applied" | "conflict" | "fatal_error";
   entity_id: number;
-  record: Product | null;
+  record: Product | Record<string, unknown> | null;
   error: string | null;
 };
 
@@ -48,6 +48,8 @@ export async function pushProductBatch(items: SyncQueueItem[]) {
           operation: item.action,
           payload: product,
           base_version: product?.version,
+          execution_mode: item.executionMode,
+          policy_version: item.policyVersion,
         };
       }),
     }),
@@ -55,7 +57,7 @@ export async function pushProductBatch(items: SyncQueueItem[]) {
 
   for (const item of items) {
     const product = item.payload as Product | null;
-    if (!isLocalImage(product?.image_url)) continue;
+    if (!isLocalImage(product?.image_url) || (product as (Product & { media_transfer_id?: string }) | null)?.media_transfer_id) continue;
 
     try {
       formData.append(
@@ -74,6 +76,27 @@ export async function pushProductBatch(items: SyncQueueItem[]) {
   });
 }
 
+export async function pushJsonBatch(items: SyncQueueItem[]) {
+  const formData = new FormData();
+  formData.append("operations_json", JSON.stringify({
+    operations: items.map((item) => ({
+      operation_id: item.operationId,
+      entity: item.entity,
+      entity_id: item.entityId,
+      operation: item.action,
+      payload: item.payload,
+      base_version: (item.payload as { version?: number } | null)?.version,
+      execution_mode: item.executionMode,
+      policy_version: item.policyVersion,
+    })),
+  }));
+  return apiFetch<SyncBatchResponse>("/sync/batch", { method: "POST", formData });
+}
+
 export function pullProductChanges(cursor: number) {
   return apiFetch<SyncChangesResponse>(`/sync/changes?cursor=${cursor}`);
+}
+
+export function fetchBarcodeSnapshot() {
+  return apiFetch<{ items: import("@/features/barcode/types").ProductBarcode[] }>("/sync/barcodes");
 }

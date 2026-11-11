@@ -1,9 +1,10 @@
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
-from ..deps import CurrentUser, CurrentWritableUser, DbSession
+from ..deps import CurrentProductReader, CurrentQuantityWriter, DbSession
 from ..models import InventoryItem, InventoryTransaction
 from ..schemas import TransactionCreate, TransactionOut
+from ..inventory_policy import MAX_PRODUCT_QUANTITY, PRODUCT_QUANTITY_LIMIT_ERROR
 
 router = APIRouter(prefix="/transactions", tags=["transactions"])
 
@@ -11,11 +12,11 @@ router = APIRouter(prefix="/transactions", tags=["transactions"])
 def _get_owned_product(
     db: DbSession,
     product_id: int,
-    user_id: int,
+    store_id: int,
 ) -> InventoryItem:
     product = db.get(InventoryItem, product_id)
 
-    if product is None or product.user_id != user_id:
+    if product is None or product.store_id != store_id:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="محصول یافت نشد",
@@ -32,17 +33,22 @@ def _get_owned_product(
 def create_transaction(
     product_id: int,
     payload: TransactionCreate,
-    current_user: CurrentWritableUser,
+    current_user: CurrentQuantityWriter,
     db: DbSession,
 ) -> InventoryTransaction:
 
-    product = _get_owned_product(db, product_id, current_user.id)
+    product = _get_owned_product(db, product_id, current_user.store_id)
 
     # validation
     if payload.type == "stock_out" and payload.quantity > product.quantity:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="موجودی کافی نیست",
+        )
+    if payload.type == "stock_in" and product.quantity + payload.quantity > MAX_PRODUCT_QUANTITY:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=PRODUCT_QUANTITY_LIMIT_ERROR,
         )
 
     before_quantity = product.quantity
@@ -57,8 +63,10 @@ def create_transaction(
 
     # create transaction
     transaction = InventoryTransaction(
+        store_id=current_user.store_id,
+        actor_user_id=current_user.id,
         inventory_item_id=product.id,
-        user_id=current_user.id,
+        user_id=current_user.data_owner_id,
         type=payload.type,
         quantity=payload.quantity,
         before_quantity=before_quantity,
@@ -79,17 +87,17 @@ def create_transaction(
 )
 def product_transactions(
     product_id: int,
-    current_user: CurrentUser,
+    current_user: CurrentProductReader,
     db: DbSession,
 ) -> list[InventoryTransaction]:
 
-    _get_owned_product(db, product_id, current_user.id)
+    _get_owned_product(db, product_id, current_user.store_id)
 
     stmt = (
         select(InventoryTransaction)
         .where(
             InventoryTransaction.inventory_item_id == product_id,
-            InventoryTransaction.user_id == current_user.id,
+            InventoryTransaction.store_id == current_user.store_id,
         )
         .order_by(
             InventoryTransaction.created_at.desc(),
@@ -102,13 +110,13 @@ def product_transactions(
 
 @router.get("", response_model=list[TransactionOut])
 def all_transactions(
-    current_user: CurrentUser,
+    current_user: CurrentProductReader,
     db: DbSession,
 ) -> list[InventoryTransaction]:
 
     stmt = (
         select(InventoryTransaction)
-        .where(InventoryTransaction.user_id == current_user.id)
+        .where(InventoryTransaction.store_id == current_user.store_id)
         .order_by(
             InventoryTransaction.created_at.desc(),
             InventoryTransaction.id.desc(),

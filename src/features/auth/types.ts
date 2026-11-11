@@ -1,7 +1,7 @@
 export type User = {
   id: number;
-  first_name: string;
-  last_name: string;
+  first_name: string | null;
+  last_name: string | null;
   username: string;
   email: string | null;
   phone: string | null;
@@ -14,12 +14,30 @@ export type User = {
   subscription_started_at: string | null;
   subscription_expires_at: string | null;
   created_at: string;
+  store_id?: number | null;
+  store_name?: string | null;
+  membership_id?: number | null;
+  store_role_id?: number | null;
+  store_role_name?: string | null;
+  store_permissions?: string[];
+  is_store_owner?: boolean;
+  temporary_password_required?: boolean;
+  credentials_notice_viewed?: boolean;
+  membership_authorization_checked_at?: string | null;
+  store_operating_mode?: "solo" | "team" | null;
+  store_policy_version?: number | null;
+  store_policy_changed_at?: string | null;
 };
 
 export type AdminUser = User & {
   subscription_status: "active" | "expired";
   last_activity_at: string | null;
   remaining_days: number | null;
+  device_limit_mode: "inherit" | "unlimited" | "limited";
+  device_limit_override: number | null;
+  effective_device_limit: number | null;
+  device_limit_source: "plan" | "user";
+  active_session_count: number;
 };
 
 export type AuthResponse = {
@@ -31,15 +49,13 @@ export type AuthResponse = {
 export type LoginPayload = {
   username: string;
   password: string;
+  remember?: boolean;
 };
 
 export type RegisterPayload = {
-  first_name: string;
-  last_name: string;
   username: string;
-  password: string;
   phone: string;
-  email?: string;
+  password: string;
 };
 
 export type UpdateProfilePayload = {
@@ -48,4 +64,5 @@ export type UpdateProfilePayload = {
   username?: string;
   email?: string | null;
   phone?: string | null;
+  store_name?: string;
 };

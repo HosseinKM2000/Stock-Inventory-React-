@@ -11,3 +11,10 @@ export function isPathActive(pathname: string, route: string): boolean {
     pathname.startsWith(`${normalizedRoute}/`)
   );
 }
+
+export function isPrimaryNavigationActive(pathname: string, route: string): boolean {
+  if (route === "/inventory/list") {
+    return pathname === "/inventory" || pathname.startsWith("/inventory/");
+  }
+  return isPathActive(pathname, route);
+}

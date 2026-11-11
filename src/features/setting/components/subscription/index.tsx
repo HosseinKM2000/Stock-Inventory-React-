@@ -23,17 +23,18 @@ import {
   Text,
 } from "@radix-ui/themes";
 import type { ReactNode } from "react";
+import { Link } from "@tanstack/react-router";
 import { useAvailablePlans } from "../../mutations/use-admin";
 import {
   FEATURE_LABELS,
-  formatToman,
+  formatPlanPrice,
 } from "../subscription-management/plan-options";
+import { formatJalaliDate } from "@/shared/lib/date/jalali";
+import { PageGuide } from "@/features/app/layout/page-guide";
 
 const date = (value: string | null | undefined) =>
   value
-    ? new Intl.DateTimeFormat("fa-IR", { dateStyle: "medium" }).format(
-        new Date(value),
-      )
+    ? formatJalaliDate(value)
     : "—";
 
 function InfoCard({
@@ -86,12 +87,7 @@ export default function SubscriptionSettings() {
 
   return (
     <Box>
-      <Text size="6" weight="bold">
-        اشتراک من
-      </Text>
-      <Text as="div" size="2" color="gray" mt="1">
-        وضعیت طرح، زمان باقی‌مانده و دسترسی‌های فعال حساب
-      </Text>
+      <PageGuide section="تنظیمات" sectionTo="/setting" title="اشتراک من" description="وضعیت طرح، زمان باقی‌مانده و دسترسی‌های فعال حساب" icon={StarIcon} helpTopic="account" />
 
       {expired && (
         <Callout.Root color="red" mt="5" dir="rtl">
@@ -106,12 +102,30 @@ export default function SubscriptionSettings() {
         </Callout.Root>
       )}
 
+      {expired ? (
+        <Callout.Root color="amber" mt="3" dir="rtl">
+          <Callout.Text>
+            محصولات، فاکتورها، تصاویر و شواهد بازیابی حذف نشده‌اند. کارهای ثبت‌شده روی این دستگاه
+            پس از اتصال با سیاست فعلی سرور بررسی می‌شوند؛ نتیجهٔ ردشده یا نامشخص موفق تلقی نمی‌شود.
+            وضعیت هر کار را در <Link to="/setting/sync">همگام‌سازی</Link> ببینید و برای تصمیم‌گیری
+            دربارهٔ شواهد حل‌نشده به <Link to="/tools/recovery">بازیابی</Link> بروید.
+          </Callout.Text>
+        </Callout.Root>
+      ) : null}
+
       {verifying && (
         <Callout.Root color="blue" mt="5" dir="rtl">
           <Callout.Icon><ClockIcon /></Callout.Icon>
           <Callout.Text>برای استفاده از امکانات اشتراکی، وضعیت حساب باید به‌صورت آنلاین با سرور تأیید شود.</Callout.Text>
         </Callout.Root>
       )}
+
+      <Callout.Root color="blue" mt="5" dir="rtl">
+        <Callout.Icon><DesktopIcon /></Callout.Icon>
+        <Callout.Text>
+          تعداد دستگاه محدود نیست. استفاده یک مالک روی چند دستگاه مجاز است؛ اما برای کار هم‌زمان چند نفر باید طرح «تیم» فعال باشد و هر نفر با حساب و نقش مستقل وارد شود. اشتراک‌گذاری نام کاربری یا رمز عبور پشتیبانی نمی‌شود.
+        </Callout.Text>
+      </Callout.Root>
 
       <Card mt="5" size="3">
         <Flex justify="between" align="start" wrap="wrap" gap="4">
@@ -144,6 +158,7 @@ export default function SubscriptionSettings() {
             <Badge color={expired ? "red" : verifying ? "blue" : access.status === "expiring" ? "amber" : "green"} size="2">
               {expired ? "منقضی" : verifying ? "نیازمند تأیید آنلاین" : access.status === "expiring" ? "نزدیک انقضا" : "فعال"}
             </Badge>
+            {current?.entitlement_source === "grant" ? <Badge color="amber" size="2">هدیه زمان‌دار تا {date(current.grant_expires_at)}</Badge> : null}
           </Flex>
         </Flex>
 
@@ -186,12 +201,17 @@ export default function SubscriptionSettings() {
               </Flex>
             }
             label="قیمت طرح"
-            value={formatToman(plan?.price_minor ?? null)}
+            value={plan ? formatPlanPrice(plan) : "قیمت تعیین نشده"}
             accent="violet"
           />
         </Grid>
 
         <Separator size="4" my="5" />
+        {current?.entitlement_source === "grant" ? (
+          <Callout.Root color="amber" mb="5" dir="rtl">
+            <Callout.Text>طرح مؤثر از یک گرنت زمان‌دار است. پس از پایان یا لغو، اشتراک پایه «{current.base_plan ?? current.plan}» بدون حذف داده دوباره مؤثر می‌شود.</Callout.Text>
+          </Callout.Root>
+        ) : null}
         <Grid columns={{ initial: "1", md: "2" }} gap="5">
           <Box>
             <Text as="div" weight="bold">
@@ -242,6 +262,16 @@ export default function SubscriptionSettings() {
                     : String(current.limits.devices)
                 }
               />
+              <InfoCard
+                icon={<Flex align="center" justify="center" height="100%"><ArchiveIcon /></Flex>}
+                label="کالای کاتالوگی"
+                value={administrator || current?.limits.catalog_items == null ? "نامحدود" : String(current.limits.catalog_items)}
+              />
+              <InfoCard
+                icon={<Flex align="center" justify="center" height="100%"><TokensIcon /></Flex>}
+                label="پرسنل مستقل"
+                value={administrator || current?.limits.active_personnel == null ? "نامحدود" : String(current.limits.active_personnel)}
+              />
             </Grid>
             <Flex align="center" gap="2" mt="4">
               <ClockIcon />
@@ -265,6 +295,24 @@ export default function SubscriptionSettings() {
           </Callout.Root>
         )}
       </Card>
+      <Box mt="6">
+        <Text as="div" size="5" weight="bold">مقایسه طرح‌ها</Text>
+        <Text as="p" size="2" color="gray" mt="1">قابلیت‌های محلی پایه در طرح رایگان باقی می‌مانند؛ ارتقا برای ظرفیت، همگام‌سازی ابری و همکاری امن تیمی است.</Text>
+        <Grid columns={{ initial: "1", sm: "2", lg: "4" }} gap="3" mt="4">
+          {plans.data?.map((candidate) => (
+            <Card key={candidate.id} size="2" style={candidate.id === "pro" ? { borderColor: "var(--violet-8)" } : undefined}>
+              <Flex justify="between" align="center" gap="2">
+                <Text weight="bold">{candidate.name}</Text>
+                {candidate.id === "pro" ? <Badge color="violet">محبوب‌ترین</Badge> : null}
+              </Flex>
+              <Text as="div" size="4" weight="bold" mt="3">{formatPlanPrice(candidate)}<Text size="1" color="gray"> / ماه</Text></Text>
+              <Text as="p" size="2" color="gray" mt="2">تا {candidate.limits.inventory_items?.toLocaleString("fa-IR") ?? "نامحدود"} کالا</Text>
+              <Text as="p" size="2" color="gray">{candidate.features.sync ? "همگام‌سازی ابری" : "استفاده محلی بدون همگام‌سازی"}</Text>
+              <Text as="p" size="2" color="gray">{candidate.features.personnel ? `مالک + ${candidate.limits.active_personnel ?? 0} همکار` : "یک کاربر مالک"}</Text>
+            </Card>
+          ))}
+        </Grid>
+      </Box>
       <Text as="div" size="2" color="gray" mt="3">
         خرید و درگاه پرداخت در این مرحله فعال نیست؛ ساختار طرح‌ها برای اتصال
         آینده به پرداخت حفظ شده است.

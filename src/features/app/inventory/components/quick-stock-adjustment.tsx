@@ -1,11 +1,12 @@
-import { MinusIcon, PlusIcon } from "@radix-ui/react-icons";
-import { Flex, Text } from "@radix-ui/themes";
+import { CubeIcon, MinusIcon, PlusIcon } from "@radix-ui/react-icons";
+import { Flex } from "@radix-ui/themes";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { accessState } from "@/shared/access/access-state";
 import { useEntitlementAccess } from "@/shared/access/use-entitlement";
 import { Button } from "@/shared/ui/button/button";
+import { ConfirmDialog } from "@/shared/ui/dialog/confirm-dialog";
 import { useQuickStockAdjustment } from "../hooks/use-quick-stock-adjustment";
 import { useAdjustProductQuantity } from "../mutations/use-products";
 import type { Product } from "../types";
@@ -15,6 +16,8 @@ import {
   packagingOf,
   type QuantityOperationMode,
 } from "../domain/packaging";
+import { normalizeIntegerText } from "../services/localized-integer";
+import { MAX_PRODUCT_QUANTITY, productQuantityError } from "../domain/inventory-quantity";
 
 type Props = { product: Product };
 
@@ -31,8 +34,10 @@ export function QuickStockAdjustment({ product }: Props) {
     useState<QuantityOperationMode>("unit");
   const [pendingDelta, setPendingDelta] = useState(0);
   const [awaitingDecision, setAwaitingDecision] = useState(false);
+  const [confirmationOpen, setConfirmationOpen] = useState(false);
+  const [editingQuantity, setEditingQuantity] = useState(false);
+  const [quantityDraft, setQuantityDraft] = useState(String(product.quantity));
   const pendingDeltaRef = useRef(0);
-  const notificationId = useRef<string | number | null>(null);
   const confirmationTimer = useRef<number | null>(null);
   const mutation = useAdjustProductQuantity();
   const canWrite = accessState.canAccess() && accessState.canWrite();
@@ -58,12 +63,51 @@ export function QuickStockAdjustment({ product }: Props) {
     pendingDeltaRef.current = 0;
     setPendingDelta(0);
     setAwaitingDecision(false);
-    notificationId.current = null;
+    setConfirmationOpen(false);
+    setEditingQuantity(false);
+    setQuantityDraft(String(product.quantity));
+  };
+
+  const beginDirectEdit = () => {
+    clearConfirmationTimer();
+    setQuantityDraft(previewQuantity === 0 ? "" : String(previewQuantity));
+    setEditingQuantity(true);
+  };
+
+  const commitDirectQuantity = () => {
+    const normalized = normalizeIntegerText(quantityDraft);
+    const nextQuantity = normalized === "" ? 0 : Number(normalized);
+    const quantityError = productQuantityError(nextQuantity);
+    if (quantityError) {
+      toast.error(quantityError);
+      setQuantityDraft(String(previewQuantity));
+      return;
+    }
+    const nextDelta = nextQuantity - product.quantity;
+    setEditingQuantity(false);
+    setQuantityDraft(String(nextQuantity));
+
+    if (nextDelta === 0) {
+      pendingDeltaRef.current = 0;
+      setPendingDelta(0);
+      return;
+    }
+
+    pendingDeltaRef.current = nextDelta;
+    setPendingDelta(nextDelta);
+    setAwaitingDecision(true);
+    setConfirmationOpen(true);
   };
 
   const applyStep = (amount: -1 | 1) => {
     const unitDelta = amount * operationStep;
     const next = pendingDeltaRef.current + unitDelta;
+    if (product.quantity + next > MAX_PRODUCT_QUANTITY) {
+      toast.warning(`حداکثر موجودی هر محصول ${MAX_PRODUCT_QUANTITY.toLocaleString("fa-IR")} عدد است`, {
+        id: `max-stock-${product.id}`,
+      });
+      return;
+    }
     if (product.quantity + next < 0) {
       if (effectiveMode === "pack") {
         toast.warning("موجودی برای کم کردن یک بسته کامل کافی نیست", {
@@ -99,39 +143,13 @@ export function QuickStockAdjustment({ product }: Props) {
 
   const requestConfirmation = () => {
     const delta = pendingDeltaRef.current;
-    if (delta === 0 || notificationId.current !== null) {
+    if (delta === 0 || awaitingDecision) {
       if (delta === 0) resetPreview();
       return;
     }
 
-    const finalQuantity = product.quantity + delta;
-    let decisionMade = false;
     setAwaitingDecision(true);
-
-    notificationId.current = toast("تغییر موجودی تأیید شود؟", {
-      description: `${product.quantity.toLocaleString("fa-IR")} → ${finalQuantity.toLocaleString("fa-IR")} (${delta > 0 ? "+" : ""}${delta.toLocaleString("fa-IR")}${effectiveMode === "pack" ? `، ${(Math.abs(delta) / operationStep).toLocaleString("fa-IR")} بسته` : ""})`,
-      duration: Infinity,
-      dismissible: true,
-      closeButton: false,
-      action: {
-        label: "تأیید",
-        onClick: () => {
-          decisionMade = true;
-          notificationId.current = null;
-          confirm(delta);
-        },
-      },
-      cancel: {
-        label: "لغو",
-        onClick: () => {
-          decisionMade = true;
-          resetPreview();
-        },
-      },
-      onDismiss: () => {
-        if (!decisionMade) resetPreview();
-      },
-    });
+    setConfirmationOpen(true);
   };
 
   const scheduleConfirmation = () => {
@@ -153,9 +171,6 @@ export function QuickStockAdjustment({ product }: Props) {
       if (confirmationTimer.current !== null) {
         window.clearTimeout(confirmationTimer.current);
       }
-      if (notificationId.current !== null) {
-        toast.dismiss(notificationId.current);
-      }
     };
   }, []);
 
@@ -170,8 +185,14 @@ export function QuickStockAdjustment({ product }: Props) {
 
   const busy = !canWrite || awaitingDecision || mutation.isPending;
   const changing = decrement.repeating || increment.repeating;
+  const quantityDigitCount = Math.max(
+    String(previewQuantity).length,
+    editingQuantity ? normalizeIntegerText(quantityDraft).length : 0,
+  );
+  const quantityLayout = quantityDigitCount >= 4 ? "wide" : "standard";
 
   return (
+    <>
     <Flex
       direction="column"
       gap="2"
@@ -201,12 +222,13 @@ export function QuickStockAdjustment({ product }: Props) {
         justify={"center"}
         aria-label="تنظیم سریع موجودی"
         className="quick-stock-control"
+        data-quantity-layout={quantityLayout}
       >
         <Button
           size="3"
           type="button"
-          color="green"
-          variant="soft"
+          variant="outline"
+          data-stock-action="increase"
           disabled={busy}
           aria-label={
             effectiveMode === "pack" ? "افزایش یک بسته" : "افزایش یک واحد"
@@ -232,23 +254,47 @@ export function QuickStockAdjustment({ product }: Props) {
               {pendingDelta.toLocaleString("fa-IR")}
             </span>
           )}
-          <Text
-            size="3"
-            as="span"
-            weight="bold"
-            className={
-              changing ? "quick-stock-count is-changing" : "quick-stock-count"
-            }
-          >
-            {previewQuantity.toLocaleString("fa-IR")}
-          </Text>
+          {editingQuantity ? (
+            <input
+              autoFocus
+              type="number"
+              min="0"
+              max={MAX_PRODUCT_QUANTITY}
+              inputMode="numeric"
+              aria-label="موجودی جدید"
+              className="quick-stock-count quick-stock-input"
+              value={quantityDraft}
+              onChange={(event) => setQuantityDraft(normalizeIntegerText(event.target.value))}
+              onBlur={commitDirectQuantity}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  commitDirectQuantity();
+                } else if (event.key === "Escape") {
+                  event.preventDefault();
+                  setEditingQuantity(false);
+                  setQuantityDraft(String(previewQuantity));
+                }
+              }}
+            />
+          ) : (
+            <button
+              type="button"
+              className={changing ? "quick-stock-count is-changing" : "quick-stock-count"}
+              disabled={busy || pendingDelta !== 0}
+              aria-label={`ویرایش مستقیم موجودی ${previewQuantity === 0 ? "صفر" : previewQuantity.toLocaleString("fa-IR")}`}
+              onClick={beginDirectEdit}
+            >
+              {previewQuantity.toLocaleString("fa-IR")}
+            </button>
+          )}
         </div>
 
         <Button
           size="3"
-          color="red"
           type="button"
-          variant="soft"
+          variant="outline"
+          data-stock-action="decrease"
           disabled={busy}
           aria-label={
             effectiveMode === "pack" ? "کاهش یک بسته" : "کاهش یک واحد"
@@ -261,5 +307,41 @@ export function QuickStockAdjustment({ product }: Props) {
         </Button>
       </Flex>
     </Flex>
+    <ConfirmDialog
+      open={confirmationOpen}
+      onOpenChange={(next) => {
+        if (!next) resetPreview();
+      }}
+      title="تغییر موجودی تأیید شود؟"
+      description="آیا از تغییر سریع این کالا اطمینان دارید؟"
+      icon={<CubeIcon width="22" height="22" />}
+      details={
+        <div className="stock-confirm-summary" aria-label="خلاصه تغییر موجودی">
+          <div>
+            <span>موجودی فعلی</span>
+            <strong>{product.quantity.toLocaleString("fa-IR")}</strong>
+          </div>
+          <div className="stock-confirm-change" aria-label={`تغییر ${pendingDelta.toLocaleString("fa-IR")}`}>
+            <span>{pendingDelta > 0 ? "+" : ""}{pendingDelta.toLocaleString("fa-IR")}</span>
+            <b aria-hidden="true">←</b>
+          </div>
+          <div>
+            <span>موجودی جدید</span>
+            <strong>{previewQuantity.toLocaleString("fa-IR")}</strong>
+          </div>
+          {effectiveMode === "pack" ? (
+            <small>
+              {(Math.abs(pendingDelta) / operationStep).toLocaleString("fa-IR")} بسته
+            </small>
+          ) : null}
+        </div>
+      }
+      confirmLabel="تأیید"
+      cancelLabel="لغو"
+      variant="warning"
+      loading={mutation.isPending}
+      onConfirm={() => confirm(pendingDeltaRef.current)}
+    />
+    </>
   );
 }

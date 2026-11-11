@@ -14,6 +14,7 @@ export const adminKeys = {
   all: ["admin"] as const,
   users: ["admin", "users"] as const,
   plans: ["admin", "plans"] as const,
+  entitlementRegistry: ["admin", "entitlement-registry"] as const,
   subscribers: (planId: string) => ["admin", "plans", planId, "subscribers"] as const,
   audit: ["admin", "audit"] as const,
 };

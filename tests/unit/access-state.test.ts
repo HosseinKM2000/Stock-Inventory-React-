@@ -20,9 +20,10 @@ const user: User = {
   created_at: "2026-01-01T00:00:00Z",
 };
 
-function entitlement(expiresAt: string | null): Entitlement {
+function entitlement(expiresAt: string | null, tools?: Record<string, boolean>, storeId: number | null = null): Entitlement {
   return {
     user_id: user.id,
+    store_id: storeId,
     plan: "pro",
     label: "Pro",
     status: "active",
@@ -33,6 +34,7 @@ function entitlement(expiresAt: string | null): Entitlement {
     synced_at: "2026-09-02T08:00:00Z",
     capabilities: { "inventory.read": true, "inventory.write": true, "export.local": true },
     limits: { inventory_items: 100 },
+    tools,
   };
 }
 
@@ -66,6 +68,18 @@ describe("offline subscription access", () => {
     expect(accessState.entitlement()?.plan).toBe("pro");
   });
 
+  it("pauses personnel access after the 24-hour authorization lease", async () => {
+    const { accessState, PERSONNEL_AUTHORIZATION_VALIDITY_MS } = await import("@/shared/access/access-state");
+    accessState.saveUser({ ...user, store_id: 9, is_store_owner: false, store_permissions: ["products.view"], membership_authorization_checked_at: "2026-09-02T08:00:00Z" });
+    accessState.saveEntitlement(entitlement(null, undefined, 9));
+    accessState.useOfflineSnapshot();
+    expect(accessState.canUse("inventory.read")).toBe(true);
+
+    vi.setSystemTime(new Date(Date.parse("2026-09-02T08:00:00Z") + PERSONNEL_AUTHORIZATION_VALIDITY_MS + 1));
+    expect(accessState.evaluate().status).toBe("requires_online_verification");
+    expect(accessState.canUse("inventory.read")).toBe(false);
+  });
+
   it("never grants regular capabilities from another user's cached snapshot", async () => {
     const { accessState } = await import("@/shared/access/access-state");
     accessState.saveUser(user);
@@ -73,6 +87,44 @@ describe("offline subscription access", () => {
     accessState.saveUser({ ...user, id: 99, username: "other-user" });
     accessState.useOfflineSnapshot();
     expect(accessState.entitlement()).toBeNull();
+    expect(accessState.canWrite()).toBe(false);
+  });
+
+  it("partitions cached capabilities by both authenticated person and store", async () => {
+    const { accessState } = await import("@/shared/access/access-state");
+    accessState.saveUser({ ...user, store_id: 10 });
+    accessState.saveEntitlement(entitlement(null, undefined, 10));
+    accessState.saveUser({ ...user, store_id: 11 });
+    accessState.useOfflineSnapshot();
+    expect(accessState.entitlement()).toBeNull();
+    expect(accessState.canWrite()).toBe(false);
+  });
+
+  it("does not let an older grant response replace newer access in the same partition", async () => {
+    const { accessState } = await import("@/shared/access/access-state");
+    accessState.saveUser({ ...user, store_id: 10 });
+    const revoked = {
+      ...entitlement(null, undefined, 10),
+      plan: "free",
+      base_plan: "free",
+      entitlement_source: "subscription" as const,
+      grant_id: null,
+      server_time: "2026-09-02T08:02:00Z",
+      synced_at: "2026-09-02T08:02:00Z",
+      capabilities: { "inventory.read": true, "inventory.write": false },
+    };
+    const delayedGrant = {
+      ...entitlement(null, undefined, 10),
+      entitlement_source: "grant" as const,
+      grant_id: 91,
+      server_time: "2026-09-02T08:01:00Z",
+      synced_at: "2026-09-02T08:01:00Z",
+    };
+
+    expect(accessState.saveEntitlement(revoked)).toBe(true);
+    expect(accessState.saveEntitlement(delayedGrant)).toBe(false);
+    expect(accessState.entitlement()?.plan).toBe("free");
+    expect(accessState.entitlement()?.grant_id).toBeNull();
     expect(accessState.canWrite()).toBe(false);
   });
 
@@ -84,5 +136,47 @@ describe("offline subscription access", () => {
     expect(accessState.evaluate().status).toBe("disabled");
     expect(accessState.canAccess()).toBe(false);
     expect(accessState.canWrite()).toBe(false);
+  });
+
+  it("gives domain restrictions precedence and keeps the last offline policy", async () => {
+    const { accessState } = await import("@/shared/access/access-state");
+    accessState.saveUser(user);
+    accessState.saveEntitlement(entitlement(null, { export: false, catalog: true }));
+    accessState.useOfflineSnapshot();
+    expect(accessState.canUse("export.local")).toBe(true);
+    expect(accessState.canUseTool("export")).toBe(false);
+    expect(accessState.canUseTool("catalog")).toBe(true);
+  });
+
+  it("preserves tools for legacy snapshots with no domain policy", async () => {
+    const { accessState } = await import("@/shared/access/access-state");
+    accessState.saveUser(user);
+    accessState.saveEntitlement(entitlement(null));
+    accessState.useOfflineSnapshot();
+    expect(accessState.canUseTool("export")).toBe(true);
+  });
+
+  it("grants a system administrator every store permission", async () => {
+    const { accessState } = await import("@/shared/access/access-state");
+    accessState.saveUser({
+      ...user,
+      is_admin: true,
+      role: "ADMIN",
+      is_system_admin: true,
+      is_store_owner: false,
+      store_permissions: [],
+    });
+
+    expect(accessState.hasStorePermission("products.view")).toBe(true);
+    expect(accessState.hasStorePermission("products.delete")).toBe(true);
+    expect(accessState.hasStorePermission("tools.backup")).toBe(true);
+  });
+
+  it("denies new purchase and finance permissions for legacy users without membership metadata", async () => {
+    const { accessState } = await import("@/shared/access/access-state");
+    accessState.saveUser({ ...user, is_store_owner: undefined, store_permissions: undefined });
+    expect(accessState.hasStorePermission("products.view")).toBe(true);
+    expect(accessState.hasStorePermission("products.purchase_price.view")).toBe(false);
+    expect(accessState.hasStorePermission("finance.view")).toBe(false);
   });
 });

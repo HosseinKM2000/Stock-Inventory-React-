@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from ..config import settings
 from ..models import User
+from ..mobile import normalize_iranian_mobile
 from ..security import hash_password
 from .authorization_service import RoleId, set_role
 
@@ -15,7 +16,7 @@ SYSTEM_ADMIN_USERNAME = "HosseinKM2000"
 SYSTEM_ADMIN_FIRST_NAME = "Hossein"
 SYSTEM_ADMIN_LAST_NAME = "Kamari"
 SYSTEM_ADMIN_EMAIL = "hoseinkmofficial@gmail.com"
-SYSTEM_ADMIN_PHONE = "09032431761"
+SYSTEM_ADMIN_PHONE = normalize_iranian_mobile("09032431761")
 
 
 def ensure_system_admin(db: Session) -> bool:

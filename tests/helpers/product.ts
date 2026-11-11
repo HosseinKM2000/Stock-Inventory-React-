@@ -8,6 +8,7 @@ export function product(overrides: Partial<Product> = {}): Product {
     category_id: null,
     quantity: 10,
     price: 100,
+    price_missing: false,
     custom_label: "Test product",
     note: null,
     low_stock_threshold: 3,
@@ -21,6 +22,7 @@ export function product(overrides: Partial<Product> = {}): Product {
     catalog_product: {
       id: 1,
       industry_id: 1,
+      is_active: true,
       name: "Test product",
       description: null,
       brand: null,

@@ -69,4 +69,15 @@ describe("OPFS image repository", () => {
     await expect(imageRepository.save("broken", new Blob(["x"]))).rejects.toThrow("quota exceeded");
     expect(await imageRepository.list()).toEqual([]);
   });
+
+  it("reports unsupported OPFS without breaking non-image workflows", async () => {
+    Object.defineProperty(navigator, "storage", {
+      configurable: true,
+      value: {},
+    });
+    const { imageRepository } = await import("@/shared/lib/infrastructure/media/image.repository");
+    await expect(imageRepository.read("local://missing.webp")).rejects.toThrow(
+      "محصول را بدون تصویر ذخیره کنید",
+    );
+  });
 });
