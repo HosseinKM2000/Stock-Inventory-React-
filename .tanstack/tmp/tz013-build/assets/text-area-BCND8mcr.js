@@ -1,0 +1,1 @@
+import{n as e,t}from"./compiler-runtime-B2BNdUhy.js";import{t as n}from"./text-area-b6ZbRyZs.js";var r=t(),i=e();function a(e){let t=(0,r.c)(4),a;t[0]===e?a=t[1]:({...a}=e,t[0]=e,t[1]=a);let o;return t[2]===a?o=t[3]:(o=(0,i.jsx)(n,{...a}),t[2]=a,t[3]=o),o}export{a as t};

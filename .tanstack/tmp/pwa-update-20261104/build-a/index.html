@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="theme-color" content="#171326" />
+    <meta name="application-name" content="Tanzim" />
+    <meta name="apple-mobile-web-app-title" content="Tanzim" />
+    <meta name="description" content="Tanzim — offline-first inventory management" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Tanzim</title>
+    <script type="module" crossorigin src="/assets/index-B_3-RX0X.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/chunk-Bh1tDfsg.js">
+    <link rel="modulepreload" crossorigin href="/assets/dist-B6QtTKmw.js">
+    <link rel="modulepreload" crossorigin href="/assets/compiler-runtime-DaU97c6B.js">
+    <link rel="modulepreload" crossorigin href="/assets/map-prop-values-BRqCVedA.js">
+    <link rel="modulepreload" crossorigin href="/assets/dist-CjJqU015.js">
+    <link rel="modulepreload" crossorigin href="/assets/dist-YvQyTJF3.js">
+    <link rel="modulepreload" crossorigin href="/assets/dist-5FHt37K8.js">
+    <link rel="modulepreload" crossorigin href="/assets/dist-3SWSIMCU.js">
+    <link rel="modulepreload" crossorigin href="/assets/radius.prop-iTk_h5AB.js">
+    <link rel="modulepreload" crossorigin href="/assets/dist-e7142xGD.js">
+    <link rel="modulepreload" crossorigin href="/assets/dist-mFnRRpmA.js">
+    <link rel="modulepreload" crossorigin href="/assets/dist-AQLTH3qx.js">
+    <link rel="modulepreload" crossorigin href="/assets/theme-ruObFAsc.js">
+    <link rel="modulepreload" crossorigin href="/assets/es2015-CBujKYfM.js">
+    <link rel="modulepreload" crossorigin href="/assets/spinner-QRqnVaVd.js">
+    <link rel="modulepreload" crossorigin href="/assets/react-icons.esm-D0q7wuhx.js">
+    <link rel="modulepreload" crossorigin href="/assets/query-DbG-CKGc.js">
+    <link rel="modulepreload" crossorigin href="/assets/mutation-foToyVar.js">
+    <link rel="modulepreload" crossorigin href="/assets/db-Dt07UapY.js">
+    <link rel="modulepreload" crossorigin href="/assets/useStore-Clo_gNI-.js">
+    <link rel="modulepreload" crossorigin href="/assets/authorization-BcoewNXH.js">
+    <link rel="modulepreload" crossorigin href="/assets/access-state-B32Qozxc.js">
+    <link rel="modulepreload" crossorigin href="/assets/inventory.repository-DDiuHFqy.js">
+    <link rel="modulepreload" crossorigin href="/assets/query-keys-DSt0AwXH.js">
+    <link rel="modulepreload" crossorigin href="/assets/client-DGyw7YMH.js">
+    <link rel="modulepreload" crossorigin href="/assets/sync-status-BOOWeIEF.js">
+    <link rel="modulepreload" crossorigin href="/assets/sync-service-Ds-YDLfK.js">
+    <link rel="modulepreload" crossorigin href="/assets/barcode-repository-CyQ3Xmpx.js">
+    <link rel="modulepreload" crossorigin href="/assets/local-mutation-storage-BjEZfWjm.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-3OlXha2U.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      (() => {
+        const saved = localStorage.getItem("inventory-appearance");
+        const dark = saved === "dark" ||
+          (saved !== "light" && matchMedia("(prefers-color-scheme: dark)").matches);
+        const appearance = dark ? "dark" : "light";
+        const savedSize = localStorage.getItem("inventory-display-size");
+        const displaySize = ["compact", "normal", "large"].includes(savedSize)
+          ? savedSize
+          : "normal";
+        document.documentElement.dataset.appearance = appearance;
+        document.documentElement.dataset.displaySize = displaySize;
+        document.documentElement.style.colorScheme = appearance;
+        document.querySelector('meta[name="theme-color"]').content = dark ? "#171326" : "#ffffff";
+      })();
+    </script>
+  </body>
+</html>

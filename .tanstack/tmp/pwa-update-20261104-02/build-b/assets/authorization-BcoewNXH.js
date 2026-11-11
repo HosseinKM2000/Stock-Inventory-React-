@@ -1,0 +1,1 @@
+function e(e){return!!(e?.is_system_admin||e?.role===`ADMIN`||e?.is_admin)}export{e as t};

@@ -1,0 +1,1 @@
+import{d as e}from"./schemas-CTJCaZ9C.js";var t=e().min(8,`Password must be at least 8 characters`).refine(e=>new TextEncoder().encode(e).length<=72,`Password must be at most 72 UTF-8 bytes`).regex(/[A-Z]/,`Must include one uppercase letter`).regex(/[a-z]/,`Must include one lowercase letter`).regex(/[0-9]/,`Must include one number`);export{t};

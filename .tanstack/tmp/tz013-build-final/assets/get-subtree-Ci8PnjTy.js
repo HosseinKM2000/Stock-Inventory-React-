@@ -1,0 +1,1 @@
+import{n as e}from"./chunk-Bh1tDfsg.js";import{r as t}from"./compiler-runtime-B2BNdUhy.js";var n=e(t());function r(e,t){let{asChild:r,children:i}=e;if(!r)return typeof t==`function`?t(i):t;let a=n.Children.only(i);return n.cloneElement(a,{children:typeof t==`function`?t(a.props.children):t})}export{r as t};

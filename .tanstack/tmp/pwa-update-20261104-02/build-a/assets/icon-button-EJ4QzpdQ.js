@@ -1,0 +1,1 @@
+import{n as e}from"./chunk-Bh1tDfsg.js";import{u as t}from"./compiler-runtime-DaU97c6B.js";import{k as n}from"./map-prop-values-BRqCVedA.js";import{lt as r}from"./react-icons.esm-D0q7wuhx.js";var i=e(t()),a=e(n()),o=i.forwardRef(({className:e,...t},n)=>i.createElement(r,{...t,ref:n,className:(0,a.default)(`rt-IconButton`,e)}));o.displayName=`IconButton`;export{o as t};

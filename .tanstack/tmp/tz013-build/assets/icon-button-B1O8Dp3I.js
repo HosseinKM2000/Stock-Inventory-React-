@@ -1,0 +1,1 @@
+import{n as e}from"./chunk-Bh1tDfsg.js";import{r as t}from"./compiler-runtime-B2BNdUhy.js";import{E as n}from"./flex-_vqkkZdT.js";import{fn as r}from"./index-2v3GM3tq.js";var i=e(t()),a=e(n()),o=i.forwardRef(({className:e,...t},n)=>i.createElement(r,{...t,ref:n,className:(0,a.default)(`rt-IconButton`,e)}));o.displayName=`IconButton`;export{o as t};

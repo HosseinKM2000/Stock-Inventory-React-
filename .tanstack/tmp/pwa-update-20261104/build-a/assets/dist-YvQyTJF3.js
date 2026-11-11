@@ -1,0 +1,1 @@
+import{n as e}from"./chunk-Bh1tDfsg.js";import{l as t,u as n}from"./compiler-runtime-DaU97c6B.js";var r=e(n(),1),i=t(),a=r.createContext(void 0),o=e=>{let{dir:t,children:n}=e;return(0,i.jsx)(a.Provider,{value:t,children:n})};function s(e){let t=r.useContext(a);return e||t||`ltr`}var c=o;export{s as n,c as t};

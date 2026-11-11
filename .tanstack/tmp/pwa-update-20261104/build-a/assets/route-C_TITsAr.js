@@ -1,0 +1,1 @@
+import{t as e}from"./section-layout-BougcSDN.js";var t=e;export{t as component};

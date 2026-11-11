@@ -1,0 +1,1 @@
+import{n as e,t}from"./compiler-runtime-B2BNdUhy.js";import{i as n}from"./use-dashboard-C_DJ0s3W.js";import{t as r}from"./dashboard-products-DFXpAlxg.js";var i=t(),a=e(),o=()=>{let e=(0,i.c)(1),t;return e[0]===Symbol.for(`react.memo_cache_sentinel`)?(t=(0,a.jsx)(r,{filter:n.INVENTORY_VALUE}),e[0]=t):t=e[0],t};export{o as component};

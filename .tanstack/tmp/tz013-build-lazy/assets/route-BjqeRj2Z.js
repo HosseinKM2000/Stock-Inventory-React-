@@ -1,0 +1,1 @@
+import{t as e}from"./section-layout-DLE1tB5T.js";var t=e;export{t as component};

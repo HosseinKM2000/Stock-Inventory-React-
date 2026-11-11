@@ -1,0 +1,1 @@
+var e=`۰۱۲۳۴۵۶۷۸۹`,t=`٠١٢٣٤٥٦٧٨٩`;function n(n){return n.replace(/[۰-۹]/g,t=>String(e.indexOf(t))).replace(/[٠-٩]/g,e=>String(t.indexOf(e))).replace(/[,٬]/g,``).replace(/\D/g,``)}function r(e){let t=n(e);return t===``?void 0:Number(t)}function i(e){return n(String(e)).replace(/\B(?=(\d{3})+(?!\d))/g,`,`)}export{n,r,i as t};

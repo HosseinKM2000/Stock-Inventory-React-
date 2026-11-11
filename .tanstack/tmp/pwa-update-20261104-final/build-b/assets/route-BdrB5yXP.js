@@ -1,0 +1,1 @@
+import{t as e}from"./section-layout-DY89E3P9.js";var t=e;export{t as component};

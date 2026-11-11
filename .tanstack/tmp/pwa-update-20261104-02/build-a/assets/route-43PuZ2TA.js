@@ -1,0 +1,1 @@
+import{t as e}from"./section-layout-BE--W5FA.js";var t=e;export{t as component};

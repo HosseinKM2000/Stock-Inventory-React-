@@ -1,0 +1,1 @@
+import{t as e}from"./access-state-Ci2Lew60.js";function t(){return`inventory:${e.user()?.id??`anonymous`}:hide-catalog-products`}var n={isHidden(){try{return localStorage.getItem(t())===`true`}catch{return!1}},setHidden(e){try{localStorage.setItem(t(),String(e)),window.dispatchEvent(new Event(`tanzim-backup-relevant-change`))}catch{}}};export{n as t};

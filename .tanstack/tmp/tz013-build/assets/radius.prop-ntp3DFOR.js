@@ -1,0 +1,1 @@
+var e=[`none`,`small`,`medium`,`large`,`full`],t={radius:{type:`enum`,values:e,default:void 0}};export{t as n,e as t};

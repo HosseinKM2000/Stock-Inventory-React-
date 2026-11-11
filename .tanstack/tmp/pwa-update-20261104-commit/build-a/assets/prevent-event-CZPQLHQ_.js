@@ -1,0 +1,1 @@
+function e(e){return t=>{t.preventDefault(),e?.(t)}}export{e as t};
